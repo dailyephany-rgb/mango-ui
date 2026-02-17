@@ -1,0 +1,306 @@
+
+import React, { useState, useEffect } from "react";
+import { db } from "../firebaseConfig";
+import {
+  collection,
+  onSnapshot,
+  doc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import INSIDE_ROOM_MAP from "../inside_room_routing.json"; 
+import "./InsideLab.css";
+
+export default function InsideLabRegister() {
+  const [entries, setEntries] = useState([]);
+  const [labResults, setLabResults] = useState({}); 
+  const [localDrafts, setLocalDrafts] = useState({}); 
+  const [activeTab, setActiveTab] = useState("PathologyRegister");
+  const [activeSource, setActiveSource] = useState("All");
+  const [regSearch, setRegSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  
+  const [showEdit, setShowEdit] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState(null);
+  const [results, setResults] = useState([{ testType: "", content: "" }]);
+  const [saving, setSaving] = useState(false);
+
+  // Helper to normalize dates for sorting
+  const parseDate = (entry) => {
+    const f = entry.timePrinted;
+    if (!f) return null;
+    if (f?.toDate) return f.toDate();
+    if (typeof f === "string" || f instanceof Date) {
+      const d = new Date(f);
+      return isNaN(d) ? null : d;
+    }
+    if (f?.seconds) return new Date(f.seconds * 1000);
+    return null;
+  };
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    setDateFrom(today);
+    setDateTo(today);
+  }, []);
+
+  useEffect(() => {
+    const unsubMaster = onSnapshot(collection(db, "master_register"), (snap) => {
+      const allData = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setEntries(allData);
+    });
+
+    const unsubLab = onSnapshot(collection(db, "inside_lab_results"), (snap) => {
+      const labData = {};
+      snap.docs.forEach(d => { labData[d.id] = d.data(); });
+      setLabResults(labData);
+    });
+
+    return () => { unsubMaster(); unsubLab(); };
+  }, []);
+
+  const getDeptUniqueKey = (patientId) => {
+    const deptName = activeTab.replace("Register", "");
+    return `${patientId}_${deptName}`;
+  };
+
+  const openEdit = (entry) => {
+    setSelectedEntry(entry);
+    const uniqueId = getDeptUniqueKey(entry.id);
+    const existingData = localDrafts[uniqueId] || labResults[uniqueId];
+    setResults(existingData?.reportData || [{ testType: "", content: "" }]);
+    setShowEdit(true);
+  };
+
+  const addResultBox = () => {
+    setResults([...results, { testType: "", content: "" }]);
+  };
+
+  const updateResult = (index, field, value) => {
+    const newResults = [...results];
+    if (field === "testType") {
+      newResults[index].testType = value;
+      newResults[index].content = `DIAGNOSTIC PARAMETERS: ${value}:\n\n`;
+    } else {
+      newResults[index][field] = value;
+    }
+    setResults(newResults);
+  };
+
+  const handleLocalSave = () => {
+    if (selectedEntry) {
+      const uniqueId = getDeptUniqueKey(selectedEntry.id);
+      const orderedResults = results.map(res => ({
+        testType: res.testType,
+        content: res.content
+      }));
+
+      setLocalDrafts(prev => ({
+        ...prev,
+        [uniqueId]: { reportData: orderedResults, isDrafted: true }
+      }));
+    }
+    setShowEdit(false);
+  };
+
+  const handleFinalize = async (entry) => {
+    const uniqueId = getDeptUniqueKey(entry.id);
+    const finalData = (localDrafts[uniqueId]?.reportData || results).map(res => ({
+      testType: res.testType,
+      content: res.content
+    }));
+    
+    try {
+      setSaving(true);
+      const reportRef = doc(db, "inside_lab_results", uniqueId);
+      await setDoc(reportRef, {
+        regNo: entry.regNo || entry.id,
+        diagnosticNo: entry.diagnosticNo || entry.accNo || "—", 
+        name: entry.name,
+        age: entry.age,
+        ageUnit: entry.ageUnit || "", 
+        gender: entry.gender || entry.sex,
+        doctor: entry.doctor,
+        source: entry.source || "OPD", 
+        category: entry.category || "", 
+        timeCollected: entry.timeCollected || null,
+        timePrinted: entry.timePrinted || null,
+        selectedTests: (entry.selectedTests || []).map(t => typeof t === 'string' ? t : t.test),
+        department: activeTab.replace("Register", ""),
+        reportData: finalData, 
+        isFinalized: true,
+        isSaved: true, 
+        timeSaved: serverTimestamp()
+      }, { merge: true });
+
+      setLocalDrafts(prev => {
+        const updated = { ...prev };
+        delete updated[uniqueId];
+        return updated;
+      });
+
+      alert(`Report saved successfully for ${activeTab.replace("Register", "")}`);
+    } catch (err) {
+      console.error("Error finalizing:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filteredEntries = entries
+    .filter((e) => {
+      const patientTests = (e.selectedTests || []).map(t => 
+        (typeof t === "string" ? t : t?.test || "").toUpperCase().trim()
+      );
+      const matchesTab = patientTests.some(test => 
+        INSIDE_ROOM_MAP[activeTab].some(mapped => test.includes(mapped.toUpperCase()))
+      );
+      if (!matchesTab) return false;
+      if (activeSource !== "All" && e.source !== activeSource) return false;
+      if (regSearch && !String(e.regNo || e.id).toLowerCase().includes(regSearch.toLowerCase())) return false;
+
+      const d = parseDate(e);
+      if (d) {
+        const dateStr = d.toISOString().split("T")[0];
+        if (dateFrom && dateStr < dateFrom) return false;
+        if (dateTo && dateStr > dateTo) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const dateA = parseDate(a);
+      const dateB = parseDate(b);
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+      return dateA - dateB;
+    });
+
+  return (
+    <div className="register-section">
+      <h3 className="dept-header">🔬 Inside Lab Register</h3>
+
+      <div className="filter-bar">
+        <input className="reg-search" placeholder="Search Reg No..." value={regSearch} onChange={(e) => setRegSearch(e.target.value)} />
+        <div className="date-filters">
+          <span className="date-label">Date:</span>
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <span>to</span>
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+        </div>
+        <div className="source-filters">
+          {["OPD", "IPD", "Third Floor", "All"].map((src) => (
+            <button key={src} className={`source-btn ${activeSource === src ? "active" : ""}`} onClick={() => setActiveSource(src)}>{src}</button>
+          ))}
+        </div>
+      </div>
+
+      <div className="tab-container">
+        {Object.keys(INSIDE_ROOM_MAP).map((tab) => (
+          <button key={tab} className={`tab-btn ${activeTab === tab ? "active" : ""}`} onClick={() => setActiveTab(tab)}>
+            {tab.replace("Register", "")}
+          </button>
+        ))}
+      </div>
+
+      <div className="table-container">
+        <table className="backroom-table">
+          <thead>
+            <tr>
+              <th>Reg No</th>
+              <th>Diagnostic No</th>
+              <th>Name</th>
+              <th>Age/Gender</th>
+              <th>Doctor</th>
+              <th>Test(s)</th>
+              <th>Action</th>
+              <th>Finalize</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredEntries.map((e) => {
+              const uniqueId = getDeptUniqueKey(e.id);
+              const isSavedInDB = labResults[uniqueId]?.isFinalized;
+              const hasLocalChanges = localDrafts[uniqueId]?.isDrafted;
+
+              const filteredTests = (e.selectedTests || [])
+                .map(t => typeof t === 'string' ? t : t.test)
+                .filter(testName => 
+                  INSIDE_ROOM_MAP[activeTab].some(mapped => 
+                    testName.toUpperCase().includes(mapped.toUpperCase())
+                  )
+                );
+
+              return (
+                <tr key={e.id} className={isSavedInDB ? "row-green" : hasLocalChanges ? "row-yellow" : ""}>
+                  <td>{e.regNo || e.id}</td>
+                  <td>{e.diagnosticNo || e.accNo || "—"}</td>
+                  <td>{e.name}</td>
+                  <td>{e.age} {e.ageUnit} / {e.gender || e.sex}</td>
+                  <td>{e.doctor}</td>
+                  <td className="test-list-cell">{filteredTests.join(", ")}</td>
+                  <td><button className="edit-btn" onClick={() => openEdit(e)}>Edit</button></td>
+                  <td>
+                    <button className="save-entry-btn" disabled={saving || isSavedInDB} onClick={() => handleFinalize(e)}>
+                      {isSavedInDB ? "Saved" : "Save Entry"}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {showEdit && (
+        <div className="edit-modal-overlay">
+          <div className="edit-window full-window">
+            <div className="window-header-centered">
+              <h2 className="main-report-heading">Report Entry: {selectedEntry?.name}</h2>
+              <button className="close-x-corner" onClick={() => setShowEdit(false)}>×</button>
+            </div>
+            
+            <div className="window-body">
+              <div className="patient-info-banner">
+                <div className="banner-dept-title">
+                  {activeTab.replace("Register", "").toUpperCase()} DEPARTMENT
+                </div>
+                <div className="banner-patient-details">
+                  <span><strong>Name:</strong> {selectedEntry?.name}</span>
+                  <span><strong>Reg No:</strong> {selectedEntry?.regNo || selectedEntry?.id}</span>
+                  <span><strong>Diag No:</strong> {selectedEntry?.diagnosticNo || selectedEntry?.accNo || "—"}</span>
+                </div>
+                <div className="banner-test-list">
+                  <strong>Tests:</strong> {(selectedEntry?.selectedTests || [])
+                    .map(t => typeof t === 'string' ? t : t.test)
+                    .filter(testName => 
+                      INSIDE_ROOM_MAP[activeTab].some(mapped => 
+                        testName.toUpperCase().includes(mapped.toUpperCase())
+                      )
+                    ).join(", ")}
+                </div>
+              </div>
+
+              {results.map((res, idx) => (
+                <div key={idx} className="result-card">
+                  <select className="table-select" value={res.testType} onChange={(e) => updateResult(idx, "testType", e.target.value)}>
+                    <option value="">Select Test...</option>
+                    {INSIDE_ROOM_MAP[activeTab].map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <textarea className="typing-rectangle" value={res.content} onChange={(e) => updateResult(idx, "content", e.target.value)} placeholder="Type results here..." />
+                </div>
+              ))}
+              <div className="add-more-container">
+                <button className="add-box-circle" onClick={addResultBox}>+</button>
+              </div>
+            </div>
+
+            <div className="window-footer-centered">
+              <button className="big-green-save-btn" onClick={handleLocalSave}>Save & Return</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

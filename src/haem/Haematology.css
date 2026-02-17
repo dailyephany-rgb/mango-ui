@@ -1,0 +1,315 @@
+
+.haem-container {
+  font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: #f8fafc;
+  min-height: 100vh;
+  padding: 24px;
+  max-width: 100vw;
+  overflow-x: hidden; /* Prevents the whole page from sliding */
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.header h2 {
+  background: #2563eb;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 8px;
+}
+.tabs button {
+  border: 1px solid #c7d2fe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  padding: 8px 14px;
+  border-radius: 9999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+.tabs button:hover {
+  filter: brightness(0.97);
+}
+.tabs button.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+/* Filter Bar */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  gap: 10px;
+}
+
+.reg-search {
+  flex: 1;
+  min-width: 180px;
+  max-width: 250px;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background-color: #fff;
+}
+
+.reg-search:focus {
+  outline: none;
+  border-color: #2563eb;
+  background-color: #f0f9ff;
+}
+
+/* Date Range */
+.date-filters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: #334155;
+}
+
+.date-filters input[type="date"] {
+  padding: 4px 6px;
+  font-size: 0.9rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background-color: #fff;
+}
+
+/* Source Buttons */
+.source-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.source-btn {
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  border: 1px solid #2563eb;
+  background-color: #fff;
+  color: #2563eb;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.source-btn.active {
+  background-color: #2563eb;
+  color: white;
+}
+
+/* =========================================
+   🔹 SCROLLING CONTAINER & STICKY LOGIC
+========================================= */
+.table-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
+  overflow: hidden; 
+}
+
+.haem-table-wrapper {
+  width: 100%;
+  overflow-x: auto; 
+  background: #fff;
+  max-height: 80vh;
+}
+
+.haem-table {
+  width: 100%;
+  min-width: 1800px; 
+  border-collapse: separate; /* Required for sticky border stability */
+  border-spacing: 0;
+  table-layout: fixed; 
+}
+
+.haem-table th,
+.haem-table td {
+  font-size: 13px;
+  padding: 12px 10px;
+  border: 1px solid #e5e7eb;
+  vertical-align: middle;
+  text-align: center;
+  white-space: nowrap; 
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.haem-table thead th {
+  background: #eef2ff;
+  color: #1e3a8a;
+  font-weight: 700;
+  text-transform: uppercase;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* --- Sticky Column Base --- */
+.sticky-col {
+  position: sticky;
+  background-color: white;
+  z-index: 5;
+}
+
+/* Combined Vertical and Horizontal Sticky for Headers */
+.haem-table thead th.sticky-col {
+  z-index: 20 !important;
+  background-color: #eef2ff !important;
+}
+
+/* Column 1: Reg No (0px left) */
+.haem-table th:nth-child(1),
+.haem-table td:nth-child(1) {
+  left: 0;
+  width: 110px;
+  min-width: 110px;
+}
+
+/* Column 2: Diag No (110px left) */
+.haem-table th:nth-child(2),
+.haem-table td:nth-child(2) {
+  left: 110px;
+  width: 110px;
+  min-width: 110px;
+}
+
+/* Column 3: Patient Name (220px left) */
+.haem-table th:nth-child(3),
+.haem-table td:nth-child(3) {
+  left: 220px;
+  width: 180px;
+  min-width: 180px;
+  white-space: normal;
+  border-right: 2px solid #cbd5e1 !important; /* Visual separator */
+}
+
+/* Sync Row Colors for Sticky Cells */
+.row-scanned td.sticky-col { background-color: #fff7cc !important; }
+.row-saved td.sticky-col { background-color: #dcfce7 !important; }
+
+/* --- MIDDLE COLUMNS (FIXED COMPRESSION) --- */
+
+/* 4. Age */
+.haem-table th:nth-child(4),
+.haem-table td:nth-child(4) {
+  width: 100px;
+}
+
+/* 5. Gender */
+.haem-table th:nth-child(5),
+.haem-table td:nth-child(5) {
+  width: 90px;
+}
+
+/* 6. Source */
+.haem-table th:nth-child(6),
+.haem-table td:nth-child(6) {
+  width: 120px;
+}
+
+/* 7. Selected Tests */
+.haem-table th:nth-child(7),
+.haem-table td:nth-child(7) {
+  width: 260px; 
+  white-space: normal; 
+}
+
+/* 8, 9, 10. Test Columns */
+.haem-table th:nth-child(8), .haem-table td:nth-child(8),
+.haem-table th:nth-child(9), .haem-table td:nth-child(9),
+.haem-table th:nth-child(10), .haem-table td:nth-child(10) {
+  width: 120px; 
+}
+
+/* 11. SCANNED  */
+.haem-table th:nth-child(11),
+.haem-table td:nth-child(11) {
+  width: 100px; 
+}
+
+/* 12. STATUS  */
+.haem-table th:nth-child(12),
+.haem-table td:nth-child(12) {
+  width: 120px; 
+}
+
+/* 13. CRITICAL  */
+.haem-table th:nth-child(13),
+.haem-table td:nth-child(13) {
+  width: 120px; 
+}
+
+/* 14. ACTION  */
+.haem-table th:nth-child(14),
+.haem-table td:nth-child(14) {
+  width: 100px; 
+}
+
+/* Action Button */
+.save-btn {
+  background-color: #55a060;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* --- Added Critical Button --- */
+.critical-btn {
+  background-color: #ef4444; /* Red color */
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+}
+
+.critical-btn:hover {
+  background-color: #dc2626;
+}
+
+.save-btn:disabled, .critical-btn:disabled {
+  background-color: #a8cbb0;
+  cursor: not-allowed;
+}
+
+/* Scanned / Saved States for non-sticky cells */
+.row-scanned { background-color: #fff7cc !important; }
+.row-saved { background-color: #dcfce7 !important; }
+
+/* Custom Scrollbar */
+.haem-table-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+.haem-table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}

@@ -1,0 +1,123 @@
+/* --- CONTAINER --- */
+.timebricks-fc-container {
+  width: 100%;
+  border: 1px solid #dfe6e9;
+  border-radius: 8px;
+  background: white;
+  margin-top: 15px;
+  overflow: hidden;
+}
+
+/* --- THE BLUE HEADER SECTION --- */
+.fc .fc-timeline-header,
+.fc .fc-timeline-header-row,
+.fc .fc-resource-header,
+.fc .fc-timeline-header .fc-scroller,
+.fc .fc-timeline-slot-label,
+.fc .fc-datagrid-header,
+.fc .fc-datagrid-header .fc-datagrid-cell {
+  background-color: #000080 !important; /* Navy Blue */
+}
+
+/* FORCES HOURS (9 AM, 10 AM) TO THE MIDDLE */
+.fc .fc-timeline-slot-frame,
+.fc .fc-timeline-slot-label-cushion {
+  display: flex !important;
+  align-items: center !important;      
+  justify-content: center !important;    
+  height: 60px !important;            
+  width: 100% !important;
+  text-transform: uppercase !important; 
+  font-weight: bold !important;
+  font-size: 1.1rem !important;
+  color: white !important;
+  padding: 0 !important;
+}
+
+/* FORCES "REG NO" HEADER TO THE MIDDLE */
+.fc .fc-datagrid-header .fc-datagrid-cell-cushion,
+.fc .fc-datagrid-header .fc-datagrid-cell-main,
+.fc .fc-datagrid-header .fc-datagrid-cell-frame {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 60px !important;
+  width: 100% !important;
+  text-transform: uppercase !important;
+  font-weight: bold !important;
+  font-size: 1.1rem !important;
+  color: white !important;
+}
+
+.fc .fc-timeline-header-row,
+.fc .fc-resource-header {
+  height: 60px !important;
+  border: none !important;
+}
+
+/* --- THE SIDEBAR ENTRIES (time-01, etc.) --- */
+.fc .fc-datagrid-body .fc-datagrid-cell {
+  background: #f8f9fa !important; 
+  border-bottom: 1px solid #dfe6e9 !important;
+  height: 65px !important; 
+}
+
+.fc .fc-datagrid-body .fc-datagrid-cell-cushion {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  height: 65px !important;
+  width: 100% !important;
+  color: #2c3e50 !important; 
+  font-weight: bold !important;
+  font-size: 1rem !important;
+}
+
+/* --- GRID & BRICK STYLING --- */
+.fc .fc-timeline-lane {
+  height: 65px !important; 
+  border-bottom: 1px solid #dfe6e9 !important;
+}
+
+/* Centers the brick vertically in the row */
+.fc-timeline-event-harness {
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+/* THE BRICK ITSELF - SET TO HIGH TRANSPARENCY */
+.fc-timeline-event {
+  border-radius: 4px !important;
+  height: 26px !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important; /* Soft border edge */
+  opacity: 0.5 !important;                          /* Lower value = More Transparent */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  background-clip: padding-box;
+}
+
+/* TARGETS THE TEXT INSIDE THE BRICK */
+.fc-event-title-container,
+.fc-event-title {
+  display: flex !important;
+  align-items: center !important;      
+  justify-content: center !important;     
+  width: 100% !important;
+  height: 100% !important;
+  font-weight: bold !important;
+  font-size: 0.85rem !important;
+  color: white !important;
+  white-space: nowrap !important;
+}
+
+/* --- THE 11 PM COLUMN FIX --- */
+.fc-timeline-slots-table {
+  border-collapse: collapse !important;
+  margin-right: -1px !important;
+}
+
+/* --- SCROLLBAR --- */
+.fc-scroller::-webkit-scrollbar { height: 12px; width: 12px; }
+.fc-scroller::-webkit-scrollbar-thumb { background: #bdc3c7; border-radius: 6px; }

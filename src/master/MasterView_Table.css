@@ -1,0 +1,227 @@
+
+/* ============================================================
+   MASTER CONTAINER
+============================================================ */
+.master-container {
+  font-family: "Inter", sans-serif;
+  background-color: #f8fafc;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+/* ============================================================
+   HEADER BAR
+============================================================ */
+.header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.header-bar h2 {
+  color: #1e3a8a;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* ============================================================
+   FILTER BAR — NEW RECTANGLE VIEW
+============================================================ */
+.filter-bar {
+  display: flex;
+  flex-direction: column; 
+  align-items: stretch; 
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 18px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  gap: 12px;
+}
+
+.filter-left {
+  display: flex;
+  flex-direction: column; 
+  align-items: stretch; 
+  gap: 10px;
+  width: 100%;
+}
+
+/* Search Bar - Full Length */
+.filter-bar input[type="text"] {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+  height: 38px;
+  width: 100% !important; 
+  background: #f9fafb;
+  box-sizing: border-box;
+}
+
+/* Date Label - FORCED BOLD */
+.filter-bar .filter-left label {
+  font-weight: 900 !important;
+  color: #1e3a8a !important;
+  font-size: 15px;
+  margin-top: 8px;
+  display: block;
+}
+
+/* Date Inputs - Full Length */
+.filter-bar input[type="date"] {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 14px;
+  height: 38px;
+  width: 100% !important; 
+  background: #f9fafb;
+  box-sizing: border-box;
+}
+
+.filter-bar span {
+  font-weight: 700;
+  color: #374151;
+  padding: 5px 0;
+  display: block;
+}
+
+/* Source Buttons */
+.source-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+
+.source-buttons button {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  color: #1e3a8a;
+  height: 34px;
+}
+
+.source-buttons button.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+/* ============================================================
+   TABLE STYLES
+============================================================ */
+.table-wrapper {
+  overflow-x: auto;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.master-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.master-table th {
+  background-color: #eff6ff;
+  color: #1e3a8a;
+  font-weight: 600;
+  padding: 10px 14px;
+  text-align: left;
+  border: 1px solid #e5e7eb;
+}
+
+.master-table td {
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb;
+  font-size: 14px;
+}
+
+/* ============================================================
+   ACTION BUTTONS (RESTORED FROM OLD)
+============================================================ */
+.action-cell {
+  width: 160px; /* Adjusted to fit all three buttons comfortably */
+}
+
+.action-btns-wrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Urgent Button Style */
+.urgent-btn {
+  background-color: #10b981; 
+  color: white;
+  border: 1px solid #059669;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+.urgent-btn.is-urgent {
+  background-color: #dc2626;
+  border-color: #b91c1c;
+}
+
+/* Edit Button Style */
+.edit-btn-action {
+  background-color: #f59e0b;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.edit-btn-action:hover {
+  background-color: #d97706;
+}
+
+/* Delete Button Style */
+.delete-btn-action {
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.delete-btn-action:hover {
+  background-color: #dc2626;
+  color: white;
+  border-color: #dc2626;
+}
+
+.master-table ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.master-table li {
+  font-size: 12px;
+  color: #4b5563;
+  line-height: 1.4;
+  padding-bottom: 2px;
+}

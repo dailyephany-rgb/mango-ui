@@ -1,0 +1,147 @@
+
+
+
+
+/* --- REGISTER & FILTERS --- */
+.register-section {
+  font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif; /* Matched font stack */
+  background-color: #f8fafc;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+.dept-header {
+  text-align: center;
+  color: #1e3a8a;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  background: white;
+  padding: 12px 15px;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.reg-search { flex: 1; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; }
+
+/* Target the Date Input Boxes specifically */
+.date-filters { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.date-filters input[type="date"] {
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #f8fafc;
+  font-family: inherit;
+}
+
+/* UPDATED: Source Buttons (OPD, IPD, etc.) & Tab Buttons */
+.source-filters { display: flex; gap: 8px; }
+
+.source-btn, .tab-btn {
+  background: #f1f3f5; 
+  border: 1px solid #ced4da; 
+  border-radius: 6px; 
+  padding: 6px 16px; 
+  cursor: pointer; 
+  font-weight: 500; 
+  color: #495057;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+/* Active State for both Source and Department tabs */
+.source-btn.active, .tab-btn.active { 
+  background: #2563eb !important; 
+  color: white !important; 
+  border-color: #2563eb !important;
+}
+
+.tab-container { display: flex; justify-content: center; gap: 10px; margin: 20px 0; }
+
+/* --- TABLE STYLING --- */
+.table-container { background: white; border-radius: 8px; border: 1px solid #e2e8f0; overflow-x: auto; }
+.backroom-table { width: 100%; border-collapse: collapse; }
+
+.backroom-table th, .backroom-table td {
+  padding: 12px 10px; /* Matched to Haematology */
+  border: 1px solid #e5e7eb; /* Matched to Haematology */
+  font-size: 13px !important;
+  vertical-align: middle;
+}
+
+/* Updated Column Names Row to match Haematology */
+.backroom-table th { 
+  background: #eef2ff !important; /* Matched Haematology light blue */
+  color: #1e3a8a !important;     /* Matched Haematology text color */
+  font-weight: 700 !important;   /* Matched Haematology bold weight */
+  text-transform: uppercase; 
+  text-align: center; 
+}
+
+/* Row Background Colors */
+.row-green { background-color: #dcfce7 !important; }
+.row-yellow { background-color: #fef9c3 !important; } 
+
+/* --- ACTION BUTTONS (Match Pic-1 & Pic-2) --- */
+.edit-btn {
+  background-color: #facc15; 
+  color: #333; 
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.save-entry-btn {
+  background-color: #22c55e; /* Vibrant green */
+  color: white; 
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Styles the button when it's in the "Saved" state (disabled) */
+.save-entry-btn:disabled {
+  background-color: #e2e8f0 !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* --- FULL SCREEN MODAL --- */
+.edit-modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: white; display: flex; z-index: 9999;
+}
+.edit-window.full-window { width: 100%; height: 100%; display: flex; flex-direction: column; background-color: #f9fafb; }
+.window-header-centered { padding: 15px; background: white; border-bottom: 2px solid #e5e7eb; display: flex; justify-content: center; align-items: center; position: relative; }
+.main-report-heading { font-size: 20px; font-weight: 800; color: #1e3a8a; }
+.close-x-corner { position: absolute; right: 20px; border: none; background: none; font-size: 24px; cursor: pointer; color: #9ca3af; }
+.window-body { padding: 40px; overflow-y: auto; flex: 1; }
+
+.patient-info-banner {
+  max-width: 1000px; margin: 0 auto 25px auto; background: #ffffff;
+  border-left: 5px solid #1e3a8a; border-radius: 8px; padding: 15px 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.banner-dept-title { font-size: 14px; font-weight: 800; color: #1e3a8a; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px; margin-bottom: 8px; }
+.banner-patient-details { display: flex; gap: 30px; font-size: 14px; color: #374151; margin-bottom: 8px; }
+
+.result-card { max-width: 1000px; margin: 0 auto 30px auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+.typing-rectangle { width: 100%; height: 150px; padding: 12px; margin-top: 10px; border: 1px solid #ccc; border-radius: 6px; font-family: inherit; }
+
+.window-footer-centered { padding: 15px; background: white; border-top: 2px solid #e5e7eb; display: flex; justify-content: center; }
+.big-green-save-btn { background-color: #22c55e; color: white; font-size: 16px; font-weight: 700; padding: 10px 40px; border: none; border-radius: 12px; cursor: pointer; }
+
+.add-box-circle { width: 45px; height: 45px; border-radius: 50%; border: 2px solid #2563eb; background: white; color: #2563eb; font-size: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin: 0 auto; }

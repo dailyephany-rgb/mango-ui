@@ -1,0 +1,170 @@
+
+
+/* ===============================
+   BIOCHEMISTRY MAIN CONTAINER
+=================================*/
+.biochem-register-container {
+  font-family: "Inter", sans-serif;
+  background-color: #f8fafc;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+.dept-header {
+  text-align: center;
+  color: #1e3a8a;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 15px;
+}
+
+/* ===============================
+   TAB STYLING
+=================================*/
+.tab-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.tab-btn {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px 6px 0 0;
+  padding: 10px 18px;
+  margin: 0 6px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #1e3a8a;
+}
+
+.tab-btn.active {
+  background: #2563eb;
+  color: white;
+  border: 1px solid #2563eb;
+}
+
+/* ===============================
+   FILTER BAR STYLING (Matches Pic-1)
+=================================*/
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  background-color: #f9fafb;
+  padding: 12px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.reg-search {
+  flex: 1;
+  min-width: 180px;
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.date-filters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.date-filters input[type="date"] {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 5px;
+  background-color: #f9fafb;
+}
+
+.source-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.source-btn {
+  background: #e5e7eb;
+  color: #1e3a8a;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.source-btn.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+/* ===============================
+   TABLE STYLES (Matches Pic-1 Header)
+=================================*/
+.table-wrapper {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: white;
+}
+
+.dept-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.dept-table th,
+.dept-table td {
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* THE SPECIFIC GREY HEADER FROM PIC-1 */
+.dept-table th {
+  background-color: #eff6ff !important;
+  color: #1e3a8a !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+/* ===============================
+   ROW COLORS & INPUTS
+=================================*/
+.row-green { background-color: #dcfce7 !important; }
+.row-yellow { background-color: #fff7cc !important; }
+.row-normal { background-color: white !important; }
+
+.dept-table input[type="text"],
+.dept-table select {
+  width: 100%;
+  padding: 5px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.save-btn {
+  background-color: #55a060; /* Rapid Card Green */
+  color: white;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.save-btn:disabled {
+  background-color: #a8cbb0;
+  cursor: not-allowed;
+}
+

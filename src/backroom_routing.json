@@ -1,0 +1,33 @@
+
+{
+  "ESRRegister": [
+    "ESR"
+  ],
+  "BloodGroupRegister": [
+    "ABO GROUP & RH TYPE"
+  ],
+  "SerologyRegister": [
+    "HBSAG CARD",
+    "HCV (SERUM) CARD",
+    "HIV I & II (QUANTITATIVE) CARD",
+    "VDRL (SERUM)",
+    "OCCULT BLOOD" 
+  ],
+  
+  "RapidCardRegister": [
+    "MALARIA ANTIGEN DETECTION CARD, BLOOD",
+    "TROP-T CARD",
+    "DENGUE IGG , IGM & NS 1 ANTIGEN",
+    "TYPHOID IGG,IGM",
+    "CHIKUNGUNIA IGM"
+  ],
+  "UrineAnalysisRegister": [
+    "URINE ANALYSIS",
+    "URINE FOR ALBUMIN",
+    "URINE FOR SUGAR",
+    "URINE FOR BILE SALTS",
+    "URINE FOR BILE PIGMENTS",
+    "URINE FOR KETONE BODIES",
+    "PREGNANCY TEST"
+  ]
+}

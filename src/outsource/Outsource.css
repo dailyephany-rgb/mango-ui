@@ -1,0 +1,246 @@
+
+
+
+
+.backroom-container {
+  font-family: "Inter", sans-serif;
+  background-color: #f8fafc;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+/* Header Styling */
+.dept-header {
+  text-align: center;
+  color: #1e3a8a;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+/* 🔹 SPECIAL ROUND BUTTON TABS FOR LABS */
+.tab-container {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 25px;
+  border-bottom: none; 
+}
+
+.tab-btn {
+  background: #ffffff;
+  border: 2px solid #2563eb; 
+  border-radius: 50px; 
+  padding: 10px 24px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #2563eb;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  background-color: #eff6ff;
+}
+
+.tab-btn.active {
+  background: #2563eb;
+  color: white;
+  box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+}
+
+/* Filter Bar Updated for Pic 1 layout */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+  background: white;
+  padding: 12px 15px;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.reg-search {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+}
+
+.date-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-label {
+  font-weight: bold;
+  font-size: 14px;
+  color: #444;
+}
+
+.date-filters input {
+  padding: 6px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+}
+
+/* 🔹 SOURCE FILTER BUTTONS */
+.source-filters {
+  display: flex;
+  gap: 8px;
+}
+
+.source-btn {
+  padding: 7px 15px;
+  border: 1px solid #d1d5db;
+  background: #f8fafc;
+  color: #475569;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.source-btn.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+/* 🔹 TABLE WRAPPER FOR SCROLLING */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Table Styles */
+.backroom-table {
+  width: 100%;
+  border-collapse: separate; 
+  border-spacing: 0;
+  min-width: 1950px; /* Increased to ensure column visibility */
+}
+
+.backroom-table th, 
+.backroom-table td {
+  padding: 12px 10px; /* Matched to Haematology */
+  border: 1px solid #e5e7eb; /* Matched to Haematology */
+  text-align: left;
+  font-family: inherit;
+  font-weight: normal; 
+  font-size: 13px;
+}
+
+/* 🔹 UPDATED: Match Haematology Background, Padding, and Font */
+.backroom-table th {
+  background-color: #eef2ff !important; /* Matched light blue */
+  color: #1e3a8a !important;            /* Matched dark blue text */
+  font-weight: 700 !important;          /* Matched bold weight */
+  font-size: 13px !important;            /* Matched size */
+  text-align: center;      
+  vertical-align: middle;
+  text-transform: uppercase;
+}
+
+/* 🔹 STICKY COLUMN LOGIC */
+.sticky-col {
+  position: sticky;
+  z-index: 2;
+  background-color: white; 
+}
+
+.row-yellow .sticky-col { background-color: #fff7cc !important; }
+.row-green .sticky-col { background-color: #dcfce7 !important; }
+.row-orange .sticky-col { background-color: #ffedd5 !important; }
+
+thead .sticky-col {
+  z-index: 3;
+  background-color: #eef2ff !important; /* Synced with new header color */
+}
+
+.backroom-table th:nth-child(1), .backroom-table td:nth-child(1) { left: 0; min-width: 100px; }
+.backroom-table th:nth-child(2), .backroom-table td:nth-child(2) { left: 100px; min-width: 100px; }
+.backroom-table th:nth-child(3), .backroom-table td:nth-child(3) { left: 200px; min-width: 150px; }
+.backroom-table th:nth-child(4), .backroom-table td:nth-child(4) { 
+  left: 350px; 
+  min-width: 100px; 
+  border-right: 1px solid #ddd; 
+}
+
+/* Widths for non-sticky columns */
+.backroom-table th:nth-child(10), .backroom-table td:nth-child(10) { min-width: 150px; }
+.backroom-table th:nth-child(11), .backroom-table td:nth-child(11) { min-width: 120px; }
+.backroom-table th:nth-child(12), .backroom-table td:nth-child(12) { min-width: 140px; }
+.backroom-table th:nth-child(13), .backroom-table td:nth-child(13) { min-width: 100px; } /* TAT Column */
+
+/* 🔹 FIX: Status column (14th) min-width to prevent dropdown clipping */
+.backroom-table th:nth-child(14), .backroom-table td:nth-child(14) { 
+    min-width: 130px !important; 
+}
+
+/* 🔹 ROW STATUS COLORS */
+.row-yellow { background-color: #fff7cc !important; }
+.row-green { background-color: #dcfce7 !important; }
+.row-orange { background-color: #ffedd5 !important; }
+
+/* Buttons */
+.save-btn {
+  background-color: #55a060;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.save-btn:hover:not(:disabled) {
+  background-color: #468a4f;
+}
+
+.given-btn {
+  background-color: #f97316; 
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.given-btn:hover:not(:disabled) {
+  background-color: #ea580c;
+}
+
+button:disabled {
+  background-color: #cbd5e1;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Table Inputs & Selects */
+.table-input, .table-select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 13px;
+  background-color: white;
+}
+
+.table-input:disabled, .table-select:disabled {
+  background-color: rgba(255, 255, 255, 0.5); 
+  border: 1px solid rgba(0, 0, 0, 0.05); 
+  color: #475569;
+  -webkit-appearance: none; 
+  -moz-appearance: none;
+  appearance: none;
+}
+

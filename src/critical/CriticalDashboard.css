@@ -1,0 +1,156 @@
+
+
+/* Container to match ESR Register Wrapper */
+.register-section {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+  margin-bottom: 40px;
+  font-family: "Inter", sans-serif;
+}
+
+.header-row-critical { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 20px; 
+}
+
+.dept-header-critical {
+  color: #1e3a8a;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.alert-pill { 
+  background-color: #fee2e2; 
+  color: #b91c1c; 
+  padding: 6px 15px; 
+  border-radius: 20px; 
+  font-weight: 700; 
+  border: 1px solid #fca5a5; 
+  font-size: 13px;
+}
+
+/* Filter Bar Match (Exactly like ESR Pic-1) */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  background-color: #f9fafb;
+  padding: 12px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.reg-search {
+  flex: 1;
+  min-width: 180px;
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.date-filters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.date-filters input[type="date"] {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 5px;
+  background-color: #f9fafb;
+}
+
+.source-buttons {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.source-btn {
+  background: #e5e7eb;
+  color: #1e3a8a;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.source-btn.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+/* Table Style Match (Grid Layout from ESR Pic-1) */
+.table-scroll-container {
+  width: 100%;
+  overflow-x: auto; 
+  display: block;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+}
+
+.backroom-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  border: 1px solid #e5e7eb;
+}
+
+.backroom-table th,
+.backroom-table td {
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb; /* The critical grid borders */
+  text-align: center;
+  vertical-align: middle;
+}
+
+.backroom-table th {
+  background-color: #eff6ff; /* Light blue header from Pic-1 */
+  color: #1e3a8a;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Status Colors from ESR */
+.row-green {
+  background-color: #dcfce7 !important; /* Reported color */
+}
+
+/* Inputs & Buttons Match */
+.backroom-table select {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #ffffff;
+}
+
+.save-btn {
+  background-color: #55a060; /* The specific green from ESR button */
+  color: white;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.save-btn:disabled {
+  background-color: #cbd5e1;
+  cursor: not-allowed;
+}
