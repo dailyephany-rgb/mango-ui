@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import "./MasterView_Table.css";
 import { db } from "../firebaseConfig.js";
@@ -6,6 +7,7 @@ import { collection, onSnapshot, orderBy, query, doc, deleteDoc, setDoc } from "
 export default function MasterView_Table() {
   const [entries, setEntries] = useState([]);
   
+  // FIX: Set local date to roll over at midnight local time
   const [dateFrom, setDateFrom] = useState(() => {
     const now = new Date();
     const y = now.getFullYear();
@@ -45,10 +47,9 @@ export default function MasterView_Table() {
     return () => unsub();
   }, []);
 
-  // FIX: Use e.id instead of regNo to target the composite ID in Firestore
-  const toggleUrgent = async (docId, currentUrgent) => {
+  const toggleUrgent = async (regNo, currentUrgent) => {
     try {
-      await setDoc(doc(db, "master_register", docId), { 
+      await setDoc(doc(db, "master_register", regNo), { 
         urgent: !currentUrgent 
       }, { merge: true });
     } catch (error) {
@@ -61,12 +62,11 @@ export default function MasterView_Table() {
     window.location.href = "/"; 
   };
 
-  // FIX: Use e.id instead of regNo for deletion
-  const handleDelete = async (docId, name) => {
+  const handleDelete = async (regNo, name) => {
     const confirmDelete = window.confirm(`Are you sure you want to delete entry for ${name}?`);
     if (confirmDelete) {
       try {
-        await deleteDoc(doc(db, "master_register", docId));
+        await deleteDoc(doc(db, "master_register", regNo));
         alert("✅ Deleted successfully.");
       } catch (error) {
         console.error(error);
@@ -78,6 +78,7 @@ export default function MasterView_Table() {
     .filter((entry) => {
       let entryDate = parseDate(entry);
       
+      // FIX: Comparison using local calendar date strings (YYYY-MM-DD)
       let entryDateStr = null;
       if (entryDate) {
         const y = entryDate.getFullYear();
@@ -146,8 +147,7 @@ export default function MasterView_Table() {
                 <td>
                    <button 
                     className={`urgent-btn ${e.urgent ? "is-urgent" : ""}`}
-                    // Use e.id here
-                    onClick={() => toggleUrgent(e.id, e.urgent)}
+                    onClick={() => toggleUrgent(e.regNo, e.urgent)}
                   >
                     {e.urgent ? "Urgent" : "Normal"}
                   </button>
@@ -155,8 +155,7 @@ export default function MasterView_Table() {
                 <td className="action-cell">
                   <div className="action-btns-wrapper">
                     <button className="edit-btn-action" onClick={() => handleEdit(e)}>Edit</button>
-                    {/* Use e.id here */}
-                    <button className="delete-btn-action" onClick={() => handleDelete(e.id, e.name)}>Delete</button>
+                    <button className="delete-btn-action" onClick={() => handleDelete(e.regNo, e.name)}>Delete</button>
                   </div>
                 </td>
               </tr>

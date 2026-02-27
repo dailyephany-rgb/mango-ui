@@ -5,7 +5,7 @@ import resourceTimelinePlugin from "@fullcalendar/resource-timeline";
 import moment from "moment";
 import "./TimeBricks.css"; 
 
-export default function TimeBricks({ unifiedRows, testTimings = {}, onBrickClick, department = "haem" }) {
+export default function TimeBricks({ unifiedRows, testTimings = {}, onBrickClick, department = "biochemistry" }) {
   
   const REF_DAY = moment().format("YYYY-MM-DD");
   const SLOT_WIDTH = 200; 
@@ -16,25 +16,19 @@ export default function TimeBricks({ unifiedRows, testTimings = {}, onBrickClick
       console.log(`%c --- HEADER STYLE DIAGNOSIS --- `, 'background: #000080; color: #fff; font-weight: bold;');
       
       const timeLabels = document.querySelectorAll('.fc-timeline-slot-label-cushion');
-      const regNoHeader = document.querySelector('.fc-datagrid-header .fc-datagrid-cell-cushion');
+      const diagHeader = document.querySelector('.fc-datagrid-header .fc-datagrid-cell-cushion');
 
       if (timeLabels.length > 0) {
         const firstLabel = timeLabels[0];
         const style = window.getComputedStyle(firstLabel);
         console.log("Time Label Text:", firstLabel.innerText);
-        console.log("Time Label Display:", style.display);
-        console.log("Time Label AlignItems:", style.alignItems);
-        console.log("Time Label TextTransform:", style.textTransform);
-        console.log("Time Label HTML Structure:", firstLabel.outerHTML);
-      } else {
-        console.warn("Could not find Time Labels in DOM. Check if .fc-timeline-slot-label-cushion exists.");
       }
 
-      if (regNoHeader) {
-        const style = window.getComputedStyle(regNoHeader);
-        console.log("Reg No Align:", style.justifyContent, style.alignItems);
+      if (diagHeader) {
+        const style = window.getComputedStyle(diagHeader);
+        console.log("Diag No Align:", style.justifyContent, style.alignItems);
       }
-    }, 2500); // Delay to ensure FC is fully rendered
+    }, 2500); 
 
     return () => clearTimeout(timer);
   }, [unifiedRows]);
@@ -54,8 +48,9 @@ export default function TimeBricks({ unifiedRows, testTimings = {}, onBrickClick
         const duration = Math.round((rawEnd - rawStart) / 60000);
 
         return {
-          id: `${r.regNo}-${index}`,
-          resourceId: r.regNo,
+          // UPDATED: resourceId now uses diagnosticNo
+          id: `${r.diagnosticNo}-${index}`,
+          resourceId: r.diagnosticNo,
           start: start, 
           end: end,
           title: `${duration}m`,
@@ -72,22 +67,23 @@ export default function TimeBricks({ unifiedRows, testTimings = {}, onBrickClick
         plugins={[resourceTimelinePlugin]}
         initialView="resourceTimelineDay"
         initialDate={REF_DAY}
-        resources={useMemo(() => Array.from(new Set(unifiedRows.map(r => r.regNo))).map(id => ({ id, title: id })), [unifiedRows])}
+        // UPDATED: Resources now generated from diagnosticNo
+        resources={useMemo(() => Array.from(new Set(unifiedRows.map(r => r.diagnosticNo))).map(id => ({ id, title: id })), [unifiedRows])}
         events={events}
         height="700px" 
-        resourceAreaWidth="160px"
+        resourceAreaWidth="180px"
         headerToolbar={false}
         slotDuration="01:00:00"
         slotMinWidth={SLOT_WIDTH}
         
-        /* JS-level force for CAPS and SPACE */
         slotLabelContent={(arg) => {
           return { html: `<div class="custom-slot-label">${moment(arg.date).format("h A")}</div>` };
         }}
 
         snapDuration="00:00:01" 
         eventOrderStrict={true}
-        resourceAreaHeaderContent="REG NO"
+        // UPDATED: Label changed to DIAGNOSTIC NO
+        resourceAreaHeaderContent="DIAGNOSTIC NO"
         eventClick={(info) => onBrickClick(info.event.extendedProps.fullData)}
       />
     </div>

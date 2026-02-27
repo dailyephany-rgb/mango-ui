@@ -14,7 +14,8 @@ export default function ValidatorTable({ title, data, onValidate, searchTerm, se
   const [dateTo, setDateTo] = useState(getTodayDate());
   const [sourceFilter, setSourceFilter] = useState("All");
 
-  const departmentsWithResults = ["Coagulation", "Serology", "Urine", "Blood Group", "Rapid Card", "ESR"];
+  // Include Haematology in departments with results if you want to see the "Critical" or "Haemogram" status
+  const departmentsWithResults = ["Coagulation", "Serology", "Urine", "Blood Group", "Rapid Card", "ESR", "Haematology"];
   const shouldShowResult = departmentsWithResults.some(dept => title.includes(dept));
   const isESR = title.includes("ESR");
 
@@ -30,19 +31,35 @@ export default function ValidatorTable({ title, data, onValidate, searchTerm, se
       .join(" | ");
   };
 
-  const parseDate = (entry) => {
-    const f = entry.timePrinted || entry.timeCollected || entry.savedTime;
+  const parseToLocalDateStr = (entry) => {
+    // UPDATED: timePrinted is now the first priority
+    const f = entry.timePrinted || entry.savedTime || entry.scannedTime || entry.timeCollected || entry.timestamp;
     if (!f) return null;
-    return f.toDate ? f.toDate() : new Date(f);
+    
+    let d;
+    if (f.toDate) d = f.toDate();
+    else d = new Date(f);
+
+    if (isNaN(d.getTime())) return null;
+
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const finalData = data.filter((item) => {
     if (sourceFilter !== "All" && item.source !== sourceFilter) return false;
-    const eDate = parseDate(item);
-    if (eDate) {
-      if (dateFrom && eDate < new Date(dateFrom + "T00:00:00")) return false;
-      if (dateTo && eDate > new Date(dateTo + "T23:59:59")) return false;
-    } else if (dateFrom || dateTo) return false;
+    
+    const entryDateStr = parseToLocalDateStr(item);
+    
+    if (entryDateStr) {
+      if (dateFrom && entryDateStr < dateFrom) return false;
+      if (dateTo && entryDateStr > dateTo) return false;
+    } else if (dateFrom || dateTo) {
+        return false;
+    }
+    
     return true;
   });
 
@@ -87,13 +104,15 @@ export default function ValidatorTable({ title, data, onValidate, searchTerm, se
             finalData.map((item) => (
               <tr key={item.id} className={item.validated ? "row-validated" : "row-saved"}>
                 <td>{item.regNo || "—"}</td>
-                <td>{item.diagnosticNo || "—"}</td>
+                {/* UPDATED: Checks both diagnosticNo and accessionNo */}
+                <td>{item.diagnosticNo || item.accessionNo || "—"}</td>
                 <td>{item.name || "—"}</td>
                 <td>{item.source || "—"}</td>
-                <td>{Array.isArray(item.selectedTests) ? item.selectedTests.join(", ") : "—"}</td>
+                <td>{Array.isArray(item.selectedTests) ? item.selectedTests.map(t => typeof t === 'string' ? t.toUpperCase() : (t.name || t.test)).join(", ") : "—"}</td>
                 {shouldShowResult && (
                   <td style={{ fontWeight: 'bold', color: '#1e3a8a', fontSize: '13px' }}>
-                    {renderResult(item.result || item.results)}
+                    {/* UPDATED: Checks result, results, and critical parameter */}
+                    {item.criticalParameter ? `CRITICAL: ${item.criticalParameter}` : renderResult(item.result || item.results)}
                   </td>
                 )}
                 {isESR && (

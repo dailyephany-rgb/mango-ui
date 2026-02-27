@@ -5,11 +5,13 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Ca
 
 const CustomTooltip = ({ active, payload }) => {
   if (!active || !payload || !payload[0]) return null;
-  const { regNo } = payload[0].payload;
+  const { regNo, diagnosticNo } = payload[0].payload;
 
   return (
     <div style={{ background: "white", border: "1px solid #ccc", padding: "8px 12px", borderRadius: "4px" }}>
-      <div style={{ fontWeight: "bold", marginBottom: 4 }}>{regNo}</div>
+      <div style={{ fontWeight: "bold", marginBottom: 4 }}>
+        {regNo} / {diagnosticNo}
+      </div>
       {payload.map((item, index) => (
         <div key={index} style={{ color: item.stroke }}>
           {item.name}: {item.value} min
@@ -33,6 +35,7 @@ export default function StackedStageLines({ unifiedRows }) {
         return {
           x: index + 1,
           regNo: p.regNo,
+          diagnosticNo: p.diagnosticNo || "NA",
           collectedToSaved: cs
         };
       });

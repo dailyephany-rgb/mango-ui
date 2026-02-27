@@ -68,13 +68,26 @@ export default function RapidCardRegister() {
   const [rapidDocs, setRapidDocs] = useState({});
   const [saving, setSaving] = useState(false);
 
+  // 🛡️ INTERNAL BUFFER: Shields results from cloud sync wipes on slow internet
+  const [localResults, setLocalResults] = useState({});
+
   const [regSearch, setRegSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [sourceFilter, setSourceFilter] = useState("All");
 
-  const [localScans, setLocalScans] = useState({});
-  const [localScanTimes, setLocalScanTimes] = useState({});
+  // UPDATE: Load localScans from LocalStorage to survive refresh
+  const [localScans, setLocalScans] = useState(() => {
+    const saved = localStorage.getItem("rapid_localScans");
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  // FINAL FIX: Persist localScanTimes to survive refresh
+  const [localScanTimes, setLocalScanTimes] = useState(() => {
+    const saved = localStorage.getItem("rapid_localScanTimes");
+    return saved ? JSON.parse(saved) : {};
+  });
+
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
   const [pendingCriticalMap, setPendingCriticalMap] = useState({});
 
@@ -125,9 +138,15 @@ export default function RapidCardRegister() {
   };
 
   useEffect(() => {
-    const t = new Date().toISOString().slice(0, 10);
-    setDateFrom(t);
-    setDateTo(t);
+    // FIX: Set local date to roll over at midnight local time
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const today = `${y}-${m}-${d}`;
+    
+    setDateFrom(today);
+    setDateTo(today);
   }, []);
 
   useEffect(() => {
@@ -146,7 +165,9 @@ export default function RapidCardRegister() {
       snap.docs.forEach(docSnap => {
         const data = docSnap.data();
         if (data.regNo && String(data.dept).toLowerCase() === CURRENT_DEPT.toLowerCase()) {
-          cSet.add(String(data.regNo));
+          // UPDATE: Critical alerts tracked by composite key
+          const cKey = `${data.regNo}_${data.diagnosticNo}`;
+          cSet.add(cKey);
         }
       });
       setCriticalReportedSet(cSet);
@@ -160,26 +181,34 @@ export default function RapidCardRegister() {
 
     return filtered.map((entry) => {
       const regNo = String(entry.regNo || entry.id);
-      const saved = rapidDocs[regNo] || {};
-      const localScan = localScans[regNo];
+      const diagnosticNo = entry.diagnosticNo || entry.accNo || "-";
+      const compositeKey = `${regNo}_${diagnosticNo}`;
+
+      const saved = rapidDocs[compositeKey] || {};
+      const localScan = localScans[compositeKey];
+      const typing = localResults[compositeKey] || {}; 
 
       return {
         ...entry,
         ...saved,
         regNo,
-        diagnosticNo: entry.diagnosticNo || entry.accNo || "-", 
+        diagnosticNo,
+        compositeKey,
         source: normalizeSource(entry.source || entry.category),
-        results: saved.results || entry.results || {
+        results: {
           malaria: "Pending", tropt: "Pending", dengue: "Pending", typhoid: "Pending", chikungunya: "Pending",
+          ...(entry.results || {}),
+          ...(saved.results || {}),
+          ...typing 
         },
         scanned: localScan ?? saved.scanned ?? "No",
         scannedTime: saved.scannedTime || null,
         urgent: entry.urgent || false, 
         status: (saved.saved === "Yes" || saved.status === "saved") ? "saved" : localScan === "Yes" ? "scanned" : saved.status || "pending",
-        pendingCriticalParam: pendingCriticalMap[regNo]
+        pendingCriticalParam: pendingCriticalMap[compositeKey]
       };
     });
-  }, [masterEntries, rapidDocs, localScans, pendingCriticalMap]);
+  }, [masterEntries, rapidDocs, localScans, pendingCriticalMap, localResults]);
 
   const mapSelectedTestsToResultKeys = (entry) => {
     const keys = new Set();
@@ -195,20 +224,27 @@ export default function RapidCardRegister() {
   const areRequiredFieldsFilled = (entry) =>
     mapSelectedTestsToResultKeys(entry).every((k) => entry.results?.[k] && entry.results[k] !== "Pending");
 
-  const handleChange = (regNo, field, value) => {
-    setRapidDocs(prev => ({
+  const handleChange = (compositeKey, field, value) => {
+    setLocalResults(prev => ({
       ...prev,
-      [regNo]: {
-        ...(prev[regNo] || {}),
-        results: { ...(prev[regNo]?.results || {}), [field]: value }
-      }
+      [compositeKey]: { ...(prev[compositeKey] || {}), [field]: value }
     }));
   };
 
-  const handleScan = (regNo, value) => {
-    const scanTime = value === "Yes" ? new Date() : null;
-    setLocalScans((prev) => ({ ...prev, [regNo]: value }));
-    setLocalScanTimes((prev) => ({ ...prev, [regNo]: scanTime }));
+  // UPDATE: Writes both Scan status and Time to LocalStorage using compositeKey
+  const handleScan = (compositeKey, value) => {
+    const now = new Date().toISOString();
+    setLocalScans((prev) => {
+      const updated = { ...prev, [compositeKey]: value };
+      localStorage.setItem("rapid_localScans", JSON.stringify(updated));
+      return updated;
+    });
+
+    setLocalScanTimes((prev) => {
+      const updatedTimes = { ...prev, [compositeKey]: value === "Yes" ? now : null };
+      localStorage.setItem("rapid_localScanTimes", JSON.stringify(updatedTimes));
+      return updatedTimes;
+    });
   };
 
   const triggerCritical = (entry) => {
@@ -217,26 +253,35 @@ export default function RapidCardRegister() {
     relevantKeys.forEach(k => { if (entry.results[k] && entry.results[k] !== "Pending") suggested += `${k.toUpperCase()}: ${entry.results[k]} `; });
     const parameter = window.prompt("Confirm Critical Values:", suggested.trim());
     if (!parameter) return;
-    setPendingCriticalMap(prev => ({ ...prev, [entry.regNo]: parameter }));
+    setPendingCriticalMap(prev => ({ ...prev, [entry.compositeKey]: parameter }));
     alert("Critical confirmed. Click Save to send.");
   };
 
   const handleSave = async (entry) => {
     try {
       setSaving(true);
-      const regNo = String(entry.regNo);
+      const compositeKey = entry.compositeKey;
       if (entry.scanned !== "Yes") { alert("Please scan before saving."); return; }
       if (!areRequiredFieldsFilled(entry)) { alert("Please fill required results."); return; }
 
       const rapidOnlyTests = getRapidSelectedTests(entry.selectedTests || []).map(t => typeof t === "object" ? t.test : t);
-      const cleanedResults = Object.fromEntries(Object.entries(entry.results).filter(([, v]) => v && v !== "Pending"));
-      const scanTime = localScanTimes[regNo] || (entry.scannedTime?.toDate ? entry.scannedTime.toDate() : entry.scannedTime);
+      
+      const cleanedResults = Object.fromEntries(
+        Object.entries(entry.results).filter(([k, v]) => 
+          v && v !== "Pending" && k !== "pendingcriticalparam"
+        )
+      );
+
+      const rawLocalTime = localScanTimes[compositeKey];
+      const scanTime = rawLocalTime ? new Date(rawLocalTime) : (entry.scannedTime?.toDate ? entry.scannedTime.toDate() : entry.scannedTime);
+      
       const hasPendingCritical = !!entry.pendingCriticalParam;
 
-      const { pendingCriticalParam, id, phone, tests, father, doctor, ...restOfEntry } = entry;
+      const { pendingCriticalParam, compositeKey: unused, id, phone, tests, father, doctor, ...restOfEntry } = entry;
 
       const payload = {
         ...restOfEntry,
+        compositeKey: compositeKey,
         selectedTests: rapidOnlyTests,
         results: cleanedResults,
         scanned: "Yes",
@@ -244,45 +289,68 @@ export default function RapidCardRegister() {
         saved: "Yes",
         savedTime: serverTimestamp(),
         status: "saved",
-        critical: (criticalReportedSet.has(regNo) || hasPendingCritical) ? "Yes" : "No"
+        critical: (criticalReportedSet.has(compositeKey) || hasPendingCritical) ? "Yes" : "No"
       };
 
-      await setDoc(doc(db, "rapid_card_register", regNo), payload, { merge: true });
+      await setDoc(doc(db, "rapid_card_register", compositeKey), payload, { merge: true });
 
       if (hasPendingCritical) {
-        await setDoc(doc(db, "critical_alerts", `${regNo}_${CURRENT_DEPT}`), {
-          name: entry.name || "", regNo: regNo, diagnosticNo: entry.diagnosticNo || "—",
+        await setDoc(doc(db, "critical_alerts", `${compositeKey}_${CURRENT_DEPT}`), {
+          name: entry.name || "", regNo: entry.regNo, diagnosticNo: entry.diagnosticNo || "—",
           age: entry.age || "", ageUnit: entry.ageUnit || "", gender: entry.gender || "-",
           source: entry.source || "-", doctor: entry.doctor || "Self",
           criticalParameter: entry.pendingCriticalParam, flaggedAt: serverTimestamp(),
           status: "Pending", dept: CURRENT_DEPT, selectedTests: rapidOnlyTests
         });
       }
-      setPendingCriticalMap(prev => { const n = {...prev}; delete n[regNo]; return n; });
+
+      setLocalResults(prev => { const n = {...prev}; delete n[compositeKey]; return n; });
+      
+      // UPDATE: Cleanup LocalStorage after save
+      setLocalScans(prev => { 
+        const n = {...prev}; 
+        delete n[compositeKey]; 
+        localStorage.setItem("rapid_localScans", JSON.stringify(n));
+        return n; 
+      });
+
+      setLocalScanTimes(prev => {
+        const n = {...prev};
+        delete n[compositeKey];
+        localStorage.setItem("rapid_localScanTimes", JSON.stringify(n));
+        return n;
+      });
+
+      setPendingCriticalMap(prev => { const n = {...prev}; delete n[compositeKey]; return n; });
+
       alert(`✅ Saved ${entry.name}`);
     } catch (err) { alert("Error saving."); } finally { setSaving(false); }
   };
 
-  const filteredEntries = mergedEntries
-    .filter((e) => {
-      if (regSearch) {
-        const search = regSearch.toLowerCase();
-        if (!String(e.regNo).toLowerCase().includes(search) && !String(e.diagnosticNo).toLowerCase().includes(search)) return false;
-      }
-      if (sourceFilter !== "All" && e.source !== sourceFilter) return false;
-      const d = parseDate(e);
-      if (d) {
-        if (dateFrom && d < new Date(dateFrom + "T00:00:00")) return false;
-        if (dateTo && d > new Date(dateTo + "T23:59:59")) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-      const dateA = parseDate(a);
-      const dateB = parseDate(b);
-      return (dateA || 0) - (dateB || 0);
-    });
+  const filteredEntries = useMemo(() => {
+    return mergedEntries
+      .filter((e) => {
+        if (regSearch) {
+          const search = regSearch.toLowerCase();
+          if (!String(e.regNo).toLowerCase().includes(search) && !String(e.diagnosticNo).toLowerCase().includes(search)) return false;
+        }
+        if (sourceFilter !== "All" && e.source !== sourceFilter) return false;
+        
+        const d = parseDate(e);
+        if (d) {
+          const entryDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          if (dateFrom && entryDateStr < dateFrom) return false;
+          if (dateTo && entryDateStr > dateTo) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
+        const dateA = parseDate(a);
+        const dateB = parseDate(b);
+        return (dateA || 0) - (dateB || 0);
+      });
+  }, [mergedEntries, regSearch, sourceFilter, dateFrom, dateTo]);
 
   return (
     <div className="register-section">
@@ -323,10 +391,10 @@ export default function RapidCardRegister() {
             {filteredEntries.map((e) => {
               const scanned = e.scanned === "Yes";
               const saved = e.status === "saved";
-              const isCrit = criticalReportedSet.has(e.regNo);
+              const isCrit = criticalReportedSet.has(e.compositeKey);
               const missingReq = !areRequiredFieldsFilled(e);
               return (
-                <tr key={e.regNo} className={saved ? "row-green" : scanned ? "row-yellow" : "row-normal"}>
+                <tr key={e.compositeKey} className={saved ? "row-green" : scanned ? "row-yellow" : "row-normal"}>
                   <td className="sticky-col" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
                   <td className="sticky-col" style={{ color: "#475569" }}>{e.diagnosticNo}</td>
                   <td className="sticky-col">{e.name}</td>
@@ -336,14 +404,14 @@ export default function RapidCardRegister() {
                   {rapidTests.map((t) => (
                     <td key={t.field}>
                       {mapSelectedTestsToResultKeys(e).includes(t.field) ? (
-                        <select value={e.results[t.field] || "Pending"} disabled={!scanned || saved} onChange={(ev) => handleChange(e.regNo, t.field, ev.target.value)}>
+                        <select value={e.results[t.field] || "Pending"} disabled={!scanned || saved} onChange={(ev) => handleChange(e.compositeKey, t.field, ev.target.value)}>
                           <option>Pending</option><option>Positive</option><option>Negative</option>
                         </select>
                       ) : "—"}
                     </td>
                   ))}
                   <td>
-                    <select value={e.scanned} disabled={saved} onChange={(ev) => handleScan(e.regNo, ev.target.value)}>
+                    <select value={e.scanned} disabled={saved} onChange={(ev) => handleScan(e.compositeKey, ev.target.value)}>
                       <option value="No">No</option><option value="Yes">Yes</option>
                     </select>
                   </td>

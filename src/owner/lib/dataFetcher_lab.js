@@ -1,6 +1,4 @@
 
-
-
 import { db } from "../../firebaseConfig.js";
 import { collection, onSnapshot } from "firebase/firestore";
 import testTimingsData from "../data/test_timings.json";
@@ -36,7 +34,9 @@ export function normalizeTestsField(field) {
 /* ================= KPI COMPUTATION ====================== */
 export function computeKPIs(filteredMaster = [], mergedLabRows = [], canonTests = [], targetDept = "") {
   const cleanCanon = canonTests.map(t => t.trim().toUpperCase());
-  const totalPatientsCollected = new Set(filteredMaster.map(m => m.regNo || m.id)).size;
+  
+  // UPDATE: Count unique combinations of RegNo and DiagnosticNo
+  const totalPatientsCollected = new Set(filteredMaster.map(m => `${m.regNo || m.id}_${m.diagnosticNo || m.billNo || "NA"}`)).size;
   
   const totalTestsCollected = filteredMaster.reduce((sum, m) => {
     const tests = normalizeTestsField(m.selectedTests || m.tests);
@@ -44,7 +44,9 @@ export function computeKPIs(filteredMaster = [], mergedLabRows = [], canonTests 
   }, 0);
 
   const savedRows = mergedLabRows.filter(r => r.isSaved);
-  const totalPatientsSaved = new Set(savedRows.map(r => r.regNo)).size;
+  
+  // UPDATE: Count unique combinations of RegNo and DiagnosticNo
+  const totalPatientsSaved = new Set(savedRows.map(r => `${r.regNo}_${r.diagnosticNo}`)).size;
   
   const totalTestsSaved = savedRows.reduce((sum, r) => {
     const tests = normalizeTestsField(r.testArrayRaw || r.test);
@@ -114,13 +116,18 @@ export function mergeDeptRows(rows = [], targetDept) {
     const rowDept = String(r.department || "").toUpperCase();
     if (rowDept !== target) return;
 
-    const regId = r.regNo || r.diagnosticNo || r.id;
+    const regId = r.regNo || r.id;
+    const diagNo = r.diagnosticNo || r.billNo || "NA"; // Track by Diagnostic No
     if (!regId) return;
 
-    if (!out[regId]) {
+    // UPDATE: Composite key prevents overwriting separate visits for same patient
+    const key = `${regId}_${diagNo}`;
+
+    if (!out[key]) {
       const testArray = normalizeTestsField(r.selectedTests || r.tests);
-      out[regId] = {
+      out[key] = {
         regNo: regId,
+        diagnosticNo: diagNo,
         name: r.name || r.patientName || r.id || "",
         timePrinted: toDate(r.timePrinted || r.date),
         timeCollected: toDate(r.timeCollected),
@@ -152,13 +159,16 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
   let mCache = [], lCache = [];
 
   const publish = () => {
+    // UPDATE: Midnight to Midnight IST filtering
     const from = dateRange?.from ? new Date(dateRange.from + "T00:00:00") : null;
     const to = dateRange?.to ? new Date(dateRange.to + "T23:59:59") : null;
 
     const masterSourceMap = {};
     mCache.forEach(m => {
         const id = m.regNo || m.id;
-        if (id) masterSourceMap[id] = m.source;
+        const dNo = m.diagnosticNo || m.billNo || "NA";
+        const compositeKey = `${id}_${dNo}`;
+        if (id) masterSourceMap[compositeKey] = m.source;
     });
 
     const filteredMaster = mCache.filter(row => {
@@ -173,8 +183,10 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
       const t = toDate(row.timePrinted || row.date);
       if (!t || (from && t < from) || (to && t > to)) return false;
       if (source && source !== "All") {
-        const regId = row.regNo || row.diagnosticNo || row.id;
-        if (String(masterSourceMap[regId] || "").toLowerCase() !== String(source).toLowerCase()) return false;
+        const regId = row.regNo || row.id;
+        const diagNo = row.diagnosticNo || row.billNo || "NA";
+        const currentComposite = `${regId}_${diagNo}`;
+        if (String(masterSourceMap[currentComposite] || "").toLowerCase() !== String(source).toLowerCase()) return false;
       }
       return true;
     });
@@ -183,7 +195,10 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
     const kpis = computeKPIs(filteredMaster, merged, canonTests, targetDept);
 
     onData({
-      unifiedRows: merged,
+      unifiedRows: merged.map(r => ({
+        ...r,
+        regNo: r.diagnosticNo // Mapping diagnosticNo as primary display for charts/bricks
+      })),
       kpis: kpis,
       violators: kpis.violators,
       totalCount: kpis.totalCount,
@@ -196,4 +211,3 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
 
   return () => { unsub1(); unsub2(); };
 }
-

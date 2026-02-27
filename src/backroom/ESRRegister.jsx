@@ -54,12 +54,27 @@ export default function ESRRegister() {
   const [masterEntries, setMasterEntries] = useState([]);
   const [esrDocs, setEsrDocs] = useState({});
   const [saving, setSaving] = useState(false);
+
+  // 🛡️ INTERNAL BUFFER: Prevents UI reset during slow syncs
+  const [localResults, setLocalResults] = useState({});
+
   const [regSearch, setRegSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [sourceFilter, setSourceFilter] = useState("All");
-  const [localScans, setLocalScans] = useState({});
-  const [localScanTimes, setLocalScanTimes] = useState({});
+
+  // UPDATE: Load localScans from LocalStorage to survive refresh
+  const [localScans, setLocalScans] = useState(() => {
+    const saved = localStorage.getItem("esr_localScans");
+    return saved ? JSON.parse(saved) : {};
+  });
+  
+  // FINAL FIX: Persist localScanTimes to survive refresh
+  const [localScanTimes, setLocalScanTimes] = useState(() => {
+    const saved = localStorage.getItem("esr_localScanTimes");
+    return saved ? JSON.parse(saved) : {};
+  });
+
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
   const [pendingCritical, setPendingCritical] = useState({});
 
@@ -95,7 +110,12 @@ export default function ESRRegister() {
   };
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const today = `${y}-${m}-${d}`;
+    
     setDateFrom(today);
     setDateTo(today);
   }, []);
@@ -117,7 +137,9 @@ export default function ESRRegister() {
       snap.docs.forEach(docSnap => {
         const data = docSnap.data();
         if (data.regNo && String(data.dept).toLowerCase() === CURRENT_DEPT.toLowerCase()) {
-          cSet.add(String(data.regNo));
+          // UPDATE: Critical alerts tracked by composite key
+          const cKey = `${data.regNo}_${data.diagnosticNo}`;
+          cSet.add(cKey);
         }
       });
       setCriticalReportedSet(cSet);
@@ -137,22 +159,29 @@ export default function ESRRegister() {
     });
 
     return filtered.map((entry) => {
-      const regKey = String(entry.regNo || entry.id);
-      const saved = esrDocs[regKey] || {};
-      const localScanValue = localScans[regKey];
+      const reg = String(entry.regNo || entry.id);
+      const diag = entry.diagnosticNo || entry.accNo || "-";
+      const compositeKey = `${reg}_${diag}`;
+
+      const saved = esrDocs[compositeKey] || {};
+      const localScanValue = localScans[compositeKey];
+      const typing = localResults[compositeKey] || {}; 
+      
+      const combined = { ...entry, ...saved, ...typing };
       
       return {
-        ...entry, ...saved,
-        regNo: regKey,
+        ...combined,
+        regNo: reg,
+        compositeKey: compositeKey,
         source: normalizeSource(entry.source || entry.category),
-        diagnosticNo: entry.diagnosticNo || entry.accNo || "-",
+        diagnosticNo: diag,
         scanned: localScanValue ?? saved.scanned ?? "No",
         status: (saved.saved === "Yes" || saved.status === "saved") ? "saved" : localScanValue === "Yes" ? "scanned" : saved.status || "pending",
         urgent: entry.urgent || false, 
-        pendingCritText: pendingCritical[regKey]
+        pendingCritText: pendingCritical[compositeKey]
       };
     });
-  }, [masterEntries, esrDocs, localScans, pendingCritical]);
+  }, [masterEntries, esrDocs, localScans, pendingCritical, localResults]);
 
   const calculateDuration = (start, end) => {
     if (!start || !end) return "";
@@ -161,21 +190,36 @@ export default function ESRRegister() {
     return diff > 0 ? diff : "";
   };
 
-  const handleChange = (regNo, field, value) => {
-    setEsrDocs(prev => {
-      const current = prev[regNo] || {};
-      const updatedEntry = { ...current, [field]: value };
+  const handleChange = (compositeKey, field, value) => {
+    setLocalResults(prev => {
+      const current = prev[compositeKey] || {};
+      const updated = { ...current, [field]: value };
+      
       if (field === "startTime" || field === "endTime") {
-        updatedEntry.duration = calculateDuration(updatedEntry.startTime || "", updatedEntry.endTime || "");
+        const sTime = field === "startTime" ? value : (updated.startTime || "");
+        const eTime = field === "endTime" ? value : (updated.endTime || "");
+        updated.duration = calculateDuration(sTime, eTime);
       }
-      return { ...prev, [regNo]: updatedEntry };
+      
+      return { ...prev, [compositeKey]: updated };
     });
   };
 
-  const handleScan = (regNo, value) => {
-    const key = String(regNo);
-    setLocalScans((prev) => ({ ...prev, [key]: value }));
-    setLocalScanTimes((prev) => ({ ...prev, [key]: value === "Yes" ? new Date() : null }));
+  // UPDATE: Writes both Scan status and Time to LocalStorage using compositeKey
+  const handleScan = (compositeKey, value) => {
+    const now = new Date().toISOString();
+
+    setLocalScans((prev) => {
+        const updated = { ...prev, [compositeKey]: value };
+        localStorage.setItem("esr_localScans", JSON.stringify(updated));
+        return updated;
+    });
+
+    setLocalScanTimes((prev) => {
+        const updatedTimes = { ...prev, [compositeKey]: value === "Yes" ? now : null };
+        localStorage.setItem("esr_localScanTimes", JSON.stringify(updatedTimes));
+        return updatedTimes;
+    });
   };
 
   const isEntryReadyToSave = (e) => (e.scanned === "Yes") && e.startTime && e.endTime && e.result && Number(e.duration) > 0;
@@ -184,7 +228,7 @@ export default function ESRRegister() {
     const defaultText = `ESR: ${entry.result} mm/hr (Duration: ${entry.duration} mins)`;
     const parameter = window.prompt("Confirm Critical ESR Value:", defaultText);
     if (!parameter) return;
-    setPendingCritical(prev => ({ ...prev, [String(entry.regNo)]: parameter }));
+    setPendingCritical(prev => ({ ...prev, [entry.compositeKey]: parameter }));
     alert("Critical value prepared. Click 'Save' to finalize.");
   };
 
@@ -197,17 +241,17 @@ export default function ESRRegister() {
   const handleSave = async (entry) => {
     try {
       setSaving(true);
-      const key = String(entry.regNo);
+      const compositeKey = entry.compositeKey;
       if (!isEntryReadyToSave(entry)) return;
 
-      const critParam = pendingCritical[key];
-      const isCritical = (critParam || criticalReportedSet.has(key)) ? "Yes" : "No";
+      const critParam = pendingCritical[compositeKey];
+      const isCritical = (critParam || criticalReportedSet.has(compositeKey)) ? "Yes" : "No";
       const cleanTests = getCleanTests(entry);
 
       if (critParam) {
-        await setDoc(doc(db, "critical_alerts", `${key}_${CURRENT_DEPT}`), {
+        await setDoc(doc(db, "critical_alerts", `${compositeKey}_${CURRENT_DEPT}`), {
           name: entry.name || "",
-          regNo: key,
+          regNo: entry.regNo,
           diagnosticNo: entry.diagnosticNo || "—",
           age: entry.age || "", ageUnit: entry.ageUnit || "", gender: entry.gender || "-",
           category: entry.category || "-", source: entry.source || "-", doctor: entry.doctor || "Self",
@@ -218,13 +262,17 @@ export default function ESRRegister() {
         });
       }
 
-      const { pendingCritText, id, phone, tests, father, doctor, ...restOfEntry } = entry;
+      const { pendingCritText, compositeKey: unused, id, phone, tests, father, doctor, ...restOfEntry } = entry;
+
+      const rawLocalTime = localScanTimes[compositeKey];
+      const scanTime = rawLocalTime ? new Date(rawLocalTime) : null;
 
       const payload = {
         ...restOfEntry,
+        compositeKey: compositeKey,
         selectedTests: cleanTests, 
         scanned: "Yes",
-        scannedTime: localScanTimes[key] ? Timestamp.fromDate(localScanTimes[key]) : (entry.scannedTime || null),
+        scannedTime: scanTime ? Timestamp.fromDate(scanTime) : (entry.scannedTime || null),
         saved: "Yes",
         savedTime: serverTimestamp(),
         timePrinted: ensureFirestoreTimestamp(entry.timePrinted),
@@ -233,8 +281,26 @@ export default function ESRRegister() {
         critical: isCritical
       };
 
-      await setDoc(doc(db, "esr_register", key), payload, { merge: true });
-      setPendingCritical(prev => { const next = { ...prev }; delete next[key]; return next; });
+      await setDoc(doc(db, "esr_register", compositeKey), payload, { merge: true });
+      
+      setLocalResults(prev => { const n = { ...prev }; delete n[compositeKey]; return n; });
+      
+      setLocalScans(prev => { 
+        const n = { ...prev }; 
+        delete n[compositeKey]; 
+        localStorage.setItem("esr_localScans", JSON.stringify(n));
+        return n; 
+      });
+
+      setLocalScanTimes(prev => {
+        const n = { ...prev };
+        delete n[compositeKey];
+        localStorage.setItem("esr_localScanTimes", JSON.stringify(n));
+        return n;
+      });
+
+      setPendingCritical(prev => { const next = { ...prev }; delete next[compositeKey]; return next; });
+      
       alert(`Saved ESR for ${entry.name}`);
     } catch (err) { alert("Error saving."); } finally { setSaving(false); }
   };
@@ -246,10 +312,12 @@ export default function ESRRegister() {
         if (!String(p.regNo).toLowerCase().includes(searchStr) && !String(p.diagnosticNo).toLowerCase().includes(searchStr)) return false;
       }
       if (sourceFilter !== "All" && p.source !== sourceFilter) return false;
+      
       const eDate = parseDate(p);
       if (eDate) {
-        if (dateFrom && eDate < new Date(dateFrom + "T00:00:00")) return false;
-        if (dateTo && eDate > new Date(dateTo + "T23:59:59")) return false;
+        const entryDateStr = `${eDate.getFullYear()}-${String(eDate.getMonth() + 1).padStart(2, '0')}-${String(eDate.getDate()).padStart(2, '0')}`;
+        if (dateFrom && entryDateStr < dateFrom) return false;
+        if (dateTo && entryDateStr > dateTo) return false;
       }
       return true;
     })
@@ -293,22 +361,22 @@ export default function ESRRegister() {
             {filteredEntries.map((e) => {
               const saved = e.status === "saved";
               const scanned = e.scanned === "Yes";
-              const isCriticalReported = criticalReportedSet.has(e.regNo) || !!e.pendingCritText;
+              const isCriticalReported = criticalReportedSet.has(e.compositeKey) || !!e.pendingCritText;
               const ready = isEntryReadyToSave(e);
 
               return (
-                <tr key={e.regNo} className={saved ? "row-green" : scanned ? "row-yellow" : ""}>
+                <tr key={e.compositeKey} className={saved ? "row-green" : scanned ? "row-yellow" : ""}>
                   <td className="sticky-col" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
                   <td className="sticky-col" style={{ color: "#475569" }}>{e.diagnosticNo}</td>
                   <td className="sticky-col">{e.name}</td>
                   <td>{e.age} {e.ageUnit}</td><td>{e.source}</td>
                   <td style={{fontSize:'11px'}}>{getCleanTests(e).join(", ")}</td>
-                  <td><input type="time" value={e.startTime || ""} disabled={!scanned || saved} onChange={(ev) => handleChange(e.regNo, "startTime", ev.target.value)} /></td>
-                  <td><input type="time" value={e.endTime || ""} disabled={!scanned || saved} onChange={(ev) => handleChange(e.regNo, "endTime", ev.target.value)} /></td>
+                  <td><input type="time" value={e.startTime || ""} disabled={!scanned || saved} onChange={(ev) => handleChange(e.compositeKey, "startTime", ev.target.value)} /></td>
+                  <td><input type="time" value={e.endTime || ""} disabled={!scanned || saved} onChange={(ev) => handleChange(e.compositeKey, "endTime", ev.target.value)} /></td>
                   <td>{e.duration || "-"}</td>
-                  <td><input type="number" value={e.result || ""} disabled={!scanned || saved} onChange={(ev) => handleChange(e.regNo, "result", ev.target.value)} /></td>
+                  <td><input type="number" value={e.result || ""} disabled={!scanned || saved} onChange={(ev) => handleChange(e.compositeKey, "result", ev.target.value)} /></td>
                   <td>
-                    <select value={scanned ? "Yes" : "No"} disabled={saved} onChange={(ev) => handleScan(e.regNo, ev.target.value)}>
+                    <select value={scanned ? "Yes" : "No"} disabled={saved} onChange={(ev) => handleScan(e.compositeKey, ev.target.value)}>
                       <option value="No">No</option><option value="Yes">Yes</option>
                     </select>
                   </td>

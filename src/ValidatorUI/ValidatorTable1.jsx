@@ -30,19 +30,38 @@ export default function ValidatorTable({ title, data, onValidate, searchTerm, se
       .join(" | ");
   };
 
-  const parseDate = (entry) => {
-    const f = entry.validatedTime || entry.savedTime || entry.timeCollected || entry.createdAt;
+  // 🛠️ MIDNIGHT UPDATE FIX: Improved date parsing and local string conversion
+  const parseToLocalDateStr = (entry) => {
+    const f = entry.timePrinted || entry.timeCollected || entry.savedTime || entry.timestamp;
     if (!f) return null;
-    return f.toDate ? f.toDate() : new Date(f);
+    
+    let d;
+    if (f.toDate) d = f.toDate();
+    else d = new Date(f);
+
+    if (isNaN(d.getTime())) return null;
+
+    // Convert to local YYYY-MM-DD string
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const finalData = data.filter((item) => {
     if (sourceFilter !== "All" && item.source !== sourceFilter) return false;
-    const eDate = parseDate(item);
-    if (eDate) {
-      if (dateFrom && eDate < new Date(dateFrom + "T00:00:00")) return false;
-      if (dateTo && eDate > new Date(dateTo + "T23:59:59")) return false;
-    } else if (dateFrom || dateTo) return false;
+    
+    // 🛠️ MIDNIGHT UPDATE FIX: Direct string comparison for local dates
+    const entryDateStr = parseToLocalDateStr(item);
+    
+    if (entryDateStr) {
+      if (dateFrom && entryDateStr < dateFrom) return false;
+      if (dateTo && entryDateStr > dateTo) return false;
+    } else if (dateFrom || dateTo) {
+        // If the user is filtering by date but the entry has no date, hide it
+        return false;
+    }
+    
     return true;
   });
 

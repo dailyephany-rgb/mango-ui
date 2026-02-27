@@ -1,5 +1,4 @@
 
-
 // src/owner/charts/StackedStageLines.jsx
 import React, { useMemo } from "react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from "recharts";
@@ -22,7 +21,8 @@ const formatDuration = (totalMinutes) => {
 
 const CustomTooltip = ({ active, payload }) => {
   if (!active || !payload || !payload.length) return null;
-  const { regNo } = payload[0].payload;
+  // UPDATED: Destructure both regNo and diagnosticNo
+  const { regNo, diagnosticNo } = payload[0].payload;
 
   return (
     <div style={{ 
@@ -32,7 +32,10 @@ const CustomTooltip = ({ active, payload }) => {
       borderRadius: "6px", 
       boxShadow: "0 4px 6px rgba(0,0,0,0.1)" 
     }}>
-      <div style={{ fontWeight: "bold", marginBottom: 6, color: "#333" }}>{regNo}</div>
+      {/* UPDATED: Display both identifiers in the header */}
+      <div style={{ fontWeight: "bold", marginBottom: 6, color: "#333" }}>
+        {regNo} / {diagnosticNo}
+      </div>
       {payload.map((item, index) => (
         <div key={index} style={{ color: item.stroke, fontSize: "13px", margin: "2px 0" }}>
           <span style={{ fontWeight: "500" }}>{item.name}:</span> {formatDuration(item.value)}
@@ -65,7 +68,13 @@ export default function StackedStageLines({ unifiedRows }) {
         const scannedToSaved = tSc && tSv ? Math.max(0, Math.round((tSv - tSc) / 60000)) : 0;
         const savedToGiven = tSv && tG ? Math.max(0, Math.round((tG - tSv) / 60000)) : 0;
 
-        return { x: index + 1, regNo: p.regNo, scannedToSaved, savedToGiven };
+        return { 
+          x: index + 1, 
+          regNo: p.regNo, 
+          diagnosticNo: p.diagnosticNo || "NA", // UPDATED: Included in the data object
+          scannedToSaved, 
+          savedToGiven 
+        };
       });
   }, [unifiedRows]);
 

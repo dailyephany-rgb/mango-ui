@@ -81,16 +81,18 @@ export const extractRapidTestCount = (record) => {
 export function mergeDeptRows(rows = []) {
   const out = {};
   rows.forEach((r) => {
-    const regId = r.regNo || r.diagnosticNo || r.id;
+    const regId = r.regNo || r.id;
+    const diagNo = r.diagnosticNo || r.billNo || "NA"; 
     if (!regId) return;
 
     const printedDate = toDate(r.timePrinted);
     if (!printedDate) return; 
 
-    const key = `${regId}_rapid`;
+    const key = `${regId}_${diagNo}_rapid`;
     if (!out[key]) {
       out[key] = {
         regNo: regId,
+        diagnosticNo: diagNo, 
         name: r.name || r.patientName || "",
         department: "rapid",
         source: r.source || "",
@@ -98,10 +100,10 @@ export function mergeDeptRows(rows = []) {
         timeCollected: toDate(r.timeCollected),
         timeScanned: toDate(r.timeScanned || r.scannedTime),
         timeSaved: toDate(r.timeSaved || r.savedTime),
-        timeValidated: toDate(r.timeValidated || r.validatedTime),
+        timeValidated: toDate(r.validatedTime || r.timeValidated),
         isSaved: r.saved === "Yes" || !!(r.savedTime || r.timeSaved),
         isValidated: r.validated === true || r.status === "validated" || !!(r.validatedTime || r.timeValidated),
-        isCritical: r.critical === "Yes", // UPDATED: Capture critical status
+        isCritical: r.critical === "Yes", 
         testList: new Set(),
       };
     }
@@ -135,6 +137,7 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
       
       violators.push({
         regNo: row.regNo,
+        diagnosticNo: row.diagnosticNo,
         name: row.name,
         test: row.test,
         duration: Math.round(duration),
@@ -158,17 +161,16 @@ export function computeKPIs(masterRows = [], rapidRows = []) {
     return tests.some(isRapidTest);
   });
 
-  const totalPatientsCollected = new Set(masterRapid.map((m) => m.regNo)).size;
+  const totalPatientsCollected = new Set(masterRapid.map((m) => `${m.regNo}_${m.diagnosticNo || m.billNo || "NA"}`)).size;
   const totalTestsCollected = masterRapid.reduce((sum, m) => sum + extractRapidTestCount(m), 0);
   
   const savedRows = rapidRows.filter(r => r.isSaved);
-  const totalPatientsSaved = new Set(savedRows.map((r) => r.regNo)).size;
+  const totalPatientsSaved = new Set(savedRows.map((r) => `${r.regNo}_${r.diagnosticNo}`)).size;
   const totalTestsSaved = savedRows.reduce((sum, r) => sum + extractRapidTestCount(r), 0);
   
   const validatedRows = rapidRows.filter((r) => r.isValidated);
-  const totalPatientsValidated = new Set(validatedRows.map((r) => r.regNo)).size;
+  const totalPatientsValidated = new Set(validatedRows.map((r) => `${r.regNo}_${r.diagnosticNo}`)).size;
 
-  // UPDATED: Count critical patients
   const totalPatientsCritical = rapidRows.filter(r => r.isCritical).length;
   
   const averages = { 
@@ -176,7 +178,7 @@ export function computeKPIs(masterRows = [], rapidRows = []) {
     collectedToScanned: [], 
     scannedToSaved: [], 
     savedToValidated: [],
-    collectedToValidated: [] // UPDATED: TAT array
+    collectedToValidated: [] 
   };
 
   rapidRows.forEach((r) => {
@@ -184,7 +186,7 @@ export function computeKPIs(masterRows = [], rapidRows = []) {
     const B = minutesDiff(r.timeCollected, r.timeScanned);
     const C = minutesDiff(r.timeScanned, r.timeSaved);
     const D = minutesDiff(r.timeSaved, r.timeValidated);
-    const TAT = minutesDiff(r.timeCollected, r.timeValidated); // UPDATED: TAT calculation
+    const TAT = minutesDiff(r.timeCollected, r.timeValidated);
 
     if (A != null) averages.printedToCollected.push(A);
     if (B != null) averages.collectedToScanned.push(B);
@@ -193,24 +195,18 @@ export function computeKPIs(masterRows = [], rapidRows = []) {
     if (TAT != null) averages.collectedToValidated.push(TAT);
   });
 
-  // --- DEBUG CONSOLE LOG ---
-  console.log("Rapid Debug:", {
-    criticalEntries: rapidRows.filter(r => r.isCritical).map(r => ({ reg: r.regNo, name: r.name })),
-    turnaroundTimes: rapidRows.filter(r => r.timeCollected && r.timeValidated).map(r => ({ reg: r.regNo, tat: minutesDiff(r.timeCollected, r.timeValidated) }))
-  });
-
   const avg = (arr) => arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : null;
 
   return {
     totalPatientsCollected, totalTestsCollected, totalPatientsSaved, totalPatientsValidated,
     totalTestsSaved, totalPatientsPendingScans: Math.max(0, totalPatientsCollected - totalPatientsSaved),
     totalTestsPending: Math.max(0, totalTestsCollected - totalTestsSaved),
-    totalPatientsCritical, // UPDATED
+    totalPatientsCritical,
     avgPrintedToCollected: avg(averages.printedToCollected),
     avgCollectedToScanned: avg(averages.collectedToScanned),
     avgScannedToSaved: avg(averages.scannedToSaved),
     avgSavedToValidated: avg(averages.savedToValidated),
-    avgTurnaroundTime: avg(averages.collectedToValidated), // UPDATED
+    avgTurnaroundTime: avg(averages.collectedToValidated),
   };
 }
 
@@ -278,6 +274,7 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
 export function unifyForCharts(rows = []) {
   return rows.map((r) => ({
     ...r,
+    regNo: r.diagnosticNo, // Use diagnosticNo as the primary label for TimeBricks/Charts
     patientName: r.name,
     tests: r.selectedTests,
   }));

@@ -23,8 +23,9 @@ export default function TimeBricks({ unifiedRows, testTimings = {}, onBrickClick
   }, [fromDate, toDate, department]);
 
   const resources = useMemo(() => {
-    const uniqueRegs = Array.from(new Set(unifiedRows.map(r => r.regNo)));
-    return uniqueRegs.map(regNo => ({ id: regNo, title: regNo }));
+    // UPDATED: Group by Diagnostic No instead of Reg No
+    const uniqueDiags = Array.from(new Set(unifiedRows.map(r => r.diagnosticNo || r.regNo)));
+    return uniqueDiags.map(diagNo => ({ id: diagNo, title: diagNo }));
   }, [unifiedRows]);
 
   const events = useMemo(() => {
@@ -55,8 +56,8 @@ export default function TimeBricks({ unifiedRows, testTimings = {}, onBrickClick
         }
 
         return {
-          id: `${r.regNo}-${index}`,
-          resourceId: r.regNo,
+          id: `${r.diagnosticNo || r.regNo}-${index}`,
+          resourceId: r.diagnosticNo || r.regNo, // UPDATED: Map to Diagnostic No resource
           start: start.format(),
           end: end.format(),
           title: displayTitle,
@@ -80,7 +81,7 @@ export default function TimeBricks({ unifiedRows, testTimings = {}, onBrickClick
         resources={resources}
         events={events}
         resourceAreaWidth="150px"
-        resourceAreaHeaderContent="Reg No"
+        resourceAreaHeaderContent="Diag No" // UPDATED: Label changed to Diag No
 
         resourceAreaHeaderDidMount={(info) => {
           const el = info.el;

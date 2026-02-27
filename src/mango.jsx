@@ -1,9 +1,10 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import "./mango.css";
+import { db } from "./firebaseConfig.js";
 import testMapping from "./test_mapping.json";
 import { collection, serverTimestamp, setDoc, doc, getDoc } from "firebase/firestore";
-import { db } from "./firebaseConfig.js";
+
 
 export default function Mango() {
   const departments = [
@@ -32,6 +33,7 @@ export default function Mango() {
   const sourceRef = useRef();
   const regRef = useRef();
   const diagnosticRef = useRef();
+  const datePrintedRef = useRef();
   const timePrintedRef = useRef();
   const ageRef = useRef();
   const ageUnitRef = useRef();
@@ -41,10 +43,16 @@ export default function Mango() {
   const selectedTestsRef = useRef();
   const resultRefs = useRef([]);
 
+  // Helper for date string - UPDATED TO IST (Asia/Kolkata)
+  const getTodayDateStr = () => {
+    return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  };
+
   const [formData, setFormData] = useState({
     source: "OPD",
     regNo: "",
     diagnosticNo: "",
+    datePrinted: getTodayDateStr(),
     timePrinted: "",
     name: "",
     father: "",
@@ -65,6 +73,8 @@ export default function Mango() {
   const [searchResults, setSearchResults] = useState([]);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [isEditMode, setIsEditMode] = useState(false);
+  // NEW: Store the original ID to prevent creating new entries on update
+  const [originalId, setOriginalId] = useState(null);
 
   useEffect(() => {
     if (focusedIndex >= 0 && resultRefs.current[focusedIndex]) {
@@ -80,14 +90,20 @@ export default function Mango() {
     if (editDataRaw) {
       const editData = JSON.parse(editDataRaw);
       let timeStr = "";
+      let dateStr = getTodayDateStr();
+
       if (editData.timePrinted) {
         const d = editData.timePrinted.seconds 
           ? new Date(editData.timePrinted.seconds * 1000) 
           : new Date(editData.timePrinted);
         timeStr = d.getHours().toString().padStart(2, '0') + ":" + d.getMinutes().toString().padStart(2, '0');
+        // Update dateStr using IST for consistency
+        dateStr = d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
       }
-      setFormData({ ...editData, timePrinted: timeStr, expandedDept: {} });
+      setFormData({ ...editData, timePrinted: timeStr, datePrinted: dateStr, expandedDept: {} });
       setIsEditMode(true);
+      // Set the original ID so we update the correct document
+      setOriginalId(editData.id || `${editData.regNo}_${editData.diagnosticNo}`);
       localStorage.removeItem("editPatientData");
     }
   }, []);
@@ -185,67 +201,80 @@ export default function Mango() {
       return;
     }
     const regNo = String(formData.regNo).trim();
-    const docRef = doc(db, "master_register", regNo);
+    const diagNo = String(formData.diagnosticNo).trim();
+    
+    // Logic: If editing, use originalId. If new, create compositeId.
+    const compositeId = isEditMode ? originalId : `${regNo}_${diagNo}`;
+    const docRef = doc(db, "master_register", compositeId);
 
     const clearFormAndReset = () => {
         setFormData({
-            source: "OPD", regNo: "", diagnosticNo: "", timePrinted: "",
+            source: "OPD", regNo: "", diagnosticNo: "", datePrinted: getTodayDateStr(), timePrinted: "",
             name: "", father: "", age: "", ageUnit: "years", gender: "M",
             phone: "", doctor: "", category: "", tests: {}, expandedDept: {}, selectedTests: [],
             urgent: false
         });
         setIsEditMode(false);
+        setOriginalId(null);
         regRef.current?.focus();
     };
 
     try {
+      // 1. Error on saving if duplicate exists (Only for new entries)
       if (!isEditMode) {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          const existingData = docSnap.data();
-          const today = new Date().toDateString();
-          // Logic updated to check timePrinted instead of timeCollected
-          const existingDate = existingData.timePrinted?.seconds 
-            ? new Date(existingData.timePrinted.seconds * 1000).toDateString()
-            : new Date(existingData.timePrinted).toDateString();
-
-          if (existingDate === today) {
-            alert(`⚠️ Entry already exists for Reg No: ${regNo} TODAY.`);
-            clearFormAndReset();
-            return;
-          }
+          alert(`❌ Error in saving entry: A record with Reg No: ${regNo} and Diag No: ${diagNo} already exists.`);
+          clearFormAndReset(); // Forms becomes blank on duplicate
+          return;
         }
       }
 
       const fullTimePrinted = formData.timePrinted
         ? (() => {
             const [h, m] = formData.timePrinted.split(":");
-            const d = new Date();
-            d.setHours(Number(h)); d.setMinutes(Number(m));
+            const d = new Date(formData.datePrinted);
+            d.setHours(Number(h)); d.setMinutes(Number(m)); d.setSeconds(0);
             return d;
           })()
-        : serverTimestamp();
+        : new Date(formData.datePrinted);
+
+      let finalTimeCollected;
+      if (isEditMode && formData.timeCollected) {
+        if (typeof formData.timeCollected.toDate === "function") {
+          finalTimeCollected = formData.timeCollected.toDate();
+        } else if (formData.timeCollected.seconds) {
+          finalTimeCollected = new Date(formData.timeCollected.seconds * 1000);
+        } else {
+          finalTimeCollected = new Date(formData.timeCollected);
+        }
+      } else {
+        finalTimeCollected = new Date();
+      }
 
       const entryData = {
         ...formData,
         regNo,
+        diagnosticNo: diagNo,
         timePrinted: fullTimePrinted,
-        timeCollected: isEditMode ? formData.timeCollected : new Date(),
+        timeCollected: finalTimeCollected,
         urgent: formData.urgent || false,
       };
       
       delete entryData.expandedDept; 
       delete entryData.tests; 
       delete entryData.id;
+      delete entryData.datePrinted;
 
+      // 2. Update existing or set new
       await setDoc(docRef, entryData, { merge: true });
       alert(`✅ Entry ${isEditMode ? "Updated" : "Saved"} successfully!`);
       
       clearFormAndReset();
       
     } catch (error) {
-      console.error(error);
-      alert("Error saving entry.");
+      console.error("Save Error:", error);
+      alert(`❌ Error saving entry: ${error.message}`);
     }
   };
 
@@ -274,10 +303,13 @@ export default function Mango() {
           <input ref={regRef} name="regNo" className={errors.regNo ? "input-error" : ""} value={formData.regNo} onChange={handleInputChange} onKeyDown={(e) => goNext(e, diagnosticRef)} disabled={isEditMode} />
           
           <label>Diagnostic No.</label>
-          <input ref={diagnosticRef} name="diagnosticNo" className={errors.diagnosticNo ? "input-error" : ""} value={formData.diagnosticNo} onChange={handleInputChange} onKeyDown={(e) => goNext(e, timePrintedRef)} />
+          <input ref={diagnosticRef} name="diagnosticNo" className={errors.diagnosticNo ? "input-error" : ""} value={formData.diagnosticNo} onChange={handleInputChange} onKeyDown={(e) => goNext(e, datePrintedRef)} disabled={isEditMode} />
           
-          <label>🕓 Time Printed</label>
-          <input type="time" ref={timePrintedRef} name="timePrinted" value={formData.timePrinted} onChange={handleInputChange} onKeyDown={(e) => goNext(e, ageRef)} />
+          <label>🕓 Date & Time Printed</label>
+          <div className="inline-input">
+            <input type="date" ref={datePrintedRef} name="datePrinted" value={formData.datePrinted} onChange={handleInputChange} onKeyDown={(e) => goNext(e, timePrintedRef)} />
+            <input type="time" ref={timePrintedRef} name="timePrinted" value={formData.timePrinted} onChange={handleInputChange} onKeyDown={(e) => goNext(e, ageRef)} />
+          </div>
           
           <label>Age</label>
           <div className="inline-input">

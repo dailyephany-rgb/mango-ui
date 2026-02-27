@@ -37,13 +37,25 @@ export default function BloodGroupRegister() {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("testing");
 
+  // 🛡️ INTERNAL BUFFER: Shields dropdown selections from cloud sync wipes
+  const [localResults, setLocalResults] = useState({});
+
   const [regSearch, setRegSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [sourceFilter, setSourceFilter] = useState("All");
 
-  const [localScans, setLocalScans] = useState({});
-  const [localScanTimes, setLocalScanTimes] = useState({});
+  // UPDATE: Load localScans from LocalStorage to survive refresh
+  const [localScans, setLocalScans] = useState(() => {
+    const saved = localStorage.getItem("bloodgroup_localScans");
+    return saved ? JSON.parse(saved) : {};
+  });
+  
+  // FINAL FIX: Persist localScanTimes to survive refresh
+  const [localScanTimes, setLocalScanTimes] = useState(() => {
+    const saved = localStorage.getItem("bloodgroup_localScanTimes");
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const normalizeSource = (raw) => {
     if (!raw) return "Unknown";
@@ -67,12 +79,17 @@ export default function BloodGroupRegister() {
   };
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    // FIX: Get local date instead of UTC ISO date to ensure midnight rollover
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const today = `${y}-${m}-${d}`;
+    
     setDateFrom(today);
     setDateTo(today);
   }, []);
 
-  // Optimized: Listen to all collections separately to avoid nested getDocs
   useEffect(() => {
     const unsubMaster = onSnapshot(collection(db, "master_register"), (snap) => {
       setMasterEntries(snap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -97,7 +114,6 @@ export default function BloodGroupRegister() {
     };
   }, []);
 
-  // Memoized Merged Data: This is the secret to speed.
   const allMergedData = useMemo(() => {
     const bloodRows = masterEntries.filter(e =>
       Array.isArray(e.selectedTests) &&
@@ -108,10 +124,15 @@ export default function BloodGroupRegister() {
 
     return bloodRows.map(entry => {
       const reg = String(entry.regNo || entry.id);
+      const diag = entry.diagnosticNo || entry.accNo || "—";
+      // UPDATE: Composite key for unique identification
+      const compositeKey = `${reg}_${diag}`;
+
       const base = {
         ...entry,
         regNo: reg,
-        diagnosticNo: entry.diagnosticNo || entry.accNo || "—",
+        diagnosticNo: diag,
+        compositeKey: compositeKey,
         source: normalizeSource(entry.source),
         bloodGroup: "",
         rhFactor: "",
@@ -125,54 +146,68 @@ export default function BloodGroupRegister() {
       };
 
       const build = (storedData, tab) => {
-        let row = { ...base, ...storedData };
-        const scanKey = `${tab}_${reg}`;
+        // Tracker uses tab + compositeKey
+        const scanKey = `${tab}_${compositeKey}`;
+        const typing = localResults[scanKey] || {}; 
+        
+        let row = { ...base, ...storedData, ...typing };
         row.scanned = localScans[scanKey] ?? row.scanned ?? "No";
         row.status = row.saved === "Yes" ? "saved" : row.scanned === "Yes" ? "scanned" : "pending";
+        
+        if (row.bloodGroup && row.rhFactor) {
+            row.result = `${row.bloodGroup} ${row.rhFactor === "Positive" ? "+" : "-"}`;
+        }
+
         return row;
       };
 
       return {
-        testingData: build(testingDocs[reg] || {}, "testing"),
-        retestingData: build(retestingDocs[reg] || {}, "retesting")
+        testingData: build(testingDocs[compositeKey] || {}, "testing"),
+        retestingData: build(retestingDocs[compositeKey] || {}, "retesting")
       };
     });
-  }, [masterEntries, testingDocs, retestingDocs, localScans]);
+  }, [masterEntries, testingDocs, retestingDocs, localScans, localResults]);
 
   const activeEntries = useMemo(() => 
     allMergedData.map(m => activeTab === "testing" ? m.testingData : m.retestingData)
   , [allMergedData, activeTab]);
 
-  const handleChange = (tab, regNo, field, value) => {
-    const setter = tab === "testing" ? setTestingDocs : setRetestingDocs;
-    setter(prev => ({
+  const handleChange = (tab, compositeKey, field, value) => {
+    const key = `${tab}_${compositeKey}`;
+    setLocalResults(prev => ({
       ...prev,
-      [regNo]: {
-        ...(prev[regNo] || {}),
-        [field]: value,
-        result: (field === "bloodGroup" || field === "rhFactor") 
-          ? (field === "bloodGroup" ? value : (prev[regNo]?.bloodGroup || "")) && 
-            (field === "rhFactor" ? value : (prev[regNo]?.rhFactor || ""))
-            ? `${field === "bloodGroup" ? value : prev[regNo].bloodGroup} ${ (field === "rhFactor" ? value : prev[regNo].rhFactor) === "Positive" ? "+" : "-"}`
-            : ""
-          : (prev[regNo]?.result || "")
+      [key]: {
+        ...(prev[key] || {}),
+        [field]: value
       }
     }));
   };
 
-  const handleScan = (tab, regNo, value) => {
-    const key = `${tab}_${regNo}`;
-    setLocalScans(p => ({ ...p, [key]: value }));
-    if (value === "Yes") setLocalScanTimes(p => ({ ...p, [key]: new Date() }));
+  // UPDATE: Writes both Scan status and Time to LocalStorage using compositeKey
+  const handleScan = (tab, compositeKey, value) => {
+    const key = `${tab}_${compositeKey}`;
+    const now = new Date().toISOString();
+
+    setLocalScans(p => {
+        const updated = { ...p, [key]: value };
+        localStorage.setItem("bloodgroup_localScans", JSON.stringify(updated));
+        return updated;
+    });
+
+    setLocalScanTimes(p => {
+        const updatedTimes = { ...p, [key]: value === "Yes" ? now : null };
+        localStorage.setItem("bloodgroup_localScanTimes", JSON.stringify(updatedTimes));
+        return updatedTimes;
+    });
   };
 
   const handleSave = async (tab, entry) => {
     try {
       setSaving(true);
-      const reg = String(entry.regNo);
-      const key = `${tab}_${reg}`;
+      const compositeKey = entry.compositeKey;
+      const key = `${tab}_${compositeKey}`;
 
-      if (!localScans[key] && entry.scanned !== "Yes") {
+      if (entry.scanned !== "Yes") {
         alert("Please scan before saving");
         return;
       }
@@ -180,6 +215,9 @@ export default function BloodGroupRegister() {
         alert("Fill Blood Group & Rh Factor");
         return;
       }
+
+      const rawLocalTime = localScanTimes[key];
+      const scanTime = rawLocalTime ? new Date(rawLocalTime) : null;
 
       const filteredTests = (entry.selectedTests || [])
         .map((t) => (typeof t === "string" ? t : t?.test || ""))
@@ -189,7 +227,7 @@ export default function BloodGroupRegister() {
         ...entry,
         selectedTests: filteredTests,
         scanned: "Yes",
-        scannedTime: Timestamp.fromDate(localScanTimes[key] || new Date()),
+        scannedTime: scanTime ? Timestamp.fromDate(scanTime) : (entry.scannedTime || null),
         saved: "Yes",
         savedTime: serverTimestamp(),
         timeCollected: entry.timeCollected ?? null,
@@ -197,11 +235,29 @@ export default function BloodGroupRegister() {
         type: tab,
       };
 
-      // UPDATED: Removed diagnosticNo from the excluded list so it is saved in dbPayload
       const { tests, id, father, doctor, phone, ...dbPayload } = payload;
       const col = tab === "testing" ? "bloodgroup_testing_register" : "bloodgroup_retesting_register";
 
-      await setDoc(doc(db, col, reg), dbPayload, { merge: true });
+      // Save using compositeKey
+      await setDoc(doc(db, col, compositeKey), dbPayload, { merge: true });
+      
+      setLocalResults(prev => { const n = {...prev}; delete n[key]; return n; });
+      
+      // UPDATE: Cleanup LocalStorage after save
+      setLocalScans(p => { 
+        const n = {...p}; 
+        delete n[key]; 
+        localStorage.setItem("bloodgroup_localScans", JSON.stringify(n));
+        return n; 
+      });
+
+      setLocalScanTimes(p => {
+        const n = {...p};
+        delete n[key];
+        localStorage.setItem("bloodgroup_localScanTimes", JSON.stringify(n));
+        return n;
+      });
+      
       alert(`Saved ${tab} entry for ${entry.name}`);
     } catch (err) {
       console.error(err);
@@ -220,9 +276,13 @@ export default function BloodGroupRegister() {
               !String(p.diagnosticNo).toLowerCase().includes(searchStr)) return false;
         }
         if (sourceFilter !== "All" && p.source !== sourceFilter) return false;
+        
         const d = parseDate(p);
         if (!d) return false;
-        const entryDateStr = d.toISOString().split("T")[0];
+        
+        // FIX: Format entry date as local YYYY-MM-DD
+        const entryDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        
         if (dateFrom && entryDateStr < dateFrom) return false;
         if (dateTo && entryDateStr > dateTo) return false;
         return true;
@@ -300,7 +360,7 @@ export default function BloodGroupRegister() {
           </thead>
           <tbody>
             {filteredEntries.map((e) => (
-              <tr key={`${e.regNo}_${activeTab}`} className={e.saved === "Yes" ? "row-green" : e.scanned === "Yes" ? "row-yellow" : ""}>
+              <tr key={`${e.compositeKey}_${activeTab}`} className={e.saved === "Yes" ? "row-green" : e.scanned === "Yes" ? "row-yellow" : ""}>
                 <td className="sticky-col" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
                 <td className="sticky-col" style={{ color: "#475569" }}>{e.diagnosticNo}</td>
                 <td className="sticky-col">{e.name}</td>
@@ -311,7 +371,7 @@ export default function BloodGroupRegister() {
                   <select
                     value={e.bloodGroup}
                     disabled={e.scanned !== "Yes" || e.saved === "Yes"}
-                    onChange={(ev) => handleChange(activeTab, e.regNo, "bloodGroup", ev.target.value)}
+                    onChange={(ev) => handleChange(activeTab, e.compositeKey, "bloodGroup", ev.target.value)}
                   >
                     <option value="">Select</option>
                     {bloodGroups.map((bg) => <option key={bg}>{bg}</option>)}
@@ -321,7 +381,7 @@ export default function BloodGroupRegister() {
                   <select
                     value={e.rhFactor}
                     disabled={e.scanned !== "Yes" || e.saved === "Yes"}
-                    onChange={(ev) => handleChange(activeTab, e.regNo, "rhFactor", ev.target.value)}
+                    onChange={(ev) => handleChange(activeTab, e.compositeKey, "rhFactor", ev.target.value)}
                   >
                     <option value="">Select</option>
                     {rhFactors.map((rh) => <option key={rh}>{rh}</option>)}
@@ -332,10 +392,10 @@ export default function BloodGroupRegister() {
                   <select
                     value={e.scanned}
                     disabled={e.saved === "Yes"}
-                    onChange={(ev) => handleScan(activeTab, e.regNo, ev.target.value)}
+                    onChange={(ev) => handleScan(activeTab, e.compositeKey, ev.target.value)}
                   >
-                    <option>No</option>
-                    <option>Yes</option>
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
                   </select>
                 </td>
                 <td>

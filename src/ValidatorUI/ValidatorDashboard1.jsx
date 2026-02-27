@@ -21,9 +21,11 @@ export default function ValidatorDashboard() {
   const [collections, setCollections] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
 
+  // 🕒 MIDNIGHT UPDATE LOGIC: State for current local date
   const [currentLocalDate, setCurrentLocalDate] = useState("");
 
   useEffect(() => {
+    // Set local date string (YYYY-MM-DD)
     const setDate = () => {
       const now = new Date();
       const y = now.getFullYear();
@@ -33,6 +35,7 @@ export default function ValidatorDashboard() {
     };
 
     setDate();
+    // Refresh date every minute to catch midnight rollover
     const timer = setInterval(setDate, 60000);
     return () => clearInterval(timer);
   }, []);
@@ -48,10 +51,7 @@ export default function ValidatorDashboard() {
 
     collectionNames.forEach((col) => {
       const unsub = onSnapshot(collection(db, col), (snap) => {
-        const docs = snap.docs.map((d) => ({ 
-          id: d.id, // This is your Composite ID (e.g., 5501_A01)
-          ...d.data() 
-        }));
+        const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setCollections((prev) => ({ ...prev, [col]: docs }));
       });
       unsubscribes.push(unsub);
@@ -60,8 +60,7 @@ export default function ValidatorDashboard() {
   }, []);
 
   const parseEntryDate = (item) => {
-    // Check all possible date fields used across departments
-    const f = item.savedTime || item.timePrinted || item.timestamp || item.scannedTime;
+    const f = item.timePrinted || item.timestamp;
     if (!f) return null;
     if (f instanceof Timestamp) return f.toDate();
     if (f.toDate) return f.toDate();
@@ -72,17 +71,14 @@ export default function ValidatorDashboard() {
 
   const handleValidate = async (entry, collectionName) => {
     try {
-      // entry.id is the CompositeKey (e.g., "5501_A01")
       const ref = doc(db, collectionName, entry.id);
       await updateDoc(ref, {
         validated: true,
         validatedTime: serverTimestamp(),
         status: "validated",
       });
-      alert("Entry Validated Successfully!");
     } catch (err) {
       console.error("❌ Error during validation:", err);
-      alert("Validation failed. Check console.");
     }
   };
 
@@ -108,6 +104,7 @@ export default function ValidatorDashboard() {
   const rawData = collections[activeCollection] || [];
 
   const currentData = rawData.filter((item) => {
+    // 🛡️ DATE FILTER: Only show items from the current local day
     const entryDate = parseEntryDate(item);
     if (entryDate) {
       const y = entryDate.getFullYear();
@@ -115,18 +112,15 @@ export default function ValidatorDashboard() {
       const d = String(entryDate.getDate()).padStart(2, '0');
       const entryDateStr = `${y}-${m}-${d}`;
       
+      // If the entry is not from today, filter it out
       if (entryDateStr !== currentLocalDate) return false;
     }
 
     const s = searchTerm.toLowerCase().trim();
     if (!s) return true;
-    
-    // Search by RegNo, DiagNo, or the Name
     const matchesReg = String(item.regNo || "").toLowerCase().includes(s);
-    const matchesDiag = String(item.diagnosticNo || item.accessionNo || "").toLowerCase().includes(s);
-    const matchesName = String(item.name || "").toLowerCase().includes(s);
-    
-    return matchesReg || matchesDiag || matchesName;
+    const matchesDiag = String(item.diagnosticNo || "").toLowerCase().includes(s);
+    return matchesReg || matchesDiag;
   });
 
   return (

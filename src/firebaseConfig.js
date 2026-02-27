@@ -1,6 +1,7 @@
+
 // ✅ firebaseConfig.js — Final Version
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBS-JGY1X6GLM7YVXVSJuYvti_utJXMS5I",
@@ -23,3 +24,14 @@ if (!getApps().length) {
 }
 
 export const db = getFirestore(app);
+
+// ✅ Enable Offline Persistence to prevent "random" save errors
+if (typeof window !== "undefined") {
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn("Persistence failed: Multiple tabs open");
+    } else if (err.code === 'unimplemented') {
+      console.warn("Persistence not supported by browser");
+    }
+  });
+}

@@ -23,8 +23,18 @@ export default function CoagulationMain() {
   
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
   
-  const [localScans, setLocalScans] = useState({});
-  const [localScanTimes, setLocalScanTimes] = useState({}); 
+  // UPDATE: Load localScans from LocalStorage to survive refresh
+  const [localScans, setLocalScans] = useState(() => {
+    const saved = localStorage.getItem("coagulation_localScans");
+    return saved ? JSON.parse(saved) : {};
+  });
+  
+  // FINAL FIX: Persist localScanTimes to survive refresh
+  const [localScanTimes, setLocalScanTimes] = useState(() => {
+    const saved = localStorage.getItem("coagulation_localScanTimes");
+    return saved ? JSON.parse(saved) : {};
+  }); 
+
   const [regSearch, setRegSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -42,7 +52,13 @@ export default function CoagulationMain() {
       .trim();
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    // FIX: Set local date to roll over at midnight local time
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const today = `${y}-${m}-${d}`;
+
     setDateFrom(today);
     setDateTo(today);
   }, []);
@@ -136,9 +152,10 @@ export default function CoagulationMain() {
       const sSet = new Set();
       snap.docs.forEach((d) => {
         const data = d.data();
-        const id = d.id;
-        docsMap[id] = data;
-        sSet.add(id);
+        // FIX: Use composite ID for tracking
+        const compositeKey = `${data.regNo}_${data.diagnosticNo}`;
+        docsMap[compositeKey] = data;
+        if (data.saved === "Yes" || data.status === "saved") sSet.add(compositeKey);
       });
       setCoagDocs(docsMap);
       setSavedSet(sSet);
@@ -149,7 +166,9 @@ export default function CoagulationMain() {
       snap.docs.forEach(docSnap => {
         const data = docSnap.data();
         if (data.regNo && String(data.dept).toLowerCase() === CURRENT_DEPT.toLowerCase()) {
-          cSet.add(String(data.regNo));
+          // FIX: Critical alerts also mapped via composite key
+          const cKey = `${data.regNo}_${data.diagnosticNo}`;
+          cSet.add(cKey);
         }
       });
       setCriticalReportedSet(cSet);
@@ -169,19 +188,21 @@ export default function CoagulationMain() {
     });
 
     return filteredMaster.map((entry) => {
-      const idKey = String(entry.regNo || entry.regno || entry.id);
-      const saved = coagDocs[idKey] || {};
-      const localScan = localScans[idKey];
+      // FIX: Use composite key as unique identifier
+      const compositeKey = `${entry.regNo}_${entry.diagnosticNo}`;
+      const saved = coagDocs[compositeKey] || {};
+      const localScan = localScans[compositeKey];
 
       const currentScanned = localScan ?? saved.scanned ?? "No";
+      const isSaved = savedSet.has(compositeKey);
 
       return {
         ...entry,
         ...saved,
-        regNo: idKey,
+        compositeKey: compositeKey,
         source: extractSource(entry),
         scanned: currentScanned,
-        status: (saved.saved === "Yes" || saved.status === "saved") ? "saved" : currentScanned === "Yes" ? "scanned" : "pending",
+        status: isSaved ? "saved" : currentScanned === "Yes" ? "scanned" : "pending",
         urgent: entry.urgent || false,
         diagnosticNo: entry.diagnosticNo || entry.accessionNo || "-",
         bt: saved.bt ?? saved.BT ?? "",
@@ -191,7 +212,7 @@ export default function CoagulationMain() {
         aptt: saved.aptt ?? saved.APTT ?? "",
       };
     });
-  }, [masterEntries, coagDocs, localScans]);
+  }, [masterEntries, coagDocs, localScans, savedSet]);
 
   const triggerCritical = (entry) => {
     const { bt, ct, pt, inr, aptt } = entry;
@@ -206,7 +227,7 @@ export default function CoagulationMain() {
     const parameter = window.prompt("Confirm Critical Values (Alert will be sent upon clicking Save):", suggested);
     if (!parameter) return;
 
-    const regKey = String(entry.regNo);
+    const regKey = entry.compositeKey;
     setCoagDocs(prev => ({
       ...prev,
       [regKey]: { ...(prev[regKey] || {}), pendingCriticalParam: parameter }
@@ -216,13 +237,15 @@ export default function CoagulationMain() {
 
   const handleSave = async (patient) => {
     try {
-      const regNo = String(patient.regNo);
-      const ref = doc(db, "coagulation_register", regNo);
+      const regKey = patient.compositeKey;
+      const ref = doc(db, "coagulation_register", regKey);
       const relevant = getRelevantCoagTests(patient);
-      const scanTime = localScanTimes[regNo];
+      
+      const rawLocalTime = localScanTimes[regKey];
+      const scanTime = rawLocalTime ? new Date(rawLocalTime) : null;
       
       const hasPendingCritical = !!patient.pendingCriticalParam;
-      const isCritical = (criticalReportedSet.has(regNo) || hasPendingCritical) ? "Yes" : "No";
+      const isCritical = (criticalReportedSet.has(regKey) || hasPendingCritical) ? "Yes" : "No";
 
       let resultsArr = [];
       if (patient.bt && patient.bt !== "MM:SS") resultsArr.push(`BT: ${patient.bt}`);
@@ -233,7 +256,7 @@ export default function CoagulationMain() {
       const resultsString = resultsArr.join(" | ");
 
       const payload = {
-        regNo,
+        regNo: patient.regNo,
         diagnosticNo: patient.diagnosticNo || "-",
         name: patient.name || "",
         age: patient.age || "",
@@ -261,10 +284,10 @@ export default function CoagulationMain() {
       await setDoc(ref, payload, { merge: true });
 
       if (hasPendingCritical) {
-        const criticalId = `${regNo}_${CURRENT_DEPT}`;
+        const criticalId = `${regKey}_${CURRENT_DEPT}`;
         await setDoc(doc(db, "critical_alerts", criticalId), {
           name: patient.name || "",
-          regNo: regNo,
+          regNo: patient.regNo,
           diagnosticNo: patient.diagnosticNo || "—",
           age: patient.age || "",
           ageUnit: patient.ageUnit || "",
@@ -284,7 +307,21 @@ export default function CoagulationMain() {
 
       setCoagDocs(prev => {
         const next = {...prev};
-        if(next[regNo]) delete next[regNo].pendingCriticalParam;
+        if(next[regKey]) delete next[regKey].pendingCriticalParam;
+        return next;
+      });
+
+      setLocalScans(prev => {
+        const next = {...prev};
+        delete next[regKey];
+        localStorage.setItem("coagulation_localScans", JSON.stringify(next));
+        return next;
+      });
+
+      setLocalScanTimes(prev => {
+        const next = {...prev};
+        delete next[regKey];
+        localStorage.setItem("coagulation_localScanTimes", JSON.stringify(next));
         return next;
       });
 
@@ -319,7 +356,7 @@ export default function CoagulationMain() {
     
     setCoagDocs(prev => ({
       ...prev,
-      [patient.regNo]: { ...(prev[patient.regNo] || {}), [field]: formattedValue }
+      [patient.compositeKey]: { ...(prev[patient.compositeKey] || {}), [field]: formattedValue }
     }));
 
     let newCursor = cursor;
@@ -348,12 +385,12 @@ export default function CoagulationMain() {
         if (!key.includes(regSearch.trim().toLowerCase()) && !acc.includes(regSearch.trim().toLowerCase())) return false;
       }
       if (sourceFilter !== "All" && p.source !== sourceFilter) return false;
-      if (dateFrom || dateTo) {
-        const eDate = parseDate(p);
-        if (eDate) {
-          if (dateFrom && eDate < new Date(dateFrom + "T00:00:00")) return false;
-          if (dateTo && eDate > new Date(dateTo + "T23:59:59")) return false;
-        }
+      
+      const eDate = parseDate(p);
+      if (eDate) {
+        const entryDateStr = `${eDate.getFullYear()}-${String(eDate.getMonth() + 1).padStart(2, '0')}-${String(eDate.getDate()).padStart(2, '0')}`;
+        if (dateFrom && entryDateStr < dateFrom) return false;
+        if (dateTo && entryDateStr > dateTo) return false;
       }
       return true;
     })
@@ -424,8 +461,8 @@ export default function CoagulationMain() {
           <tbody>
             {filteredPatients.map((p) => {
               const relevant = getRelevantCoagTests(p);
-              const key = String(p.regNo);
-              const isSaved = savedSet.has(key);
+              const key = p.compositeKey;
+              const isSaved = p.status === "saved";
               const isScanned = p.scanned === "Yes";
               const isCriticalReported = criticalReportedSet.has(key);
               const isPendingCritical = !!p.pendingCriticalParam;
@@ -447,7 +484,7 @@ export default function CoagulationMain() {
                         ? (e) => handleBTCTChange(e, p, field) 
                         : (e) => setCoagDocs(prev => ({
                             ...prev,
-                            [p.regNo]: { ...(prev[p.regNo] || {}), [field]: e.target.value }
+                            [p.compositeKey]: { ...(prev[p.compositeKey] || {}), [field]: e.target.value }
                           })) 
                     }
                     onFocus={isBTCT ? handleFocus : undefined}
@@ -457,7 +494,7 @@ export default function CoagulationMain() {
               };
 
               return (
-                <tr key={p.regNo} className={isSaved ? "row-green" : isScanned ? "row-yellow" : "row-normal"}>
+                <tr key={p.compositeKey} className={isSaved ? "row-green" : isScanned ? "row-yellow" : "row-normal"}>
                   <td className="sticky-col" style={p.urgent ? { borderLeft: "4px solid red" } : {}}>{p.regNo || "-"}</td>
                   <td className="sticky-col">{p.diagnosticNo || "-"}</td>
                   <td className="sticky-col col-name">{p.name || "-"}</td>
@@ -476,9 +513,17 @@ export default function CoagulationMain() {
                       disabled={isSaved}
                       onChange={(e) => {
                         const value = e.target.value;
-                        const now = new Date(); 
-                        setLocalScans((prev) => ({ ...prev, [key]: value }));
-                        setLocalScanTimes((prev) => ({ ...prev, [key]: value === "Yes" ? now : null }));
+                        const now = new Date().toISOString(); 
+                        setLocalScans((prev) => {
+                          const updated = { ...prev, [key]: value };
+                          localStorage.setItem("coagulation_localScans", JSON.stringify(updated));
+                          return updated;
+                        });
+                        setLocalScanTimes((prev) => {
+                          const updatedTimes = { ...prev, [key]: value === "Yes" ? now : null };
+                          localStorage.setItem("coagulation_localScanTimes", JSON.stringify(updatedTimes));
+                          return updatedTimes;
+                        });
                       }}
                     >
                       <option value="No">No</option>

@@ -30,11 +30,23 @@ export default function Haematology() {
   const [dateTo, setDateTo] = useState("");
   const [sourceFilter, setSourceFilter] = useState("All");
 
-  const [localScans, setLocalScans] = useState({});
-  const [localScanTimes, setLocalScanTimes] = useState({});
+  // UPDATE: Load localScans and localScanTimes from LocalStorage to survive refresh
+  const [localScans, setLocalScans] = useState(() => {
+    const saved = localStorage.getItem("haematology_localScans");
+    return saved ? JSON.parse(saved) : {};
+  });
+  
+  const [localScanTimes, setLocalScanTimes] = useState(() => {
+    const saved = localStorage.getItem("haematology_localScanTimes");
+    return saved ? JSON.parse(saved) : {};
+  });
+
   const [savedSet, setSavedSet] = useState(new Set());
 
   const HAEM_TESTS_CANON = ["haemogram", "hb haemoglobin", "lamellar body count"];
+
+  // HELPER: Prevent Firebase segment errors by replacing / with -
+  const safeKey = (val) => String(val || "").replace(/\//g, "-");
 
   const normalize = (s = "") =>
     String(s)
@@ -104,7 +116,13 @@ export default function Haematology() {
   };
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    // FIX: Set local date to roll over at midnight local time
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const today = `${y}-${m}-${d}`;
+
     setDateFrom(today);
     setDateTo(today);
   }, []);
@@ -125,26 +143,25 @@ export default function Haematology() {
 
         const merged = await Promise.all(
           haemEntries.map(async (entry) => {
-            const regNo =
-              entry.regNo ||
-              entry.regno ||
-              entry.RegNo ||
-              entry.Regno ||
-              entry.id;
-
-            const regKey = String(regNo);
+            const regNo = entry.regNo || entry.regno || entry.RegNo || entry.Regno || entry.id;
+            const diagnosticNo = entry.diagnosticNo || "-";
+            
+            // FIX: Sanitize the compositeKey immediately
+            const compositeKey = safeKey(`${regNo}_${diagnosticNo}`);
+            
             const timePrinted = entry.timePrinted || null;
             const timeCollected = entry.timeCollected || null;
 
-            const ref = doc(db, "haematology_register", regKey);
+            const ref = doc(db, "haematology_register", compositeKey);
             const snapDoc = await getDoc(ref);
 
             const base = {
               ...entry,
-              regNo: regKey,
-              accessionNo: entry.diagnosticNo || "-",
+              regNo: String(regNo),
+              compositeKey: compositeKey,
+              accessionNo: diagnosticNo,
               source: normalizeSource(entry.source || entry.category),
-              scanned: localScans[regKey] ?? "No",
+              scanned: localScans[compositeKey] ?? "No",
               status: "pending",
               urgent: entry.urgent || false, 
               timePrinted,
@@ -156,7 +173,7 @@ export default function Haematology() {
               const isSaved =
                 data.saved === "Yes" || data.status?.toLowerCase() === "saved";
               const currentScanned =
-                localScans[regKey] ?? data.scanned ?? "No";
+                localScans[compositeKey] ?? data.scanned ?? "No";
 
               return {
                 ...base,
@@ -188,7 +205,7 @@ export default function Haematology() {
         snap.docs.forEach((d) => {
           const data = d.data();
           if (data?.saved === "Yes" || data?.status === "saved") {
-            const key = data.regNo ? String(data.regNo) : d.id;
+            const key = d.id;
             s.add(key);
           }
         });
@@ -201,7 +218,9 @@ export default function Haematology() {
       snap.docs.forEach(docSnap => {
         const data = docSnap.data();
         if (data.regNo && String(data.dept).toLowerCase() === CURRENT_DEPT.toLowerCase()) {
-          cSet.add(String(data.regNo));
+          // FIX: Sanitize search key for consistency
+          const cKey = safeKey(`${data.regNo}_${data.diagnosticNo}`);
+          cSet.add(cKey);
         }
       });
       setCriticalReportedSet(cSet);
@@ -214,16 +233,24 @@ export default function Haematology() {
     };
   }, [localScans]);
 
-  const handleScan = (id, value) => {
-    const patient = patients.find((p) => p.id === id);
-    if (!patient) return;
-    const regNo = String(patient.regNo || patient.id);
-    const scanTime = value === "Yes" ? new Date() : null;
-    setLocalScans((prev) => ({ ...prev, [regNo]: value }));
-    setLocalScanTimes((prev) => ({ ...prev, [regNo]: scanTime }));
+  const handleScan = (compositeKey, value) => {
+    const now = new Date().toISOString();
+    
+    setLocalScans((prev) => {
+      const updated = { ...prev, [compositeKey]: value };
+      localStorage.setItem("haematology_localScans", JSON.stringify(updated));
+      return updated;
+    });
+    
+    setLocalScanTimes((prev) => {
+      const updatedTimes = { ...prev, [compositeKey]: value === "Yes" ? now : null };
+      localStorage.setItem("haematology_localScanTimes", JSON.stringify(updatedTimes));
+      return updatedTimes;
+    });
+
     setPatients((prev) =>
       prev.map((p) =>
-        p.id === id
+        p.compositeKey === compositeKey
           ? {
               ...p,
               scanned: value,
@@ -238,28 +265,29 @@ export default function Haematology() {
     const parameter = window.prompt("Enter Critical Parameter & Value (e.g., HB: 4.2):");
     if (!parameter) return;
 
-    const regKey = String(entry.regNo || entry.id);
+    const regKey = entry.compositeKey;
     setCriticalParams(prev => ({ ...prev, [regKey]: parameter }));
     setCriticalReportedSet(prev => new Set(prev).add(regKey));
     alert("Parameter captured. This will be sent to Critical Alerts when you click 'Save'.");
   };
 
-  const handleSave = async (id) => {
+  const handleSave = async (compositeKey) => {
     try {
-      const patient = patients.find((p) => p.id === id);
+      const patient = patients.find((p) => p.compositeKey === compositeKey);
       if (!patient) return;
-      const regNo = String(patient.regNo || patient.id);
-      const isScanned = localScans[regNo] === "Yes" || patient.scanned === "Yes";
+      
+      const isScanned = localScans[compositeKey] === "Yes" || patient.scanned === "Yes";
       if (!isScanned) {
         alert("Please scan before saving.");
         return;
       }
 
-      const isCritical = criticalReportedSet.has(regNo) ? "Yes" : "No";
+      const isCritical = (criticalReportedSet.has(compositeKey) || criticalParams[compositeKey]) ? "Yes" : "No";
       const canonicalTests = getEntryCanonicalTests(patient);
 
-      if (isCritical === "Yes" && criticalParams[regNo]) {
-        const criticalId = `${regNo}_${CURRENT_DEPT}`;
+      if (criticalParams[compositeKey]) {
+        // FIX: Re-verify key is safe for path
+        const criticalId = safeKey(`${compositeKey}_${CURRENT_DEPT}`);
 
         await setDoc(doc(db, "critical_alerts", criticalId), {
             name: patient.name || "",
@@ -273,7 +301,7 @@ export default function Haematology() {
             source: patient.source || "-",
             timePrinted: patient.timePrinted || null,
             timeCollected: patient.timeCollected || null,
-            criticalParameter: criticalParams[regNo],
+            criticalParameter: criticalParams[compositeKey],
             flaggedAt: serverTimestamp(),
             status: "Pending",
             dept: CURRENT_DEPT,
@@ -281,12 +309,14 @@ export default function Haematology() {
         });
       }
       
-      const scanTime = localScanTimes[regNo];
+      const rawLocalTime = localScanTimes[compositeKey];
+      const scanTime = rawLocalTime ? new Date(rawLocalTime) : null;
 
       await setDoc(
-        doc(db, "haematology_register", regNo),
+        doc(db, "haematology_register", compositeKey),
         {
-          regNo,
+          regNo: patient.regNo,
+          compositeKey: compositeKey,
           diagnosticNo: patient.diagnosticNo || patient.accessionNo || "—",
           name: patient.name || "",
           age: patient.age || "",
@@ -306,11 +336,28 @@ export default function Haematology() {
         },
         { merge: true }
       );
-      setSavedSet((prev) => new Set(prev).add(regNo));
-      alert(`Saved ${patient.name || regNo} successfully! ${isCritical === "Yes" ? "(Critical Alert Sent)" : ""}`);
+      
+      setLocalScans((prev) => {
+        const updated = { ...prev };
+        delete updated[compositeKey];
+        localStorage.setItem("haematology_localScans", JSON.stringify(updated));
+        return updated;
+      });
+
+      setLocalScanTimes((prev) => {
+        const updated = { ...prev };
+        delete updated[compositeKey];
+        localStorage.setItem("haematology_localScanTimes", JSON.stringify(updated));
+        return updated;
+      });
+
+      setCriticalParams(prev => { const n = {...prev}; delete n[compositeKey]; return n; });
+      
+      setSavedSet((prev) => new Set(prev).add(compositeKey));
+      alert(`Saved ${patient.name || patient.regNo} successfully! ${isCritical === "Yes" ? "(Critical Alert Sent)" : ""}`);
     } catch (err) {
       console.error("🔥 Save Error:", err);
-      alert("Error saving Haematology entry.");
+      alert(`Error saving Haematology entry: ${err.message}`);
     }
   };
 
@@ -326,12 +373,12 @@ export default function Haematology() {
           if (!key.includes(regSearch.trim().toLowerCase()) && !acc.includes(regSearch.trim().toLowerCase())) return false;
         }
         if (sourceFilter !== "All" && p.source !== sourceFilter) return false;
-        if (dateFrom || dateTo) {
-          const eDate = parseDate(p);
-          if (eDate) {
-            if (dateFrom && eDate < new Date(dateFrom + "T00:00:00")) return false;
-            if (dateTo && eDate > new Date(dateTo + "T23:59:59")) return false;
-          }
+        
+        const eDate = parseDate(p);
+        if (eDate) {
+          const entryDateStr = `${eDate.getFullYear()}-${String(eDate.getMonth() + 1).padStart(2, '0')}-${String(eDate.getDate()).padStart(2, '0')}`;
+          if (dateFrom && entryDateStr < dateFrom) return false;
+          if (dateTo && entryDateStr > dateTo) return false;
         }
         return true;
       })
@@ -401,15 +448,15 @@ export default function Haematology() {
             <tbody>
               {filteredPatients.length > 0 ? (
                 filteredPatients.map((p) => {
-                  const regKey = String(p.regNo);
+                  const regKey = p.compositeKey;
                   const selCanon = getEntryCanonicalTests(p);
-                  const isSaved = savedSet.has(regKey) || p.saved === "Yes" || p.status?.toLowerCase() === "saved";
-                  const isScanned = localScans[regKey] === "Yes" || p.scanned === "Yes";
+                  const isSaved = p.status === "saved";
+                  const isScanned = p.scanned === "Yes";
                   const isCriticalReported = criticalReportedSet.has(regKey);
                   const rowClass = isSaved ? "row-saved" : isScanned ? "row-scanned" : "";
 
                   return (
-                    <tr key={p.id} className={rowClass}>
+                    <tr key={p.compositeKey} className={rowClass}>
                       <td className="sticky-col" style={p.urgent ? { borderLeft: "4px solid red" } : {}}>{p.regNo}</td>
                       <td className="sticky-col">{p.diagnosticNo || p.accessionNo}</td>
                       <td className="sticky-col">{p.name}</td>
@@ -421,7 +468,7 @@ export default function Haematology() {
                       <td>{selCanon.some((t) => normalize(t).includes("hb haemoglobin")) ? "✅" : "—"}</td>
                       <td>{selCanon.some((t) => normalize(t).includes("lamellar body count")) ? "✅" : "—"}</td>
                       <td>
-                        <select value={isScanned ? "Yes" : "No"} disabled={isSaved} onChange={(e) => handleScan(p.id, e.target.value)}>
+                        <select value={isScanned ? "Yes" : "No"} disabled={isSaved} onChange={(e) => handleScan(p.compositeKey, e.target.value)}>
                           <option value="No">No</option>
                           <option value="Yes">Yes</option>
                         </select>
@@ -446,7 +493,7 @@ export default function Haematology() {
                       </td>
 
                       <td>
-                        <button className="save-btn" disabled={isSaved || !isScanned} onClick={() => handleSave(p.id)}>Save</button>
+                        <button className="save-btn" disabled={isSaved || !isScanned} onClick={() => handleSave(p.compositeKey)}>Save</button>
                       </td>
                     </tr>
                   );

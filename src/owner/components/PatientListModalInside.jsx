@@ -1,5 +1,4 @@
 
-
 import React from "react";
 
 export default function PatientListModal({ open, onClose, patients }) {
@@ -13,6 +12,7 @@ export default function PatientListModal({ open, onClose, patients }) {
           <thead>
             <tr>
               <th>Reg</th>
+              <th>Diag No</th>
               <th>Name</th>
               <th>Test</th>
               <th>Dept</th>
@@ -26,13 +26,13 @@ export default function PatientListModal({ open, onClose, patients }) {
             {patients.map((p, i) => (
               <tr key={i}>
                 <td>{p.regNo}</td>
+                <td>{p.diagnosticNo || "—"}</td>
                 <td>{p.name}</td>
                 <td>{p.test}</td>
                 <td>{p.department}</td>
                 <td>{p.timePrinted ? new Date(p.timePrinted).toLocaleString() : "—"}</td>
                 <td>{p.timeScanned ? new Date(p.timeScanned).toLocaleString() : "—"}</td>
                 <td>{p.timeSaved ? new Date(p.timeSaved).toLocaleString() : "—"}</td>
-                {/* Validated Data Cell Removed */}
               </tr>
             ))}
           </tbody>

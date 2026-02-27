@@ -55,13 +55,26 @@ export default function SerologyRegister() {
   const [serologyDocs, setSerologyDocs] = useState({});
   const [saving, setSaving] = useState(false);
 
+  // 🛡️ INTERNAL BUFFER: Prevents slow internet from resetting your typed results
+  const [localResults, setLocalResults] = useState({});
+
   const [regSearch, setRegSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [sourceFilter, setSourceFilter] = useState("All");
 
-  const [localScans, setLocalScans] = useState({});
-  const [localScanTimes, setLocalScanTimes] = useState({}); 
+  // UPDATE: Load localScans from LocalStorage to survive refresh
+  const [localScans, setLocalScans] = useState(() => {
+    const saved = localStorage.getItem("serology_localScans");
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  // FINAL FIX: Persist localScanTimes to survive refresh
+  const [localScanTimes, setLocalScanTimes] = useState(() => {
+    const saved = localStorage.getItem("serology_localScanTimes");
+    return saved ? JSON.parse(saved) : {};
+  });
+
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
   const [pendingCriticalMap, setPendingCriticalMap] = useState({});
 
@@ -115,7 +128,12 @@ export default function SerologyRegister() {
   };
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const today = `${y}-${m}-${d}`;
+
     setDateFrom(today);
     setDateTo(today);
   }, []);
@@ -136,7 +154,9 @@ export default function SerologyRegister() {
       snap.docs.forEach(docSnap => {
         const data = docSnap.data();
         if (data.regNo && String(data.dept).toLowerCase() === CURRENT_DEPT.toLowerCase()) {
-          cSet.add(String(data.regNo));
+          // UPDATE: Critical alerts tracked by composite key
+          const cKey = `${data.regNo}_${data.diagnosticNo}`;
+          cSet.add(cKey);
         }
       });
       setCriticalReportedSet(cSet);
@@ -154,24 +174,34 @@ export default function SerologyRegister() {
 
     return filtered.map((entry) => {
       const regNo = String(entry.regNo || entry.id);
-      const saved = serologyDocs[regNo] || {};
-      const localScan = localScans[regNo];
+      const diagnosticNo = entry.diagnosticNo || entry.accNo || "-";
+      const compositeKey = `${regNo}_${diagnosticNo}`;
+
+      const saved = serologyDocs[compositeKey] || {};
+      const localScan = localScans[compositeKey];
+      const typing = localResults[compositeKey] || {}; 
 
       return {
         ...entry,
         ...saved,
         regNo,
-        diagnosticNo: entry.diagnosticNo || entry.accNo || "-",
+        diagnosticNo,
+        compositeKey,
         source: normalizeSource(entry.source || entry.category),
-        results: saved.results || entry.results || { hbsag: "-", hcv: "-", hiv: "-", vdrl: "-", occultblood: "-" },
+        results: {
+          hbsag: "-", hcv: "-", hiv: "-", vdrl: "-", occultblood: "-",
+          ...(entry.results || {}),
+          ...(saved.results || {}),
+          ...typing 
+        },
         scanned: localScan ?? saved.scanned ?? "No",
         scannedTime: saved.scannedTime || null, 
         urgent: entry.urgent || false,
         status: (saved.saved === "Yes" || saved.status === "saved") ? "saved" : localScan === "Yes" ? "scanned" : saved.status || "pending",
-        pendingCriticalParam: pendingCriticalMap[regNo]
+        pendingCriticalParam: pendingCriticalMap[compositeKey]
       };
     });
-  }, [masterEntries, serologyDocs, localScans, pendingCriticalMap]);
+  }, [masterEntries, serologyDocs, localScans, pendingCriticalMap, localResults]);
 
   const requiredKeys = (entry) => {
     const keys = new Set();
@@ -191,20 +221,30 @@ export default function SerologyRegister() {
     return requiredKeys(entry).every((k) => entry.results?.[k] && entry.results[k] !== "-" && entry.results[k] !== "Pending");
   };
 
-  const handleChange = (regNo, field, value) => {
-    setSerologyDocs(prev => ({
+  const handleChange = (compositeKey, field, value) => {
+    setLocalResults((prev) => ({
       ...prev,
-      [regNo]: {
-        ...(prev[regNo] || {}),
-        results: { ...(prev[regNo]?.results || {}), [field]: value }
+      [compositeKey]: {
+        ...(prev[compositeKey] || {}),
+        [field]: value
       }
     }));
   };
 
-  const handleScan = (regNo, value) => {
-    const scanTime = value === "Yes" ? new Date() : null;
-    setLocalScans((prev) => ({ ...prev, [regNo]: value }));
-    setLocalScanTimes((prev) => ({ ...prev, [regNo]: scanTime }));
+  // UPDATE: Writes both Scan status and Time to LocalStorage using compositeKey
+  const handleScan = (compositeKey, value) => {
+    const now = new Date().toISOString();
+    setLocalScans((prev) => {
+        const updated = { ...prev, [compositeKey]: value };
+        localStorage.setItem("serology_localScans", JSON.stringify(updated));
+        return updated;
+    });
+
+    setLocalScanTimes((prev) => {
+        const updatedTimes = { ...prev, [compositeKey]: value === "Yes" ? now : null };
+        localStorage.setItem("serology_localScanTimes", JSON.stringify(updatedTimes));
+        return updatedTimes;
+    });
   };
 
   const triggerCritical = (entry) => {
@@ -219,15 +259,17 @@ export default function SerologyRegister() {
     const parameter = window.prompt("Confirm Critical Values (Alert will be sent upon clicking Save):", suggested.trim());
     if (!parameter) return;
 
-    setPendingCriticalMap(prev => ({ ...prev, [entry.regNo]: parameter }));
+    setPendingCriticalMap(prev => ({ ...prev, [entry.compositeKey]: parameter }));
     alert("Critical values confirmed. They will be sent to the Critical UI when you click 'Save'.");
   };
 
   const handleSave = async (entry) => {
     try {
       setSaving(true);
-      const regNo = entry.regNo;
-      const scanTime = localScanTimes[regNo] || (entry.scannedTime?.toDate ? entry.scannedTime.toDate() : (entry.scannedTime ? new Date(entry.scannedTime) : null));
+      const compositeKey = entry.compositeKey;
+      
+      const rawLocalTime = localScanTimes[compositeKey];
+      const scanTime = rawLocalTime ? new Date(rawLocalTime) : (entry.scannedTime?.toDate ? entry.scannedTime.toDate() : (entry.scannedTime ? new Date(entry.scannedTime) : null));
 
       if (entry.scanned !== "Yes") {
         alert("Please scan before saving.");
@@ -240,7 +282,7 @@ export default function SerologyRegister() {
 
       const cleanedResults = Object.fromEntries(
         Object.entries(entry.results || {}).filter(
-          ([_, val]) => val !== "-" && val !== "Pending" && val !== ""
+          ([_, val]) => val !== "-" && val !== "Pending" && val !== "" && val !== "pendingcriticalparam"
         )
       );
 
@@ -249,12 +291,13 @@ export default function SerologyRegister() {
       );
 
       const hasPendingCritical = !!entry.pendingCriticalParam;
-      const isCritical = (criticalReportedSet.has(regNo) || hasPendingCritical) ? "Yes" : "No";
+      const isCritical = (criticalReportedSet.has(compositeKey) || hasPendingCritical) ? "Yes" : "No";
 
-      const { pendingCriticalParam, id, phone, tests, father, doctor, ...restOfEntry } = entry;
+      const { pendingCriticalParam, compositeKey: unused, id, phone, tests, father, doctor, ...restOfEntry } = entry;
 
       const payload = {
         ...restOfEntry,
+        compositeKey: compositeKey,
         selectedTests: simpleTests, 
         results: cleanedResults, 
         scanned: "Yes",
@@ -265,12 +308,12 @@ export default function SerologyRegister() {
         critical: isCritical
       };
 
-      await setDoc(doc(db, "serology_register", regNo), payload, { merge: true });
+      await setDoc(doc(db, "serology_register", compositeKey), payload, { merge: true });
 
       if (hasPendingCritical) {
-        await setDoc(doc(db, "critical_alerts", `${regNo}_${CURRENT_DEPT}`), {
+        await setDoc(doc(db, "critical_alerts", `${compositeKey}_${CURRENT_DEPT}`), {
           name: entry.name || "",
-          regNo: regNo,
+          regNo: entry.regNo,
           diagnosticNo: entry.diagnosticNo || "—",
           age: entry.age || "",
           ageUnit: entry.ageUnit || "",
@@ -288,7 +331,25 @@ export default function SerologyRegister() {
         });
       }
 
-      setPendingCriticalMap(prev => { const n = {...prev}; delete n[regNo]; return n; });
+      setLocalResults(prev => { const n = {...prev}; delete n[compositeKey]; return n; });
+      
+      // UPDATE: Cleanup LocalStorage after successful save
+      setLocalScans(prev => { 
+        const n = {...prev}; 
+        delete n[compositeKey]; 
+        localStorage.setItem("serology_localScans", JSON.stringify(n));
+        return n; 
+      });
+
+      setLocalScanTimes(prev => {
+        const n = {...prev};
+        delete n[compositeKey];
+        localStorage.setItem("serology_localScanTimes", JSON.stringify(n));
+        return n;
+      });
+
+      setPendingCriticalMap(prev => { const n = {...prev}; delete n[compositeKey]; return n; });
+      
       alert(`✅ Saved Serology entry for ${entry.name} ${hasPendingCritical ? "(Critical Alert Sent)" : ""}`);
     } catch (e) {
       console.error(e);
@@ -307,10 +368,12 @@ export default function SerologyRegister() {
           return false;
       }
       if (sourceFilter !== "All" && e.source !== sourceFilter) return false;
+      
       const d = parseDate(e);
       if (d) {
-        if (dateFrom && d < new Date(dateFrom + "T00:00:00")) return false;
-        if (dateTo && d > new Date(dateTo + "T23:59:59")) return false;
+        const entryDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        if (dateFrom && entryDateStr < dateFrom) return false;
+        if (dateTo && entryDateStr > dateTo) return false;
       }
       return true;
     })
@@ -379,15 +442,15 @@ export default function SerologyRegister() {
           </thead>
           <tbody>
             {filteredEntries.map((e) => {
-              const regNo = e.regNo;
+              const compositeKey = e.compositeKey;
               const saved = e.status === "saved";
               const scanned = e.scanned === "Yes";
-              const isCriticalReported = criticalReportedSet.has(regNo);
+              const isCriticalReported = criticalReportedSet.has(compositeKey);
               const isPendingCritical = !!e.pendingCriticalParam;
               const missingRequired = !areRequiredFieldsFilled(e);
 
               return (
-                <tr key={regNo} className={saved ? "row-green" : scanned ? "row-yellow" : "row-normal"}>
+                <tr key={compositeKey} className={saved ? "row-green" : scanned ? "row-yellow" : "row-normal"}>
                   <td className="sticky-col" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
                   <td className="sticky-col" style={{ color: "#475569" }}>{e.diagnosticNo}</td>
                   <td className="sticky-col">{e.name}</td>
@@ -404,7 +467,7 @@ export default function SerologyRegister() {
                   ].map(({ key, label }) => (
                     <td key={key}>
                       {hasTest(e, label) ? (
-                        <select value={e.results[key] || "Pending"} disabled={!scanned || saved} onChange={(ev) => handleChange(regNo, key, ev.target.value)}>
+                        <select value={e.results[key] || "Pending"} disabled={!scanned || saved} onChange={(ev) => handleChange(compositeKey, key, ev.target.value)}>
                           <option>Pending</option>
                           <option>Positive</option>
                           <option>Negative</option>
@@ -413,7 +476,7 @@ export default function SerologyRegister() {
                     </td>
                   ))}
                   <td>
-                    <select value={scanned ? "Yes" : "No"} disabled={saved} onChange={(ev) => handleScan(regNo, ev.target.value)}>
+                    <select value={scanned ? "Yes" : "No"} disabled={saved} onChange={(ev) => handleScan(compositeKey, ev.target.value)}>
                       <option value="No">No</option>
                       <option value="Yes">Yes</option>
                     </select>

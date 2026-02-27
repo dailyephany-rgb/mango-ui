@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { db } from "../firebaseConfig";
 import {
   collection,
@@ -7,6 +7,7 @@ import {
   setDoc,
   doc,
   serverTimestamp,
+  Timestamp, 
 } from "firebase/firestore";
 import OUTSOURCE_MAP from "../Outsource.json"; 
 import "./Outsource.css";
@@ -19,6 +20,12 @@ export default function OutsourceRegister() {
   const [regSearch, setRegSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+
+  // 🛡️ REFRESH PROTECTION: Load local buffered data from LocalStorage
+  const [localOutsourceData, setLocalOutsourceData] = useState(() => {
+    const saved = localStorage.getItem("outsource_localBuffer");
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const parseDate = (entry) => {
     const f = entry.timePrinted;
@@ -33,7 +40,12 @@ export default function OutsourceRegister() {
   };
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const today = `${y}-${m}-${d}`;
+
     setDateFrom(today);
     setDateTo(today);
   }, []);
@@ -52,18 +64,23 @@ export default function OutsourceRegister() {
 
         allMaster.forEach((entry) => {
           const reg = String(entry.regNo || entry.id);
+          const diagNo = entry.diagnosticNo || entry.accNo || "—";
           const rawTests = entry.selectedTests || [];
 
           for (const [labName, labTests] of Object.entries(OUTSOURCE_MAP)) {
             const relevantTestsForThisLab = rawTests.filter(t => {
               const testTitle = (typeof t === "string" ? t : t?.test || "").toUpperCase().trim();
-              // Changed .includes to strict equality to prevent FDP/D-Dimer overlap issues
               return labTests.some(lt => testTitle === lt.toUpperCase().trim());
             });
 
             if (relevantTestsForThisLab.length > 0) {
-              const uniqueTrackingId = `${reg}_${labName.replace(/\s+/g, '')}`;
-              const outData = trackingMap[uniqueTrackingId] || {
+              // UPDATE: Composite Key includes Registration, Diagnostic No, and Lab Name
+              const uniqueTrackingId = `${reg}_${diagNo}_${labName.replace(/\s+/g, '')}`;
+              
+              const firebaseData = trackingMap[uniqueTrackingId] || {};
+              const bufferedData = localOutsourceData[uniqueTrackingId] || {};
+
+              const outData = {
                 status: "Pending",
                 concernedPerson: "",
                 relation: "",
@@ -73,13 +90,15 @@ export default function OutsourceRegister() {
                 scannedTime: null,
                 receivedTime: null,
                 givenTime: null,
+                ...firebaseData,
+                ...bufferedData 
               };
 
               expandedEntries.push({
                 ...entry,
                 regNo: reg,
                 uniqueTrackingId: uniqueTrackingId,
-                accessionNo: entry.diagnosticNo || entry.accNo || "—",
+                accessionNo: diagNo,
                 source: entry.source || "OPD",
                 labName: labName,
                 displayTests: relevantTestsForThisLab,
@@ -94,17 +113,26 @@ export default function OutsourceRegister() {
       return () => unsubTracking();
     });
     return () => unsubMaster();
-  }, []);
+  }, [localOutsourceData]); 
 
   const handleSave = async (entry) => {
     try {
       setSaving(true);
       const trackingId = entry.uniqueTrackingId;
       
+      let finalScannedTime = null;
+      if (entry.scannedTime) {
+        finalScannedTime = entry.scannedTime.toDate 
+          ? entry.scannedTime 
+          : Timestamp.fromDate(new Date(entry.scannedTime));
+      }
+
       const updatePayload = {
+        compositeId: trackingId,
         name: entry.name || "",
         age: entry.age || "",
         ageUnit: entry.ageUnit || "",
+        gender: entry.gender || "", 
         regNo: entry.regNo || "",
         diagnosticNo: entry.accessionNo || "",
         doctorName: entry.doctor || "",
@@ -115,7 +143,7 @@ export default function OutsourceRegister() {
         source: entry.source || "OPD",
         category: entry.category || "", 
         selectedTests: (entry.displayTests || []).map(t => typeof t === 'string' ? t : t.test),
-        scannedTime: entry.scannedTime || null, 
+        scannedTime: finalScannedTime, 
         receivedTime: serverTimestamp(), 
         timePrinted: entry.timePrinted || null,
         timeCollected: entry.timeCollected || null,
@@ -126,9 +154,18 @@ export default function OutsourceRegister() {
       };
 
       await setDoc(doc(db, "outsource_tracking", trackingId), updatePayload, { merge: true });
+      
+      setLocalOutsourceData(prev => {
+        const updated = { ...prev };
+        delete updated[trackingId];
+        localStorage.setItem("outsource_localBuffer", JSON.stringify(updated));
+        return updated;
+      });
+
       alert(`Entry for ${entry.name} (${entry.labName}) Received`);
     } catch (err) {
       console.error(err);
+      alert("Error saving data: " + err.message);
     } finally {
       setSaving(false);
     }
@@ -151,47 +188,66 @@ export default function OutsourceRegister() {
   };
 
   const handleStatusChange = (entry, newStatus) => {
-    const now = new Date();
-    setEntries(prev => prev.map(e => {
-      if (e.uniqueTrackingId === entry.uniqueTrackingId) {
-        return { ...e, status: newStatus, scannedTime: newStatus === "Scanned" ? now : null };
-      }
-      return e;
-    }));
+    const trackingId = entry.uniqueTrackingId;
+    const now = new Date().toISOString();
+    
+    setLocalOutsourceData(prev => {
+      const updated = {
+        ...prev,
+        [trackingId]: {
+          ...(prev[trackingId] || {}),
+          status: newStatus,
+          scannedTime: newStatus === "Scanned" ? now : null
+        }
+      };
+      localStorage.setItem("outsource_localBuffer", JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const updateLocalEntry = (uniqueId, field, value) => {
-    setEntries(prev => prev.map(e => e.uniqueTrackingId === uniqueId ? { ...e, [field]: value } : e));
+    setLocalOutsourceData(prev => {
+      const updated = {
+        ...prev,
+        [uniqueId]: {
+          ...(prev[uniqueId] || {}),
+          [field]: value
+        }
+      };
+      localStorage.setItem("outsource_localBuffer", JSON.stringify(updated));
+      return updated;
+    });
   };
 
-  const filteredEntries = entries
-    .filter((e) => {
-      if (activeLab !== "All" && e.labName !== activeLab) return false;
-      if (activeSource !== "All" && e.source !== activeSource) return false;
-      
-      // Dual Search Logic (Reg No or Diag No)
-      if (regSearch.trim()) {
-        const searchStr = regSearch.trim().toLowerCase();
-        const regKey = String(e.regNo || "").toLowerCase();
-        const accKey = String(e.accessionNo || "").toLowerCase();
-        if (!regKey.includes(searchStr) && !accKey.includes(searchStr)) return false;
-      }
-      
-      const d = parseDate(e);
-      if (d) {
-        const dateStr = d.toISOString().split("T")[0];
-        if (dateFrom && dateStr < dateFrom) return false;
-        if (dateTo && dateStr > dateTo) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      const dateA = parseDate(a);
-      const dateB = parseDate(b);
-      if (!dateA) return 1;
-      if (!dateB) return -1;
-      return dateA - dateB;
-    });
+  const filteredEntries = useMemo(() => {
+    return entries
+      .filter((e) => {
+        if (activeLab !== "All" && e.labName !== activeLab) return false;
+        if (activeSource !== "All" && e.source !== activeSource) return false;
+        
+        if (regSearch.trim()) {
+          const searchStr = regSearch.trim().toLowerCase();
+          const regKey = String(e.regNo || "").toLowerCase();
+          const accKey = String(e.accessionNo || "").toLowerCase();
+          if (!regKey.includes(searchStr) && !accKey.includes(searchStr)) return false;
+        }
+        
+        const d = parseDate(e);
+        if (d) {
+          const entryDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          if (dateFrom && entryDateStr < dateFrom) return false;
+          if (dateTo && entryDateStr > dateTo) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const dateA = parseDate(a);
+        const dateB = parseDate(b);
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return dateA - dateB;
+      });
+  }, [entries, activeLab, activeSource, regSearch, dateFrom, dateTo]);
 
   return (
     <div className="register-section">
@@ -261,12 +317,12 @@ export default function OutsourceRegister() {
                   <td>{sTime ? sTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "—"}</td>
                   <td>{e.age} {e.ageUnit}</td>
                   <td style={{ maxWidth: '180px' }}>
-                    {(e.displayTests || []).map(t => typeof t === 'string' ? t : t.test).join(", ")}
+                    {(e.displayTests || []).map(t => typeof t === 'string' ? t : t.test).join(", ") || "—"}
                   </td>
                   <td><span className="lab-badge">{e.labName}</span></td>
-                  <td><input type="text" className="table-input" disabled={!isScanned || e.isCollected} value={e.concernedPerson || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "concernedPerson", ev.target.value)} placeholder="Name" /></td>
-                  <td><input type="text" className="table-input" disabled={!isScanned || e.isCollected} value={e.relation || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "relation", ev.target.value)} placeholder="Relation" /></td>
-                  <td><input type="text" className="table-input" disabled={!isScanned || e.isCollected} value={e.mobileNo || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "mobileNo", ev.target.value)} placeholder="Mobile" /></td>
+                  <td><input type="text" className="table-input" disabled={!e.isCollected || e.isGiven} value={e.concernedPerson || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "concernedPerson", ev.target.value)} placeholder="Name" /></td>
+                  <td><input type="text" className="table-input" disabled={!e.isCollected || e.isGiven} value={e.relation || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "relation", ev.target.value)} placeholder="Relation" /></td>
+                  <td><input type="text" className="table-input" disabled={!e.isCollected || e.isGiven} value={e.mobileNo || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "mobileNo", ev.target.value)} placeholder="Mobile" /></td>
                   <td style={{ fontWeight: 'bold', color: '#1e3a8a' }}>{tatDisplay}</td>
                   <td>
                     <select className="table-select" disabled={e.isCollected} value={e.status || "Pending"} onChange={(ev) => handleStatusChange(e, ev.target.value)}>
@@ -275,12 +331,12 @@ export default function OutsourceRegister() {
                     </select>
                   </td>
                   <td>
-                    <button className="save-btn" disabled={saving || !(isScanned && fieldsFilled) || e.isCollected} onClick={() => handleSave(e)}>
+                    <button className="save-btn" disabled={saving || !isScanned || e.isCollected} onClick={() => handleSave(e)}>
                       {e.isCollected ? "Received" : "Receive"}
                     </button>
                   </td>
                   <td>
-                    <button className="given-btn" disabled={saving || !e.isCollected || e.isGiven} onClick={() => handleGiven(e)}>
+                    <button className="given-btn" disabled={saving || !e.isCollected || e.isGiven || !fieldsFilled} onClick={() => handleGiven(e)}>
                       {e.isGiven ? "Given" : "Give"}
                     </button>
                   </td>

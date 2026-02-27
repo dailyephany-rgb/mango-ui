@@ -1,5 +1,4 @@
 
-
 // src/owner/charts/StackedStageLines.jsx
 import React, { useMemo } from "react";
 import {
@@ -16,8 +15,8 @@ import {
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload || !payload[0]) return null;
 
-  // We pull the regNo from the actual data point inside the payload
-  const { regNo } = payload[0].payload;
+  // Pulling both regNo and diagnosticNo from the payload
+  const { regNo, diagnosticNo } = payload[0].payload;
 
   const ordered = [
     payload.find(p => p.dataKey === "printedToCollected"),
@@ -35,11 +34,14 @@ const CustomTooltip = ({ active, payload, label }) => {
         borderRadius: "4px"
       }}
     >
-      {/* Tooltip shows the Reg No as requested */}
-      <div style={{ fontWeight: "bold", marginBottom: 4 }}>{regNo}</div>
+      {/* Updated Header: Shows both Reg No and Diag No */}
+      <div style={{ fontWeight: "bold", marginBottom: 2 }}>Reg No: {regNo}</div>
+      <div style={{ fontWeight: "bold", marginBottom: 6, color: "#555", fontSize: "0.9em" }}>
+        Diag No: {diagnosticNo || "NA"}
+      </div>
 
       {ordered.map((item, index) => (
-        <div key={index} style={{ color: item.stroke }}>
+        <div key={index} style={{ color: item.stroke, fontSize: "0.9em" }}>
           {item.name}: {item.value} min
         </div>
       ))}
@@ -68,8 +70,9 @@ export default function StackedStageLines({ unifiedRows }) {
       const sv = tSv && tV ? Math.max(0, Math.round((tV - tSv) / 60000)) : 0;
 
       return {
-        x: index + 1, // This is the count for the X-axis
-        regNo: p.regNo, // This is kept for the tooltip
+        x: index + 1,
+        regNo: p.regNo,
+        diagnosticNo: p.diagnosticNo, // Added diagnosticNo to the data point
         printedToCollected: pc,
         collectedToScanned: cs,
         scannedToSaved: ss,
@@ -95,14 +98,13 @@ export default function StackedStageLines({ unifiedRows }) {
   return (
     <div style={{ width: "100%", height: 480 }}> 
       <ResponsiveContainer>
-        {/* Adjusted bottom margin to 40 to reduce the gap as we discussed */}
         <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 40 }}> 
           <CartesianGrid strokeDasharray="3 3" />
 
           <XAxis
-            dataKey="x" // Changed back to 'x' for the count
+            dataKey="x"
             label={{
-              value: "Patient Count (sorted by Printed Time)", // Label updated
+              value: "Patient Count (sorted by Printed Time)",
               position: "insideBottom",
               offset: -10 
             }}
@@ -111,7 +113,7 @@ export default function StackedStageLines({ unifiedRows }) {
           <YAxis
             label={{ value: "Minutes", angle: -90, position: "insideLeft" }}
             domain={[0, yMax]}
-            ticks={[...Array(yMax / 20 + 1)].map((_, i) => i * 20)}
+            ticks={[...Array(Math.floor(yMax / 20) + 1)].map((_, i) => i * 20)}
           />
 
           <Tooltip content={<CustomTooltip />} />

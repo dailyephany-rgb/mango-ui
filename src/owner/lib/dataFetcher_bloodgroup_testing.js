@@ -67,16 +67,19 @@ export const extractBloodGroupTestCount = (record) => {
 export function mergeDeptRows(rows = []) {
   const out = {};
   rows.forEach((r) => {
-    const regId = r.regNo || r.diagnosticNo || r.id;
+    const regId = r.regNo || r.id;
+    const diagNo = r.diagnosticNo || r.billNo || "NA"; 
     if (!regId) return;
 
     const printedDate = toDate(r.timePrinted);
     if (!printedDate) return; 
 
-    const key = `${regId}_bloodgroup`;
+    // UPDATE: Unique key combines RegNo and DiagnosticNo
+    const key = `${regId}_${diagNo}_bloodgroup`;
     if (!out[key]) {
       out[key] = {
         regNo: regId,
+        diagnosticNo: diagNo, 
         name: r.name || r.patientName || "",
         department: "Blood Group",
         source: r.source || "",
@@ -118,6 +121,7 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
       
       violators.push({
         regNo: row.regNo,
+        diagnosticNo: row.diagnosticNo,
         name: row.name,
         test: row.test,
         duration: duration, 
@@ -141,22 +145,23 @@ export function computeKPIs(masterRows = [], bgRows = []) {
     return tests.some(isBloodGroupTest);
   });
 
-  const totalPatientsCollected = new Set(masterBG.map((m) => m.regNo)).size;
+  // UPDATE: Unique DiagnosticNo-based visits
+  const totalPatientsCollected = new Set(masterBG.map((m) => `${m.regNo}_${m.diagnosticNo || m.billNo || "NA"}`)).size;
   const totalTestsCollected = masterBG.reduce((sum, m) => sum + extractBloodGroupTestCount(m), 0);
   
   const savedRows = bgRows.filter(r => r.isSaved);
-  const totalPatientsSaved = new Set(savedRows.map((r) => r.regNo)).size;
+  const totalPatientsSaved = new Set(savedRows.map((r) => `${r.regNo}_${r.diagnosticNo}`)).size;
   const totalTestsSaved = savedRows.reduce((sum, r) => sum + extractBloodGroupTestCount(r), 0);
   
   const validatedRows = bgRows.filter((r) => r.isValidated);
-  const totalPatientsValidated = new Set(validatedRows.map((r) => r.regNo)).size;
+  const totalPatientsValidated = new Set(validatedRows.map((r) => `${r.regNo}_${r.diagnosticNo}`)).size;
   
   const averages = { 
     printedToCollected: [], 
     collectedToScanned: [], 
     scannedToSaved: [], 
     savedToValidated: [],
-    collectedToValidated: [] // UPDATED: TAT Array
+    collectedToValidated: [] 
   };
   
   let slowestEntry = null;
@@ -166,7 +171,7 @@ export function computeKPIs(masterRows = [], bgRows = []) {
     const B = minutesDiff(r.timeCollected, r.timeScanned);
     const C = minutesDiff(r.timeScanned, r.timeSaved);
     const D = minutesDiff(r.timeSaved, r.timeValidated);
-    const TAT = minutesDiff(r.timeCollected, r.timeValidated); // UPDATED: TAT
+    const TAT = minutesDiff(r.timeCollected, r.timeValidated); 
     
     if (A != null) averages.printedToCollected.push(A);
     if (B != null) averages.collectedToScanned.push(B);
@@ -194,7 +199,7 @@ export function computeKPIs(masterRows = [], bgRows = []) {
     avgCollectedToScanned: avg(averages.collectedToScanned),
     avgScannedToSaved: avg(averages.scannedToSaved),
     avgSavedToValidated: avg(averages.savedToValidated),
-    avgTurnaroundTime: avg(averages.collectedToValidated), // UPDATED
+    avgTurnaroundTime: avg(averages.collectedToValidated),
     slowestEntry,
   };
 }
@@ -251,6 +256,7 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
 export function unifyForCharts(rows = []) {
   return rows.map((r) => ({
     ...r,
+    regNo: r.diagnosticNo, // Use diagnosticNo as primary label for charts/TimeBricks
     patientName: r.name,
     tests: r.selectedTests,
   }));

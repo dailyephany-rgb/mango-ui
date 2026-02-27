@@ -68,16 +68,19 @@ export const extractHaemTestCount = (record) => {
 export function mergeDeptRows(rows = []) {
   const out = {};
   rows.forEach((r) => {
-    const regId = r.regNo || r.diagnosticNo || r.id;
+    const regId = r.regNo || r.id;
+    const diagNo = r.diagnosticNo || r.billNo || "NA"; // Updated to diagnosticNo
     if (!regId) return;
 
     const printedDate = toDate(r.timePrinted);
     if (!printedDate) return; 
 
-    const key = `${regId}_haem`;
+    // UPDATE: Unique key combines RegNo and diagnosticNo
+    const key = `${regId}_${diagNo}_haem`;
     if (!out[key]) {
       out[key] = {
         regNo: regId,
+        diagnosticNo: diagNo, // Updated field
         name: r.name || r.patientName || "",
         department: "Haematology",
         source: r.source || "",
@@ -88,7 +91,7 @@ export function mergeDeptRows(rows = []) {
         timeValidated: toDate(r.validatedTime || r.timeValidated),
         isSaved: r.saved === "Yes" || !!(r.savedTime || r.timeSaved),
         isValidated: r.validated === true || r.status === "validated" || !!(r.validatedTime || r.timeValidated),
-        isCritical: r.critical === "Yes", // UPDATED: Capture critical status
+        isCritical: r.critical === "Yes", 
         testList: new Set(),
       };
     }
@@ -112,19 +115,16 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
     const e = toDate(row.timeSaved);
     if (!s || !e) return;
     
-    // 1. Calculate raw duration
     const rawDuration = (e - s) / 60000;
-    
-    // 2. ROUND IT FIRST (Critical fix for "invisible seconds")
     const duration = Math.round(rawDuration);
     
-    // 3. STRICT CHECK: Must be strictly GREATER than allowed
     if (duration > allowed) {
       const excess = duration - allowed; 
       const status = duration <= allowed * 1.5 ? "borderline" : "violation";
       
       violators.push({
         regNo: row.regNo,
+        diagnosticNo: row.diagnosticNo, // Added diagnosticNo
         name: row.name,
         test: row.test,
         duration: duration, 
@@ -148,17 +148,17 @@ export function computeKPIs(masterRows = [], haemRows = []) {
     return tests.some(isHaemTest);
   });
 
-  const totalPatientsCollected = new Set(masterHaem.map((m) => m.regNo)).size;
+  // UPDATE: Counting unique diagnosticNo-based visits
+  const totalPatientsCollected = new Set(masterHaem.map((m) => `${m.regNo}_${m.diagnosticNo || m.billNo || "NA"}`)).size;
   const totalTestsCollected = masterHaem.reduce((sum, m) => sum + extractHaemTestCount(m), 0);
   
   const savedRows = haemRows.filter(r => r.isSaved);
-  const totalPatientsSaved = new Set(savedRows.map((r) => r.regNo)).size;
+  const totalPatientsSaved = new Set(savedRows.map((r) => `${r.regNo}_${r.diagnosticNo}`)).size;
   const totalTestsSaved = savedRows.reduce((sum, r) => sum + extractHaemTestCount(r), 0);
   
   const validatedRows = haemRows.filter((r) => r.isValidated);
-  const totalPatientsValidated = new Set(validatedRows.map((r) => r.regNo)).size;
+  const totalPatientsValidated = new Set(validatedRows.map((r) => `${r.regNo}_${r.diagnosticNo}`)).size;
 
-  // UPDATED: Count critical patients
   const totalPatientsCritical = haemRows.filter(r => r.isCritical).length;
   
   const averages = { 
@@ -166,7 +166,7 @@ export function computeKPIs(masterRows = [], haemRows = []) {
     collectedToScanned: [], 
     scannedToSaved: [], 
     savedToValidated: [],
-    collectedToValidated: [] // UPDATED: TAT array
+    collectedToValidated: [] 
   };
 
   haemRows.forEach((r) => {
@@ -174,7 +174,7 @@ export function computeKPIs(masterRows = [], haemRows = []) {
     const B = minutesDiff(r.timeCollected, r.timeScanned);
     const C = minutesDiff(r.timeScanned, r.timeSaved);
     const D = minutesDiff(r.timeSaved, r.timeValidated);
-    const TAT = minutesDiff(r.timeCollected, r.timeValidated); // UPDATED: TAT calculation
+    const TAT = minutesDiff(r.timeCollected, r.timeValidated);
 
     if (A != null) averages.printedToCollected.push(A);
     if (B != null) averages.collectedToScanned.push(B);
@@ -183,24 +183,18 @@ export function computeKPIs(masterRows = [], haemRows = []) {
     if (TAT != null) averages.collectedToValidated.push(TAT);
   });
 
-  // --- DEBUG CONSOLE LOG ---
-  console.log("Haematology Debug:", {
-    criticalEntries: haemRows.filter(r => r.isCritical).map(r => ({ reg: r.regNo, name: r.name })),
-    turnaroundTimes: haemRows.filter(r => r.timeCollected && r.timeValidated).map(r => ({ reg: r.regNo, tat: minutesDiff(r.timeCollected, r.timeValidated) }))
-  });
-
   const avg = (arr) => arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : null;
 
   return {
     totalPatientsCollected, totalTestsCollected, totalPatientsSaved, totalPatientsValidated,
     totalTestsSaved, totalPatientsPendingScans: Math.max(0, totalPatientsCollected - totalPatientsSaved),
     totalTestsPending: Math.max(0, totalTestsCollected - totalTestsSaved),
-    totalPatientsCritical, // UPDATED
+    totalPatientsCritical,
     avgPrintedToCollected: avg(averages.printedToCollected),
     avgCollectedToScanned: avg(averages.collectedToScanned),
     avgScannedToSaved: avg(averages.scannedToSaved),
     avgSavedToValidated: avg(averages.savedToValidated),
-    avgTurnaroundTime: avg(averages.collectedToValidated), // UPDATED
+    avgTurnaroundTime: avg(averages.collectedToValidated),
   };
 }
 
@@ -213,17 +207,16 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
   let masterRows = []; let haemRows = [];
 
   const publish = () => {
+    // UPDATE: Use T00:00:00 to force parsing in Indian Standard Time (Local)
     const from = dateRange?.from ? new Date(dateRange.from + "T00:00:00") : null;
     const to = dateRange?.to ? new Date(dateRange.to + "T23:59:59") : null;
 
     const filterFn = (row) => {
-      // 1. Date Filter
       const t = toDate(row.timePrinted);
       if (!t) return false;
       if (from && t < from) return false;
       if (to && t > to) return false;
 
-      // 2. Source Filter
       const normSource = source && source !== "All" ? source.trim().toUpperCase() : null;
       if (normSource) {
         const rowSource = (row.source || "").trim().toUpperCase();

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { db } from "../firebaseConfig";
 import {
   collection,
@@ -40,7 +40,12 @@ export default function InsideLabRegister() {
   };
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const today = `${y}-${m}-${d}`;
+
     setDateFrom(today);
     setDateTo(today);
   }, []);
@@ -50,7 +55,7 @@ export default function InsideLabRegister() {
       const allData = snap.docs.map((d) => ({ 
         id: d.id, 
         ...d.data(),
-        urgent: d.data().urgent || false // CAPTURE URGENT STATUS
+        urgent: d.data().urgent || false 
       }));
       setEntries(allData);
     });
@@ -64,14 +69,17 @@ export default function InsideLabRegister() {
     return () => { unsubMaster(); unsubLab(); };
   }, []);
 
-  const getDeptUniqueKey = (patientId) => {
+  // UPDATE: Generate Department-Specific Composite Key
+  const getDeptUniqueKey = (entry) => {
+    const regNo = String(entry.regNo || entry.id);
+    const diagNo = entry.diagnosticNo || entry.accNo || "—";
     const deptName = activeTab.replace("Register", "");
-    return `${patientId}_${deptName}`;
+    return `${regNo}_${diagNo}_${deptName}`;
   };
 
   const openEdit = (entry) => {
     setSelectedEntry(entry);
-    const uniqueId = getDeptUniqueKey(entry.id);
+    const uniqueId = getDeptUniqueKey(entry);
     const existingData = localDrafts[uniqueId] || labResults[uniqueId];
     setResults(existingData?.reportData || [{ testType: "", content: "" }]);
     setShowEdit(true);
@@ -94,7 +102,7 @@ export default function InsideLabRegister() {
 
   const handleLocalSave = () => {
     if (selectedEntry) {
-      const uniqueId = getDeptUniqueKey(selectedEntry.id);
+      const uniqueId = getDeptUniqueKey(selectedEntry);
       const orderedResults = results.map(res => ({
         testType: res.testType,
         content: res.content
@@ -109,7 +117,7 @@ export default function InsideLabRegister() {
   };
 
   const handleFinalize = async (entry) => {
-    const uniqueId = getDeptUniqueKey(entry.id);
+    const uniqueId = getDeptUniqueKey(entry);
     const finalData = (localDrafts[uniqueId]?.reportData || results).map(res => ({
       testType: res.testType,
       content: res.content
@@ -119,6 +127,7 @@ export default function InsideLabRegister() {
       setSaving(true);
       const reportRef = doc(db, "inside_lab_results", uniqueId);
       await setDoc(reportRef, {
+        compositeId: uniqueId,
         regNo: entry.regNo || entry.id,
         diagnosticNo: entry.diagnosticNo || entry.accNo || "—", 
         name: entry.name,
@@ -152,46 +161,42 @@ export default function InsideLabRegister() {
     }
   };
 
-  const filteredEntries = entries
-    .filter((e) => {
-      const patientTests = (e.selectedTests || []).map(t => 
-        (typeof t === "string" ? t : t?.test || "").toUpperCase().trim()
-      );
-      // FIXED: Using strict equality to prevent "Bone Examination" matching "Bone Marrow Examination"
-      const matchesTab = patientTests.some(test => 
-        INSIDE_ROOM_MAP[activeTab].some(mapped => test === mapped.toUpperCase())
-      );
-      if (!matchesTab) return false;
-      if (activeSource !== "All" && e.source !== activeSource) return false;
-      
-      // START DUAL SEARCH LOGIC
-      if (regSearch.trim()) {
-        const searchStr = regSearch.trim().toLowerCase();
-        const regKey = String(e.regNo || e.id || "").toLowerCase();
-        const diagKey = String(e.diagnosticNo || e.accNo || "").toLowerCase();
-        if (!regKey.includes(searchStr) && !diagKey.includes(searchStr)) return false;
-      }
-      // END DUAL SEARCH LOGIC
+  const filteredEntries = useMemo(() => {
+    return entries
+      .filter((e) => {
+        const patientTests = (e.selectedTests || []).map(t => 
+          (typeof t === "string" ? t : t?.test || "").toUpperCase().trim()
+        );
+        const matchesTab = patientTests.some(test => 
+          INSIDE_ROOM_MAP[activeTab].some(mapped => test === mapped.toUpperCase())
+        );
+        if (!matchesTab) return false;
+        if (activeSource !== "All" && e.source !== activeSource) return false;
+        
+        if (regSearch.trim()) {
+          const searchStr = regSearch.trim().toLowerCase();
+          const regKey = String(e.regNo || e.id || "").toLowerCase();
+          const diagKey = String(e.diagnosticNo || e.accNo || "").toLowerCase();
+          if (!regKey.includes(searchStr) && !diagKey.includes(searchStr)) return false;
+        }
 
-      const d = parseDate(e);
-      if (d) {
-        const dateStr = d.toISOString().split("T")[0];
-        if (dateFrom && dateStr < dateFrom) return false;
-        if (dateTo && dateStr > dateTo) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      // PRIORITIZE URGENT ENTRIES FIRST
-      if (a.urgent !== b.urgent) {
-        return a.urgent ? -1 : 1;
-      }
-      const dateA = parseDate(a);
-      const dateB = parseDate(b);
-      if (!dateA) return 1;
-      if (!dateB) return -1;
-      return dateA - dateB;
-    });
+        const d = parseDate(e);
+        if (d) {
+          const entryDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          if (dateFrom && entryDateStr < dateFrom) return false;
+          if (dateTo && entryDateStr > dateTo) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
+        const dateA = parseDate(a);
+        const dateB = parseDate(b);
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return dateA - dateB;
+      });
+  }, [entries, activeTab, activeSource, regSearch, dateFrom, dateTo]);
 
   return (
     <div className="register-section">
@@ -236,11 +241,10 @@ export default function InsideLabRegister() {
           </thead>
           <tbody>
             {filteredEntries.map((e) => {
-              const uniqueId = getDeptUniqueKey(e.id);
+              const uniqueId = getDeptUniqueKey(e);
               const isSavedInDB = labResults[uniqueId]?.isFinalized;
               const hasLocalChanges = localDrafts[uniqueId]?.isDrafted;
 
-              // FIXED: Using strict equality for displaying the filtered tests
               const filteredTests = (e.selectedTests || [])
                 .map(t => typeof t === 'string' ? t : t.test)
                 .filter(testName => 
@@ -250,7 +254,7 @@ export default function InsideLabRegister() {
                 );
 
               return (
-                <tr key={e.id} className={isSavedInDB ? "row-green" : hasLocalChanges ? "row-yellow" : ""}>
+                <tr key={uniqueId} className={isSavedInDB ? "row-green" : hasLocalChanges ? "row-yellow" : ""}>
                   <td style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo || e.id}</td>
                   <td>{e.diagnosticNo || e.accNo || "—"}</td>
                   <td>{e.name}</td>

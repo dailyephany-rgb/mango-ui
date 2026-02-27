@@ -28,7 +28,13 @@ export default function CriticalAlertDashboard() {
   const [dateTo, setDateTo] = useState("");
 
   useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    // FIX: Set local date to roll over at midnight local time
+    const todayNow = new Date();
+    const y = todayNow.getFullYear();
+    const m = String(todayNow.getMonth() + 1).padStart(2, '0');
+    const d = String(todayNow.getDate()).padStart(2, '0');
+    const today = `${y}-${m}-${d}`;
+
     setDateFrom(today);
     setDateTo(today);
 
@@ -102,7 +108,6 @@ export default function CriticalAlertDashboard() {
 
       const dataRows = [
         ["REG NO:", alert.regNo || "-"],
-        // 🚨 UPDATED PDF LABEL
         ["DIAG NO:", alert.diagnosticNo || "-"],
         ["DATE:", new Date().toLocaleDateString()],
         ["PATIENT NAME:", alert.name || "-"],
@@ -147,9 +152,11 @@ export default function CriticalAlertDashboard() {
 
       const pDate = parseDate(a.timePrinted || a.flaggedAt);
       if (pDate) {
-        const dateStr = pDate.toISOString().slice(0, 10);
-        if (dateFrom && dateStr < dateFrom) return false;
-        if (dateTo && dateStr > dateTo) return false;
+        // FIX: Compare using local YYYY-MM-DD for consistency
+        const entryDateStr = `${pDate.getFullYear()}-${String(pDate.getMonth() + 1).padStart(2, '0')}-${String(pDate.getDate()).padStart(2, '0')}`;
+        
+        if (dateFrom && entryDateStr < dateFrom) return false;
+        if (dateTo && entryDateStr > dateTo) return false;
       }
       return true;
     })
@@ -172,7 +179,6 @@ export default function CriticalAlertDashboard() {
       </div>
 
       <div className="filter-bar">
-        {/* 🚨 UPDATED PLACEHOLDER */}
         <input 
           type="text" 
           className="reg-search" 
@@ -214,7 +220,6 @@ export default function CriticalAlertDashboard() {
           <thead>
             <tr>
               <th>Reg No</th>
-              {/* 🚨 UPDATED COLUMN NAME */}
               <th>Diag No</th>
               <th>Patient Name</th>
               <th>Dept</th>

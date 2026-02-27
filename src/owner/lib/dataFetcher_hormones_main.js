@@ -70,16 +70,19 @@ export const extractHormonesMainTestCount = (record) => {
 export function mergeDeptRows(rows = []) {
   const out = {};
   rows.forEach((r) => {
-    const regId = r.regNo || r.diagnosticNo || r.id;
+    const regId = r.regNo || r.id;
+    const diagNo = r.diagnosticNo || r.billNo || "NA"; 
     if (!regId) return;
 
     const printedDate = toDate(r.timePrinted);
     if (!printedDate) return; 
 
-    const key = `${regId}_hormones_main`;
+    // UPDATE: Unique key combines RegNo and diagnosticNo
+    const key = `${regId}_${diagNo}_hormones_main`;
     if (!out[key]) {
       out[key] = {
         regNo: regId,
+        diagnosticNo: diagNo,
         name: r.name || r.patientName || "",
         department: "hormones_main",
         source: r.source || "",
@@ -90,7 +93,7 @@ export function mergeDeptRows(rows = []) {
         timeValidated: toDate(r.validatedTime || r.timeValidated),
         isSaved: r.saved === "Yes" || !!(r.savedTime || r.timeSaved),
         isValidated: r.validated === true || r.status === "validated" || !!(r.validatedTime || r.timeValidated),
-        isCritical: r.critical === "Yes", // ADDED
+        isCritical: r.critical === "Yes",
         testList: new Set(),
       };
     }
@@ -122,6 +125,7 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
       
       violators.push({
         regNo: row.regNo,
+        diagnosticNo: row.diagnosticNo, // Added diagnosticNo
         name: row.name,
         test: row.test,
         duration: duration, 
@@ -145,17 +149,16 @@ export function computeKPIs(masterRows = [], hormonesRows = []) {
     return tests.some(isHormonesMainTest);
   });
 
-  const totalPatientsCollected = new Set(masterHormones.map((m) => m.regNo)).size;
+  const totalPatientsCollected = new Set(masterHormones.map((m) => `${m.regNo}_${m.diagnosticNo || m.billNo || "NA"}`)).size;
   const totalTestsCollected = masterHormones.reduce((sum, m) => sum + extractHormonesMainTestCount(m), 0);
   
   const savedRows = hormonesRows.filter(r => r.isSaved);
-  const totalPatientsSaved = new Set(savedRows.map((r) => r.regNo)).size;
+  const totalPatientsSaved = new Set(savedRows.map((r) => `${r.regNo}_${r.diagnosticNo}`)).size;
   const totalTestsSaved = savedRows.reduce((sum, r) => sum + extractHormonesMainTestCount(r), 0);
   
   const validatedRows = hormonesRows.filter((r) => r.isValidated);
-  const totalPatientsValidated = new Set(validatedRows.map((r) => r.regNo)).size;
+  const totalPatientsValidated = new Set(validatedRows.map((r) => `${r.regNo}_${r.diagnosticNo}`)).size;
   
-  // NEW: Calculate Total Critical
   const totalPatientsCritical = hormonesRows.filter(r => r.isCritical).length;
 
   const averages = { 
@@ -163,7 +166,7 @@ export function computeKPIs(masterRows = [], hormonesRows = []) {
     collectedToScanned: [], 
     scannedToSaved: [], 
     savedToValidated: [],
-    collectedToValidated: [] // NEW: For TAT
+    collectedToValidated: [] 
   };
 
   hormonesRows.forEach((r) => {
@@ -171,7 +174,7 @@ export function computeKPIs(masterRows = [], hormonesRows = []) {
     const B = minutesDiff(r.timeCollected, r.timeScanned);
     const C = minutesDiff(r.timeScanned, r.timeSaved);
     const D = minutesDiff(r.timeSaved, r.timeValidated);
-    const TAT = minutesDiff(r.timeCollected, r.timeValidated); // Collected - Validated
+    const TAT = minutesDiff(r.timeCollected, r.timeValidated); 
     
     if (A != null) averages.printedToCollected.push(A);
     if (B != null) averages.collectedToScanned.push(B);
@@ -186,8 +189,8 @@ export function computeKPIs(masterRows = [], hormonesRows = []) {
     totalPatientsCollected, totalTestsCollected, totalPatientsSaved, totalPatientsValidated,
     totalTestsSaved, totalPatientsPendingScans: Math.max(0, totalPatientsCollected - totalPatientsSaved),
     totalTestsPending: Math.max(0, totalTestsCollected - totalTestsSaved),
-    totalPatientsCritical, // NEW
-    avgTurnaroundTime: avg(averages.collectedToValidated), // NEW
+    totalPatientsCritical, 
+    avgTurnaroundTime: avg(averages.collectedToValidated), 
     avgPrintedToCollected: avg(averages.printedToCollected),
     avgCollectedToScanned: avg(averages.collectedToScanned),
     avgScannedToSaved: avg(averages.scannedToSaved),
@@ -204,6 +207,7 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
   let masterRows = []; let hormonesRows = [];
 
   const publish = () => {
+    // UPDATED: Using T00:00:00 to ensure filtering is based on IST (Local Time)
     const from = dateRange?.from ? new Date(dateRange.from + "T00:00:00") : null;
     const to = dateRange?.to ? new Date(dateRange.to + "T23:59:59") : null;
 

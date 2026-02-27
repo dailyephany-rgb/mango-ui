@@ -13,6 +13,7 @@ export default function OutsourcePatientModal({ open, onClose, patients }) {
           <thead>
             <tr>
               <th>Reg</th>
+              <th>Diag No</th>
               <th>Name</th>
               <th>Test</th>
               <th>Dept</th>
@@ -25,6 +26,7 @@ export default function OutsourcePatientModal({ open, onClose, patients }) {
             {patients.map((p, i) => (
               <tr key={i}>
                 <td>{p.regNo}</td>
+                <td>{p.diagnosticNo || "—"}</td>
                 <td>{p.name}</td>
                 <td>{p.test}</td>
                 <td>{p.department}</td>

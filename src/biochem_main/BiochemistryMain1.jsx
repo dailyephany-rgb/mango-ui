@@ -86,6 +86,7 @@ export default function BiochemistryMain() {
       const sSet = new Set();
       snap.docs.forEach((d) => {
         const data = d.data();
+        // FIX: Use composite key for tracking saved documents
         const key = `${data.regNo}_${data.diagnosticNo}`;
         docsMap[key] = data;
         if (data?.saved === "Yes" || data?.status === "saved") sSet.add(key);
@@ -99,6 +100,7 @@ export default function BiochemistryMain() {
       snap.docs.forEach(docSnap => {
         const data = docSnap.data();
         if (data.regNo && data.dept === CURRENT_DEPT) {
+          // FIX: Critical alerts also use composite key internally
           const cKey = `${data.regNo}_${data.diagnosticNo}`;
           cSet.add(cKey);
         }
@@ -115,6 +117,7 @@ export default function BiochemistryMain() {
     );
 
     return filteredMaster.map((entry) => {
+      // FIX: Key must match the composite ID from master_register
       const regKey = `${entry.regNo}_${entry.diagnosticNo}`;
       const saved = biochemDocs[regKey] || {};
       const localScan = localScans[regKey];
@@ -142,8 +145,7 @@ export default function BiochemistryMain() {
 
   const handleScanToggle = (patient, value) => {
     const regKey = patient.compositeKey;
-    // Captures time in Indian Standard Time string
-    const nowIST = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }); 
+    const now = new Date().toISOString(); 
 
     setLocalScans((prev) => {
       const updated = { ...prev, [regKey]: value };
@@ -152,7 +154,7 @@ export default function BiochemistryMain() {
     });
 
     setLocalScanTimes((prev) => {
-      const updatedTimes = { ...prev, [regKey]: value === "Yes" ? nowIST : null };
+      const updatedTimes = { ...prev, [regKey]: value === "Yes" ? now : null };
       localStorage.setItem("biochem_localScanTimes", JSON.stringify(updatedTimes));
       return updatedTimes;
     });
@@ -174,8 +176,7 @@ export default function BiochemistryMain() {
       const relevantTests = patient.selectedTests?.filter((t) => biochemTests.includes(getTestName(t))).map((t) => getTestName(t));
       
       const rawLocalTime = localScanTimes[regKey];
-      // Convert the IST string back to a Date object, then to Firestore Timestamp
-      const scanTime = rawLocalTime ? Timestamp.fromDate(new Date(rawLocalTime)) : null;
+      const scanTime = rawLocalTime ? new Date(rawLocalTime) : null;
       
       const pendingParam = criticalParams[regKey];
       const isCritical = (criticalReportedSet.has(regKey) || pendingParam) ? "Yes" : "No";
@@ -213,9 +214,9 @@ export default function BiochemistryMain() {
         category: patient.category || "-",
         selectedTests: relevantTests || [],
         scanned: "Yes",
-        scannedTime: scanTime || (patient.scannedTime || null),
+        scannedTime: scanTime ? Timestamp.fromDate(scanTime) : (patient.scannedTime || null),
         saved: "Yes",
-        savedTime: serverTimestamp(), // Firebase stores this as UTC but converts to local for display
+        savedTime: serverTimestamp(),
         timePrinted: patient.timePrinted || null,
         timeCollected: patient.timeCollected || null,
         status: "saved",

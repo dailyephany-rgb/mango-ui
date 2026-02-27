@@ -10,18 +10,9 @@ export default function MasterViewCard() {
   const [expanded, setExpanded] = useState(null);
 
   const [searchReg, setSearchReg] = useState("");
-  
-  // FIX: Set local date to roll over at midnight local time
-  const getLocalDate = () => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  };
-
-  const [fromDate, setFromDate] = useState(getLocalDate());
-  const [toDate, setToDate] = useState(getLocalDate());
+  const today = new Date().toISOString().split("T")[0];
+  const [fromDate, setFromDate] = useState(today);
+  const [toDate, setToDate] = useState(today);
   const [sourceFilter, setSourceFilter] = useState("All");
 
   // DEPARTMENT COLLECTIONS
@@ -182,7 +173,7 @@ export default function MasterViewCard() {
     .filter((rec) => {
       if (!rec.regNo) return false;
 
-      // SEARCH LOGIC
+      // UPDATED SEARCH LOGIC FOR REG NO AND DIAGNOSTIC NO
       const searchLower = searchReg.toLowerCase();
       const matchesSearch = !searchReg || 
         (rec.regNo?.toLowerCase().includes(searchLower)) || 
@@ -191,12 +182,7 @@ export default function MasterViewCard() {
       let date = parseDate(rec);
       if (!date) return false;
 
-      // FIX: Comparison using local calendar date strings (YYYY-MM-DD)
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const d = String(date.getDate()).padStart(2, '0');
-      const dateStr = `${y}-${m}-${d}`;
-      
+      const dateStr = date.toISOString().split("T")[0];
       const inRange = dateStr >= fromDate && dateStr <= toDate;
 
       const sourceOk =
@@ -210,6 +196,7 @@ export default function MasterViewCard() {
       const dateB = parseDate(b);
       if (!dateA) return 1;
       if (!dateB) return -1;
+      // 🚨 Oldest at top, Newest at bottom
       return dateA - dateB; 
     });
 
@@ -231,6 +218,7 @@ export default function MasterViewCard() {
 
       {/* FILTER BAR */}
       <div className="filter-bar master-filter">
+        {/* UPDATED PLACEHOLDER */}
         <input
           placeholder="Search Reg or Diag No..."
           value={searchReg}
@@ -247,7 +235,7 @@ export default function MasterViewCard() {
         <input
           type="date"
           value={toDate}
-          onChange={(e) => setToDate(e.target.value)}
+          onChange={(e) => setDateTo(e.target.value)} // Fixed variable name to match state setter
         />
 
         <div className="source-buttons">

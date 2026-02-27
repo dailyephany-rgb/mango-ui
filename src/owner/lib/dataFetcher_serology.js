@@ -37,7 +37,7 @@ export function normalizeTestsField(field) {
       .filter(Boolean)
       .map((s) => String(s).trim());
   }
-  if (typeof field === "string") field.split(",").map((s) => s.trim()).filter(Boolean);
+  if (typeof field === "string") return field.split(",").map((s) => s.trim()).filter(Boolean);
   return [];
 }
 
@@ -84,16 +84,19 @@ export const extractSerologyTestCount = (record) => {
 export function mergeDeptRows(rows = []) {
   const out = {};
   rows.forEach((r) => {
-    const regId = r.regNo || r.diagnosticNo || r.id;
+    const regId = r.regNo || r.id;
+    const diagNo = r.diagnosticNo || r.billNo || "NA"; // Updated to diagnosticNo
     if (!regId) return;
 
     const printedDate = toDate(r.timePrinted);
     if (!printedDate) return; 
 
-    const key = `${regId}_serology`;
+    // UPDATE: Unique key combines RegNo and diagnosticNo
+    const key = `${regId}_${diagNo}_serology`;
     if (!out[key]) {
       out[key] = {
         regNo: regId,
+        diagnosticNo: diagNo,
         name: r.name || r.patientName || "",
         department: "Serology",
         source: r.source || "",
@@ -104,7 +107,7 @@ export function mergeDeptRows(rows = []) {
         timeValidated: toDate(r.validatedTime || r.timeValidated),
         isSaved: r.saved === "Yes" || !!(r.savedTime || r.timeSaved),
         isValidated: r.validated === true || r.status === "validated" || !!(r.validatedTime || r.timeValidated),
-        isCritical: r.critical === "Yes", // UPDATED: Capture critical status
+        isCritical: r.critical === "Yes", 
         testList: new Set(),
       };
     }
@@ -136,6 +139,7 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
       
       violators.push({
         regNo: row.regNo,
+        diagnosticNo: row.diagnosticNo,
         name: row.name,
         test: row.test,
         duration: duration, 
@@ -159,17 +163,17 @@ export function computeKPIs(masterRows = [], serologyRows = []) {
     return tests.some(isSerologyTest);
   });
 
-  const totalPatientsCollected = new Set(masterSerology.map((m) => m.regNo)).size;
+  // UPDATE: Unique diagnosticNo-based visits
+  const totalPatientsCollected = new Set(masterSerology.map((m) => `${m.regNo}_${m.diagnosticNo || m.billNo || "NA"}`)).size;
   const totalTestsCollected = masterSerology.reduce((sum, m) => sum + extractSerologyTestCount(m), 0);
   
   const savedRows = serologyRows.filter(r => r.isSaved);
-  const totalPatientsSaved = new Set(savedRows.map((r) => r.regNo)).size;
+  const totalPatientsSaved = new Set(savedRows.map((r) => `${r.regNo}_${r.diagnosticNo}`)).size;
   const totalTestsSaved = savedRows.reduce((sum, r) => sum + extractSerologyTestCount(r), 0);
 
   const validatedRows = serologyRows.filter((r) => r.isValidated);
-  const totalPatientsValidated = new Set(validatedRows.map((r) => r.regNo)).size;
+  const totalPatientsValidated = new Set(validatedRows.map((r) => `${r.regNo}_${r.diagnosticNo}`)).size;
 
-  // UPDATED: Count critical patients
   const totalPatientsCritical = serologyRows.filter(r => r.isCritical).length;
   
   const averages = { 
@@ -177,7 +181,7 @@ export function computeKPIs(masterRows = [], serologyRows = []) {
     collectedToScanned: [], 
     scannedToSaved: [], 
     savedToValidated: [],
-    collectedToValidated: [] // UPDATED: TAT array
+    collectedToValidated: [] 
   };
   let slowestEntry = null;
 
@@ -186,7 +190,7 @@ export function computeKPIs(masterRows = [], serologyRows = []) {
     const B = minutesDiff(r.timeCollected, r.timeScanned);
     const C = minutesDiff(r.timeScanned, r.timeSaved);
     const D = minutesDiff(r.timeSaved, r.timeValidated);
-    const TAT = minutesDiff(r.timeCollected, r.timeValidated); // UPDATED: TAT
+    const TAT = minutesDiff(r.timeCollected, r.timeValidated);
     
     if (A != null) averages.printedToCollected.push(A);
     if (B != null) averages.collectedToScanned.push(B);
@@ -204,24 +208,18 @@ export function computeKPIs(masterRows = [], serologyRows = []) {
     }
   });
 
-  // --- DEBUG CONSOLE LOG ---
-  console.log("Serology Debug:", {
-    criticalEntries: serologyRows.filter(r => r.isCritical).map(r => ({ reg: r.regNo, name: r.name })),
-    turnaroundTimes: serologyRows.filter(r => r.timeCollected && r.timeValidated).map(r => ({ reg: r.regNo, tat: minutesDiff(r.timeCollected, r.timeValidated) }))
-  });
-
   const avg = (arr) => arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : null;
 
   return {
     totalPatientsCollected, totalTestsCollected, totalPatientsSaved, totalPatientsValidated,
     totalTestsSaved, totalPatientsPendingScans: Math.max(0, totalPatientsCollected - totalPatientsSaved),
     totalTestsPending: Math.max(0, totalTestsCollected - totalTestsSaved),
-    totalPatientsCritical, // UPDATED
+    totalPatientsCritical,
     avgPrintedToCollected: avg(averages.printedToCollected),
     avgCollectedToScanned: avg(averages.collectedToScanned),
     avgScannedToSaved: avg(averages.scannedToSaved),
     avgSavedToValidated: avg(averages.savedToValidated),
-    avgTurnaroundTime: avg(averages.collectedToValidated), // UPDATED
+    avgTurnaroundTime: avg(averages.collectedToValidated),
     slowestEntry,
   };
 }
@@ -277,6 +275,7 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
 export function unifyForCharts(rows = []) {
   return rows.map((r) => ({
     ...r,
+    regNo: r.diagnosticNo, // Use diagnosticNo as primary label for Time Bricks/Charts
     patientName: r.name,
     tests: r.selectedTests,
   }));

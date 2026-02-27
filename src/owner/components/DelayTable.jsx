@@ -1,6 +1,4 @@
 
-
-
 import React from "react";
 
 export default function DelayTable({ violators = [] }) {
@@ -9,7 +7,9 @@ export default function DelayTable({ violators = [] }) {
       <table className="min-w-full delay-table">
         <thead>
           <tr>
-            <th>Reg</th>
+            {/* Increased width for Reg No */}
+            <th style={{ minWidth: "140px" }}>Reg No</th>
+            <th>Diag No</th>
             <th>Name</th>
             <th>Test</th>
             <th>Dept</th>
@@ -21,14 +21,15 @@ export default function DelayTable({ violators = [] }) {
         <tbody>
           {violators.length === 0 ? (
             <tr>
-              <td colSpan="7" style={{ textAlign: "center", padding: "20px" }}>
+              <td colSpan="8" style={{ textAlign: "center", padding: "20px" }}>
                 No SLA violations found.
               </td>
             </tr>
           ) : (
             violators.map((v, idx) => (
-              <tr key={v.regNo || idx}>
+              <tr key={`${v.regNo}_${v.diagnosticNo}_${idx}`}>
                 <td>{v.regNo}</td>
+                <td>{v.diagnosticNo || "NA"}</td>
                 <td>{v.name}</td>
                 <td>{v.test}</td>
                 <td>{v.department}</td>
