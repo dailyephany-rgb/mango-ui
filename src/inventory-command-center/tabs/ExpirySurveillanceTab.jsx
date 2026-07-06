@@ -14,7 +14,7 @@ import {
   calculateDaysLeft,
   getRiskLabel,
   filterExpiringInventory
-} from "../utils/expiryUtils";
+} from "../utils/Expiryutils";
 
 
 
