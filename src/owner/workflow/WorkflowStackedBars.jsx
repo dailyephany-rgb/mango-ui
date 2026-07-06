@@ -15,7 +15,7 @@ import {
   ROUTINE_WORKFLOW_CHART_KEYS,
   ROUTINE_WORKFLOW_COLORS,
   ROUTINE_WORKFLOW_LABELS,
-} from "./workflowFetcher";
+} from "./workflowfetcher";
 
 function CustomTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
