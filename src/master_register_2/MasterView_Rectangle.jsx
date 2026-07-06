@@ -1,14 +1,88 @@
 
+
 import React, { useEffect, useState, useMemo } from "react";
 import { db } from "../firebaseConfig.js";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import {
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
+  doc,
+  updateDoc,
+  setDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import "./MasterView_Rectangle.css";
+import UserMenu from "../auth/UserMenu";
+
+const ROUTINE_DEPARTMENTS = [
+  {
+    key: "Bio-Chemistry",
+    label: "Biochemistry",
+    collection: "biochemistry_register",
+  },
+  {
+    key: "Hormones",
+    label: "Hormones",
+    collection: "hormones_main",
+  },
+  {
+    key: "Blood Group",
+    label: "Blood Group",
+    collection: "bloodgroup_testing_register",
+  },
+  {
+    key: "Coagulation",
+    label: "Coagulation",
+    collection: "coagulation_register",
+  },
+  {
+    key: "Haematology",
+    label: "Haematology",
+    collection: "haematology_register",
+  },
+  {
+    key: "ESR",
+    label: "ESR",
+    collection: "esr_register",
+  },
+  {
+    key: "Serology",
+    label: "Serology",
+    collection: "serology_register",
+  },
+  {
+    key: "Rapid Card",
+    label: "Rapid Card",
+    collection: "rapid_card_register",
+  },
+  {
+    key: "Urine Analysis",
+    label: "Urine Analysis",
+    collection: "urine_analysis_register",
+  },
+];
+
+const SPECIAL_DEPARTMENTS = [
+  {
+    label: "Inside Lab",
+    collection: "inside_lab_results",
+    workflow: "inside",
+  },
+  {
+    key: "Outsource",
+    label: "Outsource",
+    collection: "outsource_tracking",
+    workflow: "outsource",
+  },
+];
 
 export default function MasterViewCard() {
   const [masterRecords, setMasterRecords] = useState([]);
+  const [reportDetails, setReportDetails] = useState({});
   const [deptData, setDeptData] = useState({});
   const [expanded, setExpanded] = useState(null);
-
+  const [reportView, setReportView] = useState("routine");
   const [searchReg, setSearchReg] = useState("");
   
   // FIX: Set local date to roll over at midnight local time
@@ -26,14 +100,14 @@ export default function MasterViewCard() {
 
   // DEPARTMENT COLLECTIONS
   const DEPTS = [
-    "biochem_backup",
+
+    "inside_lab_results",
+    "outsource_tracking",
     "biochemistry_register",
-    "bloodgroup_retesting",
     "bloodgroup_testing_register",
     "coagulation_register",
     "esr_register",
     "haematology_register",
-    "hormones_backup",
     "hormones_main",
     "rapid_card_register",
     "serology_register",
@@ -53,21 +127,69 @@ export default function MasterViewCard() {
     return null;
   };
 
-  // MASTER REGISTER LISTENER
-  useEffect(() => {
-    const q = query(
-      collection(db, "master_register"),
-      orderBy("timePrinted", "asc") // Changed to asc for listener base
-    );
-
-    const unsub = onSnapshot(q, (snap) => {
-      setMasterRecords(
-        snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-      );
+  const formatTimestamp = (ts) => {
+    if (!ts) return "—";
+  
+    const date = ts.toDate ? ts.toDate() : new Date(ts);
+  
+    return date.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
+  };
 
-    return () => unsub();
-  }, []);
+
+
+  // MASTER REGISTER LISTENER
+  // MASTER REGISTER + REPORT DETAILS LISTENERS
+useEffect(() => {
+
+  const q = query(
+    collection(db, "master_register"),
+    orderBy("timePrinted", "asc")
+  );
+
+  const unsub = onSnapshot(q, (snap) => {
+    setMasterRecords(
+      snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }))
+    );
+  });
+
+  const reportQuery = query(
+    collection(db, "report_details")
+  );
+
+  const unsubReport = onSnapshot(
+    reportQuery,
+    (snapshot) => {
+
+      const details = {};
+
+      snapshot.forEach((docSnap) => {
+        details[docSnap.id] = docSnap.data();
+      });
+
+      setReportDetails(details);
+    }
+  );
+
+  return () => {
+    unsub();
+    unsubReport();
+  };
+
+}, []);
+
+  
+
+
+
 
   // DEPARTMENT LISTENERS
   useEffect(() => {
@@ -86,101 +208,416 @@ export default function MasterViewCard() {
     return () => unsubArr.forEach((u) => u());
   }, []);
 
+ 
   // Helper
-  const findIn = (dept, reg) =>
-    (deptData[dept] || []).find((x) => x.regNo === reg);
+const findIn = (dept, reg) =>
+(deptData[dept] || []).find((x) => x.regNo === reg);
+
+const isRoutineDepartmentComplete = (dept) => {
+switch (dept.dept) {
+  case "Biochemistry":
+  case "Hormones":
+    return (
+      dept.scanned === "Yes" &&
+      dept.saved === "Yes" &&
+      dept.validated === true &&
+      dept.entered === true
+    );
+
+  case "Haematology":
+  case "Coagulation":
+  case "Urine Analysis":
+    return dept.saved === "Yes";
+
+  case "ESR":
+  case "Blood Group":
+  case "Rapid Card":
+  case "Serology":
+    return dept.validated === true;
+
+  default:
+    return false;
+}
+};
+
 
   // Merge department statuses
   const merged = useMemo(() => {
+    
     return masterRecords.map((rec) => {
+
+      const workflow = reportDetails[rec.id] || {};
+    
+     
+    
+      
       const reg = rec.regNo;
       let statuses = [];
 
-      // BIOCHEM MERGE
-      const b1 = findIn("biochemistry_register", reg);
-      const b2 = findIn("biochem_backup", reg);
 
-      if (b1 || b2) {
-        statuses.push({
-          dept: "Biochemistry",
-          scanned:
-            (b1?.scanned === "Yes") || (b2?.scanned === "Yes") ? "Yes" : "No",
-          saved:
-            (b1?.saved === "Yes") || (b2?.saved === "Yes") ? "Yes" : "No",
-          validated: b1?.validated || b2?.validated || false,
-        });
-      }
+      const selectedTests = rec.selectedTests || [];
 
-      // HORMONES MERGE
-      const h1 = findIn("hormones_main", reg);
-      const h2 = findIn("hormones_backup", reg);
 
-      if (h1 || h2) {
-        statuses.push({
-          dept: "Hormones",
-          scanned:
-            (h1?.scanned === "Yes") || (h2?.scanned === "Yes") ? "Yes" : "No",
-          saved:
-            (h1?.saved === "Yes") || (h2?.saved === "Yes") ? "Yes" : "No",
-          validated: h1?.validated || h2?.validated || false,
-        });
-      }
-
-      // BLOOD GROUP (special rule)
-      const bg1 = findIn("bloodgroup_testing_register", reg);
-      const bg2 = findIn("bloodgroup_retesting", reg);
-
-      if (bg1 || bg2) {
-        statuses.push({
-          dept: "Blood Group",
-          scanned:
-            (bg1?.scanned === "Yes") || (bg2?.scanned === "Yes")
-              ? "Yes"
-              : "No",
-          saved:
-            (bg1?.saved === "Yes") || (bg2?.saved === "Yes")
-              ? "Yes"
-              : "No",
-          validated: Boolean(bg1?.validated && bg2?.validated),
-        });
-      }
-
-      // ALL OTHER DEPTS
-      [
-        "coagulation_register",
-        "haematology_register",
-        "esr_register",
-        "serology_register",
-        "rapid_card_register",
-        "urine_analysis_register",
-      ].forEach((dept) => {
-        const e = findIn(dept, reg);
-        if (e)
-          statuses.push({
-            dept,
-            scanned: e.scanned || "No",
-            saved: e.saved || "No",
-            validated: e.validated || false,
-          });
+      const hasDepartment = (name) =>
+      selectedTests.some((t) => {
+        const dept =
+          typeof t === "string"
+            ? t
+            : (t?.dept || "").trim();
+    
+        return dept.toLowerCase() === name.toLowerCase();
       });
 
-      // OVERALL
-      const overall = statuses.some((s) => s.validated)
-        ? "Validated"
-        : statuses.some((s) => s.saved === "Yes")
-        ? "Completed"
-        : statuses.some((s) => s.scanned === "Yes")
-        ? "In Progress"
-        : "Pending";
+      ROUTINE_DEPARTMENTS.forEach(({ key, label, collection }) => {
+        if (!hasDepartment(key)) return;
+      
+        const departmentRecord = findIn(collection, reg);
+      
+        statuses.push({
+          dept: label,
+      
+          tests:
+            departmentRecord?.selectedTests ||
+            selectedTests
+              .filter((t) => {
+                const dept =
+                  typeof t === "string"
+                    ? t
+                    : (t?.dept || "").trim();
+      
+                return dept.toLowerCase() === key.toLowerCase();
+              })
+              .map((t) =>
+                typeof t === "string"
+                  ? t
+                  : t.test
+              ),
+      
+          scanned: departmentRecord?.scanned || "No",
+      
+          saved: departmentRecord?.saved || "No",
+      
+          validated: departmentRecord?.validated || false,
+      
+          entered: departmentRecord?.entered || false,
+        });
+      });
 
-      return { ...rec, deptStatuses: statuses, overallStatus: overall };
+    
+
+      SPECIAL_DEPARTMENTS.forEach(({ label, collection, workflow }) => {
+
+        if (workflow === "inside") {
+      
+          const insideRecord =
+            (deptData["inside_lab_results"] || []).find(
+              (x) =>
+                x.regNo === reg &&
+                x.diagnosticNo ===
+                  (rec.diagnosticNo || rec.accNo)
+            );
+      
+          if (!insideRecord) return;
+      
+          statuses.push({
+            dept: "Inside Lab",
+      
+            reportType: "special",
+      
+            tests: insideRecord.selectedTests || [],
+      
+            saved: insideRecord.isSaved || false,
+      
+            savedTime: insideRecord.timeSaved,
+          });
+      
+          return;
+        }
+      
+        // Outsource
+        const departmentRecord = findIn(collection, reg);
+      
+        if (!hasDepartment("Outsource") && !departmentRecord)
+          return;
+      
+        statuses.push({
+          dept: label,
+      
+          reportType: "special",
+      
+          tests:
+            departmentRecord?.selectedTests ||
+            selectedTests
+              .filter((t) => {
+                const dept =
+                  typeof t === "string"
+                    ? t
+                    : (t?.dept || "").trim();
+      
+                return (
+                  dept.toLowerCase() === "outsource"
+                );
+              })
+              .map((t) =>
+                typeof t === "string"
+                  ? t
+                  : t.test
+              ),
+      
+          sampleCollected:
+            departmentRecord?.status === "Scanned",
+      
+          outsourceSampleCollectedTime:
+            departmentRecord?.outsourcedCollectedTime,
+      
+          reportReceived:
+            departmentRecord?.isCollected || false,
+      
+          reportReceivedTime:
+            departmentRecord?.reportReceivedTime,
+      
+          reportGiven:
+            departmentRecord?.isGiven || false,
+      
+          reportGivenTime:
+            departmentRecord?.reportDeliveredTime,
+        });
+      
+      });
+
+
+      // OVERALL
+      const routineStatuses = statuses.filter(
+        s => !s.reportType);
+      const specialStatuses = statuses.filter(
+        s => s.reportType === "special");
+        
+        const routineReadyToPrint =
+  routineStatuses.length > 0 &&
+  routineStatuses.every(isRoutineDepartmentComplete);
+  const insideLabItems = specialStatuses.filter(
+    s => s.dept === "Inside Lab"
+  );
+  
+  const outsourceItems = specialStatuses.filter(
+    s => s.dept === "Outsource"
+  );
+  
+  const insideLabCompleted =
+    insideLabItems.length === 0 ||
+    insideLabItems.every(s => s.saved);
+  
+  const outsourceCompleted =
+    outsourceItems.length === 0 ||
+    outsourceItems.every(
+      s =>
+        s.sampleCollected &&
+        s.reportReceived &&
+        s.reportGiven
+    );
+  
+  const specialCompleted =
+    insideLabCompleted &&
+    outsourceCompleted;
+
+    const overall = routineReadyToPrint
+    ? "Completed"
+    : routineStatuses.some(
+        (s) =>
+          s.scanned === "Yes" ||
+          s.saved === "Yes" ||
+          s.validated ||
+          s.entered
+      )
+    ? "In Progress"
+    : "Pending";
+
+       
+
+        const workflowCards = [];
+
+        if (insideLabItems.length > 0) {
+          workflowCards.push({
+            workflow: "inside",
+            statuses: insideLabItems,
+            completed: insideLabCompleted,
+          });
+        }
+        
+        if (outsourceItems.length > 0) {
+          workflowCards.push({
+            workflow: "outsource",
+            statuses: outsourceItems,
+            completed: outsourceCompleted,
+          });
+        }
+        
+        return {
+          ...rec,
+        
+          ...workflow,
+        
+          deptStatuses: statuses,
+        
+          routineStatuses,
+        
+          specialStatuses,
+        
+          workflowCards,
+        
+          overallStatus: overall,
+        
+          routineReadyToPrint,
+        
+          insideLabCompleted,
+        
+          outsourceCompleted,
+        
+          specialCompleted,
+        };
+        
+          
+
+
     });
-  }, [masterRecords, deptData]);
+}, [masterRecords, deptData, reportDetails]);
+
+// ===============================
+// WORKFLOW SYNCHRONIZER
+// ===============================
+useEffect(() => {
+  const syncWorkflowCompletion = async () => {
+    for (const rec of merged) {
+      if (!rec.id) continue;
+      const workflow = reportDetails[rec.id] || {};
+      const updates = {};
+
+     
+     
+     
+     
+      const markRoutineCompleted = (
+        departmentName,
+        fieldName
+      ) => {
+      
+        const department = rec.deptStatuses.find(
+          (d) => d.dept === departmentName
+        );
+      
+        // Department not present
+        if (!department) return;
+      
+        // Not complete yet
+        if (!isRoutineDepartmentComplete(department)) return;
+      
+        // Timestamp already exists - never overwrite it
+        const alreadyCompleted =
+        workflow[fieldName] &&
+        workflow[fieldName].toDate;
+      
+      if (alreadyCompleted) return;
+
+        
+      
+        updates[fieldName] = serverTimestamp();
+      };
+
+      markRoutineCompleted(
+        "Biochemistry",
+        "biochemistryCompletedAt"
+      );
+
+      markRoutineCompleted(
+        "Hormones",
+        "hormonesCompletedAt"
+      );
+      
+      markRoutineCompleted(
+        "Haematology",
+        "haematologyCompletedAt"
+      );
+      
+      markRoutineCompleted(
+        "ESR",
+        "esrCompletedAt"
+      );
+      
+      markRoutineCompleted(
+        "Blood Group",
+        "bloodGroupCompletedAt"
+      );
+      
+      markRoutineCompleted(
+        "Serology",
+        "serologyCompletedAt"
+      );
+      
+      markRoutineCompleted(
+        "Rapid Card",
+        "rapidCardCompletedAt"
+      );
+      
+      markRoutineCompleted(
+        "Coagulation",
+        "coagulationCompletedAt"
+      );
+      
+      markRoutineCompleted(
+        "Urine Analysis",
+        "urineCompletedAt"
+      );
+
+      
+
+      const insideLabCard = rec.workflowCards.find(
+        (card) => card.workflow === "inside"
+      );
+
+      if (
+        insideLabCard &&
+        !workflow.insideLabCompleted &&
+        insideLabCard.completed
+      ) {
+        updates.insideLabCompleted = true;
+      }
+
+      const outsourceCard = rec.workflowCards.find(
+        (card) => card.workflow === "outsource"
+      );
+
+      if (
+        outsourceCard &&
+        !workflow.outsourceCompleted &&
+        outsourceCard.completed
+      ) {
+        updates.outsourceCompleted = true;
+      }
+
+      if (Object.keys(updates).length === 0) {
+        continue;
+      }
+      
+      
+      
+      await setDoc(
+        doc(db, "report_details", rec.id),
+        updates,
+        { merge: true }
+      );
+    }
+  };
+
+  syncWorkflowCompletion();
+}, [merged, reportDetails]);
+
 
   // FILTER & SORT
   const filtered = merged
     .filter((rec) => {
       if (!rec.regNo) return false;
+
+     
 
       // SEARCH LOGIC
       const searchLower = searchReg.toLowerCase();
@@ -199,22 +636,112 @@ export default function MasterViewCard() {
       
       const inRange = dateStr >= fromDate && dateStr <= toDate;
 
-      const sourceOk =
-        sourceFilter === "All" ||
-        rec.source === sourceFilter;
+      const sourceOk =sourceFilter === "All" ||
+      rec.source === sourceFilter;
 
-      return matchesSearch && inRange && sourceOk;
-    })
-    .sort((a, b) => {
-      const dateA = parseDate(a);
-      const dateB = parseDate(b);
-      if (!dateA) return 1;
-      if (!dateB) return -1;
-      return dateA - dateB; 
-    });
+      const reportOk =
+        reportView === "routine"
+          ? rec.routineStatuses.length > 0
+          : rec.specialStatuses.length > 0;
 
-  const toggle = (id) =>
-    setExpanded(expanded === id ? null : id);
+        return (
+          matchesSearch &&
+          inRange &&
+          sourceOk &&
+          reportOk
+        );
+          })
+          .sort((a, b) => {
+            const dateA = parseDate(a);
+            const dateB = parseDate(b);
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+            return dateA - dateB; 
+          });
+
+          const specialDisplayRows = filtered.flatMap((rec) =>
+          rec.workflowCards.map((card) => ({
+            ...rec,
+            workflow: card.workflow,
+            workflowStatuses: card.statuses,
+            workflowCompleted: card.completed,
+            workflowId: `${rec.id}_${card.workflow}`,
+          }))
+        );
+
+      const toggle = (id) =>
+         setExpanded(expanded === id ? null : id);
+  
+  
+
+         const handlePrint = async (rec) => {
+          try {
+            await setDoc(
+              doc(db, "report_details", rec.id),
+              {
+                routineReportPrinted: true,
+                routineReportPrintedTime: serverTimestamp(),
+                routineReportPrintedBy:
+                  sessionStorage.getItem("loggedUser") || "Unknown",
+              },
+              { merge: true }
+            );
+          } catch (err) {
+            console.error(err);
+            alert("Failed to mark report as printed.");
+          }
+        };
+
+    const handleInsideLabReportPrint = async (rec) => {
+      try {
+        await setDoc(
+          doc(db, "report_details", rec.id),
+          {
+            insideLabReportPrinted: true,
+            insideLabReportPrintedTime: serverTimestamp(),
+            insideLabReportPrintedBy:
+              sessionStorage.getItem("loggedUser") || "Unknown",
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        console.error(err);
+        alert("Failed to mark Inside Lab report as printed.");
+      }
+    };
+    
+    const handleWhatsappRequired = async (rec) => {
+      try {
+        await setDoc(
+          doc(db, "report_details", rec.id),
+          {
+            whatsappRequired: true,
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        console.error(err);
+        alert("Unable to update WhatsApp status.");
+      }
+    };
+
+    const handleWhatsappSent = async (rec) => {
+      try {
+        await setDoc(
+          doc(db, "report_details", rec.id),
+          {
+            whatsappSent: true,
+            whatsappSentTime: serverTimestamp(),
+            whatsappSentBy:
+              sessionStorage.getItem("loggedUser") || "Unknown",
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        console.error(err);
+        alert("Unable to mark WhatsApp as sent.");
+      }
+    };
 
   const getColor = (s) =>
     s === "Validated"
@@ -225,9 +752,274 @@ export default function MasterViewCard() {
       ? "status-yellow"
       : "status-gray";
 
+
+  const insideLabRows = specialDisplayRows.filter(
+    (r) => r.workflow === "inside"
+  );
+
+  const outsourceRows = specialDisplayRows.filter(
+    (r) => r.workflow === "outsource"
+  );
+
+  const renderCardHeader = (
+    showPrint = true,
+    showWhatsapp = false
+  ) => (
+    <div className={`card-header-row ${showPrint ? "" : "no-print"}`}>
+      <div>Reg No</div>
+      <div>Diagnostic</div>
+      <div>Name</div>
+      <div>Doctor</div>
+      <div>Source</div>
+      <div>Phone</div>
+      <div>Category</div>
+      <div>Status</div>
+      {showPrint && <div>Print Report</div>}
+      {showWhatsapp && <div>WhatsApp</div>}
+    </div>
+  );
+
+  const renderCommonCardTop = (rec) => (
+    <>
+      <div>{rec.regNo}</div>
+      <div>{rec.diagnosticNo || "—"}</div>
+      <div>{rec.name}</div>
+      <div>{rec.doctor}</div>
+      <div>{rec.source}</div>
+      <div>{rec.phone}</div>
+      <div>{rec.category}</div>
+    </>
+  );
+
+  const renderRoutineDropdown = (rec) => (
+    <div className="dropdown-content">
+      <table>
+        <thead>
+          <tr>
+            <th>Department</th>
+            <th>Tests</th>
+            <th>Scanned</th>
+            <th>Saved</th>
+            <th>Validated</th>
+            <th>Entered</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {rec.routineStatuses.map((d, i) => (
+            <tr key={i}>
+              <td>{d.dept}</td>
+
+              <td>{Array.isArray(d.tests) ? d.tests.join(", ") : "—"}</td>
+
+              <td>{d.scanned}</td>
+
+              <td>{d.saved}</td>
+
+              <td>{d.validated ? "Yes" : "No"}</td>
+
+              <td>{d.entered ? "Yes" : "No"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const renderSpecialDropdown = (rec) => {
+    const isInsideLab = rec.workflow === "inside";
+
+    return (
+      <div className="dropdown-content">
+        {isInsideLab && (
+          <>
+            <h4>🏥 Inside Lab</h4>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Department</th>
+                  <th>Saved</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {rec.workflowStatuses.map((d, i) => (
+                  <tr key={i}>
+                    <td>{d.dept}</td>
+                    <td className={d.saved ? "status-yes" : "status-pending"}>
+                      {d.saved ? "Yes" : "No"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+
+        {!isInsideLab && (
+          <>
+            <h4>🚚 Outsource</h4>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Department</th>
+                  <th>Collected</th>
+                  <th>Received</th>
+                  <th>Delivered</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {rec.workflowStatuses.map((d, i) => (
+                  <tr key={i}>
+                    <td>{d.dept}</td>
+
+                    <td
+                      className={
+                        d.sampleCollected ? "status-yes" : "status-pending"
+                      }
+                    >
+                      {d.sampleCollected ? "Yes" : "No"}
+                    </td>
+
+                    <td
+                      className={
+                        d.reportReceived ? "status-yes" : "status-pending"
+                      }
+                    >
+                      {d.reportReceived ? "Yes" : "No"}
+                    </td>
+
+                    <td
+                      className={d.reportGiven ? "status-yes" : "status-pending"}
+                    >
+                      {d.reportGiven ? "Yes" : "No"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderRoutineCard = (rec) => (
+    <div key={rec.id} className="master-card">
+      <div className="card-top" onClick={() => toggle(rec.id)}>
+        {renderCommonCardTop(rec)}
+
+        <div className={`status-tag ${getColor(rec.overallStatus)}`}>
+          {rec.overallStatus}
+        </div>
+
+        <div>
+          <button
+            className={rec.routineReportPrinted ? "printed-btn printed" : "printed-btn"}
+            disabled={!rec.routineReadyToPrint || rec.routineReportPrinted}
+            onClick={(e) => {
+              e.stopPropagation();
+              handlePrint(rec);
+            }}
+          >
+            {rec.routineReportPrinted ? "Printed" : "Print Report"}
+          </button>
+        </div>
+
+        <div>
+          <button
+            className={
+              rec.whatsappSent
+                ? "whatsapp-btn sent"
+                : rec.whatsappRequired
+                ? "whatsapp-btn required"
+                : "whatsapp-btn"
+            }
+            onClick={(e) => {
+              e.stopPropagation();
+
+              if (!rec.whatsappRequired) {
+                handleWhatsappRequired(rec);
+              } else if (!rec.whatsappSent) {
+                handleWhatsappSent(rec);
+              }
+            }}
+            disabled={rec.whatsappSent}
+          >
+            {rec.whatsappSent
+              ? "WhatsApp Sent"
+              : rec.whatsappRequired
+              ? "Send WhatsApp"
+              : "WhatsApp Required"}
+          </button>
+        </div>
+      </div>
+
+      {expanded === rec.id && renderRoutineDropdown(rec)}
+    </div>
+  );
+
+  const renderSpecialCard = (rec) => {
+    const isInsideLab = rec.workflow === "inside";
+
+    return (
+      <div key={rec.workflowId} className="master-card">
+       <div
+        className={`card-top ${isInsideLab ? "" : "no-print"}`}
+        onClick={() => toggle(rec.workflowId)}
+      >
+          {renderCommonCardTop(rec)}
+
+          <div
+            className={
+              rec.workflowCompleted
+                ? "status-tag status-green"
+                : "status-tag status-yellow"
+            }
+          >
+            {rec.workflowCompleted ? "Completed" : "Pending"}
+          </div>
+
+          
+          
+          {isInsideLab ? (
+  <div>
+    <button
+      className={
+        rec.insideLabReportPrinted
+          ? "printed-btn printed"
+          : "printed-btn"
+      }
+      disabled={!rec.workflowCompleted || 
+        rec.insideLabReportPrinted}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleInsideLabReportPrint(rec);
+        }}
+    >
+      {rec.insideLabReportPrinted ? "Printed" : "Print Report"}
+    </button>
+  </div>
+) : null}
+                  
+        </div>
+
+        {expanded === rec.workflowId && renderSpecialDropdown(rec)}
+      </div>
+    );
+  };
+
   return (
-    <div className="master-container">
-      <h2>🩺 Master Register — Card View</h2>
+        <div className="master-container">
+
+      <div className="master-header">
+        <h2>🩺 Master Register — Card View</h2>
+
+        <UserMenu />
+      </div>
 
       {/* FILTER BAR */}
       <div className="filter-bar master-filter">
@@ -250,91 +1042,68 @@ export default function MasterViewCard() {
           onChange={(e) => setToDate(e.target.value)}
         />
 
-        <div className="source-buttons">
-          {["OPD", "IPD", "Third Floor", "All"].map((s) => (
-            <button
-              key={s}
-              className={sourceFilter === s ? "active" : ""}
-              onClick={() => setSourceFilter(s)}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* HEADER ROW */}
-      <div className="card-header-row">
-        <div>Reg No</div>
-        <div>Diagnostic</div>
-        <div>Name</div>
-        <div>Doctor</div>
-        <div>Source</div>
-        <div>Phone</div>
-        <div>Category</div>
-        <div>Status</div>
-        <div>Actions</div>
-      </div>
-
-      {/* CARDS */}
-      {filtered.map((rec) => (
-        <div key={rec.id} className="master-card">
-          <div className="card-top" onClick={() => toggle(rec.id)}>
-            <div>{rec.regNo}</div>
-            <div>{rec.diagnosticNo || "—"}</div>
-            <div>{rec.name}</div>
-            <div>{rec.doctor}</div>
-            <div>{rec.source}</div>
-            <div>{rec.phone}</div>
-            <div>{rec.category}</div>
-
-            <div className={`status-tag ${getColor(rec.overallStatus)}`}>
-              {rec.overallStatus}
-            </div>
-
-            <div className="card-actions">
-              <input type="checkbox" />
+        <div className="filter-bottom-row">
+          <div className="source-buttons">
+            {["OPD", "IPD", "Third Floor", "All"].map((s) => (
               <button
-                className="whatsapp-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  alert("WhatsApp message!");
-                }}
+                key={s}
+                className={sourceFilter === s ? "active" : ""}
+                onClick={() => setSourceFilter(s)}
               >
-                📤
+                {s}
               </button>
-            </div>
+            ))}
           </div>
 
-          {expanded === rec.id && (
-            <div className="dropdown-content">
-              <h4>🧪 Department Status</h4>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Department</th>
-                    <th>Scanned</th>
-                    <th>Saved</th>
-                    <th>Validated</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rec.deptStatuses.map((d, i) => (
-                    <tr key={i}>
-                      <td>{d.dept}</td>
-                      <td>{d.scanned}</td>
-                      <td>{d.saved}</td>
-                      <td>{d.validated ? "Yes" : "No"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      ))}
+          <div className="report-view-tabs">
+            <button
+              className={reportView === "routine" ? "active" : ""}
+              onClick={() => setReportView("routine")}
+            >
+              Routine Reports
+            </button>
 
-      {filtered.length === 0 && (
+            <button
+              className={reportView === "special" ? "active" : ""}
+              onClick={() => setReportView("special")}
+            >
+              Special Reports
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {reportView === "routine" && (
+        <>
+          {renderCardHeader(true)}
+          {filtered.map(renderRoutineCard)}
+        </>
+      )}
+
+      {reportView === "special" && (
+        <>
+         <h3 className="special-section-title">
+          Inside Lab
+          </h3>
+          {renderCardHeader(true, false)}
+          {insideLabRows.map(renderSpecialCard)}
+
+          <div className="special-divider" />
+
+          <h3 className="special-section-title">
+          Outsource
+        </h3>
+
+        {renderCardHeader(false, false)}
+          {outsourceRows.map(renderSpecialCard)}
+        </>
+      )}
+
+      {reportView === "routine" && filtered.length === 0 && (
+        <p className="no-records">No records found…</p>
+      )}
+
+      {reportView === "special" && specialDisplayRows.length === 0 && (
         <p className="no-records">No records found…</p>
       )}
     </div>

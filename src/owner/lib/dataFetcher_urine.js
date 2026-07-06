@@ -130,11 +130,38 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
   const violators = [];
   unifiedRows.forEach((row) => {
     const allowed = timingMap["urine"]?.[stage] ?? timingMap.default?.[stage] ?? 30;
-    const s = toDate(row.timeScanned);
-    const e = toDate(row.timeSaved);
-    if (!s || !e) return;
-    
-    const duration = Math.round((e - s) / 60000);
+    let start;
+    let end;
+
+      switch (stage) {
+        case "scanned_to_saved":
+          start = toDate(row.timeScanned);
+          end = toDate(row.timeSaved);
+          break;
+
+        case "saved_to_validated":
+          start = toDate(row.timeSaved);
+          end = toDate(row.timeValidated);
+          break;
+
+        case "validated_to_entered":
+          start = toDate(row.timeValidated);
+          end = toDate(
+            row.enteredTime ||
+            row.timeEntered
+          );
+          break;
+
+        default:
+          return;
+      }
+
+      if (!start || !end)
+        return;
+
+      const duration = Math.round(
+        (end - start) / 60000
+      );
     
     if (duration > allowed) {
       const excess = duration - allowed; 
@@ -145,13 +172,32 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
         diagnosticNo: row.diagnosticNo,
         name: row.name,
         test: row.test,
-        duration: duration, 
-        excess: Math.round(excess), 
-        allowed, 
+        duration,
+        excess: Math.round(excess),
+        allowed,
         status,
-        department: "Urine Examination",
-        timeScanned: row.timeScanned,
-        timeSaved: row.timeSaved,
+        department: "urine",
+      
+        savedBy:
+          row.savedBy || "NA",
+      
+        validatedBy:
+          row.validatedBy || "NA",
+      
+        enteredBy:
+          row.enteredBy || "NA",
+      
+        timeScanned:
+          row.timeScanned,
+      
+        timeSaved:
+          row.timeSaved,
+      
+        timeValidated:
+          row.timeValidated,
+      
+        enteredTime:
+          row.enteredTime,
       });
     }
   });
@@ -215,6 +261,123 @@ export function computeKPIs(masterRows = [], urineRows = []) {
   };
 }
 
+/* ================= STAFF ANALYTICS ====================== */
+
+export function computeStaffAnalytics(rows = []) {
+  const buildAnalytics = (
+    rows,
+    staffField,
+    startField,
+    endField
+  ) => {
+    const map = {};
+
+    rows.forEach((r) => {
+      const staff =
+        r?.[staffField]?.trim?.();
+
+      if (!staff) return;
+
+      if (!map[staff]) {
+        map[staff] = {
+          count: 0,
+          durations: [],
+          timeline: [],
+        };
+      }
+
+      map[staff].count++;
+
+      const mins = minutesDiff(
+        r[startField],
+        r[endField]
+      );
+
+      if (mins != null) {
+        map[staff].durations.push(
+          mins
+        );
+      }
+
+      const t = toDate(
+        r[endField]
+      );
+
+      if (t) {
+        const hour =
+          t.getHours();
+
+        map[staff].timeline.push(
+          hour
+        );
+      }
+    });
+
+    return {
+      distribution:
+        Object.entries(map).map(
+          ([name, v]) => ({
+            name,
+            value: v.count,
+          })
+        ),
+
+      averages:
+        Object.entries(map).map(
+          ([name, v]) => ({
+            name,
+            value:
+              v.durations.length
+                ? Math.round(
+                    v.durations.reduce(
+                      (a, b) =>
+                        a + b,
+                      0
+                    ) /
+                      v.durations
+                        .length
+                  )
+                : null,
+          })
+        ),
+
+      timelines:
+        Object.fromEntries(
+          Object.entries(map).map(
+            ([name, v]) => [
+              name,
+              v.timeline,
+            ]
+          )
+        ),
+    };
+  };
+
+  return {
+    testing: buildAnalytics(
+      rows,
+      "savedBy",
+      "timeScanned",
+      "timeSaved"
+    ),
+
+    validated:
+      buildAnalytics(
+        rows,
+        "validatedBy",
+        "timeSaved",
+        "timeValidated"
+      ),
+
+    entered: buildAnalytics(
+      rows,
+      "enteredBy",
+      "timeValidated",
+      "timeEntered"
+    ),
+  };
+}
+
 /* ================= SUBSCRIBE OVERVIEW =================== */
 
 export function subscribeOverview({ onData, source = "All", dateRange }) {
@@ -249,12 +412,19 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
     const unified = unifyForCharts(merged);
     const violators = computeSLAViolations(unified, testTimings);
 
-    onData({ 
-      masterRows: filteredMaster, 
-      deptRows: merged, 
-      unifiedRows: unified, 
-      violators: violators, 
-      kpis: computeKPIs(filteredMaster, merged) 
+    onData({
+      masterRows: filteredMaster,
+      deptRows: merged,
+      unifiedRows: unified,
+      violators,
+      kpis: computeKPIs(
+        filteredMaster,
+        merged
+      ),
+      staffAnalytics:
+        computeStaffAnalytics(
+          merged
+        ),
     });
   };
 

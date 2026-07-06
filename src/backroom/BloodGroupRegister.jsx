@@ -230,6 +230,7 @@ export default function BloodGroupRegister() {
         scannedTime: scanTime ? Timestamp.fromDate(scanTime) : (entry.scannedTime || null),
         saved: "Yes",
         savedTime: serverTimestamp(),
+        savedBy:  sessionStorage.getItem("loggedUser") || "Unknown",
         timeCollected: entry.timeCollected ?? null,
         status: "saved",
         type: tab,
@@ -355,6 +356,7 @@ export default function BloodGroupRegister() {
               <th>Rh</th>
               <th>Result</th>
               <th>Scanned</th>
+              <th>Saved By</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -398,6 +400,16 @@ export default function BloodGroupRegister() {
                     <option value="Yes">Yes</option>
                   </select>
                 </td>
+
+                 <td
+              style={{
+                minWidth: "130px",
+                fontWeight: "600",
+                color: "#1e3a8a"
+              }}
+            >
+              {e.savedBy || "—"}
+            </td>
                 <td>
                   <button className="save-btn" disabled={e.saved === "Yes" || saving} onClick={() => handleSave(activeTab, e)}>
                     Save

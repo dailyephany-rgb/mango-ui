@@ -4,21 +4,19 @@ import "./mango.css";
 import { db } from "./firebaseConfig.js";
 import testMapping from "./test_mapping.json";
 import { collection, serverTimestamp, setDoc, doc, getDoc } from "firebase/firestore";
+import UserMenu from "./auth/UserMenu";
 
 
 export default function Mango() {
-  const departments = [
-    { key: "haem", label: "Haematology" },
-    { key: "bio", label: "Bio-Chemistry" },
-    { key: "coa", label: "Coagulation" },
-    { key: "sero", label: "Serology" },
-    { key: "micro", label: "MicroBiology" },
-    { key: "path", label: "Clinical Pathology" },
-    { key: "hormone", label: "Hormones" },
-    { key: "urine", label: "Urine Examination" },
-    { key: "outsource", label: "Outsource" },
-  ];
 
+  const departments = Object.keys(testMapping).map((label) => ({
+    key: label
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-"),
+    label,
+  }));
+
+ 
   const allTests = departments.flatMap((d) =>
     (testMapping[d.label] || []).map((test) => ({
       dept: d.label,
@@ -256,6 +254,7 @@ export default function Mango() {
         ...formData,
         regNo,
         diagnosticNo: diagNo,
+        enteredBy:  sessionStorage.getItem("loggedUser") || "Unknown",
         timePrinted: fullTimePrinted,
         timeCollected: finalTimeCollected,
         urgent: formData.urgent || false,
@@ -268,6 +267,33 @@ export default function Mango() {
 
       // 2. Update existing or set new
       await setDoc(docRef, entryData, { merge: true });
+
+     
+// Create / Update Report Details
+// ==============================
+
+        const reportDocRef = doc(
+          db,
+          "report_details",
+          compositeId
+        );
+
+      const reportDetailsEntry = {
+        regNo,
+        diagnosticNo: diagNo,
+
+        name: formData.name,
+
+          timeCollected: finalTimeCollected,
+        };
+
+        await setDoc(
+          reportDocRef,
+          reportDetailsEntry,
+          { merge: true }
+        );
+
+
       alert(`✅ Entry ${isEditMode ? "Updated" : "Saved"} successfully!`);
       
       clearFormAndReset();
@@ -279,13 +305,18 @@ export default function Mango() {
   };
 
   return (
-    <div className="mango-container">
-      <header className="mango-header">
+        <div className="mango-container">
+        <header className="mango-header">
         <div className="mango-header-left">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/Letter_V.svg" alt="Logo" className="mango-logo" />
-          <h1>Vasundhara Hospital Limited</h1>
-        </div>
-      </header>
+      <img
+        src="https://upload.wikimedia.org/wikipedia/commons/6/6b/Letter_V.svg"
+        alt="Logo"
+        className="mango-logo"
+      />
+      <h1>Vasundhara Hospital Limited</h1>
+    </div>
+    <UserMenu />
+    </header>
 
       <div className="mango-content">
         <div className="left-panel">

@@ -1,36 +1,47 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import "./Haematology.css";
 import { db } from "../firebaseConfig.js";
 import {
   collection,
   onSnapshot,
   doc,
-  getDoc,
   setDoc,
   serverTimestamp,
   Timestamp,
+  query, // Added for inventory query
 } from "firebase/firestore";
+// Import Inventory Deduction Logic
+import { handleInventoryDeduction } from "../inventory/inventorymapping";
+// Import the Inventory Tab Component
+import HaemInventoryTab from "../inventory/HaemInventoryTab.jsx";
+import UserMenu from "../auth/UserMenu";
 
 // 🚨 Define the unique key for this department
 const CURRENT_DEPT = "Haematology";
 
 export default function Haematology() {
-  const [activeTab, setActiveTab] = useState("3-part");
-  const [patients, setPatients] = useState([]);
+  const [activeTab, setActiveTab] = useState("register");
+  const [masterEntries, setMasterEntries] = useState([]); // Changed to hold raw master data
+  const [haemDocs, setHaemDocs] = useState({}); // Stores the haematology_register docs
   const [loading, setLoading] = useState(true);
 
-  // State to track which entries have been marked critical FOR THIS DEPT
+  // NEW: Lifted Inventory State to eliminate flickering when switching tabs
+  const [fullInventory, setFullInventory] = useState([]);
+
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
-  // State to temporarily hold the critical parameter until "Save" is pressed
-  const [criticalParams, setCriticalParams] = useState({});
+  const [criticalParams, setCriticalParams] = useState(() => {
+    const saved = localStorage.getItem(
+      "haematology_pendingCritical"
+    );
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const [regSearch, setRegSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [sourceFilter, setSourceFilter] = useState("All");
 
-  // UPDATE: Load localScans and localScanTimes from LocalStorage to survive refresh
   const [localScans, setLocalScans] = useState(() => {
     const saved = localStorage.getItem("haematology_localScans");
     return saved ? JSON.parse(saved) : {};
@@ -41,38 +52,47 @@ export default function Haematology() {
     return saved ? JSON.parse(saved) : {};
   });
 
+  const [machineSelections, setMachineSelections] = useState(() => {
+    const saved = localStorage.getItem("haematology_machineSelections");
+    return saved ? JSON.parse(saved) : {};
+  });
+
   const [savedSet, setSavedSet] = useState(new Set());
 
-  const HAEM_TESTS_CANON = ["haemogram", "hb haemoglobin", "lamellar body count"];
+  const HAEM_TESTS_CANON = ["haemogram", "hb haemoglobin", "lamellar body count","HEMATOCRIT","RED BLOOD CELL COUNT","TOTAL LEUCOCYTIC COUNT","DIFFERENTIAL LEUCOCYTIC COUNT", "PLATELET COUNT", "RED BLOOD CELL INDICES"];
 
-  // HELPER: Prevent Firebase segment errors by replacing / with -
   const safeKey = (val) => String(val || "").replace(/\//g, "-");
-
-  const normalize = (s = "") =>
-    String(s)
-      .toLowerCase()
-      .replace(/[\s,._\-\(\)]+/g, " ")
-      .replace(/fluid/g, "")
-      .trim();
 
   const extractTestName = (t) => {
     if (!t) return "";
-    if (typeof t === "string") return t;
-    if (typeof t === "object" && (t.test || t.name)) return t.test || t.name;
+    if (typeof t === "string") return t.toLowerCase();
+    if (typeof t === "object" && (t.test || t.name))
+      return (t.test || t.name).toLowerCase();
     return "";
   };
-
+  
   const entryHasCanonicalTest = (entry, canonical) => {
-    const target = normalize(canonical);
+    const target = canonical.toLowerCase();
     const arr = entry.selectedTests || [];
+  
     return arr.some((x) => {
       const raw = extractTestName(x);
-      return normalize(raw).includes(target) || target.includes(normalize(raw));
+  
+      // SAME behavior as before (bidirectional match)
+      return raw.includes(target) || target.includes(raw);
     });
   };
 
-  const getEntryCanonicalTests = (entry) =>
-    HAEM_TESTS_CANON.filter((c) => entryHasCanonicalTest(entry, c));
+  const getEntryCanonicalTests = (entry) => {
+    if (entry._cachedCanonical) return entry._cachedCanonical;
+  
+    const result = HAEM_TESTS_CANON.filter((c) =>
+      entryHasCanonicalTest(entry, c)
+    );
+  
+    entry._cachedCanonical = result;
+    return result;
+  };
 
   const normalizeSource = (raw) => {
     if (!raw) return "Unknown";
@@ -116,158 +136,185 @@ export default function Haematology() {
   };
 
   useEffect(() => {
-    // FIX: Set local date to roll over at midnight local time
     const now = new Date();
     const y = now.getFullYear();
     const m = String(now.getMonth() + 1).padStart(2, '0');
     const d = String(now.getDate()).padStart(2, '0');
     const today = `${y}-${m}-${d}`;
-
     setDateFrom(today);
     setDateTo(today);
   }, []);
 
   useEffect(() => {
-    const unsubMaster = onSnapshot(
-      collection(db, "master_register"),
-      async (snap) => {
-        const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-        const haemEntries = all.filter((entry) =>
-          (entry.selectedTests || []).some((t) =>
-            HAEM_TESTS_CANON.some((c) =>
-              normalize(extractTestName(t)).includes(normalize(c))
-            )
-          )
-        );
-
-        const merged = await Promise.all(
-          haemEntries.map(async (entry) => {
-            const regNo = entry.regNo || entry.regno || entry.RegNo || entry.Regno || entry.id;
-            const diagnosticNo = entry.diagnosticNo || "-";
-            
-            // FIX: Sanitize the compositeKey immediately
-            const compositeKey = safeKey(`${regNo}_${diagnosticNo}`);
-            
-            const timePrinted = entry.timePrinted || null;
-            const timeCollected = entry.timeCollected || null;
-
-            const ref = doc(db, "haematology_register", compositeKey);
-            const snapDoc = await getDoc(ref);
-
-            const base = {
-              ...entry,
-              regNo: String(regNo),
-              compositeKey: compositeKey,
-              accessionNo: diagnosticNo,
-              source: normalizeSource(entry.source || entry.category),
-              scanned: localScans[compositeKey] ?? "No",
-              status: "pending",
-              urgent: entry.urgent || false, 
-              timePrinted,
-              timeCollected,
-            };
-
-            if (snapDoc.exists()) {
-              const data = snapDoc.data();
-              const isSaved =
-                data.saved === "Yes" || data.status?.toLowerCase() === "saved";
-              const currentScanned =
-                localScans[compositeKey] ?? data.scanned ?? "No";
-
-              return {
-                ...base,
-                ...data,
-                scanned: currentScanned,
-                status: isSaved
-                  ? "saved"
-                  : currentScanned === "Yes"
-                  ? "scanned"
-                  : "pending",
-                timePrinted: data.timePrinted || timePrinted,
-                timeCollected: data.timeCollected || timeCollected,
-              };
-            }
-
-            return base;
-          })
-        );
-
-        setPatients(merged);
-        setLoading(false);
-      }
-    );
-
-    const unsubHaem = onSnapshot(
-      collection(db, "haematology_register"),
-      (snap) => {
-        const s = new Set();
-        snap.docs.forEach((d) => {
-          const data = d.data();
-          if (data?.saved === "Yes" || data?.status === "saved") {
-            const key = d.id;
-            s.add(key);
-          }
-        });
-        setSavedSet(s);
-      }
-    );
-
+    // 1. Master Register
+    const unsubMaster = onSnapshot(collection(db, "master_register"), (snap) => {
+      setMasterEntries(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setLoading(false);
+    });
+  
+    // 2. Haematology Register
+    const unsubHaem = onSnapshot(collection(db, "haematology_register"), (snap) => {
+      const docsMap = {};
+      const s = new Set();
+  
+      snap.docs.forEach((d) => {
+        const data = d.data();
+        docsMap[d.id] = data;
+        if (data?.saved === "Yes" || data?.status === "saved") {
+          s.add(d.id);
+        }
+      });
+  
+      setHaemDocs(docsMap);
+      setSavedSet(s);
+    });
+  
+    // 3. Critical Alerts
     const unsubCritical = onSnapshot(collection(db, "critical_alerts"), (snap) => {
       const cSet = new Set();
-      snap.docs.forEach(docSnap => {
+  
+      snap.docs.forEach((docSnap) => {
         const data = docSnap.data();
-        if (data.regNo && String(data.dept).toLowerCase() === CURRENT_DEPT.toLowerCase()) {
-          // FIX: Sanitize search key for consistency
+        if (
+          data.regNo &&
+          String(data.dept).toLowerCase() === CURRENT_DEPT.toLowerCase()
+        ) {
           const cKey = safeKey(`${data.regNo}_${data.diagnosticNo}`);
           cSet.add(cKey);
         }
       });
+  
       setCriticalReportedSet(cSet);
     });
-
+  
     return () => {
       unsubMaster();
       unsubHaem();
       unsubCritical();
     };
-  }, [localScans]);
+  }, []);
 
+  useEffect(() => {
+    if (activeTab !== "inventory") return;
+  
+    const unsubInv = onSnapshot(
+      query(collection(db, "inventory_logs")),
+      (snap) => {
+        setFullInventory(
+          snap.docs.map((d) => ({ ...d.data(), id: String(d.id) }))
+        );
+      }
+    );
+  
+    return () => unsubInv();
+  }, [activeTab]);
+
+  // useMemo combines master and haem register data instantly without async loops
+  const patients = useMemo(() => {
+    const haemEntries = masterEntries.filter((entry) => {
+      const tests = entry.selectedTests || [];
+  
+      return tests.some((t) => {
+        const name = extractTestName(t);
+        return HAEM_TESTS_CANON.some((c) => name.includes(c));
+      });
+    });
+  
+    return haemEntries.map((entry) => {
+      const canonicalTests = getEntryCanonicalTests(entry);
+      const regNo = entry.regNo || entry.regno || entry.id;
+      const diagnosticNo = entry.diagnosticNo || "-";
+      const compositeKey = safeKey(`${regNo}_${diagnosticNo}`);
+      const savedData = haemDocs[compositeKey] || {};
+  
+      const currentScanned =
+        localScans[compositeKey] ?? savedData.scanned ?? "No";
+        const localScanTime = localScanTimes[compositeKey];
+      const isSaved = savedSet.has(compositeKey);
+      const currentMachine =
+      savedData.machine ??
+      machineSelections[compositeKey] ??
+      "5-part";
+
+  
+      return {
+        ...entry,
+        ...savedData,
+        regNo: String(regNo),
+        compositeKey,
+        accessionNo: diagnosticNo,
+        canonicalTests,
+        source: normalizeSource(entry.source || entry.category),
+        scanned: currentScanned,
+        scannedTime: localScanTime ??savedData.scannedTime ?? null,
+        machine: currentMachine,
+        status: isSaved
+          ? "saved"
+          : currentScanned === "Yes"
+          ? "scanned"
+          : "pending",
+        urgent: entry.urgent || false,
+      };
+    });
+  }, [
+    masterEntries,
+    haemDocs,
+    localScans,
+    localScanTimes,
+    machineSelections,
+    savedSet
+  ]);
+      
   const handleScan = (compositeKey, value) => {
     const now = new Date().toISOString();
-    
     setLocalScans((prev) => {
       const updated = { ...prev, [compositeKey]: value };
       localStorage.setItem("haematology_localScans", JSON.stringify(updated));
       return updated;
     });
-    
     setLocalScanTimes((prev) => {
       const updatedTimes = { ...prev, [compositeKey]: value === "Yes" ? now : null };
       localStorage.setItem("haematology_localScanTimes", JSON.stringify(updatedTimes));
       return updatedTimes;
     });
+  };
 
-    setPatients((prev) =>
-      prev.map((p) =>
-        p.compositeKey === compositeKey
-          ? {
-              ...p,
-              scanned: value,
-              status: value === "Yes" ? "scanned" : "pending",
-            }
-          : p
-      )
-    );
+
+  const handleMachineSelection = (compositeKey, machine) => {
+    setMachineSelections((prev) => {
+      const updated = {
+        ...prev,
+        [compositeKey]: machine,
+      };
+  
+      localStorage.setItem(
+        "haematology_machineSelections",
+        JSON.stringify(updated)
+      );
+  
+      return updated;
+    });
   };
 
   const triggerCritical = async (entry) => {
     const parameter = window.prompt("Enter Critical Parameter & Value (e.g., HB: 4.2):");
     if (!parameter) return;
-
     const regKey = entry.compositeKey;
-    setCriticalParams(prev => ({ ...prev, [regKey]: parameter }));
-    setCriticalReportedSet(prev => new Set(prev).add(regKey));
+    setCriticalParams((prev) => {
+      const updated = {
+        ...prev,
+        [regKey]: parameter,
+      };
+    
+      localStorage.setItem(
+        "haematology_pendingCritical",
+        JSON.stringify(updated)
+      );
+    
+      return updated;
+    });
+
+  
     alert("Parameter captured. This will be sent to Critical Alerts when you click 'Save'.");
   };
 
@@ -275,20 +322,37 @@ export default function Haematology() {
     try {
       const patient = patients.find((p) => p.compositeKey === compositeKey);
       if (!patient) return;
-      
-      const isScanned = localScans[compositeKey] === "Yes" || patient.scanned === "Yes";
-      if (!isScanned) {
-        alert("Please scan before saving.");
-        return;
-      }
+      if (patient.scanned !== "Yes") return alert("Please scan before saving.");
 
       const isCritical = (criticalReportedSet.has(compositeKey) || criticalParams[compositeKey]) ? "Yes" : "No";
-      const canonicalTests = getEntryCanonicalTests(patient);
+      const canonicalTests = patient.canonicalTests;
+      // --- 1. FIRE-AND-FORGET INVENTORY (Background Task) ---
+      
+      const selectedMachine = patient.machine || "5-part";
 
+        const machineType =
+          selectedMachine === "3-part"
+            ? "_three_part"
+            : "_five_part";
+
+        const testsToDeduct =
+          canonicalTests.map(
+            (t) => `${t}${machineType}`
+          );
+
+        handleInventoryDeduction(
+          testsToDeduct,
+          "GENERAL"
+        ).catch((e) =>
+          console.error(
+            "Inventory error:",
+            e
+          )
+        );
+
+      // 2. Critical Alert Save
       if (criticalParams[compositeKey]) {
-        // FIX: Re-verify key is safe for path
         const criticalId = safeKey(`${compositeKey}_${CURRENT_DEPT}`);
-
         await setDoc(doc(db, "critical_alerts", criticalId), {
             name: patient.name || "",
             regNo: patient.regNo || "",
@@ -299,6 +363,7 @@ export default function Haematology() {
             doctor: patient.doctor || "Self",
             category: patient.category || "-",
             source: patient.source || "-",
+            reportedBy:  sessionStorage.getItem("loggedUser") || "Unknown",
             timePrinted: patient.timePrinted || null,
             timeCollected: patient.timeCollected || null,
             criticalParameter: criticalParams[compositeKey],
@@ -312,6 +377,7 @@ export default function Haematology() {
       const rawLocalTime = localScanTimes[compositeKey];
       const scanTime = rawLocalTime ? new Date(rawLocalTime) : null;
 
+      // 3. Main Data Save
       await setDoc(
         doc(db, "haematology_register", compositeKey),
         {
@@ -325,10 +391,12 @@ export default function Haematology() {
           source: patient.source || "-",
           category: patient.category || "-",
           selectedTests: canonicalTests,
+          machine: selectedMachine,
           scanned: "Yes",
           scannedTime: scanTime ? Timestamp.fromDate(scanTime) : (patient.scannedTime || null),
           saved: "Yes",
           savedTime: serverTimestamp(),
+          savedBy: sessionStorage.getItem("loggedUser") || "Unknown",
           timePrinted: patient.timePrinted || null,
           timeCollected: patient.timeCollected || null,
           status: "saved",
@@ -338,35 +406,52 @@ export default function Haematology() {
       );
       
       setLocalScans((prev) => {
-        const updated = { ...prev };
-        delete updated[compositeKey];
+        const updated = { ...prev }; delete updated[compositeKey];
         localStorage.setItem("haematology_localScans", JSON.stringify(updated));
         return updated;
       });
-
       setLocalScanTimes((prev) => {
-        const updated = { ...prev };
-        delete updated[compositeKey];
+        const updated = { ...prev }; delete updated[compositeKey];
         localStorage.setItem("haematology_localScanTimes", JSON.stringify(updated));
         return updated;
       });
 
-      setCriticalParams(prev => { const n = {...prev}; delete n[compositeKey]; return n; });
+      setCriticalParams((prev) => {
+        const n = { ...prev };
       
-      setSavedSet((prev) => new Set(prev).add(compositeKey));
-      alert(`Saved ${patient.name || patient.regNo} successfully! ${isCritical === "Yes" ? "(Critical Alert Sent)" : ""}`);
-    } catch (err) {
-      console.error("🔥 Save Error:", err);
-      alert(`Error saving Haematology entry: ${err.message}`);
-    }
+        delete n[compositeKey];
+      
+        localStorage.setItem(
+          "haematology_pendingCritical",
+          JSON.stringify(n)
+        );
+      
+        return n;
+      });
+      
+      setMachineSelections((prev) => {
+        const updated = { ...prev };
+      
+        delete updated[compositeKey];
+      
+        localStorage.setItem(
+          "haematology_machineSelections",
+          JSON.stringify(updated)
+        );
+      
+        return updated;
+      });
+      
+      alert(`Saved ${patient.name || patient.regNo} successfully!`);
+      
+      } catch (err) {
+        console.error("🔥 Save Error:", err);
+        alert(`Error saving: ${err.message}`);
+      }  
   };
 
-  const threePart = patients.filter((p) => is3PartRequired(p.age, p.ageUnit));
-  const fivePart = patients.filter((p) => !is3PartRequired(p.age, p.ageUnit));
-
-  const filteredPatients =
-    (activeTab === "3-part" ? threePart : fivePart)
-      .filter((p) => {
+  const filteredPatients = patients
+    .filter((p) => {
         if (regSearch.trim()) {
           const key = String(p.regNo || "").toLowerCase();
           const acc = String(p.diagnosticNo || p.accessionNo || "").toLowerCase();
@@ -383,9 +468,7 @@ export default function Haematology() {
         return true;
       })
       .sort((a, b) => {
-        if (a.urgent !== b.urgent) {
-          return a.urgent ? -1 : 1;
-        }
+        if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
         const dateA = parseDate(a);
         const dateB = parseDate(b);
         if (!dateA) return 1;
@@ -397,118 +480,194 @@ export default function Haematology() {
 
   return (
     <div className="haem-container">
-      <div className="header">
-        <h2>🩸 Haematology Department</h2>
-        <div className="tabs">
-          <button className={activeTab === "3-part" ? "active" : ""} onClick={() => setActiveTab("3-part")}>
-            3-Part Machine
-          </button>
-          <button className={activeTab === "5-part" ? "active" : ""} onClick={() => setActiveTab("5-part")}>
-            5-Part Machine
-          </button>
-        </div>
-      </div>
 
-      <div className="filter-bar">
-        <input className="reg-search" placeholder="Search Reg or Diag No..." value={regSearch} onChange={(e) => setRegSearch(e.target.value)} />
-        <div className="date-filters">
-          <label>Date:</label>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          <span>to</span>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-        </div>
-        <div className="source-buttons">
-          {["OPD", "IPD", "Third Floor", "All"].map((src) => (
-            <button key={src} className={`source-btn ${sourceFilter === src ? "active" : ""}`} onClick={() => setSourceFilter(src)}>{src}</button>
-          ))}
-        </div>
-      </div>
+      
+<div
+  className="header"
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center"
+  }}
+>
+  <div>
+    <h2>🩸 Haematology Department</h2>
 
-      <div className="table-card">
-        <div className="haem-table-wrapper">
-          <table className="haem-table">
-            <thead>
-              <tr>
-                <th className="sticky-col">Reg No</th>
-                <th className="sticky-col">Diag No</th>
-                <th className="sticky-col">Patient Name</th>
-                <th>Age</th>
-                <th>Gender</th>
-                <th>Source</th>
-                <th>Selected Tests</th>
-                <th>Haemogram</th>
-                <th>HBH</th>
-                <th>LBC</th>
-                <th>Scanned</th>
-                <th>Status</th>
-                <th>Critical</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPatients.length > 0 ? (
-                filteredPatients.map((p) => {
-                  const regKey = p.compositeKey;
-                  const selCanon = getEntryCanonicalTests(p);
-                  const isSaved = p.status === "saved";
-                  const isScanned = p.scanned === "Yes";
-                  const isCriticalReported = criticalReportedSet.has(regKey);
-                  const rowClass = isSaved ? "row-saved" : isScanned ? "row-scanned" : "";
+    <div className="tabs">
+  <button
+    className={activeTab === "register" ? "active" : ""}
+    onClick={() => setActiveTab("register")}
+  >
+    Haematology Register
+  </button>
 
-                  return (
-                    <tr key={p.compositeKey} className={rowClass}>
-                      <td className="sticky-col" style={p.urgent ? { borderLeft: "4px solid red" } : {}}>{p.regNo}</td>
-                      <td className="sticky-col">{p.diagnosticNo || p.accessionNo}</td>
-                      <td className="sticky-col">{p.name}</td>
-                      <td>{p.age} {p.ageUnit ? `(${p.ageUnit})` : ""}</td>
-                      <td>{p.gender}</td>
-                      <td>{p.source}</td>
-                      <td>{selCanon.length ? selCanon.map((s) => s.toUpperCase()).join(", ") : "—"}</td>
-                      <td>{selCanon.some((t) => normalize(t).includes("haemogram")) ? "✅" : "—"}</td>
-                      <td>{selCanon.some((t) => normalize(t).includes("hb haemoglobin")) ? "✅" : "—"}</td>
-                      <td>{selCanon.some((t) => normalize(t).includes("lamellar body count")) ? "✅" : "—"}</td>
-                      <td>
-                        <select value={isScanned ? "Yes" : "No"} disabled={isSaved} onChange={(e) => handleScan(p.compositeKey, e.target.value)}>
-                          <option value="No">No</option>
-                          <option value="Yes">Yes</option>
-                        </select>
-                      </td>
-                      
-                      <td style={{ textAlign: 'center' }}>
-                        {isCriticalReported && (
-                          <span style={{ color: 'red', fontWeight: 'bold', fontSize: '10px' }}>
-                            CRITICAL <br /> {isSaved ? "REPORTED" : "PENDING SAVE"}
-                          </span>
-                        )}
-                      </td>
+  <button
+    className={activeTab === "inventory" ? "active" : ""}
+    onClick={() => setActiveTab("inventory")}
+  >
+    Inventory
+  </button>
+</div>
+  
+   
+  </div>
 
-                      <td>
-                        <button
-                          onClick={() => triggerCritical(p)}
-                          disabled={isCriticalReported || isSaved || !isScanned}
-                          className="critical-btn"
+  <UserMenu />
+</div>
+
+      {activeTab === "inventory" ? (
+        /* Pass the pre-loaded background inventory data to the tab */
+        <HaemInventoryTab preLoadedInventory={fullInventory} />
+      ) : (
+        <>
+          <div className="filter-bar">
+            <input className="reg-search" placeholder="Search Reg or Diag No..." value={regSearch} onChange={(e) => setRegSearch(e.target.value)} />
+            <div className="date-filters">
+              <label>Date:</label>
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              <span>to</span>
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+            </div>
+            <div className="source-buttons">
+              {["OPD", "IPD", "Third Floor", "All"].map((src) => (
+                <button key={src} className={`source-btn ${sourceFilter === src ? "active" : ""}`} onClick={() => setSourceFilter(src)}>{src}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="table-card">
+            <div className="haem-table-wrapper">
+              <table className="haem-table">
+                <thead>
+                  <tr>
+                    <th className="sticky-col">Reg No</th>
+                    <th className="sticky-col">Diag No</th>
+                    <th className="sticky-col">Patient Name</th>
+                    <th>Age</th>
+                    <th>Gender</th>
+                    <th>Source</th>
+                    <th>Selected Tests</th>
+                    <th>Haemogram</th>
+                    <th>HBH</th>
+                    <th>LBC</th>
+                    <th>Scanned</th>
+                    <th>Machine</th>
+                    <th>Status</th>
+                    <th style={{ minWidth: "130px" }}> Saved By</th>
+                    <th>Critical</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredPatients.length > 0 ? (
+                    filteredPatients.map((p) => {
+                      const regKey = p.compositeKey;
+                      const selCanon = p.canonicalTests;
+                      const isSaved = p.status === "saved";
+                      const isScanned = p.scanned === "Yes";
+                      const isCriticalReported = criticalReportedSet.has(regKey);
+                      const isPendingCritical =
+                      !!criticalParams[regKey];
+                      const rowClass = isSaved ? "row-saved" : isScanned ? "row-scanned" : "";
+
+                      return (
+                        <tr key={p.compositeKey} className={rowClass}>
+                          <td className="sticky-col" style={p.urgent ? { borderLeft: "4px solid red" } : {}}>{p.regNo}</td>
+                          <td className="sticky-col">{p.diagnosticNo || p.accessionNo}</td>
+                          <td className="sticky-col">{p.name}</td>
+                          <td>{p.age} {p.ageUnit ? `(${p.ageUnit})` : ""}</td>
+                          <td>{p.gender}</td>
+                          <td>{p.source}</td>
+                          <td>{selCanon.length ? selCanon.map((s) => s.toUpperCase()).join(", ") : "—"}</td>
+                          <td>{selCanon.some((t) => t.includes("haemogram")) ? "✅" : "—"}</td>
+                          <td>{selCanon.some((t) => t.includes("hb haemoglobin")) ? "✅" : "—"}</td>
+                          <td>{selCanon.some((t) => t.includes("lamellar body count")) ? "✅" : "—"}</td>
+                          <td>
+                            <select value={isScanned ? "Yes" : "No"} disabled={isSaved} onChange={(e) => handleScan(p.compositeKey, e.target.value)}>
+                              <option value="No">No</option>
+                              <option value="Yes">Yes</option>
+                            </select>
+                          </td>
+
+                          <td>
+                            <select
+                              value={p.machine}
+                              disabled={isSaved}
+                              onChange={(e) =>
+                                handleMachineSelection(
+                                  p.compositeKey,
+                                  e.target.value
+                                )
+                              }
+                            >
+                              <option value="5-part">
+                                5-Part
+                              </option>
+
+                              <option value="3-part">
+                                3-Part
+                              </option>
+                            </select>
+                          </td>
+
+
+                          <td style={{ textAlign: 'center' }}>
+                           
+                          {(isCriticalReported ||
+                              isPendingCritical) && (
+                              <span
+                                style={{
+                                  color: "red",
+                                  fontWeight: "bold",
+                                  fontSize: "10px"
+                                }}
+                              >
+                                CRITICAL <br />
+                                {isCriticalReported
+                                  ? "REPORTED"
+                                  : "PENDING SAVE"}
+                              </span>
+                            )}
+                          </td>
+                          <td
+                          style={{
+                            minWidth: "130px",
+                            fontWeight: "600",
+                            color: "#1e3a8a"
+                          }}
                         >
-                          Critical
-                        </button>
-                      </td>
+                          {p.savedBy || "—"}
+                        </td>
 
-                      <td>
-                        <button className="save-btn" disabled={isSaved || !isScanned} onClick={() => handleSave(p.compositeKey)}>Save</button>
-                      </td>
+
+                          <td>
+                            <button onClick={() => triggerCritical(p)} 
+                            disabled={
+                              isCriticalReported ||
+                              isPendingCritical ||
+                              isSaved ||
+                              !isScanned
+                            }
+                            className="critical-btn">Critical</button>
+                          </td>
+                          <td>
+                            <button className="save-btn" 
+                            disabled={isSaved || !isScanned} onClick={() => handleSave(p.compositeKey)}>Save</button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="15" style={{ textAlign: "center", padding: 20 }}>No Haematology entries found.</td>
                     </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan="14" style={{ textAlign: "center", padding: 20 }}>
-                    No Haematology entries found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

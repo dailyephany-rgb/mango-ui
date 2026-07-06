@@ -1,7 +1,4 @@
 
-
-
-
 .backroom-container {
   font-family: "Inter", sans-serif;
   background-color: #f8fafc;
@@ -182,6 +179,12 @@ thead .sticky-col {
 .backroom-table th:nth-child(14), .backroom-table td:nth-child(14) { 
     min-width: 130px !important; 
 }
+.backroom-table td:nth-child(12),
+.backroom-table td:nth-child(13),
+.backroom-table td:nth-child(14) {
+  text-align: center;
+  vertical-align: middle;
+}
 
 /* 🔹 ROW STATUS COLORS */
 .row-yellow { background-color: #fff7cc !important; }
@@ -189,14 +192,43 @@ thead .sticky-col {
 .row-orange { background-color: #ffedd5 !important; }
 
 /* Buttons */
+.collect-btn,
+.save-btn,
+.given-btn {
+  width: 115px;
+  height: 38px;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.collect-btn:hover:not(:disabled),
+.save-btn:hover:not(:disabled),
+.given-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.collect-btn {
+  background-color: #2563eb;
+  color: white;
+}
+
+.collect-btn:hover:not(:disabled) {
+  background-color: #1d4ed8;
+}
+
+.collect-btn.collected {
+  background-color: #2563eb;
+  color: white;
+}
+
+
 .save-btn {
   background-color: #55a060;
   color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
 }
 
 .save-btn:hover:not(:disabled) {
@@ -206,11 +238,6 @@ thead .sticky-col {
 .given-btn {
   background-color: #f97316; 
   color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 600;
 }
 
 .given-btn:hover:not(:disabled) {
@@ -218,9 +245,8 @@ thead .sticky-col {
 }
 
 button:disabled {
-  background-color: #cbd5e1;
   cursor: not-allowed;
-  opacity: 0.7;
+  opacity: 0.55;
 }
 
 /* Table Inputs & Selects */

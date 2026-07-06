@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import routing from "../backroom_routing.json";
 import "./Backroom.css";
+import { handleInventoryDeduction } from "../inventory/inventorymapping";
 
 // 🚨 Define the unique key for this department
 const CURRENT_DEPT = "Urine Analysis";
@@ -53,7 +54,10 @@ export default function UrineAnalysisRegister() {
   const [saving, setSaving] = useState(false);
 
   // 🛡️ INTERNAL BUFFER: Keeps typed results safe from slow internet resets
-  const [localResults, setLocalResults] = useState({});
+  const [localResults, setLocalResults] = useState(() => {
+    const saved = localStorage.getItem("urine_localResults");
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const [regSearch, setRegSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -78,8 +82,8 @@ export default function UrineAnalysisRegister() {
   const normalize = (s) => (s || "").toLowerCase().replace(/[\s,_-]+/g, "").trim();
 
   const parameterFields = [
-    { key: "albumin", label: "Albumin", match: "albumin" },
-    { key: "sugar", label: "Sugar", match: "sugar" },
+    { key: "albumin", label: "Protein", match: "albumin" },
+    { key: "sugar", label: "Glucose", match: "sugar" },
     { key: "bileSalts", label: "Bile Salts", match: "bilesalts" },
     { key: "bilePigments", label: "Bile Pigments", match: "bilepigments" },
     { key: "ketoneBodies", label: "Ketone Bodies", match: "ketonebodies" },
@@ -87,10 +91,22 @@ export default function UrineAnalysisRegister() {
   ];
 
   const routineExtraFields = [
-    { key: "sg", label: "SG" }, { key: "ph", label: "pH" },
-    { key: "color", label: "Color" }, { key: "appearance", label: "Appearance" },
-    { key: "rbc", label: "RBC" }, { key: "pus", label: "Pus Cells" },
-    { key: "epithelium", label: "Epithelium" },
+    { key: "sg", label: "SG" },
+    { key: "ph", label: "Reaction (pH)" },
+    { key: "volume", label: "Volume" },
+  
+    { key: "color", label: "Color" },
+    { key: "appearance", label: "Appearance" },
+  
+    { key: "rbc", label: "RBC" },
+    { key: "pus", label: "Pus Cells" },
+    { key: "epithelium", label: "Epithelial Cells" },
+  
+    { key: "crystals", label: "Crystals" },
+    { key: "bacteria", label: "Bacteria" },
+    { key: "casts", label: "Casts" },
+    { key: "yeastCells", label: "Yeast Cells" },
+    { key: "others", label: "Others" },
   ];
 
   const dropdownOptions = {
@@ -222,9 +238,19 @@ export default function UrineAnalysisRegister() {
     const required = new Set();
     const routine = hasRoutineTest(entry);
     if (routine) {
-      parameterFields.forEach((p) => p.key !== "pregnancy" && required.add(p.key));
+      parameterFields.forEach((p) => {
+        if (
+          p.key !== "pregnancy" &&
+          p.key !== "bileSalts" &&
+          p.key !== "bilePigments"
+        ) {
+          required.add(p.key);
+        }
+      });
+    
       routineExtraFields.forEach((f) => required.add(f.key));
-    } else {
+    }
+    else {
       parameterFields.forEach((p) => hasTest(entry, p.match) && required.add(p.key));
     }
     return [...required];
@@ -236,10 +262,22 @@ export default function UrineAnalysisRegister() {
   const isReadyToSave = (e) => e.scanned === "Yes" && areRequiredFieldsFilled(e);
 
   const handleChange = (compositeKey, field, value) => {
-    setLocalResults((prev) => ({
+    setLocalResults((prev) => {
+      const updated = {
         ...prev,
-        [compositeKey]: { ...(prev[compositeKey] || {}), [field]: value }
-    }));
+        [compositeKey]: {
+          ...(prev[compositeKey] || {}),
+          [field]: value,
+        },
+      };
+  
+      localStorage.setItem(
+        "urine_localResults",
+        JSON.stringify(updated)
+      );
+  
+      return updated;
+    });
   };
 
   const handleScan = (compositeKey, value) => {
@@ -265,10 +303,22 @@ export default function UrineAnalysisRegister() {
     const parameter = window.prompt("Confirm Critical Values (Alert will be sent upon clicking Save):", suggested.trim());
     if (!parameter) return;
 
-    setLocalResults(prev => ({
+    setLocalResults((prev) => {
+      const updated = {
         ...prev,
-        [entry.compositeKey]: { ...(prev[entry.compositeKey] || {}), pendingCriticalParam: parameter }
-    }));
+        [entry.compositeKey]: {
+          ...(prev[entry.compositeKey] || {}),
+          pendingCriticalParam: parameter,
+        },
+      };
+    
+      localStorage.setItem(
+        "urine_localResults",
+        JSON.stringify(updated)
+      );
+    
+      return updated;
+    });
     alert("Critical values confirmed. They will be sent to the Critical UI when you click 'Save'.");
   };
 
@@ -305,11 +355,17 @@ export default function UrineAnalysisRegister() {
           scannedTime: scanTimeTs,
           saved: "Yes",
           savedTime: serverTimestamp(),
+          savedBy: sessionStorage.getItem("loggedUser") || "Unknown",
           status: "saved",
           critical: isCritical
         },
         { merge: true }
       );
+      try {
+        await handleInventoryDeduction(filteredTests);
+      } catch (inventoryErr) {
+        console.error("Inventory deduction failed:", inventoryErr);
+      }
 
       if (hasPendingCritical) {
         const criticalId = `${compositeKey}_${CURRENT_DEPT}`;
@@ -320,6 +376,7 @@ export default function UrineAnalysisRegister() {
           ageUnit: entry.ageUnit || "", gender: entry.gender || "-",
           category: entry.category || "-", source: entry.source || "-",
           doctor: entry.doctor || "Self",
+          reportedBy: sessionStorage.getItem("loggedUser") || "Unknown",
           timePrinted: entry.timePrinted || null,
           timeCollected: entry.timeCollected || null,
           criticalParameter: entry.pendingCriticalParam,
@@ -328,7 +385,17 @@ export default function UrineAnalysisRegister() {
         });
       }
 
-      setLocalResults(prev => { const n = {...prev}; delete n[compositeKey]; return n; });
+      setLocalResults((prev) => {
+        const n = { ...prev };
+        delete n[compositeKey];
+      
+        localStorage.setItem(
+          "urine_localResults",
+          JSON.stringify(n)
+        );
+      
+        return n;
+      });
       
       setLocalScans(prev => { 
         const n = {...prev}; 
@@ -401,7 +468,11 @@ export default function UrineAnalysisRegister() {
               <th>Age</th><th>Gender</th><th>Source</th><th>Selected Tests</th>
               {parameterFields.map((p) => (<th key={p.key}>{p.label}</th>))}
               {routineExtraFields.map((f) => (<th key={f.key}>{f.label}</th>))}
-              <th>Scanned</th><th>Status</th><th>Critical</th><th>Save</th>
+              <th>Scanned</th>
+              <th>Status</th>
+              <th>Saved By</th>
+              <th>Critical</th>
+              <th>Save</th>
             </tr>
           </thead>
           <tbody>
@@ -475,6 +546,15 @@ export default function UrineAnalysisRegister() {
                       </span>
                     )}
                   </td>
+                <td
+                style={{
+                  minWidth: "130px",
+                  fontWeight: "600",
+                  color: "#1e3a8a"
+                }}
+              >
+                {e.savedBy || "—"}
+              </td>
                   <td>
                     <button onClick={() => triggerCritical(e)} disabled={isCriticalReported || isPendingCritical || isSaved || !ready}
                       style={{ backgroundColor: (isCriticalReported || isPendingCritical || isSaved || !ready) ? "#ccc" : "#d9534f", color: "white", border: "none", padding: "6px 10px", borderRadius: "4px", cursor: (isCriticalReported || isPendingCritical || isSaved || !ready) ? "not-allowed" : "pointer", fontSize: "12px", fontWeight: "bold", width: "100%" }}

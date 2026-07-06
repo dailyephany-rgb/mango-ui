@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebaseConfig.js";
 import ValidatorTable from "./ValidatorTable.jsx";
+import UserMenu from "../auth/UserMenu";
 
 export default function ValidatorDashboard() {
   const [activeMainTab, setActiveMainTab] = useState("biochem");
@@ -20,22 +21,7 @@ export default function ValidatorDashboard() {
 
   const [collections, setCollections] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
-
-  const [currentLocalDate, setCurrentLocalDate] = useState("");
-
-  useEffect(() => {
-    const setDate = () => {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, '0');
-      const d = String(now.getDate()).padStart(2, '0');
-      setCurrentLocalDate(`${y}-${m}-${d}`);
-    };
-
-    setDate();
-    const timer = setInterval(setDate, 60000);
-    return () => clearInterval(timer);
-  }, []);
+  const loginMode = sessionStorage.getItem("loginMode") || "validator";
 
   useEffect(() => {
     const unsubscribes = [];
@@ -76,13 +62,38 @@ export default function ValidatorDashboard() {
       const ref = doc(db, collectionName, entry.id);
       await updateDoc(ref, {
         validated: true,
+      
+        validatedBy:
+          sessionStorage.getItem("loggedUser") || "Unknown",
+      
         validatedTime: serverTimestamp(),
+      
         status: "validated",
       });
       alert("Entry Validated Successfully!");
     } catch (err) {
       console.error("❌ Error during validation:", err);
       alert("Validation failed. Check console.");
+    }
+  };
+
+  const handleEntered = async (entry, collectionName) => {
+    try {
+      const ref = doc(db, collectionName, entry.id);
+  
+      await updateDoc(ref, {
+        entered: true,
+      
+        enteredBy:
+          sessionStorage.getItem("loggedUser") || "Unknown",
+      
+        enteredTime: serverTimestamp(),
+      });
+  
+      alert("Marked as Entered!");
+    } catch (err) {
+      console.error("❌ Error during entry:", err);
+      alert("Failed to mark as Entered.");
     }
   };
 
@@ -108,15 +119,6 @@ export default function ValidatorDashboard() {
   const rawData = collections[activeCollection] || [];
 
   const currentData = rawData.filter((item) => {
-    const entryDate = parseEntryDate(item);
-    if (entryDate) {
-      const y = entryDate.getFullYear();
-      const m = String(entryDate.getMonth() + 1).padStart(2, '0');
-      const d = String(entryDate.getDate()).padStart(2, '0');
-      const entryDateStr = `${y}-${m}-${d}`;
-      
-      if (entryDateStr !== currentLocalDate) return false;
-    }
 
     const s = searchTerm.toLowerCase().trim();
     if (!s) return true;
@@ -129,12 +131,23 @@ export default function ValidatorDashboard() {
     return matchesReg || matchesDiag || matchesName;
   });
 
-  return (
-    <div className="validator-dashboard">
-      <div className="validator-header-row">
-        <h2>🧪 Validator Interface</h2>
-        <span className="date-badge">Today: {currentLocalDate}</span>
-      </div>
+          return (
+            <div className="validator-dashboard">
+            
+            <div className="validator-header-row">
+          <h2>🧪 Validator Interface</h2>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "15px",
+            }}
+          >
+            <UserMenu />
+          </div>
+        </div>
+
 
       <div className="tab-container">
         {["biochem", "backup", "coag", "haem", "backroom"].map((tab) => (
@@ -170,13 +183,20 @@ export default function ValidatorDashboard() {
         </>
       )}
 
-      <ValidatorTable
-        title={getTitle(activeMainTab, activeSubTab, activeBackroomTab, activeBloodSubTab)}
-        data={currentData}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        onValidate={(entry) => handleValidate(entry, activeCollection)}
-      />
+            <ValidatorTable
+              title={getTitle(
+                activeMainTab,
+                activeSubTab,
+                activeBackroomTab,
+                activeBloodSubTab
+              )}
+              data={currentData}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              loginMode={loginMode}
+              onValidate={(entry) =>handleValidate(entry, activeCollection)}
+              onEntered={(entry) =>handleEntered(entry, activeCollection)}
+            />
     </div>
   );
 }

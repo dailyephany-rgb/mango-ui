@@ -67,8 +67,11 @@
 
 /* --- TABLE STYLING --- */
 .table-container { background: white; border-radius: 8px; border: 1px solid #e2e8f0; overflow-x: auto; }
-.backroom-table { width: 100%; border-collapse: collapse; }
-
+.backroom-table {
+  width: 100%;
+  min-width: 1400px;
+  border-collapse: collapse;
+  }  
 .backroom-table th, .backroom-table td {
   padding: 12px 10px; /* Matched to Haematology */
   border: 1px solid #e5e7eb; /* Matched to Haematology */

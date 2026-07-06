@@ -31,6 +31,35 @@ export function normalizeTestsField(field) {
   return [];
 }
 
+/* ================= STAFF DISTRIBUTION =================== */
+function buildStaffDistribution(rows, field) {
+  const counts = {};
+
+  rows.forEach((r) => {
+    const staff = (r[field] || "").trim();
+
+    if (!staff) return;
+
+    counts[staff] = (counts[staff] || 0) + 1;
+  });
+
+  const total = Object.values(counts).reduce(
+    (sum, value) => sum + value,
+    0
+  );
+
+  return Object.entries(counts)
+    .map(([name, count]) => ({
+      name,
+      count,
+      percentage:
+        total > 0
+          ? Math.round((count / total) * 100)
+          : 0
+    }))
+    .sort((a, b) => b.count - a.count);
+}
+
 /* ================= KPI COMPUTATION ====================== */
 export function computeKPIs(filteredMaster = [], mergedLabRows = [], canonTests = [], targetDept = "") {
   const cleanCanon = canonTests.map(t => t.trim().toUpperCase());
@@ -83,6 +112,12 @@ export function computeKPIs(filteredMaster = [], mergedLabRows = [], canonTests 
   const withinCount = totalValidForSLA - violators.length;
   const slaScore = totalValidForSLA > 0 ? Math.round((withinCount / totalValidForSLA) * 100) : 100;
 
+  const savedByDistribution =
+  buildStaffDistribution(
+    mergedLabRows,
+    "savedBy"
+  );
+
   let slowest = { delay: 0, regNo: "N/A" };
   if (tats.length > 0) {
     const maxVal = Math.max(...tats);
@@ -90,17 +125,38 @@ export function computeKPIs(filteredMaster = [], mergedLabRows = [], canonTests 
     slowest = { delay: maxVal, regNo: slowRow?.name || slowRow?.regNo || "N/A" };
   }
 
+  const totalPatientsPendingScans =
+  Math.max(
+    0,
+    totalPatientsCollected -
+      totalPatientsSaved
+  );
+
+const totalTestsPending =
+  Math.max(
+    0,
+    totalTestsCollected -
+      totalTestsSaved
+  );
+
+const avgCollectedToSaved =
+  avgTAT;
+
   return {
     totalPatientsCollected,
     totalTestsCollected,
     totalPatientsSaved,
     totalTestsSaved,
-    totalPatientsPendingScans: Math.max(0, totalPatientsCollected - totalPatientsSaved),
-    totalTestsPending: Math.max(0, totalTestsCollected - totalTestsSaved),
-    avgScannedToSaved: avgTAT,
-    avgCollectedToSaved: avgTAT,
+    totalPatientsPendingScans,
+    totalTestsPending,
+    avgCollectedToSaved,
     slowestEntry: slowest,
     slaScore,
+  
+    // Staff Analytics
+    savedByDistribution,
+  
+    // Delay Analytics
     violators: violators.sort((a, b) => b.excess - a.excess),
     totalCount: totalValidForSLA,
     withinCount: withinCount
@@ -114,6 +170,9 @@ export function mergeDeptRows(rows = [], targetDept) {
 
   rows.forEach((r) => {
     const rowDept = String(r.department || "").toUpperCase();
+
+   
+    
     if (rowDept !== target) return;
 
     const regId = r.regNo || r.id;
@@ -131,9 +190,9 @@ export function mergeDeptRows(rows = [], targetDept) {
         name: r.name || r.patientName || r.id || "",
         timePrinted: toDate(r.timePrinted || r.date),
         timeCollected: toDate(r.timeCollected),
-        timeScanned: toDate(r.timeCollected), 
         timeSaved: toDate(r.timeSaved || r.savedTime),
         isSaved: !!(r.timeSaved || r.savedTime || r.saved === "Yes"),
+        savedBy: r.savedBy || "",
         test: testArray.join(", ") || "—",
         testArrayRaw: testArray,
         department: targetDept
@@ -150,8 +209,50 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
 
   const LAB_ROUTING = {
     "FnacRegister": ["FNAC, SLIDE EXAMINATION"],
-    "PathologyRegister": ["BONE MARROW EXAMINATION","PAP'S SMEAR (PAPANICOLAOU SMEAR)", "PUS FOR CYTOLOGY EXAMINATION", "STOOL EXAMINATION", "AFB SMEAR", "GRAM STAIN", "KOH STAINING", "SPUTUM EXAMINATION", "SPUTUM FOR A.F.B.", "Z N STAIN","WIDAL TEST (SERUM)"],
-    "CultureRegister": ["BLOOD CULTURE AEROBIC", "CULTURE & SENSITIVITY", "PUS FOR CULTURE & SENSITIVITY", "SPUTUM CULTURE & SENSITIVITY", "STOOL CULTURE, SENSITIVITY","VAGINAL SWAB CULTURE & SENSITIVITY"],
+
+    "PathologyRegister": [
+      "BONE MARROW EXAMINATION",
+      "PAP'S SMEAR (PAPANICOLAOU SMEAR)",
+      "PUS FOR CYTOLOGY EXAMINATION",
+      "STOOL EXAMINATION",
+      "AFB SMEAR",
+      "GRAM STAIN",
+      "KOH STAINING",
+      "SPUTUM EXAMINATION",
+      "SPUTUM FOR A.F.B.",
+      "Z N STAIN",
+      "WIDAL TEST (SERUM)",
+    
+      "ASCITIC FLUID",
+      "BONE MARROW ASPIRATION",
+      "FLUID FOR OCCULT BLOOD",
+      "SPUTUM FOR OCCULT BLOOD",
+      "VOMIT FOR OCCULT BLOOD",
+      "CYTOPATHOLOGY FOR MALIGNANT CELLS"],
+
+      "CultureRegister": [
+        "BLOOD CULTURE AEROBIC",
+        "CULTURE & SENSITIVITY",
+        "ENDOTRACHEAL TUBE FOR CULTURE AND SENSITIVITY",
+        "FUNGAL SMEAR",
+        "GRAM STAIN",
+        "KOH STAINING",
+        "PUS FOR CULTURE & SENSITIVITY",
+        "SPUTUM CULTURE & SENSITIVITY",
+        "SPUTUM EXAMINATION",
+        "SPUTUM FOR A.F.B.",
+        "STOOL CULTURE, SENSITIVITY",
+        "URINE CULTURE & SENSITIVITY",
+        "VAGINAL SWAB CULTURE & SENSITIVITY",
+        "Z N STAIN",
+      
+        "CSF CULTURE & SENSITIVITY",
+        "SWAB CULTURE & SENSITIVITY",
+        "AIR SAMPLING CULTURE & SENSITIVITY",
+        "CULTURE & SENSITIVITY HAND HYGIENE",
+        "SEMEN CULTURE & SENSITIVITY"
+      ],
+
     "FluidRegister": ["CSF (CEREBROSPINAL FLUID, ROUTINE)", "PLEURAL FLUID, ROUTINE"]
   };
 
@@ -192,14 +293,23 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
     });
 
     const merged = mergeDeptRows(filteredLab, targetDept);
-    const kpis = computeKPIs(filteredMaster, merged, canonTests, targetDept);
+
+   
+      const kpis = computeKPIs(filteredMaster, merged, canonTests, targetDept);
 
     onData({
       unifiedRows: merged.map(r => ({
         ...r,
-        regNo: r.diagnosticNo // Mapping diagnosticNo as primary display for charts/bricks
+        regNo: r.diagnosticNo
       })),
+    
       kpis: kpis,
+    
+      // Staff Analytics
+      savedByDistribution:
+        kpis.savedByDistribution,
+    
+      // Delay Analytics
       violators: kpis.violators,
       totalCount: kpis.totalCount,
       withinCount: kpis.withinCount

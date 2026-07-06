@@ -1,7 +1,7 @@
 
 import React from "react";
 
-export default function DelayTable({ violators = [] }) {
+export default function DelayTable({ violators = [],stage = "scanned_to_saved",}) {
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full delay-table">
@@ -13,6 +13,19 @@ export default function DelayTable({ violators = [] }) {
             <th>Name</th>
             <th>Test</th>
             <th>Dept</th>
+            <th>
+            {stage === "collected_to_outsourced"
+              ? "Collected By"
+              : stage === "outsourced_to_received"
+              ? "Received By"
+              : stage === "received_to_delivered"
+              ? "Delivered By"
+              : stage === "scanned_to_saved"
+              ? "Saved By"
+              : stage === "saved_to_validated"
+              ? "Validated By"
+              : "Entered By"}
+          </th>
             <th>Duration (min)</th>
             <th>Allowed (min)</th>
             <th>Status</th>
@@ -21,7 +34,7 @@ export default function DelayTable({ violators = [] }) {
         <tbody>
           {violators.length === 0 ? (
             <tr>
-              <td colSpan="8" style={{ textAlign: "center", padding: "20px" }}>
+              <td colSpan="9" style={{ textAlign: "center", padding: "20px" }}>
                 No SLA violations found.
               </td>
             </tr>
@@ -33,9 +46,22 @@ export default function DelayTable({ violators = [] }) {
                 <td>{v.name}</td>
                 <td>{v.test}</td>
                 <td>{v.department}</td>
-                <td>{v.duration}</td>
-                <td>{v.allowed}</td>
                 <td>
+                {stage === "collected_to_outsourced"
+                  ? v.collectedBy || "NA"
+                  : stage === "outsourced_to_received"
+                  ? v.receivedBy || "NA"
+                  : stage === "received_to_delivered"
+                  ? v.deliveredBy || "NA"
+                  : stage === "scanned_to_saved"
+                  ? v.savedBy || "NA"
+                  : stage === "saved_to_validated"
+                  ? v.validatedBy || "NA"
+                  : v.enteredBy || "NA"}
+              </td>
+                  <td>{v.duration}</td>
+                  <td>{v.allowed}</td>
+                  <td>
                   <span className={`badge ${v.status}`}>
                     {v.status}
                   </span>

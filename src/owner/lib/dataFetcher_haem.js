@@ -42,7 +42,17 @@ export function normalizeTestsField(field) {
 
 /* ================= HAEM CANON TESTS =================== */
 
-const HAEM_TESTS_CANON = ["HAEMOGRAM", "HB HAEMOGLOBIN", "LAMELLAR BODY COUNT"];
+const HAEM_TESTS_CANON = [
+  "HAEMOGRAM",
+  "HB HAEMOGLOBIN",
+  "LAMELLAR BODY COUNT",
+  "HEMATOCRIT",
+  "RED BLOOD CELL COUNT",
+  "TOTAL LEUCOCYTIC COUNT",
+  "DIFFERENTIAL LEUCOCYTIC COUNT",
+  "PLATELET COUNT",
+  "RED BLOOD CELL INDICES"
+];
 
 const normalizeHaem = (s = "") =>
   String(s).toLowerCase().replace(/[\s,._\-()]+/g, " ").trim();
@@ -90,7 +100,11 @@ export function mergeDeptRows(rows = []) {
         timeSaved: toDate(r.savedTime || r.timeSaved),
         timeValidated: toDate(r.validatedTime || r.timeValidated),
         isSaved: r.saved === "Yes" || !!(r.savedTime || r.timeSaved),
+        savedBy: r.savedBy || "",
         isValidated: r.validated === true || r.status === "validated" || !!(r.validatedTime || r.timeValidated),
+        validatedBy: r.validatedBy || "",
+        enteredBy: r.enteredBy || "",
+        enteredTime: toDate(r.enteredTime),
         isCritical: r.critical === "Yes", 
         testList: new Set(),
       };
@@ -111,12 +125,50 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
   const violators = [];
   unifiedRows.forEach((row) => {
     const allowed = timingMap["haem"]?.[stage] ?? timingMap.default?.[stage] ?? 30;
-    const s = toDate(row.timeScanned);
-    const e = toDate(row.timeSaved);
-    if (!s || !e) return;
-    
-    const rawDuration = (e - s) / 60000;
-    const duration = Math.round(rawDuration);
+    let start;
+    let end;
+
+      switch (stage) {
+        case "scanned_to_saved":
+          start = toDate(
+            row.timeScanned
+          );
+          end = toDate(
+            row.timeSaved
+          );
+          break;
+
+        case "saved_to_validated":
+          start = toDate(
+            row.timeSaved
+          );
+          end = toDate(
+            row.timeValidated
+          );
+          break;
+
+        case "validated_to_entered":
+          start = toDate(
+            row.timeValidated
+          );
+          end = toDate(
+            row.enteredTime
+          );
+          break;
+
+        default:
+          return;
+      }
+
+      if (!start || !end)
+        return;
+
+      const rawDuration =
+        (end - start) /
+        60000;
+
+      const duration =
+        Math.round(rawDuration);
     
     if (duration > allowed) {
       const excess = duration - allowed; 
@@ -124,16 +176,35 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
       
       violators.push({
         regNo: row.regNo,
-        diagnosticNo: row.diagnosticNo, // Added diagnosticNo
+        diagnosticNo: row.diagnosticNo,
         name: row.name,
         test: row.test,
-        duration: duration, 
-        excess: Math.round(excess), 
-        allowed, 
+        duration,
+        excess: Math.round(excess),
+        allowed,
         status,
         department: "Haematology",
-        timeScanned: row.timeScanned,
-        timeSaved: row.timeSaved,
+      
+        savedBy:
+          row.savedBy || "NA",
+      
+        validatedBy:
+          row.validatedBy || "NA",
+      
+        enteredBy:
+          row.enteredBy || "NA",
+      
+        timeScanned:
+          row.timeScanned,
+      
+        timeSaved:
+          row.timeSaved,
+      
+        timeValidated:
+          row.timeValidated,
+      
+        enteredTime:
+          row.enteredTime,
       });
     }
   });
@@ -198,6 +269,360 @@ export function computeKPIs(masterRows = [], haemRows = []) {
   };
 }
 
+export function computeStaffAnalytics(
+  rows = []
+) {
+
+    /* =========================
+     TESTING (savedBy)
+  ========================= */
+
+  const savedRows = rows.filter(
+    (r) =>
+      (r.isSaved || r.timeSaved) &&
+      r.savedBy
+  );
+
+  const totalSaved =
+    savedRows.length;
+
+  const distributionMap = {};
+  const avgMap = {};
+  const timelines = {};
+
+  savedRows.forEach((r) => {
+    const user = r.savedBy;
+
+    distributionMap[user] =
+      (distributionMap[user] || 0) +
+      1;
+
+    const mins =
+      minutesDiff(
+        r.timeScanned,
+        r.timeSaved
+      );
+
+    if (mins != null) {
+      if (!avgMap[user]) {
+        avgMap[user] = [];
+      }
+
+      avgMap[user].push(mins);
+
+      if (!timelines[user]) {
+        timelines[user] = [];
+      }
+
+      timelines[user].push({
+        regNo: r.regNo,
+        diagnosticNo:
+          r.diagnosticNo,
+        name: r.name,
+        duration: mins,
+        selectedTests:
+          r.selectedTests || [],
+      });
+    }
+  });
+
+  const distribution =
+  Object.entries(
+    distributionMap
+  ).map(
+    ([name, count]) => ({
+      name,
+      count,
+      percentage:
+        totalSaved > 0
+          ? Number(
+              (
+                (count /
+                  totalSaved) *
+                100
+              ).toFixed(1)
+            )
+          : 0,
+    })
+  );
+  const averages =
+  Object.entries(
+    avgMap
+  ).map(
+    ([name, values]) => ({
+      name,
+      avgMinutes:
+        values.length
+          ? Math.round(
+              values.reduce(
+                (s, v) =>
+                  s + v,
+                0
+              ) /
+                values.length
+            )
+          : 0,
+    })
+  );
+
+  /* =========================
+   VALIDATED (validatedBy)
+========================= */
+
+const validatedRows = rows.filter(
+  (r) =>
+    (r.isValidated ||
+      r.timeValidated) &&
+    r.validatedBy
+);
+
+const totalValidated =
+  validatedRows.length;
+
+const validatedDistributionMap =
+  {};
+const validatedAvgMap = {};
+const validatedTimelines = {};
+
+validatedRows.forEach((r) => {
+  const user =
+    r.validatedBy;
+
+  validatedDistributionMap[
+    user
+  ] =
+    (validatedDistributionMap[
+      user
+    ] || 0) + 1;
+
+  const mins =
+    minutesDiff(
+      r.timeSaved,
+      r.timeValidated
+    );
+
+  if (mins != null) {
+    if (
+      !validatedAvgMap[user]
+    ) {
+      validatedAvgMap[
+        user
+      ] = [];
+    }
+
+    validatedAvgMap[
+      user
+    ].push(mins);
+
+    if (
+      !validatedTimelines[
+        user
+      ]
+    ) {
+      validatedTimelines[
+        user
+      ] = [];
+    }
+
+    validatedTimelines[
+      user
+    ].push({
+      regNo: r.regNo,
+      diagnosticNo:
+        r.diagnosticNo,
+      name: r.name,
+      duration: mins,
+      selectedTests:
+        r.selectedTests ||
+        [],
+    });
+  }
+});
+
+const validatedDistribution =
+  Object.entries(
+    validatedDistributionMap
+  ).map(
+    ([name, count]) => ({
+      name,
+      count,
+      percentage:
+        totalValidated > 0
+          ? Number(
+              (
+                (count /
+                  totalValidated) *
+                100
+              ).toFixed(1)
+            )
+          : 0,
+    })
+  );
+
+const validatedAverages =
+  Object.entries(
+    validatedAvgMap
+  ).map(
+    ([name, values]) => ({
+      name,
+      avgMinutes:
+        values.length
+          ? Math.round(
+              values.reduce(
+                (s, v) =>
+                  s + v,
+                0
+              ) /
+                values.length
+            )
+          : 0,
+    })
+  );
+
+  /* =========================
+   ENTERED (enteredBy)
+========================= */
+
+const enteredRows = rows.filter(
+  (r) =>
+    r.enteredTime &&
+    r.enteredBy
+);
+
+const totalEntered =
+  enteredRows.length;
+
+const enteredDistributionMap =
+  {};
+const enteredAvgMap = {};
+const enteredTimelines = {};
+
+enteredRows.forEach((r) => {
+  const user =
+    r.enteredBy;
+
+  enteredDistributionMap[
+    user
+  ] =
+    (enteredDistributionMap[
+      user
+    ] || 0) + 1;
+
+  const mins =
+    minutesDiff(
+      r.timeValidated,
+      r.enteredTime
+    );
+
+  if (mins != null) {
+    if (
+      !enteredAvgMap[user]
+    ) {
+      enteredAvgMap[
+        user
+      ] = [];
+    }
+
+    enteredAvgMap[
+      user
+    ].push(mins);
+
+    if (
+      !enteredTimelines[
+        user
+      ]
+    ) {
+      enteredTimelines[
+        user
+      ] = [];
+    }
+
+    enteredTimelines[
+      user
+    ].push({
+      regNo: r.regNo,
+      diagnosticNo:
+        r.diagnosticNo,
+      name: r.name,
+      duration: mins,
+      selectedTests:
+        r.selectedTests ||
+        [],
+    });
+  }
+});
+
+const enteredDistribution =
+  Object.entries(
+    enteredDistributionMap
+  ).map(
+    ([name, count]) => ({
+      name,
+      count,
+      percentage:
+        totalEntered > 0
+          ? Number(
+              (
+                (count /
+                  totalEntered) *
+                100
+              ).toFixed(1)
+            )
+          : 0,
+    })
+  );
+
+const enteredAverages =
+  Object.entries(
+    enteredAvgMap
+  ).map(
+    ([name, values]) => ({
+      name,
+      avgMinutes:
+        values.length
+          ? Math.round(
+              values.reduce(
+                (s, v) =>
+                  s + v,
+                0
+              ) /
+                values.length
+            )
+          : 0,
+    })
+  );
+
+  
+  return {
+    testing: {
+      totalSaved,
+      distribution,
+      averages,
+      timelines,
+    },
+  
+    validated: {
+      totalValidated,
+      distribution:
+        validatedDistribution,
+      averages:
+        validatedAverages,
+      timelines:
+        validatedTimelines,
+    },
+  
+    entered: {
+      totalEntered,
+      distribution:
+        enteredDistribution,
+      averages:
+        enteredAverages,
+      timelines:
+        enteredTimelines,
+    },
+  };
+}
+
 /* ================= SUBSCRIBE OVERVIEW =================== */
 
 export function subscribeOverview({ onData, source = "All", dateRange }) {
@@ -234,12 +659,19 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
     
     const violators = computeSLAViolations(unified, testTimings);
 
-    onData({ 
-      masterRows: filteredMaster, 
-      deptRows: merged, 
-      unifiedRows: unified, 
-      violators: violators, 
-      kpis: computeKPIs(filteredMaster, merged) 
+    onData({
+      masterRows: filteredMaster,
+      deptRows: merged,
+      unifiedRows: unified,
+      violators,
+      kpis: computeKPIs(
+        filteredMaster,
+        merged
+      ),
+      staffAnalytics:
+        computeStaffAnalytics(
+          merged
+        ),
     });
   };
 

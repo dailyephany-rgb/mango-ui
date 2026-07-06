@@ -120,14 +120,19 @@ export default function MasterAdminPanel() {
       const data = new Uint8Array(event.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
       const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-      const normalizedRouting = json.map(row => {
-        const hKey = Object.keys(row).find(k => k.toLowerCase().replace(/[^a-z]/g, '') === 'hospitalname');
-        const lKey = Object.keys(row).find(k => k.toLowerCase().replace(/[^a-z]/g, '') === 'labname');
-        return {
-          hospitalName: String(row[hKey] || "").toLowerCase().trim(),
-          labName: String(row[lKey] || "").toLowerCase().trim()
-        };
-      }).filter(item => item.hospitalName && item.labName);
+     
+     
+      const normalizedRouting = json.map(row => ({
+        hospitalName: String(
+          row["Hospital_Investigation_Name"] || ""
+        ).toLowerCase().trim(),
+      
+        labName: String(
+          row["Lab_System_Test_Name"] || ""
+        ).toLowerCase().trim()
+      })).filter(item => item.hospitalName && item.labName);
+
+
       setRoutingMap(normalizedRouting);
       alert(`Routing loaded: ${normalizedRouting.length} tests mapped.`);
     };
@@ -351,10 +356,10 @@ export default function MasterAdminPanel() {
                     <span><strong>Lab Total (Filtered):</strong> {reconData.stats.labTotal}</span>
                 </div>
                 <div className="source-buttons">
-                    <button className={reconTab === "missing" ? "active" : ""} onClick={() => setReconTab("missing")}>Missing in Lab ({reconData.missing.length})</button>
-                    <button className={reconTab === "mismatch" ? "active" : ""} onClick={() => setReconTab("mismatch")}>Test Mismatches ({reconData.mismatch.length})</button>
-                    <button className={reconTab === "extraInLab" ? "active" : ""} onClick={() => setReconTab("extraInLab")}>Extra in Lab ({reconData.extraInLab.length})</button>
-                    <button className={reconTab === "ghost" ? "active" : ""} onClick={() => setReconTab("ghost")}>Ghost (Lab Only) ({reconData.ghost.length})</button>
+                    <button className={reconTab === "missing" ? "active" : ""} onClick={() => setReconTab("missing")}>Entry exist only in hospital system ({reconData.missing.length})</button>
+                    <button className={reconTab === "mismatch" ? "active" : ""} onClick={() => setReconTab("mismatch")}>Tests missing in our system ({reconData.mismatch.length})</button>
+                    <button className={reconTab === "extraInLab" ? "active" : ""} onClick={() => setReconTab("extraInLab")}>Tests missing in hospital system ({reconData.extraInLab.length})</button>
+                    <button className={reconTab === "ghost" ? "active" : ""} onClick={() => setReconTab("ghost")}>Entry exist only in our system ({reconData.ghost.length})</button>
                 </div>
                 <div className="table-wrapper" style={{ marginTop: "15px", maxHeight: "400px" }}>
                     <table className="master-table">

@@ -83,9 +83,12 @@ export function mergeDeptRows(rows = []) {
         timeCollected: toDate(r.timeCollected),
         timeScanned: toDate(r.scannedTime || r.timeScanned),
         timeSaved: toDate(r.savedTime || r.timeSaved),
+        savedBy: r.savedBy || "",
         timeValidated: toDate(r.validatedTime || r.timeValidated),
+        validatedBy: r.validatedBy || "",
         isSaved: r.saved === "Yes" || !!(r.savedTime || r.timeSaved),
         isValidated: r.validated === true || r.status === "validated" || !!(r.validatedTime || r.timeValidated),
+        enteredBy: r.enteredBy || "", enteredTime: toDate( r.enteredTime),
         isCritical: r.critical === "Yes", 
         testList: new Set(),
       };
@@ -105,11 +108,38 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
   const violators = [];
   unifiedRows.forEach((row) => {
     const allowed = timingMap["esr"]?.[stage] ?? timingMap.default?.[stage] ?? 30;
-    const s = toDate(row.timeScanned);
-    const e = toDate(row.timeSaved);
-    if (!s || !e) return;
-    
-    const duration = Math.round((e - s) / 60000);
+    let start;
+    let end;
+
+    switch (stage) {
+      case "scanned_to_saved":
+        start = toDate(row.timeScanned);
+        end = toDate(row.timeSaved);
+        break;
+
+      case "saved_to_validated":
+        start = toDate(row.timeSaved);
+        end = toDate(row.timeValidated);
+        break;
+
+      case "validated_to_entered":
+        start = toDate(row.timeValidated);
+        end = toDate(
+          row.enteredTime ||
+          row.timeEntered
+        );
+        break;
+
+      default:
+        return;
+    }
+
+    if (!start || !end)
+      return;
+
+    const duration = Math.round(
+      (end - start) / 60000
+    );
     
     if (duration > allowed) {
       const excess = duration - allowed; 
@@ -120,13 +150,32 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
         diagnosticNo: row.diagnosticNo,
         name: row.name,
         test: row.test,
-        duration: duration, 
-        excess: Math.round(excess), 
-        allowed, 
+        duration,
+        excess: Math.round(excess),
+        allowed,
         status,
         department: "ESR",
-        timeScanned: row.timeScanned,
-        timeSaved: row.timeSaved,
+      
+        savedBy:
+          row.savedBy || "NA",
+      
+        validatedBy:
+          row.validatedBy || "NA",
+      
+        enteredBy:
+          row.enteredBy || "NA",
+      
+        timeScanned:
+          row.timeScanned,
+      
+        timeSaved:
+          row.timeSaved,
+      
+        timeValidated:
+          row.timeValidated,
+      
+        enteredTime:
+          row.enteredTime,
       });
     }
   });
@@ -222,12 +271,19 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
     const unified = unifyForCharts(merged);
     const violators = computeSLAViolations(unified, testTimings);
 
-    onData({ 
-      masterRows: filteredMaster, 
-      deptRows: merged, 
-      unifiedRows: unified, 
-      violators: violators, 
-      kpis: computeKPIs(filteredMaster, merged) 
+    onData({
+      masterRows: filteredMaster,
+      deptRows: merged,
+      unifiedRows: unified,
+      violators,
+      kpis: computeKPIs(
+        filteredMaster,
+        merged
+      ),
+      staffAnalytics:
+        computeStaffAnalytics(
+          merged
+        ),
     });
   };
 
@@ -244,5 +300,441 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
 export function unifyForCharts(rows = []) {
   return rows.map((r) => ({ ...r, patientName: r.name, tests: r.selectedTests }));
 }
+
+export function computeStaffAnalytics(
+  rows = []
+) {
+  /* =========================
+     TESTING (savedBy)
+  ========================= */
+
+  const savedRows = rows.filter(
+    (r) =>
+      r.savedBy &&
+      r.timeScanned &&
+      r.timeSaved
+  );
+
+  const totalSaved =
+    savedRows.length;
+
+  const distributionMap =
+    {};
+
+  const avgMap = {};
+
+  const timelines = {};
+
+  savedRows.forEach((r) => {
+    const staff =
+      r.savedBy.trim();
+
+    if (!staff) return;
+
+    distributionMap[
+      staff
+    ] =
+      (distributionMap[
+        staff
+      ] || 0) + 1;
+
+    const duration =
+      minutesDiff(
+        r.timeScanned,
+        r.timeSaved
+      );
+
+    if (
+      duration != null
+    ) {
+      if (
+        !avgMap[
+          staff
+        ]
+      ) {
+        avgMap[
+          staff
+        ] = [];
+      }
+
+      avgMap[
+        staff
+      ].push(
+        duration
+      );
+
+      if (
+        !timelines[
+          staff
+        ]
+      ) {
+        timelines[
+          staff
+        ] = [];
+      }
+
+      timelines[
+        staff
+      ].push({
+        ...r,
+        duration,
+      });
+    }
+  });
+
+  const distribution =
+    Object.entries(
+      distributionMap
+    )
+      .map(
+        ([
+          name,
+          count,
+        ]) => ({
+          name,
+          count,
+          percentage:
+            totalSaved
+              ? Math.round(
+                  (count /
+                    totalSaved) *
+                    100
+                )
+              : 0,
+        })
+      )
+      .sort(
+        (a, b) =>
+          b.count -
+          a.count
+      );
+
+  const averages =
+    Object.entries(
+      avgMap
+    ).map(
+      ([
+        name,
+        values,
+      ]) => ({
+        name,
+        avgMinutes:
+          Math.round(
+            values.reduce(
+              (
+                s,
+                v
+              ) =>
+                s + v,
+              0
+            ) /
+              values.length
+          ),
+      })
+    );
+
+  /* =========================
+     VALIDATED (validatedBy)
+  ========================= */
+
+  const validatedRows =
+    rows.filter(
+      (r) =>
+        r.validatedBy &&
+        r.timeSaved &&
+        r.timeValidated
+    );
+
+  const totalValidated =
+    validatedRows.length;
+
+  const validatedDistributionMap =
+    {};
+
+  const validatedAvgMap =
+    {};
+
+  const validatedTimelines =
+    {};
+
+  validatedRows.forEach(
+    (r) => {
+      const staff =
+        r.validatedBy.trim();
+
+      if (!staff)
+        return;
+
+      validatedDistributionMap[
+        staff
+      ] =
+        (validatedDistributionMap[
+          staff
+        ] ||
+          0) + 1;
+
+      const duration =
+        minutesDiff(
+          r.timeSaved,
+          r.timeValidated
+        );
+
+      if (
+        duration !=
+        null
+      ) {
+        if (
+          !validatedAvgMap[
+            staff
+          ]
+        ) {
+          validatedAvgMap[
+            staff
+          ] = [];
+        }
+
+        validatedAvgMap[
+          staff
+        ].push(
+          duration
+        );
+
+        if (
+          !validatedTimelines[
+            staff
+          ]
+        ) {
+          validatedTimelines[
+            staff
+          ] = [];
+        }
+
+        validatedTimelines[
+          staff
+        ].push({
+          ...r,
+          duration,
+        });
+      }
+    }
+  );
+
+  const validatedDistribution =
+    Object.entries(
+      validatedDistributionMap
+    )
+      .map(
+        ([
+          name,
+          count,
+        ]) => ({
+          name,
+          count,
+          percentage:
+            totalValidated
+              ? Math.round(
+                  (count /
+                    totalValidated) *
+                    100
+                )
+              : 0,
+        })
+      )
+      .sort(
+        (a, b) =>
+          b.count -
+          a.count
+      );
+
+  const validatedAverages =
+    Object.entries(
+      validatedAvgMap
+    ).map(
+      ([
+        name,
+        values,
+      ]) => ({
+        name,
+        avgMinutes:
+          Math.round(
+            values.reduce(
+              (
+                s,
+                v
+              ) =>
+                s + v,
+              0
+            ) /
+              values.length
+          ),
+      })
+    );
+
+  /* =========================
+     ENTERED (enteredBy)
+  ========================= */
+
+  const enteredRows =
+    rows.filter(
+      (r) =>
+        r.enteredBy &&
+        r.timeValidated &&
+        r.enteredTime
+    );
+
+  const totalEntered =
+    enteredRows.length;
+
+  const enteredDistributionMap =
+    {};
+
+  const enteredAvgMap =
+    {};
+
+  const enteredTimelines =
+    {};
+
+  enteredRows.forEach(
+    (r) => {
+      const staff =
+        r.enteredBy.trim();
+
+      if (!staff)
+        return;
+
+      enteredDistributionMap[
+        staff
+      ] =
+        (enteredDistributionMap[
+          staff
+        ] ||
+          0) + 1;
+
+      const duration =
+        minutesDiff(
+          r.timeValidated,
+          r.enteredTime
+        );
+
+      if (
+        duration !=
+        null
+      ) {
+        if (
+          !enteredAvgMap[
+            staff
+          ]
+        ) {
+          enteredAvgMap[
+            staff
+          ] = [];
+        }
+
+        enteredAvgMap[
+          staff
+        ].push(
+          duration
+        );
+
+        if (
+          !enteredTimelines[
+            staff
+          ]
+        ) {
+          enteredTimelines[
+            staff
+          ] = [];
+        }
+
+        enteredTimelines[
+          staff
+        ].push({
+          ...r,
+          duration,
+        });
+      }
+    }
+  );
+
+  const enteredDistribution =
+    Object.entries(
+      enteredDistributionMap
+    )
+      .map(
+        ([
+          name,
+          count,
+        ]) => ({
+          name,
+          count,
+          percentage:
+            totalEntered
+              ? Math.round(
+                  (count /
+                    totalEntered) *
+                    100
+                )
+              : 0,
+        })
+      )
+      .sort(
+        (a, b) =>
+          b.count -
+          a.count
+      );
+
+  const enteredAverages =
+    Object.entries(
+      enteredAvgMap
+    ).map(
+      ([
+        name,
+        values,
+      ]) => ({
+        name,
+        avgMinutes:
+          Math.round(
+            values.reduce(
+              (
+                s,
+                v
+              ) =>
+                s + v,
+              0
+            ) /
+              values.length
+          ),
+      })
+    );
+
+  return {
+    testing: {
+      totalSaved,
+      distribution,
+      averages,
+      timelines,
+    },
+
+    validated: {
+      totalValidated,
+      distribution:
+        validatedDistribution,
+      averages:
+        validatedAverages,
+      timelines:
+        validatedTimelines,
+    },
+
+    entered: {
+      totalEntered,
+      distribution:
+        enteredDistribution,
+      averages:
+        enteredAverages,
+      timelines:
+        enteredTimelines,
+          },
+        };
+      }
 
 export async function fetchTestTimings() { return testTimings || {}; }

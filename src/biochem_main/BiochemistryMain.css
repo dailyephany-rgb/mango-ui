@@ -116,6 +116,7 @@
 
 .dept-table {
   width: 100%;
+  min-width: 1800px;
   border-collapse: collapse;
   font-size: 14px;
 }

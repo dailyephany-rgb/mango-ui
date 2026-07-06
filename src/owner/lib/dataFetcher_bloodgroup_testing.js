@@ -87,9 +87,14 @@ export function mergeDeptRows(rows = []) {
         timeCollected: toDate(r.timeCollected),
         timeScanned: toDate(r.scannedTime || r.timeScanned),
         timeSaved: toDate(r.savedTime || r.timeSaved),
+        savedBy: r.savedBy || "",
         timeValidated: toDate(r.validatedTime || r.timeValidated),
+        timeEntered: toDate(r.enteredTime || r.timeEntered),
         isSaved: r.saved === "Yes" || !!(r.savedTime || r.timeSaved),
-        isValidated: r.validated === true || r.status === "validated" || !!(r.validatedTime || r.timeValidated),
+        isValidated: r.validated === true || r.status === "validated"
+         || !!(r.validatedTime || r.timeValidated),
+        validatedBy: r.validatedBy || "",
+        enteredBy: r.enteredBy,
         testList: new Set(),
       };
     }
@@ -109,11 +114,38 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
   const violators = [];
   unifiedRows.forEach((row) => {
     const allowed = timingMap["bloodgroup"]?.[stage] ?? timingMap.default?.[stage] ?? 30;
-    const s = toDate(row.timeScanned);
-    const e = toDate(row.timeSaved);
-    if (!s || !e) return;
-    
-    const duration = Math.round((e - s) / 60000);
+    let start;
+let end;
+
+switch (stage) {
+  case "scanned_to_saved":
+    start = toDate(row.timeScanned);
+    end = toDate(row.timeSaved);
+    break;
+
+  case "saved_to_validated":
+    start = toDate(row.timeSaved);
+    end = toDate(row.timeValidated);
+    break;
+
+  case "validated_to_entered":
+    start = toDate(row.timeValidated);
+    end = toDate(
+      row.timeEntered ||
+      row.enteredTime
+    );
+    break;
+
+  default:
+    return;
+}
+
+if (!start || !end)
+  return;
+
+const duration = Math.round(
+  (end - start) / 60000
+);
     
     if (duration > allowed) {
       const excess = duration - allowed; 
@@ -124,13 +156,32 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
         diagnosticNo: row.diagnosticNo,
         name: row.name,
         test: row.test,
-        duration: duration, 
-        excess: Math.round(excess), 
-        allowed, 
+        duration,
+        excess: Math.round(excess),
+        allowed,
         status,
         department: "Blood Group",
-        timeScanned: row.timeScanned,
-        timeSaved: row.timeSaved,
+      
+        savedBy:
+          row.savedBy || "NA",
+      
+        validatedBy:
+          row.validatedBy || "NA",
+      
+        enteredBy:
+          row.enteredBy || "NA",
+      
+        timeScanned:
+          row.timeScanned,
+      
+        timeSaved:
+          row.timeSaved,
+      
+        timeValidated:
+          row.timeValidated,
+      
+        enteredTime:
+          row.timeEntered,
       });
     }
   });
@@ -203,6 +254,163 @@ export function computeKPIs(masterRows = [], bgRows = []) {
     slowestEntry,
   };
 }
+/* ================= STAFF ANALYTICS ====================== */
+
+export function computeStaffAnalytics(
+  rows = []
+) {
+  const buildStats = (
+    rows,
+    staffKey,
+    startKey,
+    endKey
+  ) => {
+    const map = {};
+
+    rows.forEach((r) => {
+      const staff =
+        r[staffKey] ||
+        "Unknown";
+
+      if (!map[staff]) {
+        map[staff] = {
+          name: staff,
+          count: 0,
+          durations: [],
+          timeline: {},
+        };
+      }
+
+      map[staff].count++;
+
+      const mins =
+        minutesDiff(
+          r[startKey],
+          r[endKey]
+        );
+
+      if (mins != null) {
+        map[
+          staff
+        ].durations.push(
+          mins
+        );
+      }
+
+      const d =
+        toDate(
+          r[endKey]
+        );
+
+      if (d) {
+        const hour =
+          d.getHours();
+
+        map[
+          staff
+        ].timeline[
+          hour
+        ] =
+          (
+            map[
+              staff
+            ]
+              .timeline[
+              hour
+            ] || 0
+          ) + 1;
+      }
+    });
+
+    return {
+      distribution:
+        Object.values(
+          map
+        ).map((s) => ({
+          name:
+            s.name,
+          value:
+            s.count,
+        })),
+
+      averages:
+        Object.values(
+          map
+        ).map((s) => ({
+          name:
+            s.name,
+          value:
+            s
+              .durations
+              .length
+              ? Math.round(
+                  s.durations.reduce(
+                    (
+                      a,
+                      b
+                    ) =>
+                      a +
+                      b,
+                    0
+                  ) /
+                    s
+                      .durations
+                      .length
+                )
+              : 0,
+        })),
+
+      timelines:
+        Object.fromEntries(
+          Object.values(
+            map
+          ).map(
+            (
+              s
+            ) => [
+              s.name,
+              s.timeline,
+            ]
+          )
+        ),
+    };
+  };
+
+  return {
+    testing:
+      buildStats(
+        rows.filter(
+          (r) =>
+            r.timeSaved
+        ),
+        "savedBy",
+        "timeScanned",
+        "timeSaved"
+      ),
+
+    validated:
+      buildStats(
+        rows.filter(
+          (r) =>
+            r.timeValidated
+        ),
+        "validatedBy",
+        "timeSaved",
+        "timeValidated"
+      ),
+
+    entered:
+      buildStats(
+        rows.filter(
+          (r) =>
+            r.timeEntered
+        ),
+        "enteredBy",
+        "timeValidated",
+        "timeEntered"
+      ),
+  };
+}
 
 /* ================= SUBSCRIBE OVERVIEW =================== */
 
@@ -235,15 +443,19 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
 
     const merged = mergeDeptRows(filteredBG);
     const unified = unifyForCharts(merged);
-    
-    const violators = computeSLAViolations(unified, testTimings);
+        
+    const violators = computeSLAViolations(unified,testTimings );
+    const staffAnalytics =computeStaffAnalytics(merged);
 
-    onData({ 
-      masterRows: filteredMaster, 
-      deptRows: merged, 
-      unifiedRows: unified, 
-      violators: violators, 
-      kpis: computeKPIs(filteredMaster, merged) 
+    onData({masterRows:filteredMaster,
+
+      deptRows:merged,
+      unifiedRows:unified,
+      violators,
+
+      kpis:computeKPIs(filteredMaster,merged),
+
+      staffAnalytics,
     });
   };
 

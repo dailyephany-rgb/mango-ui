@@ -46,7 +46,7 @@ const HORMONES_FULL_NAMES = [
   "T3", "T4", "TSH (THYROID STIMULATING HORMONE)", "FT4 (FREE THYROXINE)",
   "LH (LUTEINIZING HORMONE)", "PROLACTIN", "E2 (ESTRADIOL II)", "PROGESTERONE",
   "VITAMIN B12 LEVEL", "VITAMIN D25 (OH) TOTAL", "FERRITIN", "HIV I & II (QUANTITATIVE)",
-  "HBSAG", "HCV (SERUM)", "BETA-HCG (HUMAN CHORIONIC GONADOTROPIN)", "TROP-T",
+  "HBSAG", "HCV (SERUM)", "BETA-HCG (HUMAN CHORIONIC GONADOTROPIN)", "TROP-T", "TROPONIN I",
   "FSH (FOLLICLE STIMULATING HORMONE)", "AMH (ANTI MULLERIAN HORMONE)", "PSA",
 ];
 
@@ -94,6 +94,13 @@ export function mergeDeptRows(rows = []) {
         isSaved: r.saved === "Yes" || !!(r.savedTime || r.timeSaved),
         isValidated: r.validated === true || r.status === "validated" || !!(r.validatedTime || r.timeValidated),
         isCritical: r.critical === "Yes",
+        savedBy: r.savedBy || "",
+        validatedBy: r.validatedBy || "",
+        enteredBy: r.enteredBy || "",
+        enteredTime: toDate(
+          r.enteredTime ||
+          r.timeEntered
+        ),
         testList: new Set(),
       };
     }
@@ -109,15 +116,40 @@ export function mergeDeptRows(rows = []) {
 
 /* ================= SLA VIOLATIONS ======================= */
 
-export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to_saved") {
+export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to_saved")
+ {
   const violators = [];
   unifiedRows.forEach((row) => {
     const allowed = timingMap["hormones"]?.[stage] ?? timingMap.default?.[stage] ?? 30;
-    const s = toDate(row.timeScanned);
-    const e = toDate(row.timeSaved);
-    if (!s || !e) return;
-    
-    const duration = Math.round((e - s) / 60000);
+    let start;
+let end;
+
+switch (stage) {
+  case "scanned_to_saved":
+    start = toDate(row.timeScanned);
+    end = toDate(row.timeSaved);
+    break;
+
+  case "saved_to_validated":
+    start = toDate(row.timeSaved);
+    end = toDate(row.timeValidated);
+    break;
+
+  case "validated_to_entered":
+    start = toDate(row.timeValidated);
+    end = toDate(row.enteredTime);
+    break;
+
+  default:
+    return;
+}
+
+      if (!start || !end) return;
+
+      const duration =
+        Math.round(
+          (end - start) / 60000
+        );
     
     if (duration > allowed) {
       const excess = duration - allowed; 
@@ -135,7 +167,10 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
         department: "hormones_main",
         timeScanned: row.timeScanned,
         timeSaved: row.timeSaved,
-      });
+        savedBy: row.savedBy || "NA",
+        validatedBy: row.validatedBy || "NA",
+        enteredBy: row.enteredBy || "NA",
+    });
     }
   });
   return violators.sort((a, b) => b.excess - a.excess);
@@ -198,6 +233,270 @@ export function computeKPIs(masterRows = [], hormonesRows = []) {
   };
 }
 
+/* ================= STAFF ANALYTICS ====================== */
+
+export function computeStaffAnalytics(rows = []) {
+
+  const savedRows = rows.filter(
+    (r) => (r.isSaved || r.timeSaved) && r.savedBy
+  );
+
+  const totalSaved = savedRows.length;
+
+  const distributionMap = {};
+  const avgMap = {};
+  const timelines = {};
+
+  savedRows.forEach((r) => {
+    const user = r.savedBy;
+  
+    distributionMap[user] =
+      (distributionMap[user] || 0) + 1;
+  
+    const mins = minutesDiff(
+      r.timeScanned,
+      r.timeSaved
+    );
+  
+    if (mins != null) {
+      if (!avgMap[user]) {
+        avgMap[user] = [];
+      }
+    
+      avgMap[user].push(mins);
+    
+      if (!timelines[user]) {
+        timelines[user] = [];
+      }
+    
+      timelines[user].push({
+        regNo: r.regNo,
+        x: r.diagnosticNo || r.regNo,
+        diagnosticNo: r.diagnosticNo || "NA",
+        name: r.name,
+        test: r.test,
+        selectedTests: r.selectedTests || [],
+        duration: mins,
+        timeScanned: r.timeScanned,
+        timeSaved: r.timeSaved,
+      });
+    }
+  });
+
+    const distribution = Object.entries(
+      distributionMap
+    ).map(([name, count]) => ({
+      name,
+      count,
+      percentage:
+        totalSaved > 0
+          ? Number(
+              ((count / totalSaved) * 100).toFixed(1)
+            )
+          : 0,
+    }));
+
+     const averages = Object.entries(
+      avgMap
+    ).map(([name, values]) => ({
+      name,
+      avgMinutes:
+        values.length > 0
+          ? Math.round(
+              values.reduce(
+                (sum, v) => sum + v,
+                0
+              ) / values.length
+            )
+          : 0,
+    }));
+
+    /* =========================
+   VALIDATED (validatedBy)
+========================= */
+
+const validatedRows = rows.filter(
+  (r) =>
+    (r.isValidated || r.timeValidated) &&
+    r.validatedBy
+);
+const totalValidated = validatedRows.length;
+const validatedDistributionMap = {};
+const validatedAvgMap = {};
+const validatedTimelines = {};
+
+validatedRows.forEach((r) => {
+  const user = r.validatedBy;
+
+  validatedDistributionMap[user] =
+    (validatedDistributionMap[user] || 0) + 1;
+
+  const mins = minutesDiff(
+    r.timeSaved,
+    r.timeValidated
+  );
+
+  if (mins != null) {
+    if (!validatedAvgMap[user]) {
+      validatedAvgMap[user] = [];
+    }
+
+    validatedAvgMap[user].push(mins);
+
+    if (!validatedTimelines[user]) {
+      validatedTimelines[user] = [];
+    }
+
+    validatedTimelines[user].push({
+      x: r.diagnosticNo || r.regNo,
+      regNo: r.regNo,
+      diagnosticNo: r.diagnosticNo || "NA",
+      name: r.name,
+      test: r.test,
+      selectedTests: r.selectedTests || [],
+      duration: mins,
+      timeSaved: r.timeSaved,
+      timeValidated: r.timeValidated,
+    });
+  }
+});
+
+const validatedDistribution =
+  Object.entries(
+    validatedDistributionMap
+  ).map(([name, count]) => ({
+    name,
+    count,
+    percentage:
+      totalValidated > 0
+        ? Number(
+            (
+              (count /
+                totalValidated) *
+              100
+            ).toFixed(1)
+          )
+        : 0,
+    }));
+        const validatedAverages =
+      Object.entries(
+        validatedAvgMap
+      ).map(([name, values]) => ({
+        name,
+        avgMinutes:
+          values.length > 0
+            ? Math.round(
+                values.reduce(
+                  (sum, v) =>
+                    sum + v,
+                  0
+                ) / values.length
+              )
+            : 0,
+   }));
+
+/* =========================
+   ENTERED (enteredBy)
+========================= */
+
+
+const enteredRows = rows.filter(
+  (r) => r.enteredTime
+);
+
+const totalEntered = enteredRows.length;
+
+const enteredDistributionMap = {};
+const enteredAvgMap = {};
+const enteredTimelines = {};
+
+enteredRows.forEach((r) => {
+  const user = r.enteredBy || "Unknown";
+
+  enteredDistributionMap[user] =
+    (enteredDistributionMap[user] || 0) + 1;
+
+const mins = minutesDiff(
+      r.timeValidated,
+      r.enteredTime
+    );
+
+  if (mins != null) {
+    if (!enteredAvgMap[user]) {
+      enteredAvgMap[user] = [];
+    }
+
+    enteredAvgMap[user].push(mins);
+
+    if (!enteredTimelines[user]) {
+      enteredTimelines[user] = [];
+    }
+
+    enteredTimelines[user].push({
+      x: r.diagnosticNo || r.regNo,
+      regNo: r.regNo,
+      diagnosticNo: r.diagnosticNo || "NA",
+      name: r.name,
+      test: r.test,
+      selectedTests: r.selectedTests || [],
+      duration: mins,
+      timeValidated: r.timeValidated,
+      enteredTime: r.enteredTime,
+    });
+  }
+});
+
+const enteredDistribution = Object.entries(
+  enteredDistributionMap
+).map(([name, count]) => ({
+  name,
+  count,
+  percentage:
+    totalEntered > 0
+      ? Number(
+          ((count / totalEntered) * 100).toFixed(1)
+        )
+      : 0,
+}));
+
+const enteredAverages = Object.entries(
+  enteredAvgMap
+).map(([name, values]) => ({
+  name,
+  avgMinutes:
+    values.length > 0
+      ? Math.round(
+          values.reduce(
+            (sum, v) => sum + v,
+            0
+          ) / values.length
+        )
+      : 0,
+}));
+
+return {
+  testing: {
+    totalSaved,
+    distribution,
+    averages,
+    timelines,
+  },
+
+  validated: {
+    totalValidated,
+    distribution: validatedDistribution,
+    averages: validatedAverages,
+    timelines: validatedTimelines,
+  },
+  entered: {
+    totalEntered,
+    distribution: enteredDistribution,
+    averages: enteredAverages,
+    timelines: enteredTimelines,
+  },
+};  
+}
+
 /* ================= SUBSCRIBE OVERVIEW =================== */
 
 export function subscribeOverview({ onData, source = "All", dateRange }) {
@@ -229,13 +528,21 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
     const merged = mergeDeptRows(filteredHormones);
     const unified = unifyForCharts(merged);
     const violators = computeSLAViolations(unified, testTimings);
+    const staffAnalytics = computeStaffAnalytics(merged);
 
-    onData({ 
-      masterRows: filteredMaster, 
-      deptRows: merged, 
-      unifiedRows: unified, 
-      violators: violators, 
-      kpis: computeKPIs(filteredMaster, merged) 
+    onData({
+      masterRows: filteredMaster,
+      deptRows: merged,
+      unifiedRows: unified,
+      violators,
+    
+      kpis:
+        computeKPIs(
+          filteredMaster,
+          merged
+        ),
+    
+      staffAnalytics,
     });
   };
 

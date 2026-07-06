@@ -45,6 +45,36 @@ export function normalizeTestsField(field) {
   return [];
 }
 
+/* ================= STAFF DISTRIBUTION =================== */
+function buildStaffDistribution(rows, field) {
+  const counts = {};
+
+  rows.forEach((r) => {
+    const staff = (r[field] || "").trim();
+
+    if (!staff) return;
+
+    counts[staff] = (counts[staff] || 0) + 1;
+  });
+
+  const total = Object.values(counts).reduce(
+    (sum, value) => sum + value,
+    0
+  );
+
+  return Object.entries(counts)
+    .map(([name, count]) => ({
+      name,
+      count,
+      percentage:
+        total > 0
+          ? Math.round((count / total) * 100)
+          : 0
+    }))
+    .sort((a, b) => b.count - a.count);
+}
+
+
 /* ================= KPI COMPUTATION ====================== */
 export function computeKPIs(filteredMaster = [], mergedOutsourceRows = [], canonTests = []) {
   const cleanCanon = canonTests.map(t => t.trim().toUpperCase());
@@ -74,18 +104,28 @@ export function computeKPIs(filteredMaster = [], mergedOutsourceRows = [], canon
     key => key.toLowerCase() === currentLabName.toLowerCase()
   );
   const labConfig = labKey ? testTimingsData[labKey] : null;
-  const activeLimit = labConfig 
-    ? (labConfig.collected_to_saved || labConfig.scanned_to_saved || 1440) 
-    : 1440;
+  const activeLimit =
+  labConfig?.outsource_collected_to_received ??
+  1440;
 
   // VIOLATORS ARRAY FOR COMPONENTS
   const violators = [];
 
-  // CALCULATION: Received (timeSaved) - Scanned (timeScanned)
-  const tatsScannedToReceived = mergedOutsourceRows
-    .filter(r => r.timeScanned && r.timeSaved)
+  // CALCULATION: // Report Received - Outsource Collected
+
+  const tatsCollectedToReceived =
+  mergedOutsourceRows
+    .filter(
+      r =>
+        r.timeOutsourcedCollected &&
+        r.timeReportReceived
+    )
     .map(r => {
-        const diff = minutesDiff(r.timeScanned, r.timeSaved);
+      const diff = minutesDiff(
+        r.timeOutsourcedCollected,
+        r.timeReportReceived
+      );
+        
         const isViolated = diff > activeLimit;
         
         if (isViolated) {
@@ -115,10 +155,21 @@ export function computeKPIs(filteredMaster = [], mergedOutsourceRows = [], canon
   console.log(`--- SLA AUDIT: ${currentLabName.toUpperCase()} ---`);
   console.log(`Target Limit from JSON: ${activeLimit} mins`);
   
-  const tatsReceivedToGiven = mergedOutsourceRows
-    .filter(r => r.timeSaved && r.timeGiven)
-    .map(r => minutesDiff(r.timeSaved, r.timeGiven))
+  const tatsReceivedToDelivered =
+  mergedOutsourceRows
+    .filter(
+      r =>
+        r.timeReportReceived &&
+        r.timeReportDelivered
+    )
+    .map(r =>
+      minutesDiff(
+        r.timeReportReceived,
+        r.timeReportDelivered
+      )
+    )
     .filter(v => v !== null);
+
 
   let slowest = { delay: 0, regNo: "N/A", formatted: "0m" };
   const formatSlowestEntry = (totalMinutes) => {
@@ -129,8 +180,9 @@ export function computeKPIs(filteredMaster = [], mergedOutsourceRows = [], canon
     return days >= 1 ? `${days}d ${hours}h` : `${hours}h ${mins}m`;
   };
 
-  if (tatsScannedToReceived.length > 0) {
-    const maxEntry = tatsScannedToReceived.reduce((prev, curr) => (prev.diff > curr.diff) ? prev : curr);
+  if (tatsCollectedToReceived.length > 0){
+    const maxEntry = tatsCollectedToReceived.reduce(
+      (prev, curr) => (prev.diff > curr.diff) ? prev : curr);
     slowest = { 
       delay: maxEntry.diff, 
       regNo: maxEntry.regNo, 
@@ -138,18 +190,50 @@ export function computeKPIs(filteredMaster = [], mergedOutsourceRows = [], canon
     };
   }
 
-  const avgMinutesSR = tatsScannedToReceived.length 
-    ? Math.round(tatsScannedToReceived.reduce((a, b) => a + b.diff, 0) / tatsScannedToReceived.length) 
+  const avgMinutesSR =
+  tatsCollectedToReceived.length
+    ? Math.round(
+        tatsCollectedToReceived.reduce(
+          (a, b) => a + b.diff,
+          0
+        ) /
+        tatsCollectedToReceived.length
+      )
     : 0;
 
-  const avgMinutesRG = tatsReceivedToGiven.length 
-    ? Math.round(tatsReceivedToGiven.reduce((a, b) => a + b, 0) / tatsReceivedToGiven.length) 
+    const avgMinutesRG =
+  tatsReceivedToDelivered.length
+    ? Math.round(
+        tatsReceivedToDelivered.reduce(
+          (a, b) => a + b,
+          0
+        ) /
+        tatsReceivedToDelivered.length
+      )
     : 0;
 
   const violationsCount = violators.length;
-  const totalValidForSLA = tatsScannedToReceived.length;
+  const totalValidForSLA = tatsCollectedToReceived.length;
   const withinCount = totalValidForSLA - violationsCount;
   const slaScore = totalValidForSLA > 0 ? Math.round((withinCount / totalValidForSLA) * 100) : 100;
+
+  const collectedByDistribution =
+  buildStaffDistribution(
+    mergedOutsourceRows,
+    "collectedBy"
+  );
+
+const receivedByDistribution =
+  buildStaffDistribution(
+    mergedOutsourceRows,
+    "receivedBy"
+  );
+
+const deliveredByDistribution =
+  buildStaffDistribution(
+    mergedOutsourceRows,
+    "deliveredBy"
+  ); 
 
   return {
     totalPatientsCollected,
@@ -160,15 +244,21 @@ export function computeKPIs(filteredMaster = [], mergedOutsourceRows = [], canon
     totalPatientsPendingReport: Math.max(0, totalPatientsSaved - totalPatientsGiven),
     totalPatientsPendingScans: Math.max(0, totalPatientsCollected - totalPatientsSaved),
     totalTestsPending: Math.max(0, totalTestsCollected - totalTestsSaved),
-    avgCollectedToSaved: formatTAT(avgMinutesSR),
-    avgSavedToGiven: formatTAT(avgMinutesRG),
+    avgCollectedToReceived: formatTAT(avgMinutesSR),
+    avgReceivedToDelivered: formatTAT(avgMinutesRG),
     slowestEntry: slowest,
     slaScore,
-    // NEW FIELDS FOR COMPONENTS
+
+    // Staff analytics
+    collectedByDistribution,
+    receivedByDistribution,
+    deliveredByDistribution,
+    
+    // Delay analytics
     violators: violators.sort((a, b) => b.excess - a.excess),
     totalCount: totalValidForSLA,
     withinCount: withinCount
-  };
+    };
 }
 
 /* ================= MERGE LAB ROWS ====================== */
@@ -198,35 +288,84 @@ export function mergeOutsourceRows(rows = [], targetLab) {
         timePrinted: toDate(r.timePrinted),
         timeCollected: toDate(r.timeCollected), 
         department: r.labName || targetLab,     
-        timeScanned: toDate(r.scannedTime), 
-        
+        timeOutsourcedCollected:
+        toDate(r.outsourcedCollectedTime),
+        timeReportReceived:toDate(r.reportReceivedTime),
+        timeReportDelivered: toDate(r.reportDeliveredTime),  
+
+        // Legacy schema support
+        scannedTime:  toDate(r.scannedTime),
         receivedTime: toDate(r.receivedTime),
-        givenTime: toDate(r.givenTime),
-        
-        timeSaved: toDate(r.receivedTime), 
-        timeGiven: toDate(r.givenTime),    
         
         isSaved: r.receivedStatus === "Yes",
         isGiven: isGivenVal,
         test: testArray.join(", ") || "—",
         testArrayRaw: testArray,
-        labName: targetLab
+        labName: targetLab,
+        collectedBy: r.collectedBy || "",
+        receivedBy: r.receivedBy || "",
+        deliveredBy: r.deliveredBy || ""
       };
-    } else {
+      } else {
       if (isGivenVal) out[key].isGiven = true;
-      if (r.givenTime) {
-          out[key].givenTime = toDate(r.givenTime);
-          out[key].timeGiven = toDate(r.givenTime);
+      if (
+        r.reportDeliveredTime
+      ) {
+        out[key]
+          .timeReportDelivered =
+            toDate(
+              r.reportDeliveredTime
+            );
       }
-      if (r.receivedTime) {
-          out[key].receivedTime = toDate(r.receivedTime);
-          out[key].timeSaved = toDate(r.receivedTime);
+      
+      if (
+        r.reportReceivedTime
+      ) {
+        out[key]
+          .timeReportReceived =
+            toDate(
+              r.reportReceivedTime
+            );
       }
-      if (r.scannedTime) {
-          out[key].timeScanned = toDate(r.scannedTime);
+      
+      if (
+        r.outsourcedCollectedTime
+      ) {
+        out[key]
+          .timeOutsourcedCollected =
+            toDate(
+              r.outsourcedCollectedTime
+            );
       }
+
+      // Legacy schema support
+        if (r.scannedTime) {
+          out[key].scannedTime =
+            toDate(r.scannedTime);
+        }
+
+        if (r.receivedTime) {
+          out[key].receivedTime =
+            toDate(r.receivedTime);
+        }
+      
+        
       if (r.timeCollected) out[key].timeCollected = toDate(r.timeCollected);
       if (r.timePrinted) out[key].timePrinted = toDate(r.timePrinted);
+      if (r.collectedBy) {
+        out[key].collectedBy =
+          r.collectedBy;
+      }
+      
+      if (r.receivedBy) {
+        out[key].receivedBy =
+          r.receivedBy;
+      }
+      
+      if (r.deliveredBy) {
+        out[key].deliveredBy =
+          r.deliveredBy;
+      }
     }
   });
   return Object.values(out);
@@ -238,11 +377,203 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
   const outsourceRef = collection(db, "outsource_tracking");
 
   const OUTSOURCE_ROUTING = {
-    "SterlingRegister": ["ADRENOCORTICOTROPIC HORMONE ACTH", "AFP (ALPHA FETO PROTEIN )", "ALLERGY MIX PANEL", "ALLERGY TEST-DRUGS", "ALLERGY TEST-FOOD VEG", "ALLERGY TEST-INHALANT", "AMMONIA TEST", "AMOEBIC SEROLOGY", "ANA PROFILE", "ANGIOTENSIN CONVERTING ENZYME (ACE) LEVEL", "ANTI ANA BY IFA", "ANTI CARDIOLIPIN ANTIBODIES IGG,IGM", "ANTI CCP (ANTI CYCLIC CITRULLINATED PEAPIDE ANTIBODIES )", "ANTI DS DNA ( IFA )", "ANTI HAV IGG", "ANTI HAV IGM", "ANTI HBE ANTIBODIES", "ANTI HBS", "ANTI HEV IGM", "ANTI TG (ANTI THYROGLOBULIN) ANTI BODY", "ANTI TPO ANTIBODY", "APLA PANEL (LUPUS ANTICOUGUELANT SCREEN , ACA, APLA IGG IGM BETA 2 GLYCOPROTIEN IGG , IGM )", "BETA 2 GLYCOPROTEIN IGG IGM", "BILE ACID", "BIOPSY EXTRA LARGE", "BIOPSY LARGE", "BIOPSY LARGEST", "BIOPSY MEDIUM", "BIOPSY SMALL", "BODY FLUID FOR ANAEROBIC CULTURE", "BODY FLUID, ROUTINE EXAMINATION", "BONE MARROW EXAMINATION AND BIOPSY","C-ANCA","CA -125 (OVARIAN CANCER )", "CA 15.3", "CA 19-9", "CBNET", "CEA (CARCINO EMBRYONIC ANTIGEN )", "CHIKUNGUNYA PCR", "CHLAMYDIA TRACHOMATIS IGG", "CHLAMYDIA TRACHOMATIS IGM", "COMPLIMENT C3", "COMPLIMENT C4", "COOMBS TEST, DIRECT, BLOOD", "CORTISOL", "C-PEPTIDE", "CULTURE FUNGAL", "CYTOMEGALOVIRUS (CMV) IGM AND IGG", "DHEA-S", "ERYTHROPOIETIN", "FDP (FIBRINOGEN DEGRADATION PRODUCTS)", "FIBRINOGEN LEVEL", "GROWTH HORMONE", "HBEAG", "HEPATITIS A VIRUS IGM ANTIBODIES", "HEPATITIS B VIRUS DNA QUANTITATIVE", "HEPATITIS BE VIRUS ANTIGEN / ANTIBODY EVALUATION", "HEPATITIS E VIRUS IGM ANTIBODIES", "HERPES ZOSTER IGG IGM", "HLA B27 (PCR)", "HOMOCYSTEINE", "HS-CRP (QUANTITATIVE)", "HSV I AND HSV II IGG IGM", "IGE, TOTAL", "IGG LEVEL", "IMMUNOPHENOTYPING FOR PLATELET FUNCTION TEST", "INDIA INK PREPARATION", "INDIRECT COOMBS TEST, SERUM", "INHIBIN B", "INSULIN FASTING", "INSULIN RANDOM", "LACTATE LEVEL", "LBC STERLING", "LUPUS ANTICOAGULANT", "MYELOMA PANEL", "OSMOLALITY URINE","P-ANCA BY ELSA","P24 ANTIGEN", "PARVOVIRUS B 19 IGG", "PARVOVIRUS B 19 IGM", "PROTEIN C", "PROTEIN ELECTROPHORESIS", "PROTEIN S", "PTH", "RH ANTI BODY TITER", "SAAG (SERUM-ASCITES ALBUMIN GRADIENT)", "SERUM FOLIC ACID", "SERUM IGA LEVEL", "SIROLIMUS LEVEL", "STOOL FOR REDUCING SUBSTANCE TEST", "TB GOLD (IGRAS) QUANTIFERON GAMMA INTERFERON", "TB PCR BY GENE EXPERT", "TESTOSTERONE, FREE, SERUM", "THROAT SWAB FOR H1N1", "TISSUE TRANSGLUTAMINASE IGA, TTG", "TORCH-COMPLETE - 10", "TOXO IGG IGM", "TPHA", "TUMOR NECROSIS FACTIFOR ALPHA", "URINE MYOGLOBIN", "URINE-MICROALBUMIN", "VARICELLA ZOSTER VIRUS (VZV) IGG ANTIBODIES", "VEG. FOOD ALLERGY PANEL"],
-    "NeubergRegister": ["HB ELECTROPHORESIS", "NIPT NEUBERG"],
-    "LifecellRegister": ["WHOLE EXOME SEQUENCING - NGS", "HBB Gene Sequencing (Betaglobinopathy Gene)", "PAP Smear LBC + HPV", "DICE Panel with TB PCR", "Fetal Autopsy (fetus in 10% Formalin Sol.) with DNA Storage", "Fetal Autopsy + Placentoscope + DNA Storage", "Y Chromosome Microdeletion (YCMD)", "BabyShield 11 Conditions- (Heel-Prick)", "BabyShield 4 Conditions- (Heel-Prick)", "BabyShield 62 Conditions- (Heel-Prick) – TMS", "BabyShield 7 Conditions- (Heel-Prick)"],
-    "LilacRegister": ["Combined FTS (Dual Marker + NT)", "Quadruple Marker Test", "InsighT (NIPS)","DMT EVIC DUO PE LUS"],
-    "ReliableRegister": ["PROCALCITONIN","PRO BNP MARKER","CPKMB","D DIMER","CPK NAC","MAGNESIUM","TOTAL TESTOSTERONE","LIPASE","RUBELLA IGG", "RUBELLA IGM","ASO TITER","G6PD","ADA","URINE-ACR","URINE-PCR"]
+
+    "STERLING": [
+      "24 HOURS URINE METABOLIC EVALUATION",
+      "ACETONE",
+      "ACHR",
+      "ALBERT STAIN",
+      "ALDOLASE",
+      "ADRENOCORTICOTROPIC HORMONE ACTH",
+      "AFP (ALPHA FETO PROTEIN )",
+      "ALLERGY MIX PANEL",
+      "ALLERGY TEST-DRUGS",
+      "ALLERGY TEST-FOOD VEG",
+      "ALLERGY TEST-INHALANT",
+      "AMMONIA TEST",
+      "AMOEBIC SEROLOGY",
+      "ANA PROFILE",
+      "ANCA (IFA)",
+      "ANGIOTENSIN CONVERTING ENZYME (ACE) LEVEL",
+      "ANTI ANA BY IFA",
+      "ANTI CARDIOLIPIN ANTIBODIES IGG,IGM",
+      "ANTI CCP (ANTI CYCLIC CITRULLINATED PEPTIDE ANTIBODIES )",
+      "ANTI DS DNA ( IFA )",
+      "ANTI HAV IGG",
+      "ANTI HAV IGM",
+      "ANTI HBE ANTIBODIES",
+      "ANTI HBS",
+      "ANTI HEV IGM",
+      "ANTI TG (ANTI THYROGLOBULIN) ANTI BODY",
+      "ANTI TPO ANTIBODY",
+      "APLA PANEL (LUPUS ANTICOUGUELANT SCREEN , ACA, APLA IGG IGM BETA 2 GLYCOPROTIEN IGG , IGM )",
+      "ASPERGILUS SEROLOGY (GALACTOMANAN) ANTIGEN",
+      "BETA 2 GLYCOPROTEIN IGG IGM",
+      "BETA 2 MICROGLOBULIN",
+      "BETA D GLUCAN LEVEL",
+      "BETA GLOBINOPATHY GENE SEQUENCING",
+      "BILE ACID",
+      "BIOPSY EXTRA LARGE",
+      "BIOPSY LARGE",
+      "BIOPSY LARGEST",
+      "BIOPSY MEDIUM",
+      "BIOPSY SMALL",
+      "BIOPSY VERY LARGE",
+      "BODY FLUID FOR ANAEROBIC CULTURE",
+      "BODY FLUID, ROUTINE EXAMINATION",
+      "BONE MARROW EXAMINATION AND BIOPSY",
+      "BRCA 1 AND BRCA 2",
+      "BRUCELLA IGG IGM",
+      "C ANCA",
+      "CA -125 (OVARIAN CANCER )",
+      "CA 15.3",
+      "CA 19-9",
+      "C-ANCA",
+      "CBNET",
+      "CD4/ CD8 COUNTS", 
+      "CEA (CARCINO EMBRYONIC ANTIGEN )",
+      "CHIKUNGUNYA PCR",
+      "CHLAMYDIA TRACHOMATIS IGG",
+      "CHLAMYDIA TRACHOMATIS IGM",
+      "COMPLIMENT C3",
+      "COMPLIMENT C4",
+      "COOMBS TEST, DIRECT, BLOOD",
+      "CORTISOL",
+      "C-PEPTIDE",
+      "CULTURE FUNGAL",
+      "CYTOMEGALOVIRUS (CMV) IGM AND IGG",
+      "DHEA-S",
+      "ERYTHROPOIETIN",
+      "FDP (FIBRINOGEN DEGRADATION PRODUCTS)",
+      "FIBRINOGEN LEVEL",
+      "GROWTH HORMONE",
+      "HBEAG",
+      "HEPATITIS A VIRUS IGM ANTIBODIES",
+      "HEPATITIS B VIRUS DNA QUANTITATIVE",
+      "HEPATITIS BE VIRUS ANTIGEN / ANTIBODY EVALUATION",
+      "HEPATITIS E VIRUS IGM ANTIBODIES",
+      "HERPES ZOSTER IGG IGM",
+      "HLA B27 (PCR)",
+      "HOMOCYSTEINE",
+      "HS-CRP (QUANTITATIVE)",
+      "HSV I AND HSV II IGG IGM",
+      "IGE, TOTAL",
+      "IGG LEVEL",
+      "IGM LEVEL",
+      "IMMUNOPHENOTYPING FOR PLATELET FUNCTION TEST",
+      "INDIA INK PREPARATION",
+      "INDIRECT COOMBS TEST, SERUM",
+      "INHIBIN B",
+      "INSULIN FASTING",
+      "INSULIN RANDOM",
+      "INTERLEUKIN - 6 (IL-6)",
+      "LIPOPROTEIN",
+      "LITHIUM LEVEL",
+      "LACTATE LEVEL",
+      "LBC STERLING",
+      "LUPUS ANTICOAGULANT",
+      "MYELOMA PANEL",
+      "NMO WITH MOG ANTIBODY PROFILE FOR SERUM",
+      "OSMOLALITY SERUM",
+      "OSMOLALITY URINE",
+      "OSMOLALITY URINE 24 HRS",
+      "P-ANCA BY ELSA",
+      "P24 ANTIGEN",
+      "PARVOVIRUS B 19 IGG",
+      "PARVOVIRUS B 19 IGM",
+      "PLGF",
+      "PROTEIN C",
+      "PROTEIN ELECTROPHORESIS",
+      "PROTEIN S",
+      "PTH",
+      "RH ANTI BODY TITER",
+      "RPR (VDRL)",
+      "SAAG (SERUM-ASCITES ALBUMIN GRADIENT)",
+      "SERUM FOLIC ACID",
+      "SERUM IGA LEVEL",
+      "SIROLIMUS LEVEL",
+      "STOOL FOR REDUCING SUBSTANCE TEST",
+      "SS-A",
+      "SS-A (RO),SS-B (LA) IGG ANTIBODIES",
+      "SS-B",
+      "STONE ANALYSIS",
+      "STOOL FOR REDUCING SUBSTANCE TEST",
+      "TACROLIMUS LEVEL",
+      "TB GOLD (IGRAS) QUANTIFERON GAMMA INTERFERON",
+      "TB PCR BY GENE EXPERT",
+      "TESTOSTERONE, FREE, SERUM",
+      "THROAT SWAB FOR H1N1",
+      "TISSUE TRANSGLUTAMINASE IGA, TTG",
+      "TORCH-COMPLETE - 10",
+      "TOXO IGG IGM",
+      "TPHA",
+      "TUMOR NECROSIS FACTOR ALPHA",
+      "URINE MYOGLOBIN",
+      "URINE-MICROALBUMIN",
+      "VARICELLA ZOSTER VIRUS (VZV) IGG ANTIBODIES",
+      "VEG. FOOD ALLERGY PANEL"
+    ],
+
+    "NEUBERG": [
+      "HB ELECTROPHORESIS",
+      "NIPT NEUBERG"
+    ],
+
+    "LIFECELL": [
+      "BLOOD FOR KAROTYPING (BABY SHIELD",
+      "WHOLE EXOME SEQUENCING - NGS",
+      "HBB Gene Sequencing (Betaglobinopathy Gene)",
+      "PAP Smear LBC + HPV",
+      "DICE Panel with TB PCR",
+      "FOETAL AUTOPSY",
+      "FOETAL AUTOPSY AND WHOLE LEVEL SECQUENCING",
+      "FOETAL AUTOPSY WITH DNA STORAGE",
+      "HAEMOPHILIA PANEL",
+      "HPV DNA PCR DETECTOR LIQUID PAP SMEAR",
+      "FOETAL AUTOPSY,DNA STORAGE,PLACENTOSCOPE",
+      "Y Chromosome Microdeletion (YCMD)",
+      "BabyShield 11 Conditions- (Heel-Prick)",
+      "BabyShield 4 Conditions- (Heel-Prick)",
+      "BabyShield 62 Conditions- (Heel-Prick) – TMS",
+      "BabyShield 7 Conditions- (Heel-Prick)"
+    ],
+
+    "LILAC": [
+      "Combined FTS (Dual Marker + NT)",
+      "DOUBLE MARKER TEST",
+      "DUAL + PLGF (LILAC)",
+      "FTS QUAD",
+      "NIPT",
+      "SLFT PLFG RATIO LILAC",
+      "Quadruple Marker Test",
+      "InsighT (NIPS)",
+      "DMT EVIC DUO PE LUS"
+    ],
+
+    "RELIABLE": [
+      "FREE T3",
+      "CALCIUM CREATININE RATIO IN URINE",
+      "PROCALCITONIN",
+      "PRO BNP MARKER",
+      "PROTEIN CREATININE RATIO",
+      "PROTEIN, 24 HRS URINE",
+      "CPKMB",
+      "D DIMER",
+      "CPK NAC",
+      "MAGNESIUM",
+      "TESTESTERONE",
+      "TOTAL TESTOSTERONE",
+      "LIPASE",
+      "RUBELLA IGG",
+      "RUBELLA IGM",
+      "ASO TITER",
+      "G6PD",
+      "ADA",
+      "URINARY ALBUMIN CREATININE RATIO",
+      "URINE-ACR",
+      "URINE-PCR"
+    ]
+   
   };
 
   const canonTests = OUTSOURCE_ROUTING[activeRegister] || [];
@@ -272,16 +603,53 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
     const merged = mergeOutsourceRows(filteredOutsource, targetLab);
     const results = computeKPIs(filteredMaster, merged, canonTests);
 
+   
+    
     onData({
-      // UPDATE: Mapping diagnosticNo to regNo key for UI components (TimeBricks/Charts)
       unifiedRows: merged.map(r => ({
         ...r,
-        regNo: r.diagnosticNo 
+      
+        regNo: r.diagnosticNo,
+      
+        // New workflow fields
+        timeCollected: r.timeCollected,
+        timeOutsourcedCollected: r.timeOutsourcedCollected,
+        timeReportReceived: r.timeReportReceived,
+        timeReportDelivered: r.timeReportDelivered,
+      
+        // Legacy aliases (keep for existing components)
+        timeScanned:
+          r.timeOutsourcedCollected ||
+          r.scannedTime ||
+          null,
+      
+        timeSaved:
+          r.timeReportReceived ||
+          r.receivedTime ||
+          null,
+      
+        timeGiven:
+          r.timeReportDelivered ||
+          null
       })),
+    
+    
       kpis: results,
-      violators: results.violators, 
-      totalCount: results.totalCount, 
-      withinCount: results.withinCount 
+    
+      // Staff analytics
+      collectedByDistribution:
+        results.collectedByDistribution,
+    
+      receivedByDistribution:
+        results.receivedByDistribution,
+    
+      deliveredByDistribution:
+        results.deliveredByDistribution,
+    
+      // Delay analytics
+      violators: results.violators,
+      totalCount: results.totalCount,
+      withinCount: results.withinCount
     });
   };
 

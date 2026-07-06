@@ -14,6 +14,7 @@ import StackedStageLines from "../owner/charts/StackedStageLinesInside";
 import TimeBricks from "../owner/charts/TimeBricks";
 import SLAScoreDonut from "../owner/charts/SLAScoreDonut";
 import DelayHistogram from "../owner/charts/DelayHistogram";
+import StaffDistribution from "../owner/charts/StaffDistribution";
 
 import * as LabFetcher from "../owner/lib/dataFetcher_lab.js";
 import testTimingsJson from "../owner/data/test_timings.json";
@@ -30,13 +31,17 @@ export default function OwnerLabPage() {
   
   const [activeReg, setActiveReg] = useState("FnacRegister");
   const [activeSubTab, setActiveSubTab] = useState("overview");
-  const [data, setData] = useState({ 
-    unifiedRows: [], 
+  const [data, setData] = useState({
+    unifiedRows: [],
     kpis: {},
+  
+    savedByDistribution: [],
+  
     violators: [],
     totalCount: 0,
     withinCount: 0
   });
+
   
   const [openModal, setOpenModal] = useState(false);
   const [modalData, setModalData] = useState([]);
@@ -77,6 +82,11 @@ export default function OwnerLabPage() {
           <button className={activeSubTab === "overview" ? "active" : ""} onClick={() => setActiveSubTab("overview")}>Overview</button>
           <button className={activeSubTab === "delays" ? "active" : ""} onClick={() => setActiveSubTab("delays")}>Delays</button>
           <button className={activeSubTab === "timebricks" ? "active" : ""} onClick={() => setActiveSubTab("timebricks")}>Time Bricks</button>
+          <button
+          className={activeSubTab === "staff" ? "active" : ""}
+          onClick={() => setActiveSubTab("staff")}>
+          Staff Analytics
+        </button>
         </div>
       </header>
 
@@ -138,6 +148,23 @@ export default function OwnerLabPage() {
                 }}
               />
             </div>
+          </div>
+        </section>
+      )}
+
+
+            {/* STAFF ANALYTICS TAB */}
+      {activeSubTab === "staff" && (
+        <section className="owner-charts">
+          <div
+            className="chart-card full-width"
+            style={{ minHeight: "480px" }}
+          >
+            <h3>Saved By Distribution</h3>
+
+            <StaffDistribution
+              data={data.savedByDistribution}
+            />
           </div>
         </section>
       )}

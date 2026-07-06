@@ -56,7 +56,10 @@ export default function ESRRegister() {
   const [saving, setSaving] = useState(false);
 
   // 🛡️ INTERNAL BUFFER: Prevents UI reset during slow syncs
-  const [localResults, setLocalResults] = useState({});
+  const [localResults, setLocalResults] = useState(() => {
+    const saved = localStorage.getItem("esr_localResults");
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const [regSearch, setRegSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -76,7 +79,10 @@ export default function ESRRegister() {
   });
 
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
-  const [pendingCritical, setPendingCritical] = useState({});
+  const [pendingCritical, setPendingCritical] = useState(() => {
+    const saved = localStorage.getItem("esr_pendingCritical");
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const testsForRegister = routing.ESRRegister || ["ESR (ERYTHROCYTE SEDIMENTATION RATE, BLOOD)"];
 
@@ -165,7 +171,9 @@ export default function ESRRegister() {
 
       const saved = esrDocs[compositeKey] || {};
       const localScanValue = localScans[compositeKey];
-      const typing = localResults[compositeKey] || {}; 
+      const localScanTime =
+        localScanTimes[compositeKey];
+      const typing = localResults[compositeKey] || {};
       
       const combined = { ...entry, ...saved, ...typing };
       
@@ -176,12 +184,20 @@ export default function ESRRegister() {
         source: normalizeSource(entry.source || entry.category),
         diagnosticNo: diag,
         scanned: localScanValue ?? saved.scanned ?? "No",
+        scannedTime: localScanTime ??saved.scannedTime ??null,
         status: (saved.saved === "Yes" || saved.status === "saved") ? "saved" : localScanValue === "Yes" ? "scanned" : saved.status || "pending",
         urgent: entry.urgent || false, 
         pendingCritText: pendingCritical[compositeKey]
       };
     });
-  }, [masterEntries, esrDocs, localScans, pendingCritical, localResults]);
+        }, [
+          masterEntries,
+          esrDocs,
+          localScans,
+          localScanTimes,
+          pendingCritical,
+          localResults
+        ]);
 
   const calculateDuration = (start, end) => {
     if (!start || !end) return "";
@@ -191,17 +207,39 @@ export default function ESRRegister() {
   };
 
   const handleChange = (compositeKey, field, value) => {
-    setLocalResults(prev => {
+    setLocalResults((prev) => {
       const current = prev[compositeKey] || {};
-      const updated = { ...current, [field]: value };
-      
+      const updated = {
+        ...current,
+        [field]: value,
+      };
+  
       if (field === "startTime" || field === "endTime") {
-        const sTime = field === "startTime" ? value : (updated.startTime || "");
-        const eTime = field === "endTime" ? value : (updated.endTime || "");
-        updated.duration = calculateDuration(sTime, eTime);
+        const sTime =
+          field === "startTime"
+            ? value
+            : (updated.startTime || "");
+  
+        const eTime =
+          field === "endTime"
+            ? value
+            : (updated.endTime || "");
+  
+        updated.duration =
+          calculateDuration(sTime, eTime);
       }
-      
-      return { ...prev, [compositeKey]: updated };
+  
+      const next = {
+        ...prev,
+        [compositeKey]: updated,
+      };
+  
+      localStorage.setItem(
+        "esr_localResults",
+        JSON.stringify(next)
+      );
+  
+      return next;
     });
   };
 
@@ -228,7 +266,21 @@ export default function ESRRegister() {
     const defaultText = `ESR: ${entry.result} mm/hr (Duration: ${entry.duration} mins)`;
     const parameter = window.prompt("Confirm Critical ESR Value:", defaultText);
     if (!parameter) return;
-    setPendingCritical(prev => ({ ...prev, [entry.compositeKey]: parameter }));
+
+    setPendingCritical((prev) => {
+      const updated = {
+        ...prev,
+        [entry.compositeKey]: parameter,
+      };
+    
+      localStorage.setItem(
+        "esr_pendingCritical",
+        JSON.stringify(updated)
+      );
+    
+      return updated;
+    });
+
     alert("Critical value prepared. Click 'Save' to finalize.");
   };
 
@@ -255,6 +307,7 @@ export default function ESRRegister() {
           diagnosticNo: entry.diagnosticNo || "—",
           age: entry.age || "", ageUnit: entry.ageUnit || "", gender: entry.gender || "-",
           category: entry.category || "-", source: entry.source || "-", doctor: entry.doctor || "Self",
+          reportedBy: sessionStorage.getItem("loggedUser") || "Unknown",
           criticalParameter: critParam, flaggedAt: serverTimestamp(),
           timePrinted: ensureFirestoreTimestamp(entry.timePrinted),
           timeCollected: ensureFirestoreTimestamp(entry.timeCollected),
@@ -275,6 +328,7 @@ export default function ESRRegister() {
         scannedTime: scanTime ? Timestamp.fromDate(scanTime) : (entry.scannedTime || null),
         saved: "Yes",
         savedTime: serverTimestamp(),
+        savedBy:  sessionStorage.getItem("loggedUser") || "Unknown",
         timePrinted: ensureFirestoreTimestamp(entry.timePrinted),
         timeCollected: ensureFirestoreTimestamp(entry.timeCollected),
         status: "saved",
@@ -283,7 +337,17 @@ export default function ESRRegister() {
 
       await setDoc(doc(db, "esr_register", compositeKey), payload, { merge: true });
       
-      setLocalResults(prev => { const n = { ...prev }; delete n[compositeKey]; return n; });
+      setLocalResults((prev) => {
+        const n = { ...prev };
+        delete n[compositeKey];
+      
+        localStorage.setItem(
+          "esr_localResults",
+          JSON.stringify(n)
+        );
+      
+        return n;
+      });
       
       setLocalScans(prev => { 
         const n = { ...prev }; 
@@ -299,7 +363,17 @@ export default function ESRRegister() {
         return n;
       });
 
-      setPendingCritical(prev => { const next = { ...prev }; delete next[compositeKey]; return next; });
+      setPendingCritical((prev) => {
+        const next = { ...prev };
+        delete next[compositeKey];
+      
+        localStorage.setItem(
+          "esr_pendingCritical",
+          JSON.stringify(next)
+        );
+      
+        return next;
+      });
       
       alert(`Saved ESR for ${entry.name}`);
     } catch (err) { alert("Error saving."); } finally { setSaving(false); }
@@ -354,7 +428,12 @@ export default function ESRRegister() {
               <th className="sticky-col">Diag No</th>
               <th className="sticky-col">Patient Name</th>
               <th>Age</th><th>Source</th><th>Selected Tests</th>
-              <th>Start Time</th><th>End Time</th><th>Duration</th><th>Result</th><th>Scanned</th><th>Status</th><th>Critical</th><th>Action</th>
+              <th>Start Time</th><th>End Time</th><th>Duration</th><th>Result</th>
+              <th>Scanned</th>
+              <th>Status</th>
+              <th>Saved By</th>
+              <th>Critical</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
@@ -387,6 +466,16 @@ export default function ESRRegister() {
                           </span>
                       )}
                   </td>
+                  <td
+                  style={{
+                    minWidth: "130px",
+                    fontWeight: "600",
+                    color: "#1e3a8a"
+                  }}
+                >
+                  {e.savedBy || "—"}
+                </td>
+
                   <td>
                     <button onClick={() => triggerCritical(e)} disabled={isCriticalReported || saved || !ready} className="critical-btn">Critical</button>
                   </td>

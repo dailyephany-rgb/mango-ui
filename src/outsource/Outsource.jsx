@@ -1,5 +1,11 @@
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef
+} from "react";
+
 import { db } from "../firebaseConfig";
 import {
   collection,
@@ -11,6 +17,7 @@ import {
 } from "firebase/firestore";
 import OUTSOURCE_MAP from "../Outsource.json"; 
 import "./Outsource.css";
+import UserMenu from "../auth/UserMenu";
 
 export default function OutsourceRegister() {
   const [entries, setEntries] = useState([]);
@@ -20,12 +27,16 @@ export default function OutsourceRegister() {
   const [regSearch, setRegSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const currentUser = sessionStorage.getItem("loggedUser") ||
+  "Unknown User";
+
 
   // 🛡️ REFRESH PROTECTION: Load local buffered data from LocalStorage
   const [localOutsourceData, setLocalOutsourceData] = useState(() => {
     const saved = localStorage.getItem("outsource_localBuffer");
     return saved ? JSON.parse(saved) : {};
   });
+  const localBufferRef = useRef(localOutsourceData);
 
   const parseDate = (entry) => {
     const f = entry.timePrinted;
@@ -38,6 +49,10 @@ export default function OutsourceRegister() {
     if (f?.seconds) return new Date(f.seconds * 1000);
     return null;
   };
+
+  useEffect(() => {
+    localBufferRef.current = localOutsourceData;
+  }, [localOutsourceData]);
 
   useEffect(() => {
     const now = new Date();
@@ -78,20 +93,30 @@ export default function OutsourceRegister() {
               const uniqueTrackingId = `${reg}_${diagNo}_${labName.replace(/\s+/g, '')}`;
               
               const firebaseData = trackingMap[uniqueTrackingId] || {};
-              const bufferedData = localOutsourceData[uniqueTrackingId] || {};
+              const bufferedData =
+              localBufferRef.current[
+                uniqueTrackingId
+              ] || {};
 
               const outData = {
                 status: "Pending",
                 concernedPerson: "",
                 relation: "",
                 mobileNo: "",
+              
                 isCollected: false,
-                isGiven: false, 
-                scannedTime: null,
-                receivedTime: null,
-                givenTime: null,
+                isGiven: false,
+              
+                outsourcedCollectedTime: null,
+                reportReceivedTime: null,
+                reportDeliveredTime: null,
+              
+                collectedBy: "",
+                receivedBy: "",
+                deliveredBy: "",
+              
                 ...firebaseData,
-                ...bufferedData 
+                ...bufferedData
               };
 
               expandedEntries.push({
@@ -113,18 +138,27 @@ export default function OutsourceRegister() {
       return () => unsubTracking();
     });
     return () => unsubMaster();
-  }, [localOutsourceData]); 
+  }, []);
 
   const handleSave = async (entry) => {
     try {
       setSaving(true);
       const trackingId = entry.uniqueTrackingId;
       
-      let finalScannedTime = null;
-      if (entry.scannedTime) {
-        finalScannedTime = entry.scannedTime.toDate 
-          ? entry.scannedTime 
-          : Timestamp.fromDate(new Date(entry.scannedTime));
+      let finalCollectedTime = null;
+
+      if (
+        entry.outsourcedCollectedTime
+      ) {
+        finalCollectedTime =
+          entry.outsourcedCollectedTime
+            .toDate
+            ? entry.outsourcedCollectedTime
+            : Timestamp.fromDate(
+                new Date(
+                  entry.outsourcedCollectedTime
+                )
+              );
       }
 
       const updatePayload = {
@@ -143,8 +177,9 @@ export default function OutsourceRegister() {
         source: entry.source || "OPD",
         category: entry.category || "", 
         selectedTests: (entry.displayTests || []).map(t => typeof t === 'string' ? t : t.test),
-        scannedTime: finalScannedTime, 
-        receivedTime: serverTimestamp(), 
+        outsourcedCollectedTime: finalCollectedTime,
+        reportReceivedTime: serverTimestamp(), 
+        receivedBy: currentUser,
         timePrinted: entry.timePrinted || null,
         timeCollected: entry.timeCollected || null,
         scannedStatus: entry.status === "Scanned" ? "Yes" : "No",
@@ -153,7 +188,15 @@ export default function OutsourceRegister() {
         status: entry.status
       };
 
-      await setDoc(doc(db, "outsource_tracking", trackingId), updatePayload, { merge: true });
+      await setDoc(
+        doc(
+          db,
+          "outsource_tracking",
+          trackingId
+        ),
+        updatePayload,
+        { merge: true }
+      );
       
       setLocalOutsourceData(prev => {
         const updated = { ...prev };
@@ -161,6 +204,8 @@ export default function OutsourceRegister() {
         localStorage.setItem("outsource_localBuffer", JSON.stringify(updated));
         return updated;
       });
+
+    
 
       alert(`Entry for ${entry.name} (${entry.labName}) Received`);
     } catch (err) {
@@ -175,10 +220,19 @@ export default function OutsourceRegister() {
     try {
       setSaving(true);
       const trackingId = entry.uniqueTrackingId;
-      await setDoc(doc(db, "outsource_tracking", trackingId), {
-        isGiven: true,
-        givenTime: serverTimestamp()
-      }, { merge: true });
+      await setDoc(
+        doc(db, "outsource_tracking", trackingId),
+        {
+          isGiven: true,
+          reportDeliveredTime:
+            serverTimestamp(),
+          deliveredBy:
+            currentUser
+        },
+        { merge: true }
+      );
+
+
       alert(`Report for ${entry.name} marked as Given`);
     } catch (err) {
       console.error(err);
@@ -187,25 +241,72 @@ export default function OutsourceRegister() {
     }
   };
 
-  const handleStatusChange = (entry, newStatus) => {
+  const handleStatusChange = async (entry, newStatus) => {
     const trackingId = entry.uniqueTrackingId;
     const now = new Date().toISOString();
-    
-    setLocalOutsourceData(prev => {
+  
+    if (newStatus === "Scanned") {
+      await setDoc(
+        doc(db, "outsource_tracking", trackingId),
+        {
+          status: "Scanned",
+          outsourcedCollectedTime: serverTimestamp(),
+          collectedBy: currentUser,
+        },
+        { merge: true }
+      );
+    }
+  
+    setEntries((prev) =>
+      prev.map((e) =>
+        e.uniqueTrackingId !== trackingId
+          ? e
+          : {
+              ...e,
+              status: newStatus,
+              outsourcedCollectedTime:
+                newStatus === "Scanned" ? now : null,
+              collectedBy:
+                newStatus === "Scanned" ? currentUser : "",
+            }
+      )
+    );
+  
+    setLocalOutsourceData((prev) => {
       const updated = {
         ...prev,
         [trackingId]: {
           ...(prev[trackingId] || {}),
           status: newStatus,
-          scannedTime: newStatus === "Scanned" ? now : null
-        }
+          outsourcedCollectedTime:
+            newStatus === "Scanned" ? now : null,
+          collectedBy:
+            newStatus === "Scanned" ? currentUser : "",
+        },
       };
-      localStorage.setItem("outsource_localBuffer", JSON.stringify(updated));
+  
+      localStorage.setItem(
+        "outsource_localBuffer",
+        JSON.stringify(updated)
+      );
+  
       return updated;
     });
   };
+        
+
 
   const updateLocalEntry = (uniqueId, field, value) => {
+    // Update the UI immediately
+    setEntries(prev =>
+      prev.map(e =>
+        e.uniqueTrackingId === uniqueId
+          ? { ...e, [field]: value }
+          : e
+      )
+    );
+  
+    // Keep the local buffer in sync
     setLocalOutsourceData(prev => {
       const updated = {
         ...prev,
@@ -214,7 +315,12 @@ export default function OutsourceRegister() {
           [field]: value
         }
       };
-      localStorage.setItem("outsource_localBuffer", JSON.stringify(updated));
+  
+      localStorage.setItem(
+        "outsource_localBuffer",
+        JSON.stringify(updated)
+      );
+  
       return updated;
     });
   };
@@ -251,7 +357,21 @@ export default function OutsourceRegister() {
 
   return (
     <div className="register-section">
-      <h3 className="dept-header">📦 Outsource Department Register</h3>
+
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: "20px"
+    }}
+  >
+    <h3 className="dept-header">
+      📦 Outsource Department Register
+    </h3>
+
+    <UserMenu />
+  </div> 
       
       <div className="filter-bar">
         <input className="reg-search" placeholder="Search Reg or Diag No..." value={regSearch} onChange={(e) => setRegSearch(e.target.value)} />
@@ -280,23 +400,48 @@ export default function OutsourceRegister() {
               <th className="sticky-col">Reg No</th>
               <th className="sticky-col">Diag No</th>
               <th className="sticky-col">Name</th>
-              <th>Scanned Time</th>
+              <th>Outsource Collected</th>
               <th>Age</th>
               <th>Test(s)</th>
               <th>Lab</th>
               <th>Person</th>
               <th>Relation</th>
               <th>Mobile</th>
+
+              <th>Collected By</th>
+              <th>Received By</th>
+              <th>Delivered By</th>
+
               <th>TAT</th>
-              <th>Status</th>
-              <th>Action</th>
-              <th>Report</th>
+              <th>Sample</th>
+              <th>Received</th>
+              <th>Delivered</th>
+
             </tr>
           </thead>
           <tbody>
             {filteredEntries.map((e) => {
-              const sTime = e.scannedTime?.toDate ? e.scannedTime.toDate() : (e.scannedTime ? new Date(e.scannedTime) : null);
-              const rTime = e.receivedTime?.toDate ? e.receivedTime.toDate() : (e.receivedTime ? new Date(e.receivedTime) : null);
+              const sTime =
+              e.outsourcedCollectedTime?.toDate
+                ? e.outsourcedCollectedTime.toDate()
+                : (
+                    e.outsourcedCollectedTime
+                      ? new Date(
+                          e.outsourcedCollectedTime
+                        )
+                      : null
+                  );
+
+                  const rTime =
+                  e.reportReceivedTime?.toDate
+                    ? e.reportReceivedTime.toDate()
+                    : (
+                        e.reportReceivedTime
+                          ? new Date(
+                              e.reportReceivedTime
+                            )
+                          : null
+                      );
               
               let tatDisplay = "—";
               if (sTime && rTime) {
@@ -308,6 +453,7 @@ export default function OutsourceRegister() {
 
               const isScanned = e.status === "Scanned";
               const fieldsFilled = e.concernedPerson?.trim() && e.relation?.trim() && e.mobileNo?.trim();
+             
 
               return (
                 <tr key={e.uniqueTrackingId} className={e.isGiven ? "row-orange" : e.isCollected ? "row-green" : isScanned ? "row-yellow" : ""}>
@@ -320,25 +466,68 @@ export default function OutsourceRegister() {
                     {(e.displayTests || []).map(t => typeof t === 'string' ? t : t.test).join(", ") || "—"}
                   </td>
                   <td><span className="lab-badge">{e.labName}</span></td>
-                  <td><input type="text" className="table-input" disabled={!e.isCollected || e.isGiven} value={e.concernedPerson || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "concernedPerson", ev.target.value)} placeholder="Name" /></td>
-                  <td><input type="text" className="table-input" disabled={!e.isCollected || e.isGiven} value={e.relation || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "relation", ev.target.value)} placeholder="Relation" /></td>
-                  <td><input type="text" className="table-input" disabled={!e.isCollected || e.isGiven} value={e.mobileNo || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "mobileNo", ev.target.value)} placeholder="Mobile" /></td>
+                  <td><input type="text" className="table-input" disabled={!isScanned || e.isGiven}
+                   value={e.concernedPerson || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "concernedPerson", ev.target.value)} placeholder="Name" /></td>
+                  <td><input type="text" className="table-input" disabled={!isScanned || e.isGiven} 
+                  value={e.relation || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "relation", ev.target.value)} placeholder="Relation" /></td>
+                  <td><input type="text" className="table-input" disabled={!isScanned || e.isGiven}
+                  value={e.mobileNo || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "mobileNo", ev.target.value)} placeholder="Mobile" /></td>
+                  <td>{e.collectedBy || "—"}</td>
+                  <td>{e.receivedBy || "—"}</td>
+                  <td>{e.deliveredBy || "—"}</td>
                   <td style={{ fontWeight: 'bold', color: '#1e3a8a' }}>{tatDisplay}</td>
                   <td>
-                    <select className="table-select" disabled={e.isCollected} value={e.status || "Pending"} onChange={(ev) => handleStatusChange(e, ev.target.value)}>
-                      <option value="Pending">Pending</option>
-                      <option value="Scanned">Scanned</option>
-                    </select>
+                   
+                   
+                  <button
+                    className={`collect-btn ${
+                      isScanned ? "collected" : ""
+                    }`}
+                    disabled={isScanned}
+                    onClick={() =>
+                      handleStatusChange(
+                        e,
+                        "Scanned"
+                      )
+                    }
+                  >
+                    {isScanned
+                      ? "Collected"
+                      : "Collect"}
+                  </button>
+
                   </td>
                   <td>
-                    <button className="save-btn" disabled={saving || !isScanned || e.isCollected} onClick={() => handleSave(e)}>
-                      {e.isCollected ? "Received" : "Receive"}
-                    </button>
+                    
+                  <button
+                    className="save-btn"
+                    disabled={
+                      saving ||
+                      !isScanned ||
+                      e.isCollected
+                    }
+                    onClick={() => handleSave(e)}
+                  >
+                    {e.isCollected
+                      ? "Received"
+                      : "Mark Received"}
+                  </button>
                   </td>
                   <td>
-                    <button className="given-btn" disabled={saving || !e.isCollected || e.isGiven || !fieldsFilled} onClick={() => handleGiven(e)}>
-                      {e.isGiven ? "Given" : "Give"}
-                    </button>
+                  <button
+                    className="given-btn"
+                    disabled={
+                      saving ||
+                      !e.isCollected ||
+                      e.isGiven ||
+                      !fieldsFilled
+                    }
+                    onClick={() => handleGiven(e)}
+                  >
+                    {e.isGiven
+                      ? "Delivered"
+                      : "Deliver"}
+                  </button>
                   </td>
                 </tr>
               );

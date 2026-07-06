@@ -13,6 +13,7 @@ import {
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import "./CriticalDashboard.css";
+import UserMenu from "../auth/UserMenu";
 
 export default function CriticalAlertDashboard() {
   const [alerts, setAlerts] = useState([]);
@@ -79,6 +80,7 @@ export default function CriticalAlertDashboard() {
     return `${hours}h ${mins}m`;
   };
 
+  
   const handleMarkDone = async (alert) => {
     const method = commMethods[alert.id];
     if (!method) return alert("Select communication method.");
@@ -120,6 +122,8 @@ export default function CriticalAlertDashboard() {
         ["TIME TAKEN:", getTimeDiff(alert.flaggedAt, reportTime)]
       ];
 
+
+
       dataRows.forEach((row) => {
         const label = row[0];
         const value = String(row[1]);
@@ -137,6 +141,25 @@ export default function CriticalAlertDashboard() {
       docPDF.save(`Report_${alert.diagnosticNo}_${alert.name}.pdf`);
     } catch (err) {
       console.error("Operation failed:", err);
+    }
+  };
+
+
+  const handleCrossCheck = async (alert) => {
+    try {
+      await updateDoc(
+        doc(db, "critical_alerts", alert.id),
+        {
+          crossChecked: true,
+  
+          crossCheckedBy:
+            sessionStorage.getItem("loggedUser") || "Unknown",
+  
+          crossCheckedAt: serverTimestamp(),
+        }
+      );
+    } catch (err) {
+      console.error("Cross check failed:", err);
     }
   };
 
@@ -170,13 +193,26 @@ export default function CriticalAlertDashboard() {
   const reportedCount = filteredAlerts.filter(a => a.status === "Reported").length;
 
   return (
-    <div className="register-section">
-      <div className="header-row-critical">
-        <h3 className="dept-header-critical">🚩 Critical Alerts Center</h3>
-        <div className="alert-pill">
-          Pending: {pendingCount} | Reported: {reportedCount}
-        </div>
-      </div>
+   
+   <div className="register-section">
+              <div className="header-row-critical">
+          <h3 className="dept-header-critical">
+            🚩 Critical Alerts Center
+          </h3>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "15px",
+            }}
+          >
+            <div className="alert-pill">
+              Pending: {pendingCount} | Reported: {reportedCount}
+            </div>
+            <UserMenu /></div></div>
+
+      
 
       <div className="filter-bar">
         <input 
@@ -226,11 +262,16 @@ export default function CriticalAlertDashboard() {
               <th>Age/Sex</th>
               <th>Doctor</th>
               <th>Tests</th>
+              
               <th>Critical Finding</th>
-              <th>Comm. Via</th>
-              <th>Time Taken</th>
-              <th>Action</th>
-            </tr>
+                <th>Reported By</th>
+                <th>Comm. Via</th>
+                <th>Time Taken</th>
+                <th>Crosschecked By</th>
+                <th>Cross Check</th>
+                <th>Action</th>
+                </tr>
+
           </thead>
           <tbody>
             {filteredAlerts.map((alert) => (
@@ -245,8 +286,18 @@ export default function CriticalAlertDashboard() {
                 <td>{alert.age}/{alert.gender}</td>
                 <td>{alert.doctor}</td>
                 <td style={{ maxWidth: '150px' }}>{Array.isArray(alert.selectedTests) ? alert.selectedTests.join(", ") : alert.selectedTests}</td>
+
                 <td style={{ maxWidth: '200px', fontWeight: 'bold', color: '#dc2626' }}>{alert.criticalParameter}</td>
+                   <td
+                  style={{
+                    fontWeight: "600",
+                    color: "#1e3a8a"
+                  }}
+                >
+                  {alert.reportedBy || "—"}
+                </td>
                 <td>
+
                   <select 
                     value={commMethods[alert.id] || alert.communicatedVia || ""} 
                     disabled={alert.status === "Reported"}
@@ -257,20 +308,71 @@ export default function CriticalAlertDashboard() {
                     <option value="Telephone">Telephone</option>
                   </select>
                 </td>
+
                 <td style={{ fontWeight: 'bold', color: '#059669' }}>
-                  {getTimeDiff(alert.flaggedAt, alert.reportedAt)}
-                </td>
-                <td>
-                  {alert.status === "Reported" ? (
-                    <span style={{ color: '#059669', fontWeight: 'bold' }}>✓ Reported</span>
-                  ) : (
-                    <button 
-                      className="save-btn"
-                      disabled={!commMethods[alert.id]}
-                      onClick={() => handleMarkDone(alert)}
-                    >Report</button>
-                  )}
-                </td>
+  {getTimeDiff(alert.flaggedAt, alert.reportedAt)}
+</td>
+
+              <td
+                style={{
+                  fontWeight: "600",
+                  color: "#2563eb"
+                }}
+              >
+                {alert.crossCheckedBy || "—"}
+              </td>
+
+              <td>
+                {alert.crossChecked ? (
+                  <span
+                    style={{
+                      color: "#2563eb",
+                      fontWeight: "bold"
+                    }}
+                  >
+                    ✓ Crosschecked
+                  </span>
+                ) : alert.status === "Reported" ? (
+                 
+                  <button
+                  className="crosscheck-btn"
+                  onClick={() => handleCrossCheck(alert)}
+                >
+                  Cross Check
+                </button>
+                ) : (
+                  <span
+                    style={{
+                      color: "#9ca3af",
+                      fontSize: "12px"
+                    }}
+                  >
+                    Awaiting Report
+                  </span>
+                )}
+              </td>
+
+              <td>
+                {alert.status === "Reported" ? (
+                  <span
+                    style={{
+                      color: "#059669",
+                      fontWeight: "bold"
+                    }}
+                  >
+                    ✓ Reported
+                  </span>
+                ) : (
+                  <button
+                    className="save-btn"
+                    disabled={!commMethods[alert.id]}
+                    onClick={() => handleMarkDone(alert)}
+                  >
+                    Report
+                  </button>
+                )}
+              </td>
+                              
               </tr>
             ))}
           </tbody>

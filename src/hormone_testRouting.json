@@ -24,7 +24,8 @@
       "BETA-HCG (HUMAN CHORIONIC GONADOTROPIN)",
       "TROP-T",
       "FSH (FOLLICLE STIMULATING HORMONE)",
-      "AMH (ANTI MULLERIAN HORMONE)"
+      "AMH (ANTI MULLERIAN HORMONE)",
+      "TROPONIN I"
     ]
   },
   "BackupAnalyzer": {

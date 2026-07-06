@@ -12,6 +12,13 @@ import INSIDE_ROOM_MAP from "../inside_room_routing.json";
 import "./InsideLab.css";
 
 export default function InsideLabRegister() {
+  const loggedUser =
+  sessionStorage.getItem("loggedUser") || "User";
+
+  const logout = () => {
+  sessionStorage.clear();
+  window.location.href = "/login.html";
+  };
   const [entries, setEntries] = useState([]);
   const [labResults, setLabResults] = useState({}); 
   const [localDrafts, setLocalDrafts] = useState({}); 
@@ -143,9 +150,11 @@ export default function InsideLabRegister() {
         department: activeTab.replace("Register", ""),
         reportData: finalData, 
         isFinalized: true,
+        savedBy: loggedUser,
         isSaved: true, 
         timeSaved: serverTimestamp()
       }, { merge: true });
+
 
       setLocalDrafts(prev => {
         const updated = { ...prev };
@@ -200,8 +209,59 @@ export default function InsideLabRegister() {
 
   return (
     <div className="register-section">
-      <h3 className="dept-header">🔬 Inside Lab Register</h3>
+     <div
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "15px",
+  }}
+>
+  <h3 className="dept-header" style={{ marginBottom: 0 }}>
+    🔬 Inside Lab Register
+  </h3>
 
+  <details>
+    <summary
+      style={{
+        cursor: "pointer",
+        padding: "10px 16px",
+        border: "1px solid #ccc",
+        borderRadius: "8px",
+        background: "#fff",
+        listStyle: "none",
+        fontWeight: "600",
+      }}
+    >
+      Hi, {loggedUser} ▼
+    </summary>
+
+    <div
+      style={{
+        position: "absolute",
+        background: "#fff",
+        border: "1px solid #ddd",
+        borderRadius: "6px",
+        marginTop: "4px",
+        minWidth: "120px",
+        zIndex: 1000,
+      }}
+    >
+      <button
+        onClick={logout}
+        style={{
+          width: "100%",
+          padding: "10px",
+          border: "none",
+          background: "white",
+          cursor: "pointer",
+        }}
+      >
+        Logout
+      </button>
+    </div>
+  </details>
+</div>
       <div className="filter-bar">
         <input className="reg-search" placeholder="Search Reg or Diag No..." value={regSearch} onChange={(e) => setRegSearch(e.target.value)} />
         <div className="date-filters">
@@ -235,6 +295,7 @@ export default function InsideLabRegister() {
               <th>Age/Gender</th>
               <th>Doctor</th>
               <th>Test(s)</th>
+              <th>Saved By</th>
               <th>Action</th>
               <th>Finalize</th>
             </tr>
@@ -261,6 +322,18 @@ export default function InsideLabRegister() {
                   <td>{e.age} {e.ageUnit} / {e.gender || e.sex}</td>
                   <td>{e.doctor}</td>
                   <td className="test-list-cell">{filteredTests.join(", ")}</td>
+                  
+                  <td
+                  style={{
+                    width: "140px",
+                    minWidth: "140px",
+                    fontWeight: "600",
+                    color: "#1e3a8a",
+                  }}
+                >
+                  {labResults[uniqueId]?.savedBy || "—"}
+                </td>
+
                   <td><button className="edit-btn" onClick={() => openEdit(e)}>Edit</button></td>
                   <td>
                     <button className="save-entry-btn" disabled={saving || isSavedInDB} onClick={() => handleFinalize(e)}>

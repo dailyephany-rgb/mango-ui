@@ -13,6 +13,17 @@ import {
 } from "firebase/firestore";
 import biochemRouting from "../biochem_testRouting.json";
 import HormonesMain from "./HormonesMain.jsx";
+// NEW IMPORTS FOR INVENTORY
+import DeptInventoryTab from "../inventory/DeptInventoryTab.jsx";
+
+import {
+  handleInventoryDeduction,
+  getVitrosDeductibleTests
+} from "../inventory/inventorymapping";
+
+import { requireLogin } from "../auth/AuthGuard";
+import UserMenu from "../auth/UserMenu";
+import InventoryAdjustmentTab from "../inventory/InventoryAdjustmentTab.jsx";
 
 const CURRENT_DEPT = "Bio-Chemistry";
 
@@ -24,7 +35,13 @@ export default function BiochemistryMain() {
   const [savedSet, setSavedSet] = useState(new Set());
   
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
-  const [criticalParams, setCriticalParams] = useState({});
+  const [criticalParams, setCriticalParams] = useState(() => {
+    const saved = localStorage.getItem(
+      "biochem_pendingCritical"
+    );
+    return saved ? JSON.parse(saved) : {};
+  });
+
 
   const [localScans, setLocalScans] = useState(() => {
     const saved = localStorage.getItem("biochem_localScans");
@@ -118,7 +135,7 @@ export default function BiochemistryMain() {
       const regKey = `${entry.regNo}_${entry.diagnosticNo}`;
       const saved = biochemDocs[regKey] || {};
       const localScan = localScans[regKey];
-      
+      const localScanTime =localScanTimes[regKey];
       const currentScanned = localScan ?? saved.scanned ?? "No";
       const isSaved = savedSet.has(regKey);
 
@@ -128,12 +145,20 @@ export default function BiochemistryMain() {
         compositeKey: regKey,
         source: normalizeSource(entry.source || entry.category),
         scanned: currentScanned,
+        scannedTime:localScanTime ??saved.scannedTime ??null,
         status: isSaved ? "saved" : currentScanned === "Yes" ? "scanned" : "pending",
         urgent: entry.urgent || false,
         id: entry.id 
       };
     });
-  }, [masterEntries, biochemDocs, localScans, savedSet, biochemTests]);
+  }, [
+    masterEntries,
+    biochemDocs,
+    localScans,
+    localScanTimes,
+    savedSet,
+    biochemTests
+  ]);
 
   const handleInputChange = async (id, field, value) => {
     setMasterEntries((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
@@ -142,7 +167,6 @@ export default function BiochemistryMain() {
 
   const handleScanToggle = (patient, value) => {
     const regKey = patient.compositeKey;
-    // Captures time in Indian Standard Time string
     const nowIST = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }); 
 
     setLocalScans((prev) => {
@@ -162,9 +186,43 @@ export default function BiochemistryMain() {
     const parameter = window.prompt("Enter Critical Parameter & Value (e.g., K+: 7.2):");
     if (!parameter) return;
     const regKey = entry.compositeKey;
-    setCriticalParams(prev => ({ ...prev, [regKey]: parameter }));
-    setCriticalReportedSet(prev => new Set(prev).add(regKey));
+    setCriticalParams((prev) => {
+      const updated = {
+        ...prev,
+        [regKey]: parameter,
+      };
+    
+      localStorage.setItem(
+        "biochem_pendingCritical",
+        JSON.stringify(updated)
+      );
+    
+      return updated;
+    });
     alert("Parameter captured locally. Click 'Save' to send to Critical Dashboard.");
+  };
+
+
+
+  const getInventoryCategory = (category = "") => {
+    const c = category.trim().toUpperCase();
+  
+    // GENERAL GROUP
+    if (
+      c === "GENERAL" ||
+      c === "CAPF" ||
+      c === "TPA"
+    ) {
+      return "GENERAL";
+    }
+  
+    // RGHS GROUP
+    if (c === "RGHS") {
+      return "RGHS";
+    }
+  
+    // EVERYTHING ELSE
+    return "OTHER";
   };
 
   const handleSave = async (patient) => {
@@ -174,7 +232,6 @@ export default function BiochemistryMain() {
       const relevantTests = patient.selectedTests?.filter((t) => biochemTests.includes(getTestName(t))).map((t) => getTestName(t));
       
       const rawLocalTime = localScanTimes[regKey];
-      // Convert the IST string back to a Date object, then to Firestore Timestamp
       const scanTime = rawLocalTime ? Timestamp.fromDate(new Date(rawLocalTime)) : null;
       
       const pendingParam = criticalParams[regKey];
@@ -185,6 +242,7 @@ export default function BiochemistryMain() {
         await setDoc(doc(db, "critical_alerts", criticalId), {
             name: patient.name || "",
             regNo: patient.regNo || "",
+            reportedBy: sessionStorage.getItem("loggedUser") || "Unknown",
             diagnosticNo: patient.diagnosticNo || "—",
             age: patient.age || "",
             ageUnit: patient.ageUnit || "",
@@ -215,7 +273,8 @@ export default function BiochemistryMain() {
         scanned: "Yes",
         scannedTime: scanTime || (patient.scannedTime || null),
         saved: "Yes",
-        savedTime: serverTimestamp(), // Firebase stores this as UTC but converts to local for display
+        savedTime: serverTimestamp(), 
+        savedBy: sessionStorage.getItem("loggedUser") || "Unknown",
         timePrinted: patient.timePrinted || null,
         timeCollected: patient.timeCollected || null,
         status: "saved",
@@ -223,6 +282,25 @@ export default function BiochemistryMain() {
       };
 
       await setDoc(docRef, payload, { merge: true });
+
+      // TRIGGER INVENTORY DEDUCTION
+      
+      if (relevantTests && relevantTests.length > 0) {
+
+        const deductionCategory =
+          getInventoryCategory(patient.category);
+      
+        const deductibleTests =
+          await getVitrosDeductibleTests(
+            relevantTests
+          );
+      
+        await handleInventoryDeduction(
+          deductibleTests,
+          deductionCategory
+        );
+      }
+       
       
       setLocalScans(prev => { 
         const n = {...prev}; delete n[regKey]; 
@@ -234,8 +312,17 @@ export default function BiochemistryMain() {
         localStorage.setItem("biochem_localScanTimes", JSON.stringify(n));
         return n;
       });
-      setCriticalParams(prev => { const n = {...prev}; delete n[regKey]; return n; });
-
+      setCriticalParams((prev) => {
+        const n = { ...prev };
+        delete n[regKey];
+      
+        localStorage.setItem(
+          "biochem_pendingCritical",
+          JSON.stringify(n)
+        );
+      
+        return n;
+      });
       alert(`Saved entry for ${payload.name} ${isCritical === "Yes" ? "(Critical Alert Sent)" : ""}`);
     } catch (err) { 
         console.error(err); 
@@ -247,13 +334,57 @@ export default function BiochemistryMain() {
 
   return (
     <div className="biochem-register-container">
-      <div className="tab-container">
-        <button className={`tab-btn ${activeTab === "biochem" ? "active" : ""}`} onClick={() => setActiveTab("biochem")}>Biochemistry</button>
-        <button className={`tab-btn ${activeTab === "hormones" ? "active" : ""}`} onClick={() => setActiveTab("hormones")}>Hormones</button>
-      </div>
+      <div
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "10px"
+  }}
+>
+  <div className="tab-container">
+    <button
+      className={`tab-btn ${activeTab === "biochem" ? "active" : ""}`}
+      onClick={() => setActiveTab("biochem")}
+    >
+      Biochemistry
+    </button>
 
-      <div style={{ display: activeTab === "biochem" ? "block" : "none" }}>
-          <h2 className="dept-header">Biochemistry Department — Main Analyzer</h2>
+    <button
+      className={`tab-btn ${activeTab === "hormones" ? "active" : ""}`}
+      onClick={() => setActiveTab("hormones")}
+    >
+      Hormones
+    </button>
+
+    <button
+      className={`tab-btn ${activeTab === "inventory" ? "active" : ""}`}
+      onClick={() => setActiveTab("inventory")}
+    >
+      Inventory
+    </button>
+
+          <button
+        className={`tab-btn ${activeTab === "adjustment" ? "active" : ""}`}
+        onClick={() => setActiveTab("adjustment")}
+      >
+        Inventory Adjustment
+      </button>
+
+
+
+
+
+
+  </div>
+
+  <UserMenu />
+</div>
+
+      <div style={{ display: activeTab === "biochem" ? "block" : "none" }}>        
+              <h2 className="dept-header">
+          Biochemistry Department — Main Analyzer
+        </h2>
           <div className="filter-bar">
             <input className="reg-search" placeholder="Search Reg or Diag No..." value={regSearch} onChange={(e) => setRegSearch(e.target.value)} />
             <div className="date-filters">
@@ -290,6 +421,7 @@ export default function BiochemistryMain() {
                   <th>Remark</th>
                   <th>Scanned</th>
                   <th>Status</th>
+                  <th>Saved By</th>
                   <th>Critical</th>
                   <th>Action</th>
                 </tr>
@@ -326,7 +458,7 @@ export default function BiochemistryMain() {
                   const isSaved = p.status === "saved";
                   const isScanned = p.scanned === "Yes";
                   const isCriticalReported = criticalReportedSet.has(regKey);
-                  
+                  const isPendingCritical = !!criticalParams[regKey];
                   const rowClass = `${isSaved ? "row-green" : isScanned ? "row-yellow" : "row-normal"}`.trim();
 
                   return (
@@ -348,26 +480,45 @@ export default function BiochemistryMain() {
                           <option value="Yes">Yes</option>
                         </select>
                       </td>
-
+                            <td style={{ fontWeight: "600", color: "#1e3a8a" }}> {p.savedBy || "—"}
+                            </td>
                       <td style={{ textAlign: 'center' }}>
-                        {isCriticalReported && (
-                          <span style={{ color: 'red', fontWeight: 'bold', fontSize: '10px' }}>
-                            CRITICAL {isSaved ? "REPORTED" : "PENDING SAVE"}
-                          </span>
-                        )}
-                      </td>
+     
+                       {(isCriticalReported ||
+                            isPendingCritical) && (
+                            <span
+                              style={{
+                                color: "red",
+                                fontWeight: "bold",
+                                fontSize: "10px"
+                              }}
+                            >
+                              CRITICAL{" "}
+                              {isCriticalReported
+                                ? "REPORTED"
+                                : "PENDING SAVE"}
+                            </span>
+                          )}
 
+                      </td>
                       <td>
                         <button
                           onClick={() => triggerCritical(p)}
-                          disabled={isCriticalReported || isSaved || !isScanned}
+                          disabled={
+                            isCriticalReported ||
+                            isPendingCritical ||
+                            isSaved ||
+                            !isScanned
+                          }
+
                           style={{ 
-                            backgroundColor: (isCriticalReported || !isScanned) ? "#ccc" : "#d9534f", 
+                            backgroundColor: (isCriticalReported ||
+                             isPendingCritical || !isScanned)? "#ccc" : "#d9534f", 
                             color: "white", 
                             border: "none", 
                             padding: "6px 10px", 
                             borderRadius: "4px", 
-                            cursor: (isCriticalReported || isSaved || !isScanned) ? "not-allowed" : "pointer", 
+                            cursor:(isCriticalReported ||isPendingCritical ||isSaved ||!isScanned) ? "not-allowed" : "pointer", 
                             fontSize: "12px", 
                             fontWeight: "bold", 
                             width: "100%" 
@@ -376,7 +527,6 @@ export default function BiochemistryMain() {
                           Critical
                         </button>
                       </td>
-
                       <td>
                         <button className="save-btn" disabled={isSaved || !isScanned} onClick={() => handleSave(p)}>💾 Save</button>
                       </td>
@@ -391,6 +541,16 @@ export default function BiochemistryMain() {
       <div style={{ display: activeTab === "hormones" ? "block" : "none" }}>
         <HormonesMain />
       </div>
+
+      <div style={{ display: activeTab === "inventory" ? "block" : "none" }}>
+        <DeptInventoryTab department="Biochemistry" machineType="Main" />
+      </div>
+          
+       <div style={{ display: activeTab === "adjustment" ? "block" : "none" }}>
+      <InventoryAdjustmentTab />
+    </div>
+
+
     </div>
   );
 }

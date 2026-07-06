@@ -1,131 +1,67 @@
 
-
 // src/owner/OwnerApp.jsx
-import React, { useContext, useEffect, useState, useMemo } from "react";
-import { OwnerContext } from "./OwnerContext.jsx";
+import React, { useEffect, useState } from "react";
+;
 
 import DateSourceFilter from "./components/DateSourceFilter";
-import KPIBlocks from "./components/KPIBlocks";
-import PatientListModal from "./components/PatientListModal";
-import DelayTable from "./components/DelayTable";
 
-import CountsBar from "./charts/CountsBar";
-import StackedStageLines from "./charts/StackedStageLines";
-import TimeBricks from "./charts/TimeBricks";
-import DelayHistogram from "./charts/DelayHistogram";
-import SLAScoreDonut from "./charts/SLAScoreDonut";
+import WorkflowKPIBlocks from "./workflow/WorkflowKPIBlocks";
+import WorkflowStackedBars from "./workflow/WorkflowStackedBars";
+import WorkflowStaffDistribution from "./workflow/WorkflowStaffDistribution";
 
-import {
-  subscribeOverview,
-  fetchTestTimings,
-  computeSLAViolations
-} from "./lib/dataFetcher";
+import { subscribeToWorkflowAnalytics } from "./workflow/workflowFetcher";
 
 import "./OwnerUI.css";
 
 export default function OwnerApp() {
-  const { MOCK_MODE } = useContext(OwnerContext);
+  
 
-  const [overview, setOverview] = useState({
-    totalPrinted: 0,
-    scanned: 0,
-    saved: 0,
-    validated: 0
+  const [workflowData, setWorkflowData] = useState({
+    records: [],
+    summary: {},
   });
 
-  const [unifiedRows, setUnifiedRows] = useState([]);
-  const [testTimings, setTestTimings] = useState({});
-  const [openModal, setOpenModal] = useState(false);
-  const [modalData, setModalData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+
   const [activeTab, setActiveTab] = useState("overview");
 
-  /* -------------------------------------------------------
-     1) SUBSCRIBE TO GLOBAL DATA (MASTER / MOCK / FIREBASE)
-  -------------------------------------------------------- */
+  const { records, summary } = workflowData;
+
   useEffect(() => {
-    const unsub = subscribeOverview({
-      MOCK_MODE,
-      onData: ({ overview, unifiedRows }) => {
-        setOverview(
-          overview || {
-            totalPrinted: 0,
-            scanned: 0,
-            saved: 0,
-            validated: 0
-          }
-        );
-        setUnifiedRows(unifiedRows || []);
-      }
-    });
+    const unsubscribe = subscribeToWorkflowAnalytics(
+      (data) => {
+        setWorkflowData(data);
+        setLoading(false);
+      },
+      console.error
+    );
 
-    fetchTestTimings().then(t => setTestTimings(t || {}));
+    return () => unsubscribe && unsubscribe();
+  }, []);
 
-    return () => unsub && unsub();
-  }, [MOCK_MODE]);
+  if (loading) {
+    return (
+      <div className="owner-root">
+        <div
+          style={{
+            padding: "40px",
+            textAlign: "center",
+            fontSize: "18px",
+            color: "#64748b",
+          }}
+        >
+          Loading Workflow Analytics...
+        </div>
+      </div>
+    );
+  }
 
-  /* -------------------------------------------------------
-     2) KPI CALCULATIONS
-  -------------------------------------------------------- */
-  const kpis = useMemo(() => {
-    const toMinutes = (a, b) =>
-      a && b
-        ? Math.round((new Date(b).getTime() - new Date(a).getTime()) / 60000)
-        : null;
-
-    const printedToScanned = [];
-    const scannedToSaved = [];
-    const savedToValidated = [];
-
-    let pendingScans = 0;
-    let pendingSaves = 0;
-    let pendingValidates = 0;
-
-    unifiedRows.forEach(p => {
-      const a = toMinutes(p.timePrinted, p.timeScanned);
-      const b = toMinutes(p.timeScanned, p.timeSaved);
-      const c = toMinutes(p.timeSaved, p.timeValidated);
-
-      if (a != null) printedToScanned.push(a);
-      if (b != null) scannedToSaved.push(b);
-      if (c != null) savedToValidated.push(c);
-
-      if (!p.timeScanned) pendingScans++;
-      if (p.timeScanned && !p.timeSaved) pendingSaves++;
-      if (p.timeSaved && !p.timeValidated) pendingValidates++;
-    });
-
-    const avg = arr =>
-      arr.length
-        ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length)
-        : null;
-
-    return {
-      avgPrintedToScanned: avg(printedToScanned),
-      avgScannedToSaved: avg(scannedToSaved),
-      avgSavedToValidated: avg(savedToValidated),
-      pendingScans,
-      pendingSaves,
-      pendingValidates
-    };
-  }, [unifiedRows]);
-
-  /* -------------------------------------------------------
-     3) SLA VIOLATIONS
-  -------------------------------------------------------- */
-  const violators = useMemo(
-    () => computeSLAViolations(unifiedRows, testTimings, "scanned_to_saved"),
-    [unifiedRows, testTimings]
-  );
-
-  /* -------------------------------------------------------
-     4) UI
-  -------------------------------------------------------- */
   return (
     <div className="owner-root">
-
       {/* ================= HEADER ================= */}
       <header className="owner-header">
-        <h1>Owner Dashboard — Global Analytics</h1>
+        <h1>Owner Dashboard — Workflow Analytics</h1>
 
         {/* Department Analytics Dropdown */}
         <select
@@ -134,7 +70,7 @@ export default function OwnerApp() {
             borderRadius: "6px",
             border: "1px solid #e2e8f0",
             background: "#f8fafc",
-            cursor: "pointer"
+            cursor: "pointer",
           }}
           defaultValue=""
           onChange={(e) => {
@@ -149,7 +85,10 @@ export default function OwnerApp() {
               biochem: "/owner_biochem.html",
               bloodgroup: "/owner_bloodgroup.html",
               insideLab: "/owner_lab.html",
-              outsource: "/owner_outsource.html"
+              outsource: "/owner_outsource.html",
+              critical: "/Critical.html",
+              analytics: "/analytics.html",
+              master_admin: "/master_admin.html",
             };
 
             const url = routeMap[e.target.value];
@@ -169,9 +108,17 @@ export default function OwnerApp() {
           <option value="hormones">Hormones</option>
           <option value="biochem">Biochemistry</option>
           <option value="bloodgroup">Blood Group & RH</option>
-          <option value="" disabled>──────────</option>
+          <option value="" disabled>
+            ──────────
+          </option>
           <option value="insideLab">Inside Lab</option>
           <option value="outsource">Outsource</option>
+          <option value="" disabled>
+            ──────────
+          </option>
+          <option value="critical">Critical</option>
+          <option value="analytics">Count Analytics</option>
+          <option value="master_admin">Master Admin</option>
         </select>
       </header>
 
@@ -179,10 +126,13 @@ export default function OwnerApp() {
       <DateSourceFilter />
 
       {/* ================= KPI BLOCKS ================= */}
-      <KPIBlocks overview={overview} kpis={kpis} />
+      <WorkflowKPIBlocks summary={summary} />
 
       {/* ================= TABS ================= */}
-      <div className="tab-buttons" style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+      <div
+        className="tab-buttons"
+        style={{ display: "flex", gap: 12, marginBottom: 12 }}
+      >
         <button
           onClick={() => setActiveTab("overview")}
           className={activeTab === "overview" ? "active" : ""}
@@ -191,70 +141,38 @@ export default function OwnerApp() {
         </button>
 
         <button
-          onClick={() => setActiveTab("delays")}
-          className={activeTab === "delays" ? "active" : ""}
+          onClick={() => setActiveTab("staff")}
+          className={activeTab === "staff" ? "active" : ""}
         >
-          Delays
+          Staff Analytics
         </button>
       </div>
 
       {/* ================= OVERVIEW TAB ================= */}
       {activeTab === "overview" ? (
-        <section className="owner-charts">
-
-          <div className="chart-card">
-            <h3>Global Counts</h3>
-            <CountsBar counts={overview} />
-          </div>
-
-          <div className="chart-card">
-            <h3>Stacked Stage Timeline</h3>
-            <StackedStageLines unifiedRows={unifiedRows} />
-          </div>
-
-          <div className="chart-card full-width">
-            <h3>Time Bricks (Scanned → Saved)</h3>
-            <TimeBricks
-              unifiedRows={unifiedRows}
-              testTimings={testTimings}
-              height={520}
-              onBrickClick={p => {
-                setModalData([p]);
-                setOpenModal(true);
-              }}
-            />
-          </div>
-
-        </section>
+       <section className="owner-charts">
+       <div className="chart-card full-width">
+         <h3>Routine Workflow Duration</h3>
+         <WorkflowStackedBars records={records} />
+       </div>
+     </section>
       ) : (
-        /* ================= DELAYS TAB ================= */
+        /* ================= STAFF ANALYTICS TAB ================= */
         <section className="owner-charts">
-
-          <div className="chart-card">
-            <h3>Delay Histogram</h3>
-            <DelayHistogram violators={violators} />
-          </div>
-
-          <div className="chart-card">
-            <h3>SLA Score</h3>
-            <SLAScoreDonut
-              total={unifiedRows.length}
-              within={unifiedRows.length - violators.length}
-            />
-          </div>
-
-          <div className="chart-card full-width">
-            <DelayTable violators={violators} />
-          </div>
-
-        </section>
+        <div className="chart-card full-width">
+          <WorkflowStaffDistribution
+            data={
+              summary.staffDistribution ?? {
+                routine: [],
+                insideLab: [],
+                whatsapp: [],
+              }
+            }
+          />
+        </div>
+      </section>
       )}
-
-      <PatientListModal
-        open={openModal}
-        onClose={() => setOpenModal(false)}
-        patients={modalData}
-      />
     </div>
   );
 }
+

@@ -5,7 +5,7 @@
   min-height: 100vh;
   padding: 24px;
   max-width: 100vw;
-  overflow-x: hidden; /* Prevents the whole page from sliding */
+  overflow-x: auto;
 }
 
 /* Header */
@@ -13,6 +13,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
   margin-bottom: 16px;
 }
 
@@ -30,7 +31,9 @@
 .tabs {
   display: flex;
   gap: 8px;
+  margin-top: 12px;
 }
+
 .tabs button {
   border: 1px solid #c7d2fe;
   background: #eff6ff;
@@ -139,10 +142,10 @@
 
 .haem-table {
   width: 100%;
-  min-width: 1800px; 
-  border-collapse: separate; /* Required for sticky border stability */
+  min-width: 2220px;
+  border-collapse: separate;
   border-spacing: 0;
-  table-layout: fixed; 
+  table-layout: fixed;
 }
 
 .haem-table th,
@@ -244,28 +247,43 @@
   width: 120px; 
 }
 
-/* 11. SCANNED  */
+/* 11. SCANNED */
 .haem-table th:nth-child(11),
 .haem-table td:nth-child(11) {
-  width: 100px; 
+  width: 100px;
 }
 
-/* 12. STATUS  */
+/* 12. MACHINE */
 .haem-table th:nth-child(12),
 .haem-table td:nth-child(12) {
-  width: 120px; 
+  width: 110px;
 }
 
-/* 13. CRITICAL  */
+/* 13. STATUS */
 .haem-table th:nth-child(13),
 .haem-table td:nth-child(13) {
-  width: 120px; 
+  width: 120px;
 }
 
-/* 14. ACTION  */
+/* 14. SAVED BY */
 .haem-table th:nth-child(14),
 .haem-table td:nth-child(14) {
-  width: 100px; 
+  width: 140px;
+  min-width: 140px;
+}
+
+/* 15. CRITICAL */
+.haem-table th:nth-child(15),
+.haem-table td:nth-child(15) {
+  width: 120px;
+  min-width: 120px;
+}
+
+/* 16. ACTION */
+.haem-table th:nth-child(16),
+.haem-table td:nth-child(16) {
+  width: 120px;
+  min-width: 120px;
 }
 
 /* Action Button */
@@ -298,6 +316,23 @@
 
 .save-btn:disabled, .critical-btn:disabled {
   background-color: #a8cbb0;
+  cursor: not-allowed;
+}
+
+/* Dropdown styling (Scanned + Machine) */
+.haem-table td select {
+  width: 100%;
+  padding: 5px 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.haem-table td select:disabled {
+  background: #f3f4f6;
+  color: #475569;
   cursor: not-allowed;
 }
 

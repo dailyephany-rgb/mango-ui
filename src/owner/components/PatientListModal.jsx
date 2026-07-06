@@ -22,6 +22,10 @@ export default function PatientListModal({ open, onClose, patients }) {
                 <th>Scanned</th>
                 <th>Saved</th>
                 <th>Validated</th>
+                <th>Saved By</th>
+                <th>Validated By</th>
+                <th>Entered By</th>
+
               </tr>
             </thead>
             <tbody>
@@ -44,9 +48,21 @@ export default function PatientListModal({ open, onClose, patients }) {
                   <td>
                     {p.timeSaved ? new Date(p.timeSaved).toLocaleString() : "—"}
                   </td>
+                  <td> 
+                    {p.timeValidated ? new Date(p.timeValidated).toLocaleString(): "—"} </td>
+                 
                   <td>
-                    {p.timeValidated ? new Date(p.timeValidated).toLocaleString() : "—"}
+                    {p.savedBy || "—"}
                   </td>
+
+                  <td>
+                    {p.validatedBy || "—"}
+                  </td>
+
+                  <td>
+                    {p.enteredBy || "—"}
+                  </td>
+
                 </tr>
               ))}
             </tbody>

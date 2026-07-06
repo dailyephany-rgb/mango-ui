@@ -1,5 +1,8 @@
 
-import React, { useMemo } from "react";
+import React, {
+  useMemo,
+  useState
+} from "react";
 import FullCalendar from "@fullcalendar/react";
 import resourceTimelinePlugin from "@fullcalendar/resource-timeline";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -7,6 +10,8 @@ import moment from "moment";
 import "./TimeBricksOutsource.css";
 
 export default function TimeBricks({ unifiedRows, testTimings = {}, onBrickClick, fromDate, toDate, department = "STERLING" }) {
+
+  const [searchTerm, setSearchTerm] = useState("");
   
   const { calendarKey, startStr, endStr, initialDate } = useMemo(() => {
     const start = fromDate ? moment(fromDate).startOf('day') : moment().startOf('month');
@@ -22,18 +27,58 @@ export default function TimeBricks({ unifiedRows, testTimings = {}, onBrickClick
     };
   }, [fromDate, toDate, department]);
 
+  const filteredRows = useMemo(() => {
+    const search =
+      searchTerm
+        .trim()
+        .toLowerCase();
+  
+    if (!search) {
+      return unifiedRows;
+    }
+  
+    return unifiedRows.filter(r => {
+      const reg =
+        String(
+          r.regNo || ""
+        ).toLowerCase();
+  
+      const diag =
+        String(
+          r.diagnosticNo || ""
+        ).toLowerCase();
+  
+      return (
+        reg.includes(search) ||
+        diag.includes(search)
+      );
+    });
+  }, [
+    unifiedRows,
+    searchTerm
+  ]);
+
   const resources = useMemo(() => {
-    // UPDATED: Group by Diagnostic No instead of Reg No
-    const uniqueDiags = Array.from(new Set(unifiedRows.map(r => r.diagnosticNo || r.regNo)));
-    return uniqueDiags.map(diagNo => ({ id: diagNo, title: diagNo }));
-  }, [unifiedRows]);
+    const uniqueDiags = Array.from(
+      new Set(
+        filteredRows.map(
+          r => r.diagnosticNo || r.regNo
+        )
+      )
+    );
+  
+    return uniqueDiags.map(diagNo => ({
+      id: diagNo,
+      title: diagNo
+    }));
+  }, [filteredRows]);
 
   const events = useMemo(() => {
     const labKey = Object.keys(testTimings).find(k => k.toLowerCase() === department.toLowerCase());
     const labConfig = labKey ? testTimings[labKey] : null;
     const activeLimit = labConfig ? (labConfig.collected_to_saved || 1440) : 1440;
 
-    return unifiedRows
+    return filteredRows
       .filter(r => r.timeScanned && r.timeSaved)
       .map((r, index) => {
         const start = moment(r.timeScanned);
@@ -68,10 +113,38 @@ export default function TimeBricks({ unifiedRows, testTimings = {}, onBrickClick
           extendedProps: { fullData: r }
         };
       });
-  }, [unifiedRows, testTimings, department]);
+    }, [filteredRows,testTimings,department]);
 
   return (
     <div className="fullcalendar-outsource-container">
+       
+        <div
+      style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        marginBottom: "16px"
+      }}
+    >
+      <input
+        type="text"
+        placeholder="Search Reg No or Diag No..."
+        value={searchTerm}
+        onChange={(e) =>
+          setSearchTerm(e.target.value)
+        }
+        style={{
+          width: "280px",
+          padding: "8px 12px",
+          border: "1px solid #d1d5db",
+          borderRadius: "8px",
+          fontSize: "14px"
+        }}
+      />
+    </div>
+
+
+
+
       <FullCalendar
         key={calendarKey} 
         plugins={[resourceTimelinePlugin, interactionPlugin]}

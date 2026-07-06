@@ -1,0 +1,327 @@
+
+/* =========================
+   COMMAND CENTER ROOT
+========================= */
+
+.inventory-command-center {
+
+  padding: 20px;
+  background: #0f172a;
+  min-height: 100vh;
+  color: white;
+
+}
+
+
+/* =========================
+   HEADER
+========================= */
+
+.command-center-header {
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin-bottom: 25px;
+
+}
+
+.command-center-header h1 {
+
+  font-size: 1.8rem;
+  font-weight: 700;
+
+  color: white;
+
+}
+
+
+/* =========================
+   TAB BUTTONS
+========================= */
+
+.command-tabs {
+
+  display: flex;
+  gap: 10px;
+
+}
+
+.command-tabs button {
+
+  border: none;
+  outline: none;
+
+  padding: 10px 18px;
+
+  border-radius: 10px;
+
+  background: #1e293b;
+
+  color: #cbd5e1;
+
+  cursor: pointer;
+
+  font-size: 0.9rem;
+  font-weight: 600;
+
+  transition: 0.2s ease;
+
+}
+
+.command-tabs button:hover {
+
+  background: #334155;
+
+  color: white;
+
+}
+
+.command-tabs button.active-tab {
+
+  background: #2563eb;
+  color: white;
+
+}
+
+
+/* =========================
+   TAB CONTAINER
+========================= */
+
+.command-tab-container {
+
+  background: #111827;
+
+  border-radius: 16px;
+
+  padding: 20px;
+
+  border: 1px solid #1f2937;
+
+}
+
+
+/* =========================
+   FILTER BAR
+========================= */
+
+.command-filter-bar {
+
+  display: flex;
+  gap: 15px;
+
+  align-items: center;
+
+  margin-bottom: 20px;
+
+}
+
+.command-filter-bar select,
+.command-filter-bar input {
+
+  background: #1e293b;
+
+  border: 1px solid #334155;
+
+  color: white;
+
+  padding: 10px 12px;
+
+  border-radius: 10px;
+
+  outline: none;
+
+}
+
+
+/* =========================
+   TABLE WRAPPER
+========================= */
+
+.inventory-command-table {
+
+  width: 100%;
+
+  overflow-x: auto;
+
+  border-radius: 14px;
+
+  border: 1px solid #1f2937;
+
+}
+
+
+/* =========================
+   TABLE
+========================= */
+
+.inventory-command-table table {
+
+  width: 100%;
+
+  border-collapse: collapse;
+
+}
+
+
+/* =========================
+   TABLE HEADER
+========================= */
+
+.inventory-command-table thead {
+
+  background: #1e293b;
+
+}
+
+.inventory-command-table th {
+
+  text-align: left;
+
+  padding: 14px 16px;
+
+  font-size: 0.85rem;
+  font-weight: 700;
+
+  color: #cbd5e1;
+
+  border-bottom: 1px solid #334155;
+
+}
+
+
+/* =========================
+   TABLE BODY
+========================= */
+
+.inventory-command-table td {
+
+  padding: 14px 16px;
+
+  font-size: 0.9rem;
+
+  border-bottom: 1px solid #1f2937;
+
+}
+
+.inventory-command-table tbody tr {
+
+  transition: 0.2s ease;
+
+}
+
+.inventory-command-table tbody tr:hover {
+
+  background: rgba(255,255,255,0.03);
+
+}
+
+
+/* =========================
+   EMERGENCY ROW
+========================= */
+
+.emergency-row {
+
+  background: rgba(255, 0, 0, 0.08);
+
+}
+
+.emergency-row:hover {
+
+  background: rgba(255, 0, 0, 0.12) !important;
+
+}
+
+
+/* =========================
+   STATUS BADGES
+========================= */
+
+.safe-badge {
+
+  color: #22c55e;
+  font-weight: 700;
+
+}
+
+.emergency-badge {
+
+  color: #ef4444;
+  font-weight: 700;
+
+}
+
+
+/* =========================
+   METRIC CARDS
+========================= */
+
+.metric-cards-grid {
+
+  display: grid;
+
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+
+  gap: 16px;
+
+  margin-bottom: 25px;
+
+}
+
+.metric-card {
+
+  background: #111827;
+
+  border: 1px solid #1f2937;
+
+  border-radius: 16px;
+
+  padding: 18px;
+
+}
+
+.metric-card-label {
+
+  color: #94a3b8;
+
+  font-size: 0.85rem;
+
+  margin-bottom: 10px;
+
+}
+
+.metric-card-value {
+
+  font-size: 1.7rem;
+  font-weight: 700;
+
+  color: white;
+
+}
+
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+@media (max-width: 768px) {
+
+  .command-center-header {
+
+    flex-direction: column;
+    align-items: flex-start;
+
+    gap: 15px;
+
+  }
+
+  .command-tabs {
+
+    flex-wrap: wrap;
+
+  }
+
+}

@@ -1,4 +1,5 @@
 
+
 // src/owner/charts/StackedStageLines.jsx
 import React, { useMemo } from "react";
 import {
@@ -9,7 +10,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
-  CartesianGrid
+  CartesianGrid,
+  ReferenceLine
 } from "recharts";
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -23,6 +25,7 @@ const CustomTooltip = ({ active, payload, label }) => {
     payload.find(p => p.dataKey === "collectedToScanned"),
     payload.find(p => p.dataKey === "scannedToSaved"),
     payload.find(p => p.dataKey === "savedToValidated"),
+    payload.find((p) => p.dataKey === "validatedToEntered"),
   ].filter(Boolean);
 
   return (
@@ -49,64 +52,131 @@ const CustomTooltip = ({ active, payload, label }) => {
   );
 };
 
-export default function StackedStageLines({ unifiedRows }) {
-  const data = useMemo(() => {
+      export default function StackedStageLines({
+        unifiedRows,
+        stageFilter = "turnaround",
+        height = 480,
+        slaLimit = null,
+      })
+    {const data = useMemo(() => {
     if (!unifiedRows || unifiedRows.length === 0) return [];
 
     const sorted = [...unifiedRows].sort(
       (a, b) => new Date(a.timePrinted) - new Date(b.timePrinted)
     );
 
-    return sorted.map((p, index) => {
+    const mapped = sorted.map((p, index) => {
       const tP = p.timePrinted   ? new Date(p.timePrinted).getTime() : null;
       const tC = p.timeCollected ? new Date(p.timeCollected).getTime() : null;
       const tS = p.timeScanned   ? new Date(p.timeScanned).getTime() : null;
       const tSv= p.timeSaved     ? new Date(p.timeSaved).getTime() : null;
       const tV = p.timeValidated ? new Date(p.timeValidated).getTime() : null;
+      const tE = p.timeEntered ? new Date(p.timeEntered).getTime()
+      : null;
 
       const pc = tP && tC ? Math.max(0, Math.round((tC - tP) / 60000)) : 0;
       const cs = tC && tS ? Math.max(0, Math.round((tS - tC) / 60000)) : 0;
       const ss = tS && tSv ? Math.max(0, Math.round((tSv - tS) / 60000)) : 0;
       const sv = tSv && tV ? Math.max(0, Math.round((tV - tSv) / 60000)) : 0;
+      const ve = tV && tE ? Math.max(0,Math.round((tE - tV) / 60000)
+      ): 0;
+      const turnaround = cs + ss + sv;
+      const completeAnalysis = cs + ss + sv + ve;
 
       return {
         x: index + 1,
         regNo: p.regNo,
-        diagnosticNo: p.diagnosticNo, // Added diagnosticNo to the data point
+        diagnosticNo: p.diagnosticNo,
+      
         printedToCollected: pc,
         collectedToScanned: cs,
         scannedToSaved: ss,
-        savedToValidated: sv
+        savedToValidated: sv,
+        validatedToEntered: ve,
+      
+        turnaround,
+        completeAnalysis,
       };
     });
-  }, [unifiedRows]);
+   
+    return mapped;
 
-  const maxVal = data.reduce(
-    (m, d) =>
-      Math.max(
-        m,
-        d.printedToCollected +
-        d.collectedToScanned +
-        d.scannedToSaved +
-        d.savedToValidated
-      ),
-    0
-  );
+  }, [unifiedRows]);
+  
+
+  const maxVal = data.reduce((m, d) => {
+    let value = 0;
+  
+    switch (stageFilter) {
+      case "printed":
+        value = d.printedToCollected;
+        break;
+  
+      case "collected":
+        value = d.collectedToScanned;
+        break;
+  
+      case "saved":
+        value = d.scannedToSaved;
+        break;
+  
+      case "validated":
+        value = d.savedToValidated;
+        break;
+      case "entered":
+          value = d.validatedToEntered;
+          break;
+  
+      case "turnaround":
+        value = d.turnaround;
+        break;
+
+      case "complete":
+          value = d.completeAnalysis;
+          break;
+  
+      default:
+        value = d.turnaround;
+    }
+  
+    return Math.max(m, value);
+  }, 0);
 
   const yMax = Math.ceil((maxVal + 5) / 20) * 20;
 
   return (
-    <div style={{ width: "100%", height: 480 }}> 
+    <div style={{ width: "100%",height}}> 
       <ResponsiveContainer>
-        <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 40 }}> 
+      <AreaChart data={data} margin={{ top: 10,right: 30,left: 0,
+    bottom: 80,}}>
           <CartesianGrid strokeDasharray="3 3" />
+
+          {slaLimit != null && (
+            
+            <ReferenceLine
+            y={slaLimit}
+            stroke="#dc2626"
+            strokeWidth={2}
+            ifOverflow="extendDomain"
+            label={{
+              value: `SLA (${slaLimit} min)`,
+              position: "right",
+              fill: "#dc2626",
+              fontSize: 12,
+            }}
+          />
+
+          )}
 
           <XAxis
             dataKey="x"
+            interval="preserveStartEnd"
+            minTickGap={40}
+            height={60}
             label={{
               value: "Patient Count (sorted by Printed Time)",
               position: "insideBottom",
-              offset: -10 
+              offset: -25,
             }}
           />
 
@@ -133,12 +203,116 @@ export default function StackedStageLines({ unifiedRows }) {
             ]}
           />
 
-          <Area type="monotone" dataKey="printedToCollected" stroke="#4f46e5" fill="#c7d2fe" stackId="1" />
-          <Area type="monotone" dataKey="collectedToScanned" stroke="#dc2626" fill="#fecaca" stackId="1" />
-          <Area type="monotone" dataKey="scannedToSaved" stroke="#059669" fill="#bbf7d0" stackId="1" />
-          <Area type="monotone" dataKey="savedToValidated" stroke="#f59e0b" fill="#fef3c7" stackId="1" />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
-  );
+        {stageFilter === "printed" && (
+          <Area
+            type="monotone"
+            dataKey="printedToCollected"
+            stroke="#4f46e5"
+            fill="#c7d2fe"
+          />
+        )}
+
+        {stageFilter === "collected" && (
+          <Area
+            type="monotone"
+            dataKey="collectedToScanned"
+            stroke="#dc2626"
+            fill="#fecaca"
+          />
+        )}
+
+        {stageFilter === "saved" && (
+          <Area
+            type="monotone"
+            dataKey="scannedToSaved"
+            stroke="#059669"
+            fill="#bbf7d0"
+          />
+        )}
+
+        {stageFilter === "validated" && (
+          <Area
+            type="monotone"
+            dataKey="savedToValidated"
+            stroke="#f59e0b"
+            fill="#fef3c7"
+          />
+        )}
+        {stageFilter === "entered" && (
+        <Area
+            type="monotone"
+            dataKey="validatedToEntered"
+            stroke="#ec4899"
+            fill="#fbcfe8"
+          />
+        )}
+
+        {stageFilter === "turnaround" && (
+          <>
+            <Area
+              type="monotone"
+              dataKey="collectedToScanned"
+              stroke="#dc2626"
+              fill="#fecaca"
+              stackId="1"
+            />
+
+            <Area
+              type="monotone"
+              dataKey="scannedToSaved"
+              stroke="#059669"
+              fill="#bbf7d0"
+              stackId="1"
+            />
+
+            <Area
+              type="monotone"
+              dataKey="savedToValidated"
+              stroke="#f59e0b"
+              fill="#fef3c7"
+              stackId="1"
+            />
+          </>
+        )}
+
+{stageFilter === "complete" && (
+  <>
+    <Area
+      type="monotone"
+      dataKey="collectedToScanned"
+      stroke="#dc2626"
+      fill="#fecaca"
+      stackId="1"
+    />
+
+    <Area
+      type="monotone"
+      dataKey="scannedToSaved"
+      stroke="#059669"
+      fill="#bbf7d0"
+      stackId="1"
+    />
+
+    <Area
+      type="monotone"
+      dataKey="savedToValidated"
+      stroke="#f59e0b"
+      fill="#fef3c7"
+      stackId="1"
+    />
+
+    <Area
+      type="monotone"
+      dataKey="validatedToEntered"
+      stroke="#ec4899"
+      fill="fbcfe8"
+      stackId="1"
+    />
+  </>
+)}
+
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          );
 }

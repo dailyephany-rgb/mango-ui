@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import routing from "../backroom_routing.json";
 import "./Backroom.css";
+import { handleInventoryDeduction } from "../inventory/inventorymapping";
 
 // 🚨 Define the unique key for this department
 const CURRENT_DEPT = "Serology";
@@ -56,7 +57,12 @@ export default function SerologyRegister() {
   const [saving, setSaving] = useState(false);
 
   // 🛡️ INTERNAL BUFFER: Prevents slow internet from resetting your typed results
-  const [localResults, setLocalResults] = useState({});
+  const [localResults, setLocalResults] = useState(() => {
+    const saved = localStorage.getItem(
+      "serology_localResults"
+    );
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const [regSearch, setRegSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -76,7 +82,13 @@ export default function SerologyRegister() {
   });
 
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
-  const [pendingCriticalMap, setPendingCriticalMap] = useState({});
+  const [pendingCriticalMap, setPendingCriticalMap] =
+  useState(() => {
+    const saved = localStorage.getItem(
+      "serology_pendingCritical"
+    );
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const testsForRegister = routing.SerologyRegister || [
     "HBSAG CARD",
@@ -180,7 +192,7 @@ export default function SerologyRegister() {
       const saved = serologyDocs[compositeKey] || {};
       const localScan = localScans[compositeKey];
       const typing = localResults[compositeKey] || {}; 
-
+      const localScanTime = localScanTimes[compositeKey];
       return {
         ...entry,
         ...saved,
@@ -195,13 +207,20 @@ export default function SerologyRegister() {
           ...typing 
         },
         scanned: localScan ?? saved.scanned ?? "No",
-        scannedTime: saved.scannedTime || null, 
+        scannedTime: localScanTime ?? saved.scannedTime ?? null,
         urgent: entry.urgent || false,
         status: (saved.saved === "Yes" || saved.status === "saved") ? "saved" : localScan === "Yes" ? "scanned" : saved.status || "pending",
         pendingCriticalParam: pendingCriticalMap[compositeKey]
       };
     });
-  }, [masterEntries, serologyDocs, localScans, pendingCriticalMap, localResults]);
+  },[
+    masterEntries,
+    serologyDocs,
+    localScans,
+    localScanTimes,
+    pendingCriticalMap,
+    localResults
+  ]);
 
   const requiredKeys = (entry) => {
     const keys = new Set();
@@ -222,13 +241,22 @@ export default function SerologyRegister() {
   };
 
   const handleChange = (compositeKey, field, value) => {
-    setLocalResults((prev) => ({
-      ...prev,
-      [compositeKey]: {
-        ...(prev[compositeKey] || {}),
-        [field]: value
-      }
-    }));
+    setLocalResults((prev) => {
+      const updated = {
+        ...prev,
+        [compositeKey]: {
+          ...(prev[compositeKey] || {}),
+          [field]: value,
+        },
+      };
+  
+      localStorage.setItem(
+        "serology_localResults",
+        JSON.stringify(updated)
+      );
+  
+      return updated;
+    });
   };
 
   // UPDATE: Writes both Scan status and Time to LocalStorage using compositeKey
@@ -259,7 +287,20 @@ export default function SerologyRegister() {
     const parameter = window.prompt("Confirm Critical Values (Alert will be sent upon clicking Save):", suggested.trim());
     if (!parameter) return;
 
-    setPendingCriticalMap(prev => ({ ...prev, [entry.compositeKey]: parameter }));
+    setPendingCriticalMap((prev) => {
+      const updated = {
+        ...prev,
+        [entry.compositeKey]: parameter,
+      };
+    
+      localStorage.setItem(
+        "serology_pendingCritical",
+        JSON.stringify(updated)
+      );
+    
+      return updated;
+    });
+
     alert("Critical values confirmed. They will be sent to the Critical UI when you click 'Save'.");
   };
 
@@ -304,11 +345,18 @@ export default function SerologyRegister() {
         scannedTime: scanTime ? Timestamp.fromDate(new Date(scanTime)) : null, 
         saved: "Yes",
         savedTime: serverTimestamp(),
+        savedBy: sessionStorage.getItem("loggedUser") || "Unknown",
         status: "saved",
         critical: isCritical
       };
 
       await setDoc(doc(db, "serology_register", compositeKey), payload, { merge: true });
+
+      try {
+        await handleInventoryDeduction(simpleTests);
+      } catch (inventoryErr) {
+        console.error("Inventory deduction failed:", inventoryErr);
+      }
 
       if (hasPendingCritical) {
         await setDoc(doc(db, "critical_alerts", `${compositeKey}_${CURRENT_DEPT}`), {
@@ -321,6 +369,7 @@ export default function SerologyRegister() {
           category: entry.category || "-",
           source: entry.source || "-",
           doctor: entry.doctor || "Self",
+          reportedBy: sessionStorage.getItem("loggedUser") || "Unknown",
           timePrinted: entry.timePrinted || null,
           timeCollected: entry.timeCollected || null,
           criticalParameter: entry.pendingCriticalParam,
@@ -331,7 +380,17 @@ export default function SerologyRegister() {
         });
       }
 
-      setLocalResults(prev => { const n = {...prev}; delete n[compositeKey]; return n; });
+      setLocalResults((prev) => {
+        const n = { ...prev };
+        delete n[compositeKey];
+      
+        localStorage.setItem(
+          "serology_localResults",
+          JSON.stringify(n)
+        );
+      
+        return n;
+      });
       
       // UPDATE: Cleanup LocalStorage after successful save
       setLocalScans(prev => { 
@@ -348,7 +407,17 @@ export default function SerologyRegister() {
         return n;
       });
 
-      setPendingCriticalMap(prev => { const n = {...prev}; delete n[compositeKey]; return n; });
+      setPendingCriticalMap((prev) => {
+        const n = { ...prev };
+        delete n[compositeKey];
+      
+        localStorage.setItem(
+          "serology_pendingCritical",
+          JSON.stringify(n)
+        );
+      
+        return n;
+      });
       
       alert(`✅ Saved Serology entry for ${entry.name} ${hasPendingCritical ? "(Critical Alert Sent)" : ""}`);
     } catch (e) {
@@ -436,6 +505,7 @@ export default function SerologyRegister() {
               <th>Occult Blood</th>
               <th>Scanned</th>
               <th>Status</th>
+              <th>Saved By</th>
               <th>Critical</th>
               <th>Action</th>
             </tr>
@@ -470,6 +540,7 @@ export default function SerologyRegister() {
                         <select value={e.results[key] || "Pending"} disabled={!scanned || saved} onChange={(ev) => handleChange(compositeKey, key, ev.target.value)}>
                           <option>Pending</option>
                           <option>Positive</option>
+                          <option>Weak Positive</option>
                           <option>Negative</option>
                         </select>
                       ) : ("—")}
@@ -490,6 +561,15 @@ export default function SerologyRegister() {
                     )}
                   </td>
 
+                  <td
+                  style={{
+                    minWidth: "130px",
+                    fontWeight: "600",
+                    color: "#1e3a8a"
+                  }}
+                >
+                  {e.savedBy || "—"}
+                </td>
                   <td>
                     <button
                       onClick={() => triggerCritical(e)}

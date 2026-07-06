@@ -46,14 +46,26 @@
   font-size: 16px;
 }
 
+.source-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .source-toggle button {
-  padding: 8px 16px;
-  margin-right: 5px;
+  padding: 10px 18px;
   border: 1px solid #e2e8f0;
   background: white;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.2s ease;
+}
+
+.source-toggle button:hover {
+  background: #f8fafc;
 }
 
 .source-toggle button.active {
@@ -96,4 +108,20 @@
 
 .active-stat .stat-count {
   color: #2563eb;
+}
+
+.filter-row.second-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.dept-select {
+  min-width: 220px;
+  padding: 10px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 15px;
+  background: white;
 }

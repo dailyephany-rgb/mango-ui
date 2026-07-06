@@ -91,11 +91,11 @@
 
 .dept-table {
   width: 100%;
-  border-collapse: separate; 
+  border-collapse: separate;
   border-spacing: 0;
   font-size: 13px;
-  min-width: 1850px;      
-  table-layout: fixed;    
+  min-width: 2050px;
+  table-layout: fixed;
 }
 
 .dept-table th,
@@ -162,11 +162,36 @@
   width: 100px; 
 }
 
-/* Action Columns */
-.dept-table th:nth-child(13), .dept-table td:nth-child(13) { width: 100px; } /* Scanned */
-.dept-table th:nth-child(14), .dept-table td:nth-child(14) { width: 140px; } /* Status */
-.dept-table th:nth-child(15), .dept-table td:nth-child(15) { width: 110px; } /* Critical */
-.dept-table th:nth-child(16), .dept-table td:nth-child(16) { width: 100px; } /* Action */
+/* 13. Scanned */
+.dept-table th:nth-child(13),
+.dept-table td:nth-child(13) {
+  width: 100px;
+}
+
+/* 14. Status */
+.dept-table th:nth-child(14),
+.dept-table td:nth-child(14) {
+  width: 140px;
+}
+
+/* 15. Saved By */
+.dept-table th:nth-child(15),
+.dept-table td:nth-child(15) {
+  width: 140px;
+  min-width: 140px;
+}
+
+/* 16. Critical */
+.dept-table th:nth-child(16),
+.dept-table td:nth-child(16) {
+  width: 120px;
+}
+
+/* 17. Action */
+.dept-table th:nth-child(17),
+.dept-table td:nth-child(17) {
+  width: 120px;
+}
 
 /* Sync Row Colors for Sticky Cells */
 .row-green td.sticky-col { background-color: #dcfce7 !important; }

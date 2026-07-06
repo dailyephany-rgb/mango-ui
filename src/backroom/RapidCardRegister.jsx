@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import routing from "../backroom_routing.json";
 import "./Backroom.css";
+import { handleInventoryDeduction } from "../inventory/inventorymapping";
 
 // 🚨 Define the unique key for this department
 const CURRENT_DEPT = "Rapid Card";
@@ -27,10 +28,33 @@ const overflowStyles = `
   }
   .backroom-table {
     width: 100%;
-    min-width: 1600px; 
-    border-collapse: separate; 
+    min-width: 2400px;
+    border-collapse: separate;
     border-spacing: 0;
   }
+
+    .backroom-table th,
+  .backroom-table td {
+    min-width: 110px;
+  }
+
+  .backroom-table thead th[colspan="3"] {
+    min-width: 330px;
+  }
+
+  .backroom-table thead th[colspan="2"] {
+    min-width: 220px;
+  }
+
+  .backroom-table thead tr:nth-child(2) th {
+    font-size: 12px;
+    padding: 6px;
+    position: sticky;
+    top: 41px;
+    z-index: 11;
+    background-color: #eff6ff;
+  }
+
   .sticky-col {
     position: sticky;
     z-index: 5;
@@ -69,7 +93,10 @@ export default function RapidCardRegister() {
   const [saving, setSaving] = useState(false);
 
   // 🛡️ INTERNAL BUFFER: Shields results from cloud sync wipes on slow internet
-  const [localResults, setLocalResults] = useState({});
+  const [localResults, setLocalResults] = useState(() => {
+    const saved = localStorage.getItem("rapid_localResults");
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const [regSearch, setRegSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -89,7 +116,10 @@ export default function RapidCardRegister() {
   });
 
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
-  const [pendingCriticalMap, setPendingCriticalMap] = useState({});
+  const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
+    const saved = localStorage.getItem("rapid_pendingCritical");
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const testsForRegister = routing.RapidCardRegister;
 
@@ -184,9 +214,11 @@ export default function RapidCardRegister() {
       const diagnosticNo = entry.diagnosticNo || entry.accNo || "-";
       const compositeKey = `${regNo}_${diagnosticNo}`;
 
+
       const saved = rapidDocs[compositeKey] || {};
       const localScan = localScans[compositeKey];
-      const typing = localResults[compositeKey] || {}; 
+      const localScanTime = localScanTimes[compositeKey];
+      const typing = localResults[compositeKey] || {};
 
       return {
         ...entry,
@@ -196,19 +228,39 @@ export default function RapidCardRegister() {
         compositeKey,
         source: normalizeSource(entry.source || entry.category),
         results: {
-          malaria: "Pending", tropt: "Pending", dengue: "Pending", typhoid: "Pending", chikungunya: "Pending",
+          malaria: "Pending",
+          tropt: "Pending",
+        
+          dengue_igg: "Pending",
+          dengue_igm: "Pending",
+          dengue_ns1: "Pending",
+        
+          typhoid_igg: "Pending",
+          typhoid_igm: "Pending",
+        
+          chikungunya_igg: "Pending",
+          chikungunya_igm: "Pending",
+          chikungunya_ns1: "Pending",
+        
           ...(entry.results || {}),
           ...(saved.results || {}),
-          ...typing 
+          ...typing
         },
         scanned: localScan ?? saved.scanned ?? "No",
-        scannedTime: saved.scannedTime || null,
+        scannedTime: localScanTime ?? saved.scannedTime ??  null,
         urgent: entry.urgent || false, 
         status: (saved.saved === "Yes" || saved.status === "saved") ? "saved" : localScan === "Yes" ? "scanned" : saved.status || "pending",
         pendingCriticalParam: pendingCriticalMap[compositeKey]
       };
     });
-  }, [masterEntries, rapidDocs, localScans, pendingCriticalMap, localResults]);
+    }, [
+      masterEntries,
+      rapidDocs,
+      localScans,
+      localScanTimes,
+      pendingCriticalMap,
+      localResults,
+    ]);
 
   const mapSelectedTestsToResultKeys = (entry) => {
     const keys = new Set();
@@ -216,7 +268,30 @@ export default function RapidCardRegister() {
     rapidOnly.forEach((t) => {
       const name = typeof t === "string" ? t : t?.test || "";
       const n = normalize(name);
-      rapidTests.forEach((r) => { if (n.includes(normalize(r.match))) keys.add(r.field); });
+      if (n.includes("malaria")) {
+        keys.add("malaria");
+      }
+      
+      if (n.includes("trop")) {
+        keys.add("tropt");
+      }
+      
+      if (n.includes("dengue")) {
+        keys.add("dengue_igg");
+        keys.add("dengue_igm");
+        keys.add("dengue_ns1");
+      }
+      
+      if (n.includes("typhoid")) {
+        keys.add("typhoid_igg");
+        keys.add("typhoid_igm");
+      }
+      
+      if (n.includes("chikung")) {
+        keys.add("chikungunya_igg");
+        keys.add("chikungunya_igm");
+        keys.add("chikungunya_ns1");
+      }
     });
     return [...keys];
   };
@@ -224,12 +299,24 @@ export default function RapidCardRegister() {
   const areRequiredFieldsFilled = (entry) =>
     mapSelectedTestsToResultKeys(entry).every((k) => entry.results?.[k] && entry.results[k] !== "Pending");
 
-  const handleChange = (compositeKey, field, value) => {
-    setLocalResults(prev => ({
-      ...prev,
-      [compositeKey]: { ...(prev[compositeKey] || {}), [field]: value }
-    }));
-  };
+    const handleChange = (compositeKey, field, value) => {
+      setLocalResults((prev) => {
+        const updated = {
+          ...prev,
+          [compositeKey]: {
+            ...(prev[compositeKey] || {}),
+            [field]: value,
+          },
+        };
+    
+        localStorage.setItem(
+          "rapid_localResults",
+          JSON.stringify(updated)
+        );
+    
+        return updated;
+      });
+    };
 
   // UPDATE: Writes both Scan status and Time to LocalStorage using compositeKey
   const handleScan = (compositeKey, value) => {
@@ -253,7 +340,19 @@ export default function RapidCardRegister() {
     relevantKeys.forEach(k => { if (entry.results[k] && entry.results[k] !== "Pending") suggested += `${k.toUpperCase()}: ${entry.results[k]} `; });
     const parameter = window.prompt("Confirm Critical Values:", suggested.trim());
     if (!parameter) return;
-    setPendingCriticalMap(prev => ({ ...prev, [entry.compositeKey]: parameter }));
+    setPendingCriticalMap((prev) => {
+      const updated = {
+        ...prev,
+        [entry.compositeKey]: parameter,
+      };
+    
+      localStorage.setItem(
+        "rapid_pendingCritical",
+        JSON.stringify(updated)
+      );
+    
+      return updated;
+    });
     alert("Critical confirmed. Click Save to send.");
   };
 
@@ -288,23 +387,43 @@ export default function RapidCardRegister() {
         scannedTime: scanTime ? Timestamp.fromDate(new Date(scanTime)) : null,
         saved: "Yes",
         savedTime: serverTimestamp(),
+        savedBy: sessionStorage.getItem("loggedUser") || "Unknown",
         status: "saved",
         critical: (criticalReportedSet.has(compositeKey) || hasPendingCritical) ? "Yes" : "No"
       };
 
       await setDoc(doc(db, "rapid_card_register", compositeKey), payload, { merge: true });
 
+      try {
+        await handleInventoryDeduction(rapidOnlyTests);
+      } catch (inventoryErr) {
+        console.error("Inventory deduction failed:", inventoryErr);
+      }
+      
+
+
       if (hasPendingCritical) {
         await setDoc(doc(db, "critical_alerts", `${compositeKey}_${CURRENT_DEPT}`), {
           name: entry.name || "", regNo: entry.regNo, diagnosticNo: entry.diagnosticNo || "—",
           age: entry.age || "", ageUnit: entry.ageUnit || "", gender: entry.gender || "-",
           source: entry.source || "-", doctor: entry.doctor || "Self",
+          reportedBy: sessionStorage.getItem("loggedUser") || "Unknown",
           criticalParameter: entry.pendingCriticalParam, flaggedAt: serverTimestamp(),
           status: "Pending", dept: CURRENT_DEPT, selectedTests: rapidOnlyTests
         });
       }
 
-      setLocalResults(prev => { const n = {...prev}; delete n[compositeKey]; return n; });
+      setLocalResults((prev) => {
+        const n = { ...prev };
+        delete n[compositeKey];
+      
+        localStorage.setItem(
+          "rapid_localResults",
+          JSON.stringify(n)
+        );
+      
+        return n;
+      });
       
       // UPDATE: Cleanup LocalStorage after save
       setLocalScans(prev => { 
@@ -321,7 +440,17 @@ export default function RapidCardRegister() {
         return n;
       });
 
-      setPendingCriticalMap(prev => { const n = {...prev}; delete n[compositeKey]; return n; });
+      setPendingCriticalMap((prev) => {
+        const n = { ...prev };
+        delete n[compositeKey];
+      
+        localStorage.setItem(
+          "rapid_pendingCritical",
+          JSON.stringify(n)
+        );
+      
+        return n;
+      });
 
       alert(`✅ Saved ${entry.name}`);
     } catch (err) { alert("Error saving."); } finally { setSaving(false); }
@@ -352,6 +481,30 @@ export default function RapidCardRegister() {
       });
   }, [mergedEntries, regSearch, sourceFilter, dateFrom, dateTo]);
 
+
+
+
+  const renderResultDropdown = (entry, field) => (
+    <select
+      value={entry.results[field] || "Pending"}
+      disabled={
+        entry.scanned !== "Yes" ||
+        entry.status === "saved"
+      }
+      onChange={(ev) =>
+        handleChange(
+          entry.compositeKey,
+          field,
+          ev.target.value
+        )
+      }
+    >
+      <option>Pending</option>
+      <option>Positive</option>
+      <option>Weak Positive</option>
+      <option>Negative</option>
+    </select>
+  );
   return (
     <div className="register-section">
       <style>{overflowStyles}</style>
@@ -372,19 +525,40 @@ export default function RapidCardRegister() {
       </div>
       <div className="table-scroll-container">
         <table className="backroom-table">
-          <thead>
+           <thead>
             <tr>
-              <th className="sticky-col">Reg No</th>
-              <th className="sticky-col">Diag No</th>
-              <th className="sticky-col">Name</th>
-              <th>Age</th>
-              <th>Source</th>
-              <th>Tests</th>
-              {rapidTests.map((t) => (<th key={t.field}>{t.label}</th>))}
-              <th>Scanned</th>
-              <th>Status</th>
-              <th>Critical</th>
-              <th>Action</th>
+              <th className="sticky-col" rowSpan={2}>Reg No</th>
+              <th className="sticky-col" rowSpan={2}>Diag No</th>
+              <th className="sticky-col" rowSpan={2}>Name</th>
+              <th rowSpan={2}>Age</th>
+              <th rowSpan={2}>Source</th>
+              <th rowSpan={2}>Tests</th>
+
+              <th rowSpan={2}>Malaria Antigen</th>
+              <th rowSpan={2}>Trop-T</th>
+
+              <th colSpan={3}>Dengue</th>
+              <th colSpan={2}>Typhoid</th>
+              <th colSpan={3}>Chikungunya</th>
+
+              <th rowSpan={2}>Scanned</th>
+              <th rowSpan={2}>Status</th>
+              <th rowSpan={2}>Saved By</th>
+              <th rowSpan={2}>Critical</th>
+              <th rowSpan={2}>Action</th>
+            </tr>
+
+            <tr>
+              <th>IGG</th>
+              <th>IGM</th>
+              <th>NS1</th>
+
+              <th>IGG</th>
+              <th>IGM</th>
+
+              <th>IGG</th>
+              <th>IGM</th>
+              <th>NS1</th>
             </tr>
           </thead>
           <tbody>
@@ -393,6 +567,7 @@ export default function RapidCardRegister() {
               const saved = e.status === "saved";
               const isCrit = criticalReportedSet.has(e.compositeKey);
               const missingReq = !areRequiredFieldsFilled(e);
+              const activeKeys = mapSelectedTestsToResultKeys(e);
               return (
                 <tr key={e.compositeKey} className={saved ? "row-green" : scanned ? "row-yellow" : "row-normal"}>
                   <td className="sticky-col" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
@@ -401,15 +576,75 @@ export default function RapidCardRegister() {
                   <td>{e.age} {e.ageUnit}</td>
                   <td>{e.source}</td>
                   <td style={{fontSize:'11px'}}>{getRapidSelectedTests(e.selectedTests || []).map(t => (typeof t === "object" ? t.test : t)).join(", ")}</td>
-                  {rapidTests.map((t) => (
-                    <td key={t.field}>
-                      {mapSelectedTestsToResultKeys(e).includes(t.field) ? (
-                        <select value={e.results[t.field] || "Pending"} disabled={!scanned || saved} onChange={(ev) => handleChange(e.compositeKey, t.field, ev.target.value)}>
-                          <option>Pending</option><option>Positive</option><option>Negative</option>
-                        </select>
-                      ) : "—"}
-                    </td>
-                  ))}
+                  
+                  {/* Malaria */}
+              <td>
+                {activeKeys.includes("malaria")
+                  ? renderResultDropdown(e, "malaria")
+                  : "—"}
+              </td>
+
+              {/* Trop-T */}
+              <td>
+                {activeKeys.includes("tropt")
+                  ? renderResultDropdown(e, "tropt")
+                  : "—"}
+              </td>
+
+              {/* Dengue */}
+              <td>
+                {activeKeys.includes("dengue_igg")
+                  ? renderResultDropdown(e, "dengue_igg")
+                  : "—"}
+              </td>
+
+
+
+
+
+              <td>
+                {activeKeys.includes("dengue_igm")
+                  ? renderResultDropdown(e, "dengue_igm")
+                  : "—"}
+              </td>
+
+              <td>
+                {activeKeys.includes("dengue_ns1")
+                  ? renderResultDropdown(e, "dengue_ns1")
+                  : "—"}
+              </td>
+
+              {/* Typhoid */}
+              <td>
+                {activeKeys.includes("typhoid_igg")
+                  ? renderResultDropdown(e, "typhoid_igg")
+                  : "—"}
+              </td>
+
+              <td>
+                {activeKeys.includes("typhoid_igm")
+                  ? renderResultDropdown(e, "typhoid_igm")
+                  : "—"}
+              </td>
+
+              {/* Chikungunya */}
+              <td>
+                {activeKeys.includes("chikungunya_igg")
+                  ? renderResultDropdown(e, "chikungunya_igg")
+                  : "—"}
+              </td>
+
+              <td>
+                {activeKeys.includes("chikungunya_igm")
+                  ? renderResultDropdown(e, "chikungunya_igm")
+                  : "—"}
+              </td>
+
+              <td>
+                {activeKeys.includes("chikungunya_ns1")
+                  ? renderResultDropdown(e, "chikungunya_ns1")
+                  : "—"}
+              </td>
                   <td>
                     <select value={e.scanned} disabled={saved} onChange={(ev) => handleScan(e.compositeKey, ev.target.value)}>
                       <option value="No">No</option><option value="Yes">Yes</option>
@@ -420,6 +655,16 @@ export default function RapidCardRegister() {
                       <span style={{ color: 'red', fontWeight: 'bold', fontSize: '9px' }}>{isCrit ? "REPORTED" : "PENDING SAVE"}</span>
                     )}
                   </td>
+                  <td
+                  style={{
+                    minWidth: "130px",
+                    fontWeight: "600",
+                    color: "#1e3a8a"
+                  }}
+                >
+                  {e.savedBy || "—"}
+                </td>
+
                   <td>
                     <button onClick={() => triggerCritical(e)} disabled={isCrit || e.pendingCriticalParam || saved || !scanned || missingReq} className="critical-btn">Critical</button>
                   </td>

@@ -18,8 +18,15 @@ export default function OutsourcePatientModal({ open, onClose, patients }) {
               <th>Test</th>
               <th>Dept</th>
               <th>Collected</th>
+              <th>Collected By</th>
+
               <th>Received</th>
-              <th>Time Given</th>
+              <th>Received By</th>
+
+              <th>Delivered</th>
+              <th>Delivered By</th>
+
+
             </tr>
           </thead>
           <tbody>
@@ -30,12 +37,45 @@ export default function OutsourcePatientModal({ open, onClose, patients }) {
                 <td>{p.name}</td>
                 <td>{p.test}</td>
                 <td>{p.department}</td>
+                
                 {/* timeCollected pulled from separate Firebase field */}
-                <td>{p.timeCollected ? new Date(p.timeCollected).toLocaleString() : "—"}</td>
-                {/* receivedTime mapped from receivedTime in Firebase */}
-                <td>{p.receivedTime ? new Date(p.receivedTime).toLocaleString() : "—"}</td>
-                {/* givenTime mapped from givenTime in Firebase */}
-                <td>{p.givenTime ? new Date(p.givenTime).toLocaleString() : "—"}</td>
+                <td>
+                {p.timeCollected
+                  ? new Date(
+                      p.timeCollected
+                    ).toLocaleString()
+                  : "—"}
+              </td>
+
+              <td>
+                {p.collectedBy || "—"}
+              </td>
+
+              <td>
+              {p.timeSaved
+                ? new Date(
+                    p.timeSaved
+                  ).toLocaleString()
+                : "—"}
+            </td>
+
+              <td>
+                {p.receivedBy || "—"}
+              </td>
+
+              <td>
+              {p.timeGiven
+                ? new Date(
+                    p.timeGiven
+                  ).toLocaleString()
+                : "—"}
+            </td>
+
+              <td>
+                {p.deliveredBy || "—"}
+              </td>
+
+
               </tr>
             ))}
           </tbody>

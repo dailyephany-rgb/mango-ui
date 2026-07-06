@@ -1,0 +1,236 @@
+
+/* 1. GLOBAL RESET */
+html, body {
+  margin: 0;
+  padding: 0;
+  background-color: #0f121d;
+  min-width: fit-content; 
+  min-height: 100vh;
+  overflow-x: auto; 
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 2. VARIABLES */
+:root {
+  --bg-dark: #0f121d;
+  --card-bg: #1a1f2e;
+  --accent-blue: #3d5afe;
+  --border-color: #2e364f;
+  --text-main: #ffffff;
+  --text-dim: #94a3b8;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #fbbf24;
+}
+
+/* 3. MAIN WRAPPER */
+.dark-intake-wrapper {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  min-height: 100vh;
+  width: 100%;
+  min-width: fit-content;
+  padding: 40px;
+  box-sizing: border-box;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+/* 4. HEADER & TABS */
+.dark-header {
+  position: relative;
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.dark-header h1 {
+  font-size: 1.4rem;
+  letter-spacing: 2px;
+  font-weight: 700;
+  opacity: 0.9;
+  margin: 0;
+}
+
+/* 5. LAYOUT GRID */
+.dark-main-grid {
+  display: grid;
+  grid-template-columns: 420px auto; /* Slightly adjusted for side-by-side inputs */
+  gap: 40px;
+  width: max-content; 
+  margin: 0 auto;
+}
+
+/* 6. BLOCKS AND SECTIONS */
+.section-block {
+  background: var(--card-bg);
+  padding: 24px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 20px;
+  border-radius: 6px;
+}
+
+.section-title {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
+}
+
+/* 7. FORM STYLES - UPDATED FOR REAGENT ENTRY LAYOUT */
+.form-row {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 18px;
+  align-items: flex-end;
+}
+
+.input-group {
+  flex: 1;
+}
+
+.input-group label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+
+.input-group input, 
+.input-group select {
+  width: 100%;
+  background: #111522;
+  border: 1px solid var(--border-color);
+  color: white;
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+/* The Green Total Display Box from your image */
+.total-display {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--success);
+  padding: 12px;
+  border-radius: 4px;
+  font-weight: 700;
+  text-align: center;
+  min-width: 80px;
+}
+
+/* 8. LEDGER TABLE */
+.ledger-table-container {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow-x: visible; 
+  width: 100%;
+  display: block;
+  position: relative;
+}
+
+.ledger-table {
+  width: 100%;
+  min-width: 1000px; 
+  border-collapse: collapse;
+}
+
+.ledger-table th {
+  text-align: left;
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 18px 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap; 
+}
+
+.ledger-table td {
+  padding: 16px 20px;
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+/* 9. CUSTOM SCROLLBAR FOR THE WHOLE PAGE */
+body::-webkit-scrollbar { height: 12px; }
+body::-webkit-scrollbar-track { background: var(--bg-dark); }
+body::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 10px;
+  border: 3px solid var(--bg-dark);
+}
+
+/* 10. BUTTONS - Updated to match the "ADD TO BILL" style */
+.btn-confirm {
+  width: 100%;
+  background: transparent;
+  color: var(--accent-blue);
+  border: 1px dashed var(--accent-blue);
+  padding: 15px;
+  font-weight: 700;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-top: 10px;
+  text-transform: uppercase;
+  transition: 0.3s;
+}
+
+.btn-confirm:hover {
+  background: rgba(61, 90, 254, 0.1);
+}
+
+/* --- ADDED UPDATES FOR DATE FILTER AND STATUS TAGS --- */
+
+.tab-container input[type="date"] {
+  background: #111522 !important;
+  color: white !important;
+  border: 1px solid var(--border-color) !important;
+  padding: 4px 8px !important;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.tab-container input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.status-tag {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+.status-tag.in-storage {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.status-tag.consumed {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.bold { font-weight: 700; }
+.dim { color: var(--text-dim); }
+.small { font-size: 0.8rem; }
+.text-red { color: var(--danger); background: none; border: none; cursor: pointer; font-weight: 600; }

@@ -1,12 +1,15 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { db } from "../firebaseConfig";
 import { collection, onSnapshot } from "firebase/firestore";
 import { getCountByTest } from "./analyticsUtils";
 import "./css/LabAnalytics.css";
+import OUTSOURCE_MAP from "../Outsource.json";
+import INSIDE_ROOM_MAP from "../inside_room_routing.json";
 
 const DEPARTMENTS = [
   { id: "biochemistry_register", label: "Biochemistry" },
+  { id: "biochemistry_combo", label: "Combo" },   
   { id: "serology_register", label: "Serology" },
   { id: "urine_analysis_register", label: "Urine Analysis" },
   { id: "bloodgroup_testing_register", label: "Blood Group (Test)" },
@@ -15,7 +18,16 @@ const DEPARTMENTS = [
   { id: "hormones_main", label: "Hormones" },
   { id: "haematology_register", label: "Haematology" },
   { id: "coagulation_register", label: "Coagulation" },
-  { id: "inside_lab_results", label: "Inside Lab" }
+  { id: "inside_lab_results", label: "Inside Lab" },
+  { id: "outsource_tracking", label: "Outsource" }
+
+];
+
+const COMBO_TESTS = [
+  "LFT (LIVER FUNCTION TEST)",
+  "RFT(RENAL FUNCTION TEST)",
+  "LIPID PROFILE",
+  "ELECTROLYTES,SERUM",
 ];
 
 export default function LabAnalytics() {
@@ -29,6 +41,9 @@ export default function LabAnalytics() {
   const [dateTo, setDateTo] = useState(getISTDate());
   const [sourceFilter, setSourceFilter] = useState("All");
   const [testSearch, setTestSearch] = useState(""); 
+  const [labFilter, setLabFilter] = useState("All");
+  const [insideDeptFilter, setInsideDeptFilter] = useState("All");
+  const [comboCategory, setComboCategory] = useState("All");
 
   const parseDateForFilter = (field) => {
     if (!field) return null;
@@ -46,26 +61,239 @@ export default function LabAnalytics() {
   };
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, activeColl), (snap) => {
-      setEntries(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const collectionName =
+      activeColl === "biochemistry_combo"
+        ? "biochemistry_register"
+        : activeColl;
+  
+    const unsub = onSnapshot(collection(db, collectionName), (snap) => {
+      setEntries(
+        snap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+        }))
+      );
     });
+  
     return () => unsub();
   }, [activeColl]);
 
+
+  const selectedOutsourceTests = useMemo(
+    () =>
+      labFilter === "All"
+        ? []
+        : (OUTSOURCE_MAP[labFilter] || []).map(test =>
+            test.toUpperCase().trim()
+          ),
+    [labFilter]
+  );
+  
+  const selectedInsideTests = useMemo(
+    () =>
+      insideDeptFilter === "All"
+        ? []
+        : (INSIDE_ROOM_MAP[insideDeptFilter] || []).map(test =>
+            test.toUpperCase().trim()
+          ),
+    [insideDeptFilter]
+  );
+
+  useEffect(() => {
+    setLabFilter("All");
+    setInsideDeptFilter("All");
+    setComboCategory("All");
+  }, [activeColl]);
+
+
+
   // Filter entries based on Date and Source
+  
   const filteredEntries = entries.filter(item => {
-    const entryDateStr = parseDateForFilter(item.timePrinted || item.timeCollected || item.savedTime);
-    const inRange = !entryDateStr || (entryDateStr >= dateFrom && entryDateStr <= dateTo);
-    const matchesSource = sourceFilter === "All" || item.source?.toLowerCase() === sourceFilter.toLowerCase();
-    return inRange && matchesSource;
+    const entryDateStr = parseDateForFilter(
+      item.timePrinted || item.timeCollected || item.savedTime
+    );
+  
+    const inRange =
+      !entryDateStr ||
+      (entryDateStr >= dateFrom && entryDateStr <= dateTo);
+  
+    const matchesSource =
+      sourceFilter === "All" ||
+      item.source?.toLowerCase() === sourceFilter.toLowerCase();
+  
+    // Outsource lab filter
+    const matchesLab =
+      activeColl !== "outsource_tracking" ||
+      labFilter === "All" ||
+      item.labName === labFilter;
+  
+    // Inside Lab department filter
+    const matchesInsideDept =
+      activeColl !== "inside_lab_results" ||
+      insideDeptFilter === "All" ||
+      (item.selectedTests || []).some(test => {
+        const testName =
+          (typeof test === "string" ? test : test.test || "")
+            .toUpperCase()
+            .trim();
+  
+            return selectedInsideTests.includes(testName); 
+      });
+
+      // Combo category filter
+          const matchesComboCategory =
+          activeColl !== "biochemistry_combo" ||
+          comboCategory === "All" ||
+          (item.category || "").toLowerCase() === comboCategory.toLowerCase();
+  
+          return (
+            inRange &&
+            matchesSource &&
+            matchesLab &&
+            matchesInsideDept &&
+            matchesComboCategory
+          );
   });
 
-  const allStats = getCountByTest(filteredEntries, activeColl);
+  const statsKey =
+  activeColl === "biochemistry_combo"
+    ? "biochemistry_register"
+    : activeColl;
 
-  // NEW: Filter the KPI cards based on the Test Search string
-  const displayStats = Object.entries(allStats).filter(([testName]) => 
-    testName.toLowerCase().includes(testSearch.toLowerCase())
-  );
+const allStats = getCountByTest(filteredEntries, statsKey);
+
+ 
+
+
+let displayStats;
+
+if (activeColl === "biochemistry_combo") {
+
+  const categories = [
+    "RGHS",
+    "CGHS",
+    "ECHS",
+    "General",
+    "Insurance",
+    "AAI",
+    "CAPF",
+    "Chiranjeevi Swasthiya Bima Yojna",
+    "Food Cooperation Of India",
+    "Health Package",
+    "ICMR",
+    "IIT",
+    "Indian Oil Corporation Of India",
+    "ISRO",
+    "Oil India",
+    "ONGC",
+    "Railways",
+    "RHB",
+    "TPA",
+  ];
+
+  displayStats = [];
+
+  COMBO_TESTS.forEach((test) => {
+
+    // If a single category is selected
+    if (comboCategory !== "All") {
+
+      const count = filteredEntries.filter(entry =>
+        (entry.selectedTests || []).some(
+          t => (typeof t === "string" ? t : t.test || "")
+            .toUpperCase()
+            .trim() === test.toUpperCase().trim()
+        )
+      ).length;
+
+      if (
+        test.toLowerCase().includes(testSearch.toLowerCase())
+      ) {
+        displayStats.push([test, count]);
+      }
+
+    } else {
+
+      // Show every category separately
+      categories.forEach(category => {
+
+        const count = entries.filter(entry => {
+
+          if ((entry.category || "").toLowerCase() !== category.toLowerCase()) {
+            return false;
+          }
+
+          // Existing filters
+          const entryDateStr = parseDateForFilter(
+            entry.timePrinted || entry.timeCollected || entry.savedTime
+          );
+
+          const inRange =
+            !entryDateStr ||
+            (entryDateStr >= dateFrom && entryDateStr <= dateTo);
+
+          const matchesSource =
+            sourceFilter === "All" ||
+            entry.source?.toLowerCase() === sourceFilter.toLowerCase();
+
+          const hasTest = (entry.selectedTests || []).some(
+            t =>
+              (typeof t === "string" ? t : t.test || "")
+                .toUpperCase()
+                .trim() === test.toUpperCase().trim()
+          );
+
+          return inRange && matchesSource && hasTest;
+
+        }).length;
+
+        const cardName = `${test} - ${category}`;
+    if (
+            cardName.toLowerCase().includes(testSearch.toLowerCase())
+          ) {
+            displayStats.push([cardName, count]);
+          }
+
+      });
+
+    }
+
+  });
+
+} else {
+
+  displayStats = Object.entries(allStats)
+    .filter(([testName]) => {
+
+      if (!testName.toLowerCase().includes(testSearch.toLowerCase())) {
+        return false;
+      }
+
+      if (
+        activeColl === "inside_lab_results" &&
+        insideDeptFilter !== "All"
+      ) {
+        return selectedInsideTests.includes(
+          testName.toUpperCase().trim()
+        );
+      }
+
+      if (
+        activeColl === "outsource_tracking" &&
+        labFilter !== "All"
+      ) {
+        return selectedOutsourceTests.includes(
+          testName.toUpperCase().trim()
+        );
+      }
+
+      return true;
+    })
+    .sort(([a], [b]) => a.localeCompare(b));
+
+}
+   
 
   return (
     <div className="analytics-container">
@@ -93,23 +321,108 @@ export default function LabAnalytics() {
             </div>
           </div>
 
+          
+          
+          
+          
+          
           <div className="filter-row second-row">
-            <div className="source-toggle">
-              {["OPD", "IPD", "Third Floor", "All"].map((src) => (
-                <button 
-                  key={src} 
-                  className={sourceFilter === src ? "active" : ""} 
-                  onClick={() => setSourceFilter(src)}
-                >
-                  {src}
-                </button>
-              ))}
-            </div>
-            
-            <select className="dept-select" value={activeColl} onChange={(e) => setActiveColl(e.target.value)}>
-              {DEPARTMENTS.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
-            </select>
-          </div>
+
+  <div className="source-toggle">
+    {["OPD", "IPD", "Third Floor", "All"].map((src) => (
+      <button
+        key={src}
+        className={sourceFilter === src ? "active" : ""}
+        onClick={() => setSourceFilter(src)}
+      >
+        {src}
+      </button>
+    ))}
+  </div>
+
+  {activeColl === "outsource_tracking" && (
+    <select
+      className="dept-select"
+      value={labFilter}
+      onChange={(e) => setLabFilter(e.target.value)}
+    >
+      <option value="All">All Labs</option>
+
+      {Object.keys(OUTSOURCE_MAP).map((lab) => (
+        <option key={lab} value={lab}>
+          {lab}
+        </option>
+            ))}
+          </select>
+        )}
+
+      {activeColl === "biochemistry_combo" && (
+        <select
+          className="dept-select"
+          value={comboCategory}
+          onChange={(e) => setComboCategory(e.target.value)}
+        >
+          <option value="All">All Categories</option>
+          <option value="RGHS">RGHS</option>
+          <option value="CGHS">CGHS</option>
+          <option value="ECHS">ECHS</option>
+          <option value="General">General</option>
+          <option value="Insurance">Insurance</option>
+          <option value="AAI">AAI</option>
+          <option value="CAPF">CAPF</option>
+          <option value="Chiranjeevi Swasthiya Bima Yojna">
+            Chiranjeevi Swasthiya Bima Yojna
+          </option>
+          <option value="Food Cooperation Of India">
+            Food Cooperation Of India
+          </option>
+          <option value="Health Package">Health Package</option>
+          <option value="ICMR">ICMR</option>
+          <option value="IIT">IIT</option>
+          <option value="Indian Oil Corporation Of India">
+            Indian Oil Corporation Of India
+          </option>
+          <option value="ISRO">ISRO</option>
+          <option value="Oil India">Oil India</option>
+          <option value="ONGC">ONGC</option>
+          <option value="Railways">Railways</option>
+          <option value="RHB">RHB</option>
+          <option value="TPA">TPA</option>
+        </select>
+
+      )}
+
+        {activeColl === "inside_lab_results" && (
+          <select
+            className="dept-select"
+            value={insideDeptFilter}
+            onChange={(e) => setInsideDeptFilter(e.target.value)}
+          >
+            <option value="All">All Departments</option>
+
+            {Object.keys(INSIDE_ROOM_MAP).map((dept) => (
+              <option key={dept} value={dept}>
+                {dept.replace("Register", "")}
+              </option>
+            ))}
+          </select>
+        )}
+
+        <select
+          className="dept-select"
+          value={activeColl}
+          onChange={(e) => setActiveColl(e.target.value)}
+        >
+          {DEPARTMENTS.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.label}
+            </option>
+          ))}
+        </select>
+
+      </div>
+
+
         </div>
       </div>
 

@@ -88,7 +88,9 @@ export function mergeDeptRows(rows = []) {
         timeSaved: toDate(r.savedTime || r.timeSaved),
         timeValidated: toDate(r.validatedTime || r.timeValidated),
         isSaved: r.saved === "Yes" || !!(r.savedTime || r.timeSaved),
+        savedBy: r.savedBy || "",
         isValidated: r.validated === true || r.status === "validated" || !!(r.validatedTime || r.timeValidated),
+        validatedBy: r.validatedBy || "",
         testList: new Set(),
       };
     }
@@ -108,11 +110,30 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
   const violators = [];
   unifiedRows.forEach((row) => {
     const allowed = timingMap["bloodgroup"]?.[stage] ?? timingMap.default?.[stage] ?? 30;
-    const s = toDate(row.timeScanned);
-    const e = toDate(row.timeSaved);
-    if (!s || !e) return;
+    let start;
+    let end;
     
-    const duration = Math.round((e - s) / 60000);
+    switch (stage) {
+      case "scanned_to_saved":
+        start = toDate(row.timeScanned);
+        end = toDate(row.timeSaved);
+        break;
+    
+      case "saved_to_validated":
+        start = toDate(row.timeSaved);
+        end = toDate(row.timeValidated);
+        break;
+    
+      default:
+        return;
+    }
+    
+    if (!start || !end)
+      return;
+    
+    const duration = Math.round(
+      (end - start) / 60000
+    );
     
     if (duration > allowed) {
       const excess = duration - allowed; 
@@ -120,16 +141,29 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
       
       violators.push({
         regNo: row.regNo,
-        diagnosticNo: row.diagnosticNo, // Included for chart/table consistency
+        diagnosticNo: row.diagnosticNo,
         name: row.name,
         test: row.test,
-        duration: duration, 
-        excess: Math.round(excess), 
-        allowed, 
+        duration,
+        excess: Math.round(excess),
+        allowed,
         status,
         department: "Blood Group",
-        timeScanned: row.timeScanned,
-        timeSaved: row.timeSaved,
+      
+        savedBy:
+          row.savedBy || "NA",
+      
+        validatedBy:
+          row.validatedBy || "NA",
+      
+        timeScanned:
+          row.timeScanned,
+      
+        timeSaved:
+          row.timeSaved,
+      
+        timeValidated:
+          row.timeValidated,
       });
     }
   });
@@ -202,6 +236,153 @@ export function computeKPIs(masterRows = [], bgRows = []) {
   };
 }
 
+
+/* ================= STAFF ANALYTICS ====================== */
+export function computeStaffAnalytics(
+  rows = []
+) {
+  const buildStats = (
+    rows,
+    staffKey,
+    startKey,
+    endKey
+  ) => {
+    const map = {};
+
+    rows.forEach((r) => {
+      const staff =
+        r[staffKey] ||
+        "Unknown";
+
+      if (!map[staff]) {
+        map[staff] = {
+          name: staff,
+          count: 0,
+          durations: [],
+          timeline: {},
+        };
+      }
+
+      map[staff].count++;
+
+      const mins =
+        minutesDiff(
+          r[startKey],
+          r[endKey]
+        );
+
+      if (mins != null) {
+        map[
+          staff
+        ].durations.push(
+          mins
+        );
+      }
+
+      const d =
+        toDate(
+          r[endKey]
+        );
+
+      if (d) {
+        const hour =
+          d.getHours();
+
+        map[
+          staff
+        ].timeline[
+          hour
+        ] =
+          (
+            map[
+              staff
+            ]
+              .timeline[
+              hour
+            ] || 0
+          ) + 1;
+      }
+    });
+
+    return {
+      distribution:
+        Object.values(
+          map
+        ).map((s) => ({
+          name:
+            s.name,
+          value:
+            s.count,
+        })),
+
+      averages:
+        Object.values(
+          map
+        ).map((s) => ({
+          name:
+            s.name,
+          value:
+            s
+              .durations
+              .length
+              ? Math.round(
+                  s.durations.reduce(
+                    (
+                      a,
+                      b
+                    ) =>
+                      a +
+                      b,
+                    0
+                  ) /
+                    s
+                      .durations
+                      .length
+                )
+              : 0,
+        })),
+
+      timelines:
+        Object.fromEntries(
+          Object.values(
+            map
+          ).map(
+            (
+              s
+            ) => [
+              s.name,
+              s.timeline,
+            ]
+          )
+        ),
+    };
+  };
+
+  return {
+    testing:
+      buildStats(
+        rows.filter(
+          (r) =>
+            r.timeSaved
+        ),
+        "savedBy",
+        "timeScanned",
+        "timeSaved"
+      ),
+
+    validated:
+      buildStats(
+        rows.filter(
+          (r) =>
+            r.timeValidated
+        ),
+        "validatedBy",
+        "timeSaved",
+        "timeValidated"
+      ),
+  };
+}
+
 /* ================= SUBSCRIBE OVERVIEW =================== */
 
 export function subscribeOverview({ onData, source = "All", dateRange }) {
@@ -235,15 +416,37 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
     const merged = mergeDeptRows(filteredBG);
     const unified = unifyForCharts(merged);
     
-    const violators = computeSLAViolations(unified, testTimings);
-
-    onData({ 
-      masterRows: filteredMaster, 
-      deptRows: merged, 
-      unifiedRows: unified, 
-      violators: violators, 
-      kpis: computeKPIs(filteredMaster, merged) 
-    });
+      const violators =
+        computeSLAViolations(
+          unified,
+          testTimings
+        );
+  
+      const staffAnalytics =
+        computeStaffAnalytics(
+          merged
+        );
+  
+        onData({
+          masterRows:
+            filteredMaster,
+        
+          deptRows:
+            merged,
+        
+          unifiedRows:
+            unified,
+        
+          violators,
+        
+          kpis:
+            computeKPIs(
+              filteredMaster,
+              merged
+            ),
+        
+          staffAnalytics,
+        });
   };
 
   const unsubMaster = onSnapshot(masterRef, (snap) => { masterRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
