@@ -9,8 +9,15 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
+        
+
         // Main
         main: resolve(__dirname, "index.html"),
+        login: resolve(__dirname, "login.html"),
+        inventory: resolve(__dirname, "inventory.html"),
+        commandcenter: resolve(__dirname, "commandcenter.html"),
+        master_admin: resolve(__dirname, "master_admin.html"),
+        backup: resolve(__dirname, "index_backup.html"),
 
         // Department pages
         haem: resolve(__dirname, "index_haem.html"),
