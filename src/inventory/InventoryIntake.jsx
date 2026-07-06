@@ -203,10 +203,14 @@ setSaving(true);
         itemNames: itemNamesList,
         itemCount: billItems.length,
         timeAddedAt: serverTimestamp(),
+        savedBy: sessionStorage.getItem("loggedUser") || "Unknown",
+
       });
       billItems.forEach(item => {
         const logRef = doc(collection(db, "inventory_logs"));
-        batch.set(logRef, { ...item, supplier, invoice, status: "In Storage", timeAddedAt: serverTimestamp() });
+        batch.set(logRef, { ...item, supplier, invoice, status: "In Storage", 
+        savedBy: sessionStorage.getItem("loggedUser") || "Unknown",
+        timeAddedAt: serverTimestamp() });
       });
       await batch.commit();
       setBillItems([]);
