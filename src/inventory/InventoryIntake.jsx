@@ -142,7 +142,6 @@ export default function InventoryIntake() {
       id: Date.now().toString(),
       reagentName: selectedReagent.name,
       machineName,
-      inventoryType,
       metricType: selectedReagent.metricType,
       hsnCode,
       lotNo,
@@ -154,7 +153,6 @@ export default function InventoryIntake() {
       discountPct: Number(discountPct),
       gstRate: Number(gstRate),
       totalAmount: Number(totalAmount),
-      inventoryType,
       ...(inventoryType !== "Consumable" && {
 
         inventoryQty: Number(totalInventoryQty),
