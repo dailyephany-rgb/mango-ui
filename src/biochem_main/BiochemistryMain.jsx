@@ -21,7 +21,7 @@ import {
   getVitrosDeductibleTests
 } from "../inventory/inventorymapping";
 
-import { requireLogin } from "../auth/AuthGuard";
+import { requireLogin } from "../auth/Authguard.js";
 import UserMenu from "../auth/UserMenu";
 import InventoryAdjustmentTab from "../inventory/InventoryAdjustmentTab.jsx";
 
