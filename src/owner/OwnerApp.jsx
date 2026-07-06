@@ -9,7 +9,7 @@ import WorkflowKPIBlocks from "./workflow/WorkflowKPIBlocks";
 import WorkflowStackedBars from "./workflow/WorkflowStackedBars";
 import WorkflowStaffDistribution from "./workflow/WorkflowStaffDistribution";
 
-import { subscribeToWorkflowAnalytics } from "./workflow/workflowFetcher";
+import { subscribeToWorkflowAnalytics } from "./workflow/workflowfetcher";
 
 import "./OwnerUI.css";
 
