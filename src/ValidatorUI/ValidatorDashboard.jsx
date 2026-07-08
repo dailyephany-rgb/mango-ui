@@ -6,9 +6,13 @@ import {
   onSnapshot,
   doc,
   updateDoc,
+  setDoc,
+  getDoc,
+  writeBatch,
   serverTimestamp,
   Timestamp
 } from "firebase/firestore";
+
 import { db } from "../firebaseConfig.js";
 import ValidatorTable from "./ValidatorTable.jsx";
 import UserMenu from "../auth/UserMenu";
@@ -56,6 +60,19 @@ export default function ValidatorDashboard() {
     return isNaN(d) ? null : d;
   };
 
+  const COMPLETION_FIELDS = {
+    biochemistry_register: "biochemistryCompletedAt",
+    hormones_main: "hormonesCompletedAt",
+    coagulation_register: "coagulationCompletedAt",
+    haematology_register: "haematologyCompletedAt",
+    esr_register: "esrCompletedAt",
+    bloodgroup_testing_register: "bloodGroupCompletedAt",
+    bloodgroup_retesting_register: "bloodGroupCompletedAt",
+    serology_register: "serologyCompletedAt",
+    rapid_card_register: "rapidCardCompletedAt",
+    urine_analysis_register: "urineCompletedAt",
+  };
+
   const handleValidate = async (entry, collectionName) => {
     try {
       // entry.id is the CompositeKey (e.g., "5501_A01")
@@ -77,18 +94,61 @@ export default function ValidatorDashboard() {
     }
   };
 
+
   const handleEntered = async (entry, collectionName) => {
-    try {
-      const ref = doc(db, collectionName, entry.id);
+    if (entry.entered) {
+      return;
+    }
   
-      await updateDoc(ref, {
-        entered: true,
+    try {
+
+      const ref = doc(db, collectionName, entry.id);
+
+      const completionField = COMPLETION_FIELDS[collectionName];
       
+      const reportRef = doc(db, "report_details", entry.id);
+
+      console.log("ENTRY ID:", entry.id);
+      console.log("REPORT DOC:", reportRef.path);
+      
+      const reportSnap = await getDoc(reportRef);
+
+      console.log("Exists:", reportSnap.exists());
+
+      if (reportSnap.exists()) {
+        console.log(reportSnap.data());
+      }
+
+      console.log("Completion field:", completionField);
+      
+      const batch = writeBatch(db);
+      
+      // Update department register
+      batch.update(ref, {
+        entered: true,
         enteredBy:
           sessionStorage.getItem("loggedUser") || "Unknown",
-      
         enteredTime: serverTimestamp(),
       });
+      
+      // Only write CompletedAt once
+      if (
+        completionField &&
+        (
+          !reportSnap.exists() ||
+          !reportSnap.data()[completionField]
+        )
+      ) {
+        batch.set(
+          reportRef,
+          {
+            [completionField]: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+      
+      await batch.commit();
   
       alert("Marked as Entered!");
     } catch (err) {

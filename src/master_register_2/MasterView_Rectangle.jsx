@@ -1,6 +1,10 @@
 
+import React, {
+  useEffect,
+  useState,
+  useMemo,
+} from "react";
 
-import React, { useEffect, useState, useMemo } from "react";
 import { db } from "../firebaseConfig.js";
 import {
   collection,
@@ -12,6 +16,7 @@ import {
   setDoc,
   serverTimestamp,
 } from "firebase/firestore";
+
 import "./MasterView_Rectangle.css";
 import UserMenu from "../auth/UserMenu";
 
@@ -78,6 +83,9 @@ const SPECIAL_DEPARTMENTS = [
 ];
 
 export default function MasterViewCard() {
+
+  
+
   const [masterRecords, setMasterRecords] = useState([]);
   const [reportDetails, setReportDetails] = useState({});
   const [deptData, setDeptData] = useState({});
@@ -147,6 +155,7 @@ export default function MasterViewCard() {
   // MASTER REGISTER + REPORT DETAILS LISTENERS
 useEffect(() => {
 
+
   const q = query(
     collection(db, "master_register"),
     orderBy("timePrinted", "asc")
@@ -166,9 +175,9 @@ useEffect(() => {
   );
 
   const unsubReport = onSnapshot(
+
     reportQuery,
     (snapshot) => {
-
       const details = {};
 
       snapshot.forEach((docSnap) => {
@@ -197,6 +206,7 @@ useEffect(() => {
 
     DEPTS.forEach((dept) => {
       const unsub = onSnapshot(collection(db, dept), (snap) => {
+        console.log("DEPARTMENT SNAPSHOT:", dept, snap.size);
         setDeptData((prev) => ({
           ...prev,
           [dept]: snap.docs.map((d) => d.data()),
@@ -242,8 +252,7 @@ switch (dept.dept) {
 
 
   // Merge department statuses
-  const merged = useMemo(() => {
-    
+  const merged = useMemo(() => {    
     return masterRecords.map((rec) => {
 
       const workflow = reportDetails[rec.id] || {};
@@ -482,138 +491,11 @@ switch (dept.dept) {
     });
 }, [masterRecords, deptData, reportDetails]);
 
-// ===============================
-// WORKFLOW SYNCHRONIZER
-// ===============================
-useEffect(() => {
-  const syncWorkflowCompletion = async () => {
-    for (const rec of merged) {
-      if (!rec.id) continue;
-      const workflow = reportDetails[rec.id] || {};
-      const updates = {};
-
-     
-     
-     
-     
-      const markRoutineCompleted = (
-        departmentName,
-        fieldName
-      ) => {
-      
-        const department = rec.deptStatuses.find(
-          (d) => d.dept === departmentName
-        );
-      
-        // Department not present
-        if (!department) return;
-      
-        // Not complete yet
-        if (!isRoutineDepartmentComplete(department)) return;
-      
-
-        // Timestamp already exists - never overwrite it
-          if (workflow[fieldName]) {
-            return;
-          }
-
-          updates[fieldName] = serverTimestamp();
-                };
-
-      markRoutineCompleted(
-        "Biochemistry",
-        "biochemistryCompletedAt"
-      );
-
-      markRoutineCompleted(
-        "Hormones",
-        "hormonesCompletedAt"
-      );
-      
-      markRoutineCompleted(
-        "Haematology",
-        "haematologyCompletedAt"
-      );
-      
-      markRoutineCompleted(
-        "ESR",
-        "esrCompletedAt"
-      );
-      
-      markRoutineCompleted(
-        "Blood Group",
-        "bloodGroupCompletedAt"
-      );
-      
-      markRoutineCompleted(
-        "Serology",
-        "serologyCompletedAt"
-      );
-      
-      markRoutineCompleted(
-        "Rapid Card",
-        "rapidCardCompletedAt"
-      );
-      
-      markRoutineCompleted(
-        "Coagulation",
-        "coagulationCompletedAt"
-      );
-      
-      markRoutineCompleted(
-        "Urine Analysis",
-        "urineCompletedAt"
-      );
-
-      
-
-      const insideLabCard = rec.workflowCards.find(
-        (card) => card.workflow === "inside"
-      );
-
-      if (
-        insideLabCard &&
-        !workflow.insideLabCompleted &&
-        insideLabCard.completed
-      ) {
-        updates.insideLabCompleted = true;
-      }
-
-      const outsourceCard = rec.workflowCards.find(
-        (card) => card.workflow === "outsource"
-      );
-
-      if (
-        outsourceCard &&
-        !workflow.outsourceCompleted &&
-        outsourceCard.completed
-      ) {
-        updates.outsourceCompleted = true;
-      }
-
-      if (Object.keys(updates).length === 0) {
-        continue;
-      }
-      
-      
-      await setDoc(
-        doc(db, "report_details", rec.id),
-        updates,
-        { merge: true }
-      );
-    }
-  };
-
-  syncWorkflowCompletion();
-}, [merged, reportDetails]);
-
 
   // FILTER & SORT
   const filtered = merged
     .filter((rec) => {
       if (!rec.regNo) return false;
-
-     
 
       // SEARCH LOGIC
       const searchLower = searchReg.toLowerCase();
