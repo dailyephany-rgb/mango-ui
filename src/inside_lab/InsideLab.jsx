@@ -6,8 +6,11 @@ import {
   onSnapshot,
   doc,
   setDoc,
+  getDoc,
+  writeBatch,
   serverTimestamp,
 } from "firebase/firestore";
+
 import INSIDE_ROOM_MAP from "../inside_room_routing.json"; 
 import "./InsideLab.css";
 
@@ -123,52 +126,119 @@ export default function InsideLabRegister() {
     setShowEdit(false);
   };
 
+
+
   const handleFinalize = async (entry) => {
     const uniqueId = getDeptUniqueKey(entry);
-    const finalData = (localDrafts[uniqueId]?.reportData || results).map(res => ({
+  
+    const finalData = (
+      localDrafts[uniqueId]?.reportData || results
+    ).map((res) => ({
       testType: res.testType,
-      content: res.content
+      content: res.content,
     }));
-    
+  
     try {
       setSaving(true);
-      const reportRef = doc(db, "inside_lab_results", uniqueId);
-      await setDoc(reportRef, {
-        compositeId: uniqueId,
-        regNo: entry.regNo || entry.id,
-        diagnosticNo: entry.diagnosticNo || entry.accNo || "—", 
-        name: entry.name,
-        age: entry.age,
-        ageUnit: entry.ageUnit || "", 
-        gender: entry.gender || entry.sex,
-        doctor: entry.doctor,
-        source: entry.source || "OPD", 
-        category: entry.category || "", 
-        timeCollected: entry.timeCollected || null,
-        timePrinted: entry.timePrinted || null,
-        selectedTests: (entry.selectedTests || []).map(t => typeof t === 'string' ? t : t.test),
-        department: activeTab.replace("Register", ""),
-        reportData: finalData, 
-        isFinalized: true,
-        savedBy: loggedUser,
-        isSaved: true, 
-        timeSaved: serverTimestamp()
-      }, { merge: true });
-
-
-      setLocalDrafts(prev => {
+  
+      const insideLabRef = doc(
+        db,
+        "inside_lab_results",
+        uniqueId
+      );
+  
+      const reportRef = doc(
+        db,
+        "report_details",
+        entry.id
+      );
+  
+      const reportSnap = await getDoc(reportRef);
+  
+      const batch = writeBatch(db);
+  
+      // Save Inside Lab report
+      batch.set(
+        insideLabRef,
+        {
+          compositeId: uniqueId,
+          regNo: entry.regNo || entry.id,
+          diagnosticNo:
+            entry.diagnosticNo ||
+            entry.accNo ||
+            "—",
+          name: entry.name,
+          age: entry.age,
+          ageUnit: entry.ageUnit || "",
+          gender: entry.gender || entry.sex,
+          doctor: entry.doctor,
+          source: entry.source || "OPD",
+          category: entry.category || "",
+          timeCollected:
+            entry.timeCollected || null,
+          timePrinted:
+            entry.timePrinted || null,
+          selectedTests: (
+            entry.selectedTests || []
+          ).map((t) =>
+            typeof t === "string"
+              ? t
+              : t.test
+          ),
+          department: activeTab.replace(
+            "Register",
+            ""
+          ),
+          reportData: finalData,
+          isFinalized: true,
+          savedBy: loggedUser,
+          isSaved: true,
+          timeSaved: serverTimestamp(),
+        },
+        { merge: true }
+      );
+  
+      // Only write once
+      if (
+        !reportSnap.exists() ||
+        !reportSnap.data().insideLabCompletedAt
+      ) {
+        batch.set(
+          reportRef,
+          {
+            insideLabCompletedAt:
+              serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+  
+      await batch.commit();
+  
+      setLocalDrafts((prev) => {
         const updated = { ...prev };
         delete updated[uniqueId];
         return updated;
       });
-
-      alert(`Report saved successfully for ${activeTab.replace("Register", "")}`);
+  
+      alert(
+        `Report saved successfully for ${activeTab.replace(
+          "Register",
+          ""
+        )}`
+      );
     } catch (err) {
-      console.error("Error finalizing:", err);
+      console.error(err);
+      alert("Failed to save report.");
     } finally {
       setSaving(false);
     }
   };
+    
+
+   
+
+  
 
   const filteredEntries = useMemo(() => {
     return entries

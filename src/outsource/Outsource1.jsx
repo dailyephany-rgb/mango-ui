@@ -240,79 +240,49 @@ export default function OutsourceRegister() {
       setSaving(false);
     }
   };
-  const handleStatusChange = (
-    entry,
-    newStatus
-  ) => {
-    const trackingId =
-      entry.uniqueTrackingId;
-  
-    const now =
-      new Date().toISOString();
 
-      const handleStatusChange = async (
-        entry,
-        newStatus
-      ) => {
-        if (newStatus === "Scanned") {
-          await setDoc(
-            doc(
-              db,
-              "outsource_tracking",
-              trackingId
-            ),
-            {
-              status: "Scanned",
+  const handleStatusChange = async (entry, newStatus) => {
+    const trackingId = entry.uniqueTrackingId;
+    const now = new Date().toISOString();
+  
+    if (newStatus === "Scanned") {
+      await setDoc(
+        doc(db, "outsource_tracking", trackingId),
+        {
+          status: "Scanned",
+          outsourcedCollectedTime: serverTimestamp(),
+          collectedBy: currentUser,
+        },
+        { merge: true }
+      );
+    }
+  
+    setEntries((prev) =>
+      prev.map((e) =>
+        e.uniqueTrackingId !== trackingId
+          ? e
+          : {
+              ...e,
+              status: newStatus,
               outsourcedCollectedTime:
-                serverTimestamp(),
+                newStatus === "Scanned" ? now : null,
               collectedBy:
-                currentUser
-            },
-            { merge: true }
-          );
-        }
-  
-    // Update UI immediately
-    setEntries(prev =>
-      prev.map(e => {
-        if (
-          e.uniqueTrackingId !==
-          trackingId
-        ) {
-          return e;
-        }
-  
-        return {
-          ...e,
-          status: newStatus,
-          outsourcedCollectedTime:
-            newStatus === "Scanned"
-              ? now
-              : null,
-          collectedBy:
-            newStatus === "Scanned"
-              ? currentUser
-              : ""
-        };
-      })
+                newStatus === "Scanned" ? currentUser : "",
+            }
+      )
     );
   
-    // Persist locally
-    setLocalOutsourceData(prev => {
+    setLocalOutsourceData((prev) => {
       const updated = {
         ...prev,
         [trackingId]: {
           ...(prev[trackingId] || {}),
           status: newStatus,
           outsourcedCollectedTime:
-            newStatus === "Scanned"
-              ? now
-              : null,
+            newStatus === "Scanned" ? now : null,
           collectedBy:
-            newStatus === "Scanned"
-              ? currentUser
-              : ""
-        }
+            newStatus === "Scanned" ? currentUser : "",
+        },
       };
   
       localStorage.setItem(
@@ -327,6 +297,16 @@ export default function OutsourceRegister() {
 
 
   const updateLocalEntry = (uniqueId, field, value) => {
+    // Update the UI immediately
+    setEntries(prev =>
+      prev.map(e =>
+        e.uniqueTrackingId === uniqueId
+          ? { ...e, [field]: value }
+          : e
+      )
+    );
+  
+    // Keep the local buffer in sync
     setLocalOutsourceData(prev => {
       const updated = {
         ...prev,
@@ -335,7 +315,12 @@ export default function OutsourceRegister() {
           [field]: value
         }
       };
-      localStorage.setItem("outsource_localBuffer", JSON.stringify(updated));
+  
+      localStorage.setItem(
+        "outsource_localBuffer",
+        JSON.stringify(updated)
+      );
+  
       return updated;
     });
   };
@@ -481,9 +466,12 @@ export default function OutsourceRegister() {
                     {(e.displayTests || []).map(t => typeof t === 'string' ? t : t.test).join(", ") || "—"}
                   </td>
                   <td><span className="lab-badge">{e.labName}</span></td>
-                  <td><input type="text" className="table-input" disabled={!e.isCollected || e.isGiven} value={e.concernedPerson || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "concernedPerson", ev.target.value)} placeholder="Name" /></td>
-                  <td><input type="text" className="table-input" disabled={!e.isCollected || e.isGiven} value={e.relation || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "relation", ev.target.value)} placeholder="Relation" /></td>
-                  <td><input type="text" className="table-input" disabled={!e.isCollected || e.isGiven} value={e.mobileNo || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "mobileNo", ev.target.value)} placeholder="Mobile" /></td>
+                  <td><input type="text" className="table-input" disabled={!isScanned || e.isGiven}
+                   value={e.concernedPerson || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "concernedPerson", ev.target.value)} placeholder="Name" /></td>
+                  <td><input type="text" className="table-input" disabled={!isScanned || e.isGiven} 
+                  value={e.relation || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "relation", ev.target.value)} placeholder="Relation" /></td>
+                  <td><input type="text" className="table-input" disabled={!isScanned || e.isGiven}
+                  value={e.mobileNo || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "mobileNo", ev.target.value)} placeholder="Mobile" /></td>
                   <td>{e.collectedBy || "—"}</td>
                   <td>{e.receivedBy || "—"}</td>
                   <td>{e.deliveredBy || "—"}</td>

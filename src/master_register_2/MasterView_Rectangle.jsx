@@ -206,7 +206,6 @@ useEffect(() => {
 
     DEPTS.forEach((dept) => {
       const unsub = onSnapshot(collection(db, dept), (snap) => {
-        console.log("DEPARTMENT SNAPSHOT:", dept, snap.size);
         setDeptData((prev) => ({
           ...prev,
           [dept]: snap.docs.map((d) => d.data()),

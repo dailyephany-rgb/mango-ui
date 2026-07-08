@@ -7,14 +7,19 @@ import React, {
 } from "react";
 
 import { db } from "../firebaseConfig";
+
 import {
   collection,
   onSnapshot,
   setDoc,
+  getDoc,
   doc,
+  writeBatch,
   serverTimestamp,
-  Timestamp, 
+  Timestamp,
 } from "firebase/firestore";
+
+
 import OUTSOURCE_MAP from "../Outsource.json"; 
 import "./Outsource.css";
 import UserMenu from "../auth/UserMenu";
@@ -216,30 +221,54 @@ export default function OutsourceRegister() {
     }
   };
 
+
   const handleGiven = async (entry) => {
     try {
       setSaving(true);
+  
       const trackingId = entry.uniqueTrackingId;
-      await setDoc(
+  
+      const reportRef = doc(db, "report_details", entry.id);
+      const reportSnap = await getDoc(reportRef);
+  
+      const batch = writeBatch(db);
+  
+      // Outsource tracking
+      batch.set(
         doc(db, "outsource_tracking", trackingId),
         {
           isGiven: true,
-          reportDeliveredTime:
-            serverTimestamp(),
-          deliveredBy:
-            currentUser
+          reportDeliveredTime: serverTimestamp(),
+          deliveredBy: currentUser,
         },
         { merge: true }
       );
-
-
-      alert(`Report for ${entry.name} marked as Given`);
+  
+      // Write CompletedAt only once
+      if (
+        !reportSnap.exists() ||
+        !reportSnap.data().outsourceCompletedAt
+      ) {
+        batch.set(
+          reportRef,
+          {
+            outsourceCompletedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+  
+      await batch.commit();
+  
+      alert(`Report for ${entry.name} marked as Delivered`);
     } catch (err) {
       console.error(err);
+      alert("Failed to deliver report.");
     } finally {
       setSaving(false);
     }
   };
+      
 
   const handleStatusChange = async (entry, newStatus) => {
     const trackingId = entry.uniqueTrackingId;
