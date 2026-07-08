@@ -595,6 +595,7 @@ useEffect(() => {
         continue;
       }
       
+      console.log("Writing report_details:", rec.regNo, updates);
       
       
       await setDoc(
