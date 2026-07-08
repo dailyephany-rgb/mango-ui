@@ -511,17 +511,14 @@ useEffect(() => {
         // Not complete yet
         if (!isRoutineDepartmentComplete(department)) return;
       
-        // Timestamp already exists - never overwrite it
-        const alreadyCompleted =
-        workflow[fieldName] &&
-        workflow[fieldName].toDate;
-      
-      if (alreadyCompleted) return;
 
-        
-      
-        updates[fieldName] = serverTimestamp();
-      };
+        // Timestamp already exists - never overwrite it
+          if (workflow[fieldName]) {
+            return;
+          }
+
+          updates[fieldName] = serverTimestamp();
+                };
 
       markRoutineCompleted(
         "Biochemistry",
