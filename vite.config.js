@@ -17,6 +17,7 @@ export default defineConfig({
         inventory: resolve(__dirname, "inventory.html"),
         commandcenter: resolve(__dirname, "commandcenter.html"),
         master_admin: resolve(__dirname, "master_admin.html"),
+        counts: resolve(__dirname, "analytics.html"),
         backup: resolve(__dirname, "index_backup.html"),
 
         // Department pages
@@ -44,6 +45,7 @@ export default defineConfig({
         owner_bloodgroup: resolve(__dirname, "owner_bloodgroup.html"),
         owner_outsource: resolve(__dirname, "owner_outsource.html"),
         owner_inside_lab: resolve(__dirname, "owner_lab.html"),
+
 
       },
     },
