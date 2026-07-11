@@ -109,9 +109,64 @@
 .backroom-table {
   width: 100%;
   min-width: 2200px;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 14px;
   border: 1px solid #e5e7eb;
+}
+
+/* =================================
+   STICKY HEADER
+================================= */
+
+.backroom-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #eff6ff;
+}
+
+/* =================================
+   STICKY COLUMNS
+================================= */
+
+/* Reg No */
+.backroom-table th:nth-child(1),
+.backroom-table td:nth-child(1) {
+  position: sticky;
+  left: 0;
+  min-width: 120px;
+  background: white;
+  z-index: 15;
+}
+
+/* Diag No */
+.backroom-table th:nth-child(2),
+.backroom-table td:nth-child(2) {
+  position: sticky;
+  left: 120px;
+  min-width: 120px;
+  background: white;
+  z-index: 15;
+}
+
+/* Patient Name */
+.backroom-table th:nth-child(3),
+.backroom-table td:nth-child(3) {
+  position: sticky;
+  left: 240px;
+  min-width: 220px;
+  background: white;
+  z-index: 15;
+  box-shadow: 3px 0 6px rgba(0,0,0,0.12);
+}
+
+/* Keep sticky headers above sticky cells */
+.backroom-table thead th:nth-child(1),
+.backroom-table thead th:nth-child(2),
+.backroom-table thead th:nth-child(3) {
+  background: #eff6ff;
+  z-index: 30;
 }
 
 .backroom-table th,

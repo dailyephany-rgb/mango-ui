@@ -508,14 +508,41 @@ export default function BiochemistryMain() {
                       <td>{p.category || "—"}</td>
                       <td>{p.selectedTests?.filter(t => biochemTests.includes(getTestName(t))).map(t => getTestName(t)).join(", ") || "—"}</td>
                       <td><input type="text" value={p.result || ""} disabled={!isScanned || isSaved} onChange={(e) => handleInputChange(p.id, "result", e.target.value)} placeholder="Remark" /></td>
+                      
                       <td>
-                        <select value={isScanned ? "Yes" : "No"} disabled={isSaved} onChange={(e) => handleScanToggle(p, e.target.value)}>
+                        <select
+                          value={isScanned ? "Yes" : "No"}
+                          disabled={isSaved}
+                          onChange={(e) => handleScanToggle(p, e.target.value)}
+                        >
                           <option value="No">No</option>
                           <option value="Yes">Yes</option>
                         </select>
                       </td>
-                            <td style={{ fontWeight: "600", color: "#1e3a8a" }}> {p.savedBy || "—"}
-                            </td>
+
+                      <td
+                        style={{
+                          fontWeight: "600",
+                          color: isSaved
+                            ? "#16a34a"
+                            : isScanned
+                            ? "#ca8a04"
+                            : "#dc2626",
+                        }}
+                      >
+                        {isSaved
+                          ? "Saved"
+                          : isScanned
+                          ? "Scanned"
+                          : "Pending"}
+                      </td>
+
+                      <td style={{ fontWeight: "600", color: "#1e3a8a" }}>
+                        {p.savedBy || "—"}
+                      </td>
+
+
+
                       <td style={{ textAlign: 'center' }}>
      
                        {(isCriticalReported ||
