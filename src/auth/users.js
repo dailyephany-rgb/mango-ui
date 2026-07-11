@@ -147,8 +147,15 @@ export const departments = [
   },
 
   {
-    name: "Validator",
-    url: "/index_validator.html"
+    name: "Validator - Validate",
+    url: "/index_validator.html",
+    loginMode: "validator"
+  },
+  
+  {
+    name: "Validator - Entered",
+    url: "/index_validator.html",
+    loginMode: "entered"
   },
 
   {

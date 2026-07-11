@@ -9,10 +9,7 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [department, setDepartment] = useState("");
-  const [loginMode, setLoginMode] = useState("");
 
-  
-  
   
   const login = () => {
     const user = users.find(
@@ -26,19 +23,12 @@ export default function LoginPage() {
       return;
     }
   
-    if (!department) {
+    if (department === "") {
       alert("Please select a department");
       return;
     }
 
-    if (!loginMode) {
-      alert("Please select Login As");
-      return;
-    }
-  
-    const selectedDept = departments.find(
-      d => d.url === department
-    );
+    const selectedDept = departments[department];
   
     sessionStorage.setItem(
       "loggedUser",
@@ -50,12 +40,16 @@ export default function LoginPage() {
       selectedDept?.name || ""
     );
 
-    sessionStorage.setItem(
-      "loginMode",
-      loginMode
-    );
+    sessionStorage.removeItem("loginMode");
+
+    if (selectedDept?.loginMode) {
+      sessionStorage.setItem(
+        "loginMode",
+        selectedDept.loginMode
+      );
+    }
   
-    window.location.href = department;
+    window.location.href = selectedDept.url;
   };
 
 
@@ -90,32 +84,16 @@ export default function LoginPage() {
     Select Department
   </option>
 
-  {departments.map((dept) => (
+  {departments.map((dept, index) => (
     <option
       key={dept.name}
-      value={dept.url}
+      value={index}
     >
       {dept.name}
     </option>
   ))}
 </select>
 
-<select
-  value={loginMode}
-  onChange={(e) => setLoginMode(e.target.value)}
->
-  <option value="">
-    Login As
-  </option>
-
-  <option value="validator">
-    Validator
-  </option>
-
-  <option value="entered">
-    Entered
-  </option>
-</select>
 
 <button onClick={login}>
   Login

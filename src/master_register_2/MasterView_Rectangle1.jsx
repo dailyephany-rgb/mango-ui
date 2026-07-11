@@ -223,13 +223,32 @@ const findIn = (dept, reg) =>
 (deptData[dept] || []).find((x) => x.regNo === reg);
 
 const isRoutineDepartmentComplete = (dept) => {
-  return (
-    dept.scanned === "Yes" &&
-    dept.saved === "Yes" &&
-    dept.validated === true &&
-    dept.entered === true
-  );
+switch (dept.dept) {
+  case "Biochemistry":
+  case "Hormones":
+    return (
+      dept.scanned === "Yes" &&
+      dept.saved === "Yes" &&
+      dept.validated === true &&
+      dept.entered === true
+    );
+
+  case "Haematology":
+  case "Coagulation":
+  case "Urine Analysis":
+    return dept.saved === "Yes";
+
+  case "ESR":
+  case "Blood Group":
+  case "Rapid Card":
+  case "Serology":
+    return dept.validated === true;
+
+  default:
+    return false;
+}
 };
+
 
   // Merge department statuses
   const merged = useMemo(() => {    
