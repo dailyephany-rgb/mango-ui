@@ -176,25 +176,17 @@ const buildWorkflowRecord = (masterRecord, reportDetails = {}) => {
   ? "Completed"
   : "Pending";
 
-  const insideLabCompletedAt = toDate(
-    reportDetails.insideLabCompletedAt
-  );
-  
-  const outsourceCompletedAt = toDate(
-    reportDetails.outsourceCompletedAt
-  );
-  
-  const insideLabStatus = !hasInsideLab
-    ? "Not Required"
-    : insideLabCompletedAt
-    ? "Completed"
-    : "Pending";
-  
-  const outsourceStatus = !hasOutsource
-    ? "Not Required"
-    : outsourceCompletedAt
-    ? "Completed"
-    : "Pending";
+const insideLabStatus = !hasInsideLab
+  ? "Not Required"
+  : reportDetails.insideLabCompleted
+  ? "Completed"
+  : "Pending";
+
+const outsourceStatus = !hasOutsource
+  ? "Not Required"
+  : reportDetails.outsourceCompleted
+  ? "Completed"
+  : "Pending";
 
   const timeCollected = toDate(
     reportDetails.timeCollected || masterRecord.timeCollected
@@ -214,14 +206,13 @@ const buildWorkflowRecord = (masterRecord, reportDetails = {}) => {
     ? "Routine Printed"
     : routine.routineCompletedAt
     ? "Routine Completed"
-    : hasInsideLab && insideLabCompletedAt
+    : hasInsideLab && reportDetails.insideLabCompleted
     ? "Inside Lab Completed"
-    : hasOutsource && outsourceCompletedAt
+    : hasOutsource && reportDetails.outsourceCompleted
     ? "Outsource Completed"
     : routine.hasRoutine
     ? "Routine Pending"
     : "No Routine";
-    
 
     let workflowProgress = 0;
 
@@ -320,13 +311,13 @@ const totalWorkflowMinutes = workflowTimeline.reduce(
     routineReportPrintedBy: reportDetails.routineReportPrintedBy || "",
 
     hasInsideLab,
-    insideLabCompleted: Boolean(insideLabCompletedAt),
-    insideLabReportPrinted: Boolean (reportDetails.insideLabReportPrinted),
+    insideLabCompleted: Boolean(reportDetails.insideLabCompleted),
+    insideLabReportPrinted: Boolean(reportDetails.insideLabReportPrinted),
     insideLabReportPrintedTime,
     insideLabReportPrintedBy: reportDetails.insideLabReportPrintedBy || "",
 
     hasOutsource,
-    outsourceCompleted: Boolean(outsourceCompletedAt),
+    outsourceCompleted: Boolean(reportDetails.outsourceCompleted),
 
     whatsappRequired: Boolean(reportDetails.whatsappRequired),
     whatsappSent: Boolean(reportDetails.whatsappSent),
