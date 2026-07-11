@@ -278,12 +278,19 @@ export default function Mango() {
           compositeId
         );
 
-      const reportDetailsEntry = {
-        regNo,
-        diagnosticNo: diagNo,
-
-        name: formData.name,
-
+        const reportDetailsEntry = {
+          regNo,
+          diagnosticNo: diagNo,
+        
+          name: formData.name,
+          doctor: formData.doctor,
+          phone: formData.phone,
+          category: formData.category,
+          source: formData.source,
+        
+          selectedTests: formData.selectedTests,
+        
+          timePrinted: fullTimePrinted,
           timeCollected: finalTimeCollected,
         };
 

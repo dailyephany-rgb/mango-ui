@@ -10,9 +10,7 @@ import {
   collection,
   onSnapshot,
   query,
-  orderBy,
   doc,
-  updateDoc,
   setDoc,
   serverTimestamp,
 } from "firebase/firestore";
@@ -86,8 +84,7 @@ export default function MasterViewCard() {
 
   
 
-  const [masterRecords, setMasterRecords] = useState([]);
-  const [reportDetails, setReportDetails] = useState({});
+  const [reportRecords, setReportRecords] = useState([]);
   const [deptData, setDeptData] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [reportView, setReportView] = useState("routine");
@@ -156,47 +153,38 @@ export default function MasterViewCard() {
 useEffect(() => {
 
 
-  const q = query(
-    collection(db, "master_register"),
-    orderBy("timePrinted", "asc")
-  );
 
-  const unsub = onSnapshot(q, (snap) => {
-    setMasterRecords(
-      snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }))
-    );
-  });
 
   const reportQuery = query(
     collection(db, "report_details")
   );
-
+  
   const unsubReport = onSnapshot(
-
     reportQuery,
     (snapshot) => {
-      const details = {};
-
+    
+      const records = [];
+  
       snapshot.forEach((docSnap) => {
-        details[docSnap.id] = docSnap.data();
+        const data = {
+          id: docSnap.id,
+          ...docSnap.data(),
+        };
+  
+       
+        records.push(data);
       });
-
-      setReportDetails(details);
+  
+     
+      setReportRecords(records);
     }
   );
 
   return () => {
-    unsub();
     unsubReport();
   };
 
 }, []);
-
-  
-
 
 
 
@@ -233,9 +221,8 @@ const isRoutineDepartmentComplete = (dept) => {
 
   // Merge department statuses
   const merged = useMemo(() => {    
-    return masterRecords.map((rec) => {
-
-      const workflow = reportDetails[rec.id] || {};
+    return reportRecords.map((rec) => {
+      const workflow = rec;
     
      
     
@@ -244,8 +231,7 @@ const isRoutineDepartmentComplete = (dept) => {
       let statuses = [];
 
 
-      const selectedTests = rec.selectedTests || [];
-
+      const selectedTests = workflow.selectedTests || [];
 
       const hasDepartment = (name) =>
       selectedTests.some((t) => {
@@ -302,8 +288,7 @@ const isRoutineDepartmentComplete = (dept) => {
             (deptData["inside_lab_results"] || []).find(
               (x) =>
                 x.regNo === reg &&
-                x.diagnosticNo ===
-                  (rec.diagnosticNo || rec.accNo)
+                x.diagnosticNo === rec.diagnosticNo
             );
       
           if (!insideRecord) return;
@@ -469,7 +454,7 @@ const isRoutineDepartmentComplete = (dept) => {
 
 
     });
-}, [masterRecords, deptData, reportDetails]);
+  }, [reportRecords, deptData]);
 
 
   // FILTER & SORT

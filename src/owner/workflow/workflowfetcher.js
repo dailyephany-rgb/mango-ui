@@ -164,8 +164,8 @@ const hasSpecialWorkflow = (selectedTests, workflow) => {
   return department ? hasDepartment(selectedTests, department.key) : false;
 };
 
-const buildWorkflowRecord = (masterRecord, reportDetails = {}) => {
-  const selectedTests = masterRecord.selectedTests || [];
+const buildWorkflowRecord = (reportDetails) => {
+  const selectedTests = reportDetails.selectedTests || [];
   const routine = buildRoutineWorkflow(selectedTests, reportDetails);
   const hasInsideLab = hasSpecialWorkflow(selectedTests, "inside");
   const hasOutsource = hasSpecialWorkflow(selectedTests, "outsource");
@@ -196,10 +196,9 @@ const buildWorkflowRecord = (masterRecord, reportDetails = {}) => {
     ? "Completed"
     : "Pending";
 
-  const timeCollected = toDate(
-    reportDetails.timeCollected || masterRecord.timeCollected
-  );
-  const timePrinted = toDate(masterRecord.timePrinted);
+    const timeCollected = toDate(reportDetails.timeCollected);
+
+    const timePrinted = toDate(reportDetails.timePrinted);
   const routineReportPrintedTime = toDate(reportDetails.routineReportPrintedTime);
   const insideLabReportPrintedTime = toDate(
     reportDetails.insideLabReportPrintedTime
@@ -221,7 +220,7 @@ const buildWorkflowRecord = (masterRecord, reportDetails = {}) => {
     : routine.hasRoutine
     ? "Routine Pending"
     : "No Routine";
-    
+
 
     let workflowProgress = 0;
 
@@ -304,14 +303,14 @@ const totalWorkflowMinutes = workflowTimeline.reduce(
 );
 
   return {
-    id: masterRecord.id,
-    regNo: masterRecord.regNo,
-    diagnosticNo: masterRecord.diagnosticNo,
-    patientName: masterRecord.patientName || masterRecord.name || "",
-    selectedTests,
-    timeCollected,
-    timePrinted,
-
+    id: reportDetails.id,
+    regNo: reportDetails.regNo,
+    diagnosticNo: reportDetails.diagnosticNo,
+    patientName: reportDetails.name || "",
+    source: reportDetails.source || "",
+        selectedTests,
+        timeCollected,
+        timePrinted,
     hasRoutine: routine.hasRoutine,
     routineDepartments: routine.departments,
     routineCompletedAt: routine.routineCompletedAt,
@@ -373,11 +372,11 @@ const totalWorkflowMinutes = workflowTimeline.reduce(
   };
 };
 
-export const mergeWorkflowRecords = (masterRecords, reportDetailsById) =>
-  masterRecords
+export const mergeWorkflowRecords = (reportRecords) =>
+  reportRecords
     .filter((record) => record.regNo)
     .map((record) =>
-      buildWorkflowRecord(record, reportDetailsById[record.id] || {})
+      buildWorkflowRecord(record)
     );
 
 const count = (records, predicate) => records.filter(predicate).length;
@@ -491,50 +490,38 @@ export const buildWorkflowSummary = (records) => {
   };
 };
 
+
+
 export const subscribeToWorkflowAnalytics = (onData, onError) => {
-  let masterRecords = [];
-  let reportDetailsById = {};
+  let reportRecords = [];
 
   const emit = () => {
-    const records = mergeWorkflowRecords(masterRecords, reportDetailsById);
+    const records = mergeWorkflowRecords(reportRecords);
+
     onData({
       records,
       summary: buildWorkflowSummary(records),
     });
   };
 
-  const masterQuery = query(
-    collection(db, "master_register"),
-    orderBy("timePrinted", "asc")
-  );
-
-  const unsubscribeMaster = onSnapshot(
-    masterQuery,
+  const unsubscribeReport = onSnapshot(
+    query(
+      collection(db, "report_details"),
+      orderBy("timePrinted", "asc")
+    ),
     (snapshot) => {
-      masterRecords = snapshot.docs.map((docSnap) => ({
+      reportRecords = snapshot.docs.map((docSnap) => ({
         id: docSnap.id,
         ...docSnap.data(),
       }));
-      emit();
-    },
-    onError
-  );
 
-  const unsubscribeReportDetails = onSnapshot(
-    collection(db, "report_details"),
-    (snapshot) => {
-      reportDetailsById = {};
-      snapshot.forEach((docSnap) => {
-        reportDetailsById[docSnap.id] = docSnap.data();
-      });
       emit();
     },
     onError
   );
 
   return () => {
-    unsubscribeMaster();
-    unsubscribeReportDetails();
+    unsubscribeReport();
   };
 };
 
