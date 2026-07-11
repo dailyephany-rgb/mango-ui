@@ -38,7 +38,10 @@ export default function BloodGroupRegister() {
   const [activeTab, setActiveTab] = useState("testing");
 
   // 🛡️ INTERNAL BUFFER: Shields dropdown selections from cloud sync wipes
-  const [localResults, setLocalResults] = useState({});
+  const [localResults, setLocalResults] = useState(() => {
+    const saved = localStorage.getItem("bloodgroup_localResults");
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const [regSearch, setRegSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -174,13 +177,23 @@ export default function BloodGroupRegister() {
 
   const handleChange = (tab, compositeKey, field, value) => {
     const key = `${tab}_${compositeKey}`;
-    setLocalResults(prev => ({
-      ...prev,
-      [key]: {
-        ...(prev[key] || {}),
-        [field]: value
-      }
-    }));
+  
+    setLocalResults(prev => {
+      const updated = {
+        ...prev,
+        [key]: {
+          ...(prev[key] || {}),
+          [field]: value
+        }
+      };
+  
+      localStorage.setItem(
+        "bloodgroup_localResults",
+        JSON.stringify(updated)
+      );
+  
+      return updated;
+    });
   };
 
   // UPDATE: Writes both Scan status and Time to LocalStorage using compositeKey
@@ -242,7 +255,17 @@ export default function BloodGroupRegister() {
       // Save using compositeKey
       await setDoc(doc(db, col, compositeKey), dbPayload, { merge: true });
       
-      setLocalResults(prev => { const n = {...prev}; delete n[key]; return n; });
+      setLocalResults(prev => {
+        const n = { ...prev };
+        delete n[key];
+      
+        localStorage.setItem(
+          "bloodgroup_localResults",
+          JSON.stringify(n)
+        );
+      
+        return n;
+      });
       
       // UPDATE: Cleanup LocalStorage after save
       setLocalScans(p => { 

@@ -29,7 +29,7 @@ export default function HormonesMain() {
   const [loading, setLoading] = useState(true);
   
   // NEW: State to toggle between Register and Inventory view
-  const [activeSubTab, setActiveSubTab] = useState("register");
+  
 
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
 
@@ -376,24 +376,10 @@ const [criticalParams, setCriticalParams] = useState(() => {
      
       
               
-      <div className="tab-container" style={{ marginBottom: "10px" }}>
-  <button
-    className={`tab-btn ${activeSubTab === "register" ? "active" : ""}`}
-    onClick={() => setActiveSubTab("register")}
-  >
-    Register
-  </button>
-
-  <button
-    className={`tab-btn ${activeSubTab === "inventory" ? "active" : ""}`}
-    onClick={() => setActiveSubTab("inventory")}
-  >
-    Inventory
-  </button>
-</div>
+      
 
 
-      {activeSubTab === "register" ? (
+     
         <>
           <h2 className="dept-header">Hormones Department — Main Analyzer</h2>
 
@@ -504,10 +490,7 @@ const [criticalParams, setCriticalParams] = useState(() => {
             </table>
           </div>
         </>
-          ) : (
-            <DeptInventoryTab department="Hormones" machineType="Main" />
-          )}
-    
+        
           {criticalModalOpen && (
             <div className="critical-modal-overlay">
               <div className="critical-modal">
