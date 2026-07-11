@@ -155,17 +155,130 @@
 }
 
 .save-btn {
-  background-color: #55a060; /* Rapid Card Green */
+  background-color: #55a060;
   color: white;
   font-weight: 600;
   border: none;
   border-radius: 6px;
   padding: 6px 12px;
   cursor: pointer;
+  width: 100%;
+}
+
+.save-btn:hover:not(:disabled) {
+  background-color: #468751;
 }
 
 .save-btn:disabled {
   background-color: #a8cbb0;
+  color: #fff;
   cursor: not-allowed;
+  opacity: 1;
+}
+
+/* -------------------------------
+   Critical Button States
+-------------------------------- */
+
+/* Default = RED (Scanned / Pending / Reported) */
+.critical-btn {
+  background-color: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 150px;
+  min-width: 150px;
+  transition: background-color 0.2s ease;
+}
+
+.critical-btn:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+/* GREEN state (Before Scan or Normal Saved) */
+.critical-btn-green {
+  background-color: #55a060;
+}
+
+.critical-btn-green:hover:not(:disabled) {
+  background-color: #468751;
+}
+
+/* Disabled GREEN (Not Scanned / Normal Saved) */
+.critical-btn-green:disabled {
+  background-color: #a8cbb0;
+  color: #fff;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+/* Disabled RED (Critical Pending / Critical Reported) */
+.critical-btn:disabled:not(.critical-btn-green) {
+  background-color: #ef4444;
+  color: #fff;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+/* ===============================
+   CRITICAL ALERT MODAL
+=================================*/
+
+.critical-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.critical-modal {
+  width: 430px;
+  max-width: 90%;
+  background: white;
+  border-radius: 10px;
+  padding: 22px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+.critical-modal h3 {
+  margin: 0 0 18px;
+  color: #1e3a8a;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.critical-modal label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.critical-modal input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.critical-modal input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
 }
 

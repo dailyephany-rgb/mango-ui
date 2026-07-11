@@ -19,6 +19,7 @@ export default function CriticalAlertDashboard() {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [commMethods, setCommMethods] = useState({});
+  const [reportedTo, setReportedTo] = useState({});
   const [now, setNow] = useState(new Date());
 
   // 🔹 FILTER STATES
@@ -27,6 +28,7 @@ export default function CriticalAlertDashboard() {
   const [sourceFilter, setSourceFilter] = useState("All");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+ 
 
   useEffect(() => {
     // FIX: Set local date to roll over at midnight local time
@@ -90,6 +92,7 @@ export default function CriticalAlertDashboard() {
       await updateDoc(doc(db, "critical_alerts", alert.id), {
         status: "Reported",
         communicatedVia: method,
+        reportedAt: serverTimestamp(),
         reportedAt: serverTimestamp(),
       });
 
@@ -264,12 +267,13 @@ export default function CriticalAlertDashboard() {
               <th>Tests</th>
               
               <th>Critical Finding</th>
-                <th>Reported By</th>
-                <th>Comm. Via</th>
-                <th>Time Taken</th>
-                <th>Crosschecked By</th>
-                <th>Cross Check</th>
-                <th>Action</th>
+              <th>Reported By</th>
+              <th>Reported To</th>
+              <th>Comm. Via</th>
+              <th>Time Taken</th>
+              <th>Crosschecked By</th>
+              <th>Cross Check</th>
+              <th>Action</th>
                 </tr>
 
           </thead>
@@ -287,7 +291,20 @@ export default function CriticalAlertDashboard() {
                 <td>{alert.doctor}</td>
                 <td style={{ maxWidth: '150px' }}>{Array.isArray(alert.selectedTests) ? alert.selectedTests.join(", ") : alert.selectedTests}</td>
 
-                <td style={{ maxWidth: '200px', fontWeight: 'bold', color: '#dc2626' }}>{alert.criticalParameter}</td>
+                <td
+                  style={{
+                    minWidth: "280px",
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                    textAlign: "left",
+                    verticalAlign: "top",
+                    fontWeight: "600",
+                    color: "#dc2626",
+                  }}
+                >
+                  {alert.criticalParameter}
+                </td>
+
                    <td
                   style={{
                     fontWeight: "600",
@@ -296,6 +313,24 @@ export default function CriticalAlertDashboard() {
                 >
                   {alert.reportedBy || "—"}
                 </td>
+
+                <td>
+                <input
+                  type="text"
+                  value={reportedTo[alert.id] || alert.reportedTo || ""}
+                  placeholder="Doctor / Nurse"
+                  disabled={alert.status === "Reported"}
+                  onChange={(e) =>
+                    setReportedTo({
+                      ...reportedTo,
+                      [alert.id]: e.target.value,
+                    })
+                  }
+                />
+              </td>
+
+
+
                 <td>
 
                   <select 

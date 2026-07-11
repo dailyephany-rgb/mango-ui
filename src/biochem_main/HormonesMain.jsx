@@ -32,7 +32,17 @@ export default function HormonesMain() {
   const [activeSubTab, setActiveSubTab] = useState("register");
 
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
-  const [criticalParams, setCriticalParams] = useState({});
+
+const [criticalModalOpen, setCriticalModalOpen] = useState(false);
+const [criticalPatient, setCriticalPatient] = useState(null);
+
+const [criticalParameterInput, setCriticalParameterInput] = useState("");
+const [criticalReportedByInput, setCriticalReportedByInput] = useState("");
+
+const [criticalParams, setCriticalParams] = useState(() => {
+  const saved = localStorage.getItem("hormones_pendingCritical");
+  return saved ? JSON.parse(saved) : {};
+});
 
   // UPDATE: Persistent LocalStorage for Scans and Scan Times
   const [localScans, setLocalScans] = useState(() => {
@@ -171,13 +181,47 @@ export default function HormonesMain() {
     });
   };
 
-  const triggerCritical = async (entry) => {
-    const parameter = window.prompt("Enter Critical Parameter & Value (e.g., TSH: 0.01):");
-    if (!parameter) return;
-    const regKey = entry.compositeKey;
-    setCriticalParams(prev => ({ ...prev, [regKey]: parameter }));
-    setCriticalReportedSet(prev => new Set(prev).add(regKey));
-    alert("Parameter captured locally.");
+  const triggerCritical = (entry) => {
+    setCriticalPatient(entry);
+    setCriticalParameterInput("");
+    setCriticalReportedByInput("");
+    setCriticalModalOpen(true);
+  };
+
+  const saveCriticalDetails = () => {
+    if (!criticalParameterInput.trim()) {
+      alert("Please enter the Critical Parameter & Value.");
+      return;
+    }
+  
+    if (!criticalReportedByInput.trim()) {
+      alert("Please enter who the critical result was reported to.");
+      return;
+    }
+  
+    const regKey = criticalPatient.compositeKey;
+  
+    setCriticalParams((prev) => {
+      const updated = {
+        ...prev,
+        [regKey]: {
+          parameter: criticalParameterInput.trim(),
+          criticalReportedBy: criticalReportedByInput.trim(),
+        },
+      };
+  
+      localStorage.setItem(
+        "hormones_pendingCritical",
+        JSON.stringify(updated)
+      );
+  
+      return updated;
+    });
+  
+    setCriticalModalOpen(false);
+    setCriticalPatient(null);
+  
+    alert("Critical details captured. Click Save to send to the Critical Dashboard.");
   };
 
   const handleSave = async (patient) => {
@@ -190,13 +234,17 @@ export default function HormonesMain() {
       const rawLocalTime = localScanTimes[regKey];
       const scanTime = rawLocalTime ? new Date(rawLocalTime) : null;
       
-      const isCritical = (criticalReportedSet.has(regKey) || criticalParams[regKey]) ? "Yes" : "No";
+      const pendingCritical = criticalParams[regKey];
 
+      const isCritical =
+        criticalReportedSet.has(regKey) || pendingCritical
+          ? "Yes"
+          : "No";
       const relevantTests = (patient.selectedTests || [])
         .map((t) => getTestName(t))
         .filter((testName) => hormoneTests.includes(testName));
 
-      if (criticalParams[regKey]) {
+        if (pendingCritical) {
         const criticalId = `${regKey}_${CURRENT_DEPT}`;
         await setDoc(doc(db, "critical_alerts", criticalId), {
             name: patient.name || "",
@@ -211,7 +259,8 @@ export default function HormonesMain() {
             category: patient.category || "-",
             timePrinted: patient.timePrinted || null,
             timeCollected: patient.timeCollected || null,
-            criticalParameter: criticalParams[regKey],
+            criticalParameter: pendingCritical.parameter,
+            criticalReportedBy: pendingCritical.criticalReportedBy,
             flaggedAt: serverTimestamp(),
             status: "Pending",
             dept: CURRENT_DEPT,
@@ -383,6 +432,12 @@ export default function HormonesMain() {
                   const regKey = p.compositeKey;
                   const isCriticalReported = criticalReportedSet.has(regKey);
 
+                  const isPendingCritical = !!criticalParams[regKey];
+
+                  const isCriticalRed =
+                    isCriticalReported ||
+                    isPendingCritical ||
+                    (isScanned && !isSaved);
                   return (
                     <tr key={p.compositeKey} className={isSaved ? "row-green" : isScanned ? "row-yellow" : "row-normal"}>
                       <td style={p.urgent ? { borderLeft: "4px solid red" } : {}}>
@@ -418,23 +473,26 @@ export default function HormonesMain() {
                         {p.savedBy || "—"}
                       </td>
                       <td>
-                        <button
-                          onClick={() => triggerCritical(p)}
-                          disabled={isCriticalReported || isSaved || !isScanned}
-                          style={{ 
-                            backgroundColor: (isCriticalReported || !isScanned) ? "#ccc" : "#d9534f", 
-                            color: "white", 
-                            border: "none", 
-                            padding: "6px 10px", 
-                            borderRadius: "4px", 
-                            cursor: (isCriticalReported || isSaved || !isScanned) ? "not-allowed" : "pointer", 
-                            fontSize: "12px", 
-                            fontWeight: "bold", 
-                            width: "100%" 
-                          }}
-                        >
-                          Critical
-                        </button>
+                        
+                      <button
+                      onClick={() => triggerCritical(p)}
+                      disabled={
+                        isCriticalReported ||
+                        isPendingCritical ||
+                        isSaved ||
+                        !isScanned
+                      }
+                      className={`critical-btn ${
+                        !isCriticalRed ? "critical-btn-green" : ""
+                      }`}
+                    >
+                      {isCriticalReported
+                        ? "Critical Reported"
+                        : isPendingCritical
+                        ? "Critical Pending"
+                        : "Critical"}
+                    </button>
+
                       </td>
                       <td>
                         <button className="save-btn" onClick={() => handleSave(p)} disabled={isSaved || !isScanned}>💾 Save</button>
@@ -446,9 +504,60 @@ export default function HormonesMain() {
             </table>
           </div>
         </>
-      ) : (
-        <DeptInventoryTab department="Hormones" machineType="Main" />
-      )}
-    </div>
-  );
-}
+          ) : (
+            <DeptInventoryTab department="Hormones" machineType="Main" />
+          )}
+    
+          {criticalModalOpen && (
+            <div className="critical-modal-overlay">
+              <div className="critical-modal">
+    
+                <h3>Critical Alert</h3>
+    
+                <label>Critical Parameter &amp; Value</label>
+    
+                <input
+                  type="text"
+                  value={criticalParameterInput}
+                  onChange={(e) => setCriticalParameterInput(e.target.value)}
+                  placeholder="e.g. TSH: 0.01"
+                />
+    
+                <label style={{ marginTop: "15px" }}>
+                  Critical Reported By
+                </label>
+    
+                <input
+                  type="text"
+                  value={criticalReportedByInput}
+                  onChange={(e) => setCriticalReportedByInput(e.target.value)}
+                  placeholder="Enter Name"
+                />
+    
+                <div className="modal-actions">
+                  <button
+                    className="source-btn"
+                    onClick={() => {
+                      setCriticalModalOpen(false);
+                      setCriticalPatient(null);
+                    }}
+                  >
+                    Cancel
+                  </button>
+    
+                  <button
+                    className="save-btn"
+                    style={{ width: "120px" }}
+                    onClick={saveCriticalDetails}
+                  >
+                    Save
+                  </button>
+                </div>
+    
+              </div>
+            </div>
+          )}
+    
+        </div>
+      );
+    }

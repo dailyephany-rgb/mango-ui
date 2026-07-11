@@ -73,6 +73,13 @@ export default function UrineAnalysisRegister() {
   const [savedSet, setSavedSet] = useState(new Set());
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
 
+  const [criticalModalOpen, setCriticalModalOpen] = useState(false);
+  const [criticalPatient, setCriticalPatient] = useState(null);
+
+  const [criticalParameterInput, setCriticalParameterInput] = useState("");
+  const [criticalReportedByInput, setCriticalReportedByInput] = useState("");
+  
+
   const testsForRegister = routing.UrineAnalysisRegister || [
     "URINE ANALYSIS", "URINE FOR ALBUMIN", "URINE FOR SUGAR",
     "URINE FOR BILE SALTS", "URINE FOR BILE PIGMENTS",
@@ -293,33 +300,55 @@ export default function UrineAnalysisRegister() {
 
   const triggerCritical = (entry) => {
     const relevantKeys = mapSelectedTestsToRequiredKeys(entry);
-    let suggested = "";
-    relevantKeys.forEach(k => {
-      if (entry.results[k]?.toString().trim()) {
-        suggested += `${k.toUpperCase()}: ${entry.results[k]} `;
-      }
-    });
+  
+    const suggested = relevantKeys
+      .filter((k) => entry.results[k]?.toString().trim())
+      .map((k) => `${k.toUpperCase()}: ${entry.results[k]}`)
+      .join("\n");
+  
+    setCriticalPatient(entry);
+    setCriticalParameterInput(suggested);
+    setCriticalReportedByInput("");
+    setCriticalModalOpen(true);
+  };
 
-    const parameter = window.prompt("Confirm Critical Values (Alert will be sent upon clicking Save):", suggested.trim());
-    if (!parameter) return;
-
+  const saveCriticalDetails = () => {
+    if (!criticalParameterInput.trim()) {
+      alert("Please enter the Critical Parameter & Value.");
+      return;
+    }
+  
+    if (!criticalReportedByInput.trim()) {
+      alert("Please enter who the critical result was reported to.");
+      return;
+    }
+  
     setLocalResults((prev) => {
       const updated = {
         ...prev,
-        [entry.compositeKey]: {
-          ...(prev[entry.compositeKey] || {}),
-          pendingCriticalParam: parameter,
+        [criticalPatient.compositeKey]: {
+          ...(prev[criticalPatient.compositeKey] || {}),
+          pendingCriticalParam: {
+            parameter: criticalParameterInput.trim(),
+            criticalReportedBy: criticalReportedByInput.trim(),
+          },
         },
       };
-    
+  
       localStorage.setItem(
         "urine_localResults",
         JSON.stringify(updated)
       );
-    
+  
       return updated;
     });
-    alert("Critical values confirmed. They will be sent to the Critical UI when you click 'Save'.");
+  
+    setCriticalModalOpen(false);
+    setCriticalPatient(null);
+  
+    alert(
+      "Critical details captured. Click Save to send to the Critical Dashboard."
+    );
   };
 
   const handleSave = async (entry) => {
@@ -333,7 +362,12 @@ export default function UrineAnalysisRegister() {
 
     const filteredTests = getUrineSelectedTests(entry).map((t) => typeof t === "object" ? t.test : t);
 
-    const hasPendingCritical = !!entry.pendingCriticalParam;
+    const pendingCriticalData = entry.pendingCriticalParam;
+
+    const pendingCriticalParam = pendingCriticalData?.parameter;
+    const pendingCriticalReportedBy = pendingCriticalData?.criticalReportedBy;
+
+    const hasPendingCritical = !!pendingCriticalParam;
     const isCritical = (criticalReportedSet.has(compositeKey) || hasPendingCritical) ? "Yes" : "No";
 
     try {
@@ -379,7 +413,8 @@ export default function UrineAnalysisRegister() {
           reportedBy: sessionStorage.getItem("loggedUser") || "Unknown",
           timePrinted: entry.timePrinted || null,
           timeCollected: entry.timeCollected || null,
-          criticalParameter: entry.pendingCriticalParam,
+          criticalParameter: pendingCriticalParam,
+          criticalReportedBy: pendingCriticalReportedBy,
           flaggedAt: serverTimestamp(),
           status: "Pending", dept: CURRENT_DEPT, selectedTests: filteredTests
         });
@@ -480,9 +515,19 @@ export default function UrineAnalysisRegister() {
               const compositeKey = e.compositeKey;
               const isSaved = savedSet.has(compositeKey);
               const isScanned = e.scanned === "Yes";
+            
               const isCriticalReported = criticalReportedSet.has(compositeKey);
               const isPendingCritical = !!e.pendingCriticalParam;
+              
+              const isCriticalRed =
+                isCriticalReported ||
+                isPendingCritical ||
+                (isScanned && !isSaved);
+              
               const routine = hasRoutineTest(e);
+
+
+
               const missingRequired = !areRequiredFieldsFilled(e);
               const ready = isScanned && !missingRequired;
               const rowClass = isSaved ? "row-green" : isScanned ? "row-yellow" : "";
@@ -555,10 +600,29 @@ export default function UrineAnalysisRegister() {
               >
                 {e.savedBy || "—"}
               </td>
+                 
+                 
                   <td>
-                    <button onClick={() => triggerCritical(e)} disabled={isCriticalReported || isPendingCritical || isSaved || !ready}
-                      style={{ backgroundColor: (isCriticalReported || isPendingCritical || isSaved || !ready) ? "#ccc" : "#d9534f", color: "white", border: "none", padding: "6px 10px", borderRadius: "4px", cursor: (isCriticalReported || isPendingCritical || isSaved || !ready) ? "not-allowed" : "pointer", fontSize: "12px", fontWeight: "bold", width: "100%" }}
-                    > Critical </button>
+                  <button
+                    onClick={() => triggerCritical(e)}
+                    disabled={
+                      isCriticalReported ||
+                      isPendingCritical ||
+                      isSaved ||
+                      !ready
+                    }
+                    className={`critical-btn ${
+                      !isCriticalRed ? "critical-btn-green" : ""
+                    }`}
+                  >
+                    {isCriticalReported
+                      ? "Critical Reported"
+                      : isPendingCritical
+                      ? "Critical Pending"
+                      : "Critical"}
+                  </button>
+
+
                   </td>
                   <td>
                     <button className="save-btn" disabled={isSaved || saving || !ready} onClick={() => handleSave(e)}> Save </button>
@@ -569,6 +633,57 @@ export default function UrineAnalysisRegister() {
           </tbody>
         </table>
       </div>
+      {criticalModalOpen && (
+        <div className="critical-modal-overlay">
+          <div className="critical-modal">
+
+            <h3>Critical Alert</h3>
+
+            <label>Critical Parameters &amp; Values</label>
+
+            <textarea
+              value={criticalParameterInput}
+              readOnly
+              className="critical-params"
+              rows={10}
+              spellCheck={false}
+            />
+
+            <label style={{ marginTop: "15px" }}>
+              Critical Reported By
+            </label>
+
+            <input
+              type="text"
+              value={criticalReportedByInput}
+              onChange={(e) => setCriticalReportedByInput(e.target.value)}
+              placeholder="Enter Name"
+            />
+
+            <div className="modal-actions">
+              <button
+                className="source-btn"
+                onClick={() => {
+                  setCriticalModalOpen(false);
+                  setCriticalPatient(null);
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                className="save-btn"
+                style={{ width: "120px" }}
+                onClick={saveCriticalDetails}
+              >
+                Save
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

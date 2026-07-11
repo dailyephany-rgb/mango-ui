@@ -30,12 +30,19 @@ export default function Haematology() {
   const [fullInventory, setFullInventory] = useState([]);
 
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
-  const [criticalParams, setCriticalParams] = useState(() => {
-    const saved = localStorage.getItem(
-      "haematology_pendingCritical"
-    );
-    return saved ? JSON.parse(saved) : {};
-  });
+
+const [criticalModalOpen, setCriticalModalOpen] = useState(false);
+const [criticalPatient, setCriticalPatient] = useState(null);
+
+const [criticalParameterInput, setCriticalParameterInput] = useState("");
+const [criticalReportedByInput, setCriticalReportedByInput] = useState("");
+
+const [criticalParams, setCriticalParams] = useState(() => {
+  const saved = localStorage.getItem(
+    "haematology_pendingCritical"
+  );
+  return saved ? JSON.parse(saved) : {};
+});
 
   const [regSearch, setRegSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -296,26 +303,49 @@ export default function Haematology() {
     });
   };
 
-  const triggerCritical = async (entry) => {
-    const parameter = window.prompt("Enter Critical Parameter & Value (e.g., HB: 4.2):");
-    if (!parameter) return;
-    const regKey = entry.compositeKey;
+  const triggerCritical = (entry) => {
+    setCriticalPatient(entry);
+    setCriticalParameterInput("");
+    setCriticalReportedByInput("");
+    setCriticalModalOpen(true);
+  };
+
+  const saveCriticalDetails = () => {
+    if (!criticalParameterInput.trim()) {
+      alert("Please enter the Critical Parameter & Value.");
+      return;
+    }
+  
+    if (!criticalReportedByInput.trim()) {
+      alert("Please enter who the critical result was reported to.");
+      return;
+    }
+  
+    const regKey = criticalPatient.compositeKey;
+  
     setCriticalParams((prev) => {
       const updated = {
         ...prev,
-        [regKey]: parameter,
+        [regKey]: {
+          parameter: criticalParameterInput.trim(),
+          criticalReportedBy: criticalReportedByInput.trim(),
+        },
       };
-    
+  
       localStorage.setItem(
         "haematology_pendingCritical",
         JSON.stringify(updated)
       );
-    
+  
       return updated;
     });
-
   
-    alert("Parameter captured. This will be sent to Critical Alerts when you click 'Save'.");
+    setCriticalModalOpen(false);
+    setCriticalPatient(null);
+  
+    alert(
+      "Critical details captured. Click Save to send to the Critical Dashboard."
+    );
   };
 
   const handleSave = async (compositeKey) => {
@@ -324,7 +354,12 @@ export default function Haematology() {
       if (!patient) return;
       if (patient.scanned !== "Yes") return alert("Please scan before saving.");
 
-      const isCritical = (criticalReportedSet.has(compositeKey) || criticalParams[compositeKey]) ? "Yes" : "No";
+      const pendingCritical = criticalParams[compositeKey];
+
+      const isCritical =
+        criticalReportedSet.has(compositeKey) || pendingCritical
+          ? "Yes"
+          : "No";
       const canonicalTests = patient.canonicalTests;
       // --- 1. FIRE-AND-FORGET INVENTORY (Background Task) ---
       
@@ -351,7 +386,7 @@ export default function Haematology() {
         );
 
       // 2. Critical Alert Save
-      if (criticalParams[compositeKey]) {
+      if (pendingCritical) {
         const criticalId = safeKey(`${compositeKey}_${CURRENT_DEPT}`);
         await setDoc(doc(db, "critical_alerts", criticalId), {
             name: patient.name || "",
@@ -366,7 +401,8 @@ export default function Haematology() {
             reportedBy:  sessionStorage.getItem("loggedUser") || "Unknown",
             timePrinted: patient.timePrinted || null,
             timeCollected: patient.timeCollected || null,
-            criticalParameter: criticalParams[compositeKey],
+            criticalParameter: pendingCritical.parameter,
+            criticalReportedBy: pendingCritical.criticalReportedBy,
             flaggedAt: serverTimestamp(),
             status: "Pending",
             dept: CURRENT_DEPT,
@@ -563,12 +599,19 @@ export default function Haematology() {
                     filteredPatients.map((p) => {
                       const regKey = p.compositeKey;
                       const selCanon = p.canonicalTests;
+                     
                       const isSaved = p.status === "saved";
                       const isScanned = p.scanned === "Yes";
                       const isCriticalReported = criticalReportedSet.has(regKey);
-                      const isPendingCritical =
-                      !!criticalParams[regKey];
+                      const isPendingCritical = !!criticalParams[regKey];
+
+                      const isCriticalRed =
+                        isCriticalReported ||
+                        isPendingCritical ||
+                        (isScanned && !isSaved);
+
                       const rowClass = isSaved ? "row-saved" : isScanned ? "row-scanned" : "";
+
 
                       return (
                         <tr key={p.compositeKey} className={rowClass}>
@@ -640,17 +683,28 @@ export default function Haematology() {
                         </td>
 
 
-                          <td>
-                            <button onClick={() => triggerCritical(p)} 
+                        <td>
+                          <button
+                            onClick={() => triggerCritical(p)}
                             disabled={
                               isCriticalReported ||
                               isPendingCritical ||
                               isSaved ||
                               !isScanned
                             }
-                            className="critical-btn">Critical</button>
-                          </td>
+                            className={`critical-btn ${
+                              !isCriticalRed ? "critical-btn-green" : ""
+                            }`}
+                          >
+                            {isCriticalReported
+                              ? "Critical Reported"
+                              : isPendingCritical
+                              ? "Critical Pending"
+                              : "Critical"}
+                          </button>
+                        </td>
                           <td>
+                            
                             <button className="save-btn" 
                             disabled={isSaved || !isScanned} onClick={() => handleSave(p.compositeKey)}>Save</button>
                           </td>
@@ -667,7 +721,58 @@ export default function Haematology() {
             </div>
           </div>
         </>
-      )}
-    </div>
-  );
-}
+            )}
+
+            {criticalModalOpen && (
+              <div className="critical-modal-overlay">
+                <div className="critical-modal">
+      
+                  <h3>Critical Alert</h3>
+      
+                  <label>Critical Parameter &amp; Value</label>
+      
+                  <input
+                    type="text"
+                    value={criticalParameterInput}
+                    onChange={(e) => setCriticalParameterInput(e.target.value)}
+                    placeholder="e.g. HB: 4.2"
+                  />
+      
+                  <label style={{ marginTop: "15px" }}>
+                    Critical Reported By
+                  </label>
+      
+                  <input
+                    type="text"
+                    value={criticalReportedByInput}
+                    onChange={(e) => setCriticalReportedByInput(e.target.value)}
+                    placeholder="Enter Name"
+                  />
+      
+                  <div className="modal-actions">
+                    <button
+                      className="source-btn"
+                      onClick={() => {
+                        setCriticalModalOpen(false);
+                        setCriticalPatient(null);
+                      }}
+                    >
+                      Cancel
+                    </button>
+      
+                    <button
+                      className="save-btn"
+                      style={{ width: "120px" }}
+                      onClick={saveCriticalDetails}
+                    >
+                      Save
+                    </button>
+                  </div>
+      
+                </div>
+              </div>
+            )}
+      
+          </div>
+        );
+      }

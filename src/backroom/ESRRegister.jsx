@@ -33,22 +33,9 @@ const overflowStyles = `
     border-collapse: separate; 
     border-spacing: 0;
   }
-  .critical-btn {
-    background-color: #ef4444 !important;
-    color: white !important;
-    border: none;
-    padding: 6px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 12px;
-    width: 100%;
-  }
-  .critical-btn:disabled {
-    background-color: #fca5a5 !important;
-    cursor: not-allowed;
-  }
-`;
+  
+`
+;
 
 export default function ESRRegister() {
   const [masterEntries, setMasterEntries] = useState([]);
@@ -79,10 +66,17 @@ export default function ESRRegister() {
   });
 
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
-  const [pendingCritical, setPendingCritical] = useState(() => {
-    const saved = localStorage.getItem("esr_pendingCritical");
-    return saved ? JSON.parse(saved) : {};
-  });
+
+const [criticalModalOpen, setCriticalModalOpen] = useState(false);
+const [criticalPatient, setCriticalPatient] = useState(null);
+
+const [criticalParameterInput, setCriticalParameterInput] = useState("");
+const [criticalReportedByInput, setCriticalReportedByInput] = useState("");
+
+const [pendingCritical, setPendingCritical] = useState(() => {
+  const saved = localStorage.getItem("esr_pendingCritical");
+  return saved ? JSON.parse(saved) : {};
+});
 
   const testsForRegister = routing.ESRRegister || ["ESR (ERYTHROCYTE SEDIMENTATION RATE, BLOOD)"];
 
@@ -187,7 +181,7 @@ export default function ESRRegister() {
         scannedTime: localScanTime ??saved.scannedTime ??null,
         status: (saved.saved === "Yes" || saved.status === "saved") ? "saved" : localScanValue === "Yes" ? "scanned" : saved.status || "pending",
         urgent: entry.urgent || false, 
-        pendingCritText: pendingCritical[compositeKey]
+        pendingCritText: pendingCritical[compositeKey]?.parameter
       };
     });
         }, [
@@ -264,24 +258,47 @@ export default function ESRRegister() {
 
   const triggerCritical = (entry) => {
     const defaultText = `ESR: ${entry.result} mm/hr (Duration: ${entry.duration} mins)`;
-    const parameter = window.prompt("Confirm Critical ESR Value:", defaultText);
-    if (!parameter) return;
+  
+    setCriticalPatient(entry);
+    setCriticalParameterInput(defaultText);
+    setCriticalReportedByInput("");
+    setCriticalModalOpen(true);
+  };
 
+  const saveCriticalDetails = () => {
+    if (!criticalParameterInput.trim()) {
+      alert("Please enter the Critical Parameter & Value.");
+      return;
+    }
+  
+    if (!criticalReportedByInput.trim()) {
+      alert("Please enter who the critical result was reported to.");
+      return;
+    }
+  
     setPendingCritical((prev) => {
       const updated = {
         ...prev,
-        [entry.compositeKey]: parameter,
+        [criticalPatient.compositeKey]: {
+          parameter: criticalParameterInput.trim(),
+          criticalReportedBy: criticalReportedByInput.trim(),
+        },
       };
-    
+  
       localStorage.setItem(
         "esr_pendingCritical",
         JSON.stringify(updated)
       );
-    
+  
       return updated;
     });
-
-    alert("Critical value prepared. Click 'Save' to finalize.");
+  
+    setCriticalModalOpen(false);
+    setCriticalPatient(null);
+  
+    alert(
+      "Critical details captured. Click Save to send to the Critical Dashboard."
+    );
   };
 
   const getCleanTests = (entry) => {
@@ -296,9 +313,15 @@ export default function ESRRegister() {
       const compositeKey = entry.compositeKey;
       if (!isEntryReadyToSave(entry)) return;
 
-      const critParam = pendingCritical[compositeKey];
-      const isCritical = (critParam || criticalReportedSet.has(compositeKey)) ? "Yes" : "No";
-      const cleanTests = getCleanTests(entry);
+      const pendingCriticalData = pendingCritical[compositeKey];
+
+      const critParam = pendingCriticalData?.parameter;
+      const critReportedBy = pendingCriticalData?.criticalReportedBy;
+      const isCritical =
+        critParam || criticalReportedSet.has(compositeKey)
+      ? "Yes"
+      : "No";
+        const cleanTests = getCleanTests(entry);
 
       if (critParam) {
         await setDoc(doc(db, "critical_alerts", `${compositeKey}_${CURRENT_DEPT}`), {
@@ -308,7 +331,9 @@ export default function ESRRegister() {
           age: entry.age || "", ageUnit: entry.ageUnit || "", gender: entry.gender || "-",
           category: entry.category || "-", source: entry.source || "-", doctor: entry.doctor || "Self",
           reportedBy: sessionStorage.getItem("loggedUser") || "Unknown",
-          criticalParameter: critParam, flaggedAt: serverTimestamp(),
+          criticalParameter: critParam,
+          criticalReportedBy: critReportedBy,
+          flaggedAt: serverTimestamp(),
           timePrinted: ensureFirestoreTimestamp(entry.timePrinted),
           timeCollected: ensureFirestoreTimestamp(entry.timeCollected),
           status: "Pending", dept: CURRENT_DEPT, selectedTests: cleanTests 
@@ -438,11 +463,18 @@ export default function ESRRegister() {
           </thead>
           <tbody>
             {filteredEntries.map((e) => {
-              const saved = e.status === "saved";
-              const scanned = e.scanned === "Yes";
-              const isCriticalReported = criticalReportedSet.has(e.compositeKey) || !!e.pendingCritText;
-              const ready = isEntryReadyToSave(e);
-
+             const saved = e.status === "saved";
+             const scanned = e.scanned === "Yes";
+             
+             const isCriticalReported = criticalReportedSet.has(e.compositeKey);
+             const isPendingCritical = !!e.pendingCritText;
+             
+             const isCriticalRed =
+               isCriticalReported ||
+               isPendingCritical ||
+               (scanned && !saved);
+             
+             const ready = isEntryReadyToSave(e);
               return (
                 <tr key={e.compositeKey} className={saved ? "row-green" : scanned ? "row-yellow" : ""}>
                   <td className="sticky-col" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
@@ -459,13 +491,23 @@ export default function ESRRegister() {
                       <option value="No">No</option><option value="Yes">Yes</option>
                     </select>
                   </td>
-                  <td style={{ textAlign: 'center' }}>
-                      {isCriticalReported && (
-                          <span style={{ color: 'red', fontWeight: 'bold', fontSize: '9px' }}>
-                              {e.pendingCritText ? "PREPARED" : "REPORTED"}
-                          </span>
-                      )}
+                    <td style={{ textAlign: "center" }}>
+                    {(isCriticalReported || isPendingCritical) && (
+                      <span
+                        style={{
+                          color: "red",
+                          fontWeight: "bold",
+                          fontSize: "10px",
+                        }}
+                      >
+                        {isCriticalReported
+                          ? "CRITICAL REPORTED"
+                          : "CRITICAL PENDING SAVE"}
+                      </span>
+                    )}
                   </td>
+
+
                   <td
                   style={{
                     minWidth: "130px",
@@ -477,7 +519,26 @@ export default function ESRRegister() {
                 </td>
 
                   <td>
-                    <button onClick={() => triggerCritical(e)} disabled={isCriticalReported || saved || !ready} className="critical-btn">Critical</button>
+                    
+                  <button
+                  onClick={() => triggerCritical(e)}
+                  disabled={
+                    isCriticalReported ||
+                    isPendingCritical ||
+                    saved ||
+                    !ready
+                  }
+                  className={`critical-btn ${
+                    !isCriticalRed ? "critical-btn-green" : ""
+                  }`}
+                >
+                  {isCriticalReported
+                    ? "Critical Reported"
+                    : isPendingCritical
+                    ? "Critical Pending"
+                    : "Critical"}
+                </button>
+
                   </td>
                   <td><button className="save-btn" disabled={saving || saved || !ready} onClick={() => handleSave(e)}>Save</button></td>
                 </tr>
@@ -486,6 +547,57 @@ export default function ESRRegister() {
           </tbody>
         </table>
       </div>
+      {criticalModalOpen && (
+        <div className="critical-modal-overlay">
+          <div className="critical-modal">
+
+            <h3>Critical Alert</h3>
+
+            <label>Critical Parameter &amp; Value</label>
+
+            <textarea
+              value={criticalParameterInput}
+              readOnly
+              className="critical-params"
+              rows={3}
+              spellCheck={false}
+            />
+
+            <label style={{ marginTop: "15px" }}>
+              Critical Reported By
+            </label>
+
+            <input
+              type="text"
+              value={criticalReportedByInput}
+              onChange={(e) => setCriticalReportedByInput(e.target.value)}
+              placeholder="Enter Name"
+            />
+
+            <div className="modal-actions">
+              <button
+                className="source-btn"
+                onClick={() => {
+                  setCriticalModalOpen(false);
+                  setCriticalPatient(null);
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                className="save-btn"
+                style={{ width: "120px" }}
+                onClick={saveCriticalDetails}
+              >
+                Save
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

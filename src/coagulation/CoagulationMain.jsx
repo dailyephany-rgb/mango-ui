@@ -32,6 +32,11 @@ const logout = () => {
   const [savedSet, setSavedSet] = useState(new Set());
   const [activeTab, setActiveTab] = useState("tests");
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
+  const [criticalModalOpen, setCriticalModalOpen] = useState(false);
+  const [criticalPatient, setCriticalPatient] = useState(null);
+
+  const [criticalParameterInput, setCriticalParameterInput] = useState("");
+  const [criticalReportedByInput, setCriticalReportedByInput] = useState("");
 
   const [localScans, setLocalScans] = useState(() => {
     const saved = localStorage.getItem("coagulation_localScans");
@@ -154,15 +159,25 @@ const logout = () => {
   };
 
   const areRequiredFieldsFilled = (patient, required) => {
-    return !Object.entries(required).some(
-      ([field, needed]) =>
-        needed &&
-        !(
-          patient[field] &&
-          patient[field].toString().trim() &&
-          patient[field] !== "MM:SS"
-        )
-    );
+    return Object.entries(required).every(([field, needed]) => {
+      if (!needed) return true;
+  
+      const value = patient[field];
+  
+      if (field === "bt" || field === "ct") {
+        return (
+          value &&
+          value.toString().trim() !== "" &&
+          value !== "MM:SS"
+        );
+      }
+  
+      return (
+        value !== undefined &&
+        value !== null &&
+        value.toString().trim() !== ""
+      );
+    });
   };
 
   useEffect(() => {
@@ -251,42 +266,68 @@ const logout = () => {
 
   const triggerCritical = (entry) => {
     const { bt, ct, pt, inr, aptt } = entry;
-    let resultsArr = [];
+  
+    const resultsArr = [];
+  
     if (bt && bt !== "MM:SS") resultsArr.push(`BT: ${bt}`);
     if (ct && ct !== "MM:SS") resultsArr.push(`CT: ${ct}`);
     if (pt) resultsArr.push(`PT: ${pt}`);
     if (inr) resultsArr.push(`INR: ${inr}`);
     if (aptt) resultsArr.push(`APTT: ${aptt}`);
-    const suggested = resultsArr.join(", ");
-    const parameter = window.prompt(
-      "Confirm Critical Values (Alert will be sent upon clicking Save):",
-      suggested
-    );
-    if (!parameter) return;
-    const regKey = entry.compositeKey;
+  
+    setCriticalPatient(entry);
+    setCriticalParameterInput(resultsArr.join(", "));
+    setCriticalReportedByInput("");
+    setCriticalModalOpen(true);
+  };
+
+  const saveCriticalDetails = () => {
+    if (!criticalParameterInput.trim()) {
+      alert("Please enter the Critical Parameter & Value.");
+      return;
+    }
+  
+    if (!criticalReportedByInput.trim()) {
+      alert("Please enter who the critical result was reported to.");
+      return;
+    }
+  
+    const regKey = criticalPatient.compositeKey;
+  
+    // Store pending critical in the component state
     setCoagDocs((prev) => ({
       ...prev,
-      [regKey]: { ...(prev[regKey] || {}), pendingCriticalParam: parameter },
+      [regKey]: {
+        ...(prev[regKey] || {}),
+        pendingCriticalParam: criticalParameterInput.trim(),
+        criticalReportedBy: criticalReportedByInput.trim(),
+      },
     }));
+  
+    // Store pending critical locally
     setLocalResults((prev) => {
       const updated = {
         ...prev,
         [regKey]: {
           ...(prev[regKey] || {}),
-          pendingCriticalParam: parameter,
+          pendingCriticalParam: criticalParameterInput.trim(),
+          criticalReportedBy: criticalReportedByInput.trim(),
         },
       };
-    
+  
       localStorage.setItem(
         "coagulation_localResults",
         JSON.stringify(updated)
       );
-    
+  
       return updated;
     });
-
+  
+    setCriticalModalOpen(false);
+    setCriticalPatient(null);
+  
     alert(
-      "Critical values confirmed. They will be sent to the Critical UI when you click 'Save'."
+      "Critical details captured. Click Save to send to the Critical Dashboard."
     );
   };
 
@@ -297,7 +338,9 @@ const logout = () => {
       const relevant = getRelevantCoagTests(patient);
       const rawLocalTime = localScanTimes[regKey];
       const scanTime = rawLocalTime ? new Date(rawLocalTime) : null;
-      const hasPendingCritical = !!patient.pendingCriticalParam;
+      const pendingCriticalParam = patient.pendingCriticalParam;
+      const pendingCriticalReportedBy = patient.criticalReportedBy;
+      const hasPendingCritical = !!pendingCriticalParam;
       const isCritical =
         criticalReportedSet.has(regKey) || hasPendingCritical ? "Yes" : "No";
 
@@ -392,7 +435,8 @@ const logout = () => {
           reportedBy: loggedUser,
           timePrinted: patient.timePrinted || null,
           timeCollected: patient.timeCollected || null,
-          criticalParameter: patient.pendingCriticalParam,
+          criticalParameter: pendingCriticalParam,
+          criticalReportedBy: pendingCriticalReportedBy,
           flaggedAt: serverTimestamp(),
           status: "Pending",
           dept: CURRENT_DEPT,
@@ -402,7 +446,12 @@ const logout = () => {
 
       setCoagDocs((prev) => {
         const next = { ...prev };
-        if (next[regKey]) delete next[regKey].pendingCriticalParam;
+      
+        if (next[regKey]) {
+          delete next[regKey].pendingCriticalParam;
+          delete next[regKey].criticalReportedBy;
+        }
+      
         return next;
       });
 
@@ -699,6 +748,12 @@ const logout = () => {
                   const isScanned = p.scanned === "Yes";
                   const isCriticalReported = criticalReportedSet.has(key);
                   const isPendingCritical = !!p.pendingCriticalParam;
+
+                  const isCriticalRed =
+                  isCriticalReported ||
+                  isPendingCritical ||
+                  (isScanned && !isSaved);
+
                   const requiredFields = getRequiredFields(relevant);
                   const missingRequired = !areRequiredFieldsFilled(
                     p,
@@ -841,29 +896,32 @@ const logout = () => {
 
 
                       <td>
-                        <button
-                          onClick={() => triggerCritical(p)}
-                          disabled={
-                            isCriticalReported ||
-                            isPendingCritical ||
-                            isSaved ||
-                            !isScanned ||
-                            missingRequired
-                          }
-                          className="critical-btn"
-                          style={{
-                            backgroundColor:
-                              isCriticalReported ||
-                              isPendingCritical ||
-                              isSaved ||
-                              !isScanned ||
-                              missingRequired
-                                ? "#ccc"
-                                : "#d9534f",
-                          }}
-                        >
-                          Critical
-                        </button>
+                       
+                       
+                       
+                     <button
+                      onClick={() => triggerCritical(p)}
+                      disabled={
+                        isCriticalReported ||
+                        isPendingCritical ||
+                        isSaved ||
+                        !isScanned ||
+                        missingRequired
+                      }
+                      className={`critical-btn ${
+                        !isCriticalRed ? "critical-btn-green" : ""
+                      }`}
+                    >
+                      {isCriticalReported
+                        ? "Critical Reported"
+                        : isPendingCritical
+                        ? "Critical Pending"
+                        : "Critical"}
+                    </button>
+                       
+
+
+
                       </td>
                       <td>
                         <button
@@ -881,9 +939,60 @@ const logout = () => {
             </table>
           </div>
         </>
-      ) : (
-        <CoagulationInventory />
-      )}
-    </div>
-  );
-}
+            ) : (
+              <CoagulationInventory />
+            )}
+      
+            {criticalModalOpen && (
+              <div className="critical-modal-overlay">
+                <div className="critical-modal">
+      
+                  <h3>Critical Alert</h3>
+      
+                  <label>Critical Parameter &amp; Value</label>
+      
+                  <input
+                    type="text"
+                    value={criticalParameterInput}
+                    onChange={(e) => setCriticalParameterInput(e.target.value)}
+                    placeholder="Enter Critical Value"
+                  />
+      
+                  <label style={{ marginTop: "15px" }}>
+                    Critical Reported By
+                  </label>
+      
+                  <input
+                    type="text"
+                    value={criticalReportedByInput}
+                    onChange={(e) => setCriticalReportedByInput(e.target.value)}
+                    placeholder="Enter Name"
+                  />
+      
+                  <div className="modal-actions">
+                    <button
+                      className="source-btn"
+                      onClick={() => {
+                        setCriticalModalOpen(false);
+                        setCriticalPatient(null);
+                      }}
+                    >
+                      Cancel
+                    </button>
+      
+                    <button
+                      className="save-btn"
+                      style={{ width: "120px" }}
+                      onClick={saveCriticalDetails}
+                    >
+                      Save
+                    </button>
+                  </div>
+      
+                </div>
+              </div>
+            )}
+      
+          </div>
+        );
+      }

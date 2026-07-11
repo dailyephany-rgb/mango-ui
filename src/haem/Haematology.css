@@ -275,8 +275,8 @@
 /* 15. CRITICAL */
 .haem-table th:nth-child(15),
 .haem-table td:nth-child(15) {
-  width: 120px;
-  min-width: 120px;
+width: 170px;
+min-width: 170px;
 }
 
 /* 16. ACTION */
@@ -297,10 +297,18 @@
   cursor: pointer;
   width: 100%;
 }
+.save-btn:hover:not(:disabled) {
+  background-color: #468751;
+}
 
-/* --- Added Critical Button --- */
+/* -------------------------------
+   Critical Button States
+-------------------------------- */
+
+
+/* Default = RED (Scanned / Pending / Reported) */
 .critical-btn {
-  background-color: #ef4444; /* Red color */
+  background-color: #ef4444;
   color: #fff;
   border: none;
   border-radius: 6px;
@@ -308,16 +316,46 @@
   font-weight: 600;
   cursor: pointer;
   width: 100%;
+  transition: background-color 0.2s ease;
 }
 
-.critical-btn:hover {
+.critical-btn:hover:not(:disabled) {
   background-color: #dc2626;
 }
 
-.save-btn:disabled, .critical-btn:disabled {
+/* GREEN state (Before Scan or Normal Saved) */
+.critical-btn-green {
+  background-color: #55a060;
+}
+
+.critical-btn-green:hover:not(:disabled) {
+  background-color: #468751;
+}
+
+/* Disabled Save Button */
+.save-btn:disabled {
   background-color: #a8cbb0;
+  color: #fff;
   cursor: not-allowed;
 }
+
+
+/* Disabled RED (Critical Pending / Critical Reported) */
+.critical-btn:disabled:not(.critical-btn-green) {
+  background-color: #ef4444;
+  color: #fff;
+}
+
+/* Disabled GREEN (Not Scanned / Normal Saved) */
+.critical-btn-green:disabled {
+  background-color: #a8cbb0;
+  color: #fff;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+
+
 
 /* Dropdown styling (Scanned + Machine) */
 .haem-table td select {
@@ -347,4 +385,62 @@
 .haem-table-wrapper::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 4px;
+}
+/* ===============================
+   CRITICAL ALERT MODAL
+=================================*/
+
+.critical-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.critical-modal {
+  width: 430px;
+  max-width: 90%;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 22px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+.critical-modal h3 {
+  margin: 0 0 18px;
+  color: #1e3a8a;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.critical-modal label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.critical-modal input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.critical-modal input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
 }

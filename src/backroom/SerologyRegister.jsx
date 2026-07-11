@@ -34,21 +34,6 @@ const tableFixStyles = `
   border-collapse: separate; 
   border-spacing: 0;
 }
-.critical-btn {
-  background-color: #ef4444 !important;
-  color: white !important;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 12px;
-  width: 100%;
-}
-.critical-btn:disabled {
-  background-color: #fca5a5 !important;
-  cursor: not-allowed;
-}
 `;
 
 export default function SerologyRegister() {
@@ -82,13 +67,17 @@ export default function SerologyRegister() {
   });
 
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
-  const [pendingCriticalMap, setPendingCriticalMap] =
-  useState(() => {
-    const saved = localStorage.getItem(
-      "serology_pendingCritical"
-    );
-    return saved ? JSON.parse(saved) : {};
-  });
+
+const [criticalModalOpen, setCriticalModalOpen] = useState(false);
+const [criticalPatient, setCriticalPatient] = useState(null);
+
+const [criticalParameterInput, setCriticalParameterInput] = useState("");
+const [criticalReportedByInput, setCriticalReportedByInput] = useState("");
+
+const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
+  const saved = localStorage.getItem("serology_pendingCritical");
+  return saved ? JSON.parse(saved) : {};
+});
 
   const testsForRegister = routing.SerologyRegister || [
     "HBSAG CARD",
@@ -277,32 +266,59 @@ export default function SerologyRegister() {
 
   const triggerCritical = (entry) => {
     const relevantKeys = requiredKeys(entry);
-    let suggested = "";
-    relevantKeys.forEach(k => {
-      if (entry.results[k] && entry.results[k] !== "-" && entry.results[k] !== "Pending") {
-        suggested += `${k.toUpperCase()}: ${entry.results[k]} `;
-      }
-    });
+  
+    const suggested = relevantKeys
+      .filter(
+        (k) =>
+          entry.results[k] &&
+          entry.results[k] !== "-" &&
+          entry.results[k] !== "Pending"
+      )
+      .map((k) => `${k.toUpperCase()}: ${entry.results[k]}`)
+      .join("\n");
+  
+    setCriticalPatient(entry);
+    setCriticalParameterInput(suggested);
+    setCriticalReportedByInput("");
+    setCriticalModalOpen(true);
+  };
 
-    const parameter = window.prompt("Confirm Critical Values (Alert will be sent upon clicking Save):", suggested.trim());
-    if (!parameter) return;
-
+  const saveCriticalDetails = () => {
+    if (!criticalParameterInput.trim()) {
+      alert("Please enter the Critical Parameter & Value.");
+      return;
+    }
+  
+    if (!criticalReportedByInput.trim()) {
+      alert("Please enter who the critical result was reported to.");
+      return;
+    }
+  
     setPendingCriticalMap((prev) => {
       const updated = {
         ...prev,
-        [entry.compositeKey]: parameter,
+        [criticalPatient.compositeKey]: {
+          parameter: criticalParameterInput.trim(),
+          criticalReportedBy: criticalReportedByInput.trim(),
+        },
       };
-    
+  
       localStorage.setItem(
         "serology_pendingCritical",
         JSON.stringify(updated)
       );
-    
+  
       return updated;
     });
-
-    alert("Critical values confirmed. They will be sent to the Critical UI when you click 'Save'.");
+  
+    setCriticalModalOpen(false);
+    setCriticalPatient(null);
+  
+    alert(
+      "Critical details captured. Click Save to send to the Critical Dashboard."
+    );
   };
+    
 
   const handleSave = async (entry) => {
     try {
@@ -331,10 +347,24 @@ export default function SerologyRegister() {
         typeof t === "object" ? t.test : t
       );
 
-      const hasPendingCritical = !!entry.pendingCriticalParam;
+      const pendingCriticalData = entry.pendingCriticalParam;
+
+      const pendingCriticalParam = pendingCriticalData?.parameter;
+      const pendingCriticalReportedBy = pendingCriticalData?.criticalReportedBy;
+      
+      const hasPendingCritical = !!pendingCriticalParam;
       const isCritical = (criticalReportedSet.has(compositeKey) || hasPendingCritical) ? "Yes" : "No";
 
-      const { pendingCriticalParam, compositeKey: unused, id, phone, tests, father, doctor, ...restOfEntry } = entry;
+      const {
+        pendingCriticalParam: _pendingCriticalParam,
+        compositeKey: unused,
+        id,
+        phone,
+        tests,
+        father,
+        doctor,
+        ...restOfEntry
+      } = entry;
 
       const payload = {
         ...restOfEntry,
@@ -372,7 +402,8 @@ export default function SerologyRegister() {
           reportedBy: sessionStorage.getItem("loggedUser") || "Unknown",
           timePrinted: entry.timePrinted || null,
           timeCollected: entry.timeCollected || null,
-          criticalParameter: entry.pendingCriticalParam,
+          criticalParameter: pendingCriticalParam,
+          criticalReportedBy: pendingCriticalReportedBy,
           flaggedAt: serverTimestamp(),
           status: "Pending",
           dept: CURRENT_DEPT,
@@ -517,6 +548,10 @@ export default function SerologyRegister() {
               const scanned = e.scanned === "Yes";
               const isCriticalReported = criticalReportedSet.has(compositeKey);
               const isPendingCritical = !!e.pendingCriticalParam;
+              const isCriticalRed =
+              isCriticalReported ||
+              isPendingCritical ||
+              (scanned && !saved);
               const missingRequired = !areRequiredFieldsFilled(e);
 
               return (
@@ -571,13 +606,27 @@ export default function SerologyRegister() {
                   {e.savedBy || "—"}
                 </td>
                   <td>
-                    <button
+                   
+                  <button
                       onClick={() => triggerCritical(e)}
-                      disabled={isCriticalReported || isPendingCritical || saved || !scanned || missingRequired}
-                      className="critical-btn"
+                      disabled={
+                        isCriticalReported ||
+                        isPendingCritical ||
+                        saved ||
+                        !scanned ||
+                        missingRequired
+                      }
+                      className={`critical-btn ${
+                        !isCriticalRed ? "critical-btn-green" : ""
+                      }`}
                     >
-                      Critical
+                      {isCriticalReported
+                        ? "Critical Reported"
+                        : isPendingCritical
+                        ? "Critical Pending"
+                        : "Critical"}
                     </button>
+
                   </td>
 
                   <td>
@@ -595,6 +644,57 @@ export default function SerologyRegister() {
           </tbody>
         </table>
       </div>
+      {criticalModalOpen && (
+        <div className="critical-modal-overlay">
+          <div className="critical-modal">
+
+            <h3>Critical Alert</h3>
+
+            <label>Critical Parameters & Values</label>
+
+            <textarea
+              value={criticalParameterInput}
+              readOnly
+              className="critical-params"
+              rows={8}
+              spellCheck={false}
+            />
+
+            <label style={{ marginTop: "15px" }}>
+              Critical Reported By
+            </label>
+
+            <input
+              type="text"
+              value={criticalReportedByInput}
+              onChange={(e) => setCriticalReportedByInput(e.target.value)}
+              placeholder="Enter Name"
+            />
+
+            <div className="modal-actions">
+              <button
+                className="source-btn"
+                onClick={() => {
+                  setCriticalModalOpen(false);
+                  setCriticalPatient(null);
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                className="save-btn"
+                style={{ width: "120px" }}
+                onClick={saveCriticalDetails}
+              >
+                Save
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

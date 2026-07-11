@@ -72,19 +72,7 @@ const overflowStyles = `
   .row-yellow .sticky-col { background-color: #fff7cc !important; }
   .row-normal .sticky-col { background-color: white !important; }
   
-  .critical-btn {
-    background-color: #ef4444 !important;
-    color: white !important;
-    border: none;
-    padding: 4px 8px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-  }
-  .critical-btn:disabled {
-    background-color: #fca5a5 !important;
-    cursor: not-allowed;
-  }
+  
 `;
 
 export default function RapidCardRegister() {
@@ -116,10 +104,17 @@ export default function RapidCardRegister() {
   });
 
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
-  const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
-    const saved = localStorage.getItem("rapid_pendingCritical");
-    return saved ? JSON.parse(saved) : {};
-  });
+
+const [criticalModalOpen, setCriticalModalOpen] = useState(false);
+const [criticalPatient, setCriticalPatient] = useState(null);
+
+const [criticalParameterInput, setCriticalParameterInput] = useState("");
+const [criticalReportedByInput, setCriticalReportedByInput] = useState("");
+
+const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
+  const saved = localStorage.getItem("rapid_pendingCritical");
+  return saved ? JSON.parse(saved) : {};
+});
 
   const testsForRegister = routing.RapidCardRegister;
 
@@ -336,24 +331,56 @@ export default function RapidCardRegister() {
 
   const triggerCritical = (entry) => {
     const relevantKeys = mapSelectedTestsToResultKeys(entry);
-    let suggested = "";
-    relevantKeys.forEach(k => { if (entry.results[k] && entry.results[k] !== "Pending") suggested += `${k.toUpperCase()}: ${entry.results[k]} `; });
-    const parameter = window.prompt("Confirm Critical Values:", suggested.trim());
-    if (!parameter) return;
+  
+    const suggested = relevantKeys
+  .filter(
+    (k) => entry.results[k] && entry.results[k] !== "Pending"
+  )
+  .map(
+    (k) => `${k.toUpperCase()}: ${entry.results[k]}`
+  )
+  .join("\n");
+  
+    setCriticalPatient(entry);
+    setCriticalParameterInput(suggested.trim());
+    setCriticalReportedByInput("");
+    setCriticalModalOpen(true);
+  };
+
+  const saveCriticalDetails = () => {
+    if (!criticalParameterInput.trim()) {
+      alert("Please enter the Critical Parameter & Value.");
+      return;
+    }
+  
+    if (!criticalReportedByInput.trim()) {
+      alert("Please enter who the critical result was reported to.");
+      return;
+    }
+  
     setPendingCriticalMap((prev) => {
       const updated = {
         ...prev,
-        [entry.compositeKey]: parameter,
+        [criticalPatient.compositeKey]: {
+          parameter: criticalParameterInput.trim(),
+          criticalReportedBy: criticalReportedByInput.trim(),
+        },
       };
-    
+  
       localStorage.setItem(
         "rapid_pendingCritical",
         JSON.stringify(updated)
       );
-    
+  
       return updated;
     });
-    alert("Critical confirmed. Click Save to send.");
+  
+    setCriticalModalOpen(false);
+    setCriticalPatient(null);
+  
+    alert(
+      "Critical details captured. Click Save to send to the Critical Dashboard."
+    );
   };
 
   const handleSave = async (entry) => {
@@ -374,9 +401,23 @@ export default function RapidCardRegister() {
       const rawLocalTime = localScanTimes[compositeKey];
       const scanTime = rawLocalTime ? new Date(rawLocalTime) : (entry.scannedTime?.toDate ? entry.scannedTime.toDate() : entry.scannedTime);
       
-      const hasPendingCritical = !!entry.pendingCriticalParam;
+      const pendingCriticalData = entry.pendingCriticalParam;
 
-      const { pendingCriticalParam, compositeKey: unused, id, phone, tests, father, doctor, ...restOfEntry } = entry;
+      const pendingCriticalParam = pendingCriticalData?.parameter;
+      const pendingCriticalReportedBy = pendingCriticalData?.criticalReportedBy;
+
+      const hasPendingCritical = !!pendingCriticalParam;
+
+      const {
+        pendingCriticalParam: _pendingCriticalParam,
+        compositeKey: unused,
+        id,
+        phone,
+        tests,
+        father,
+        doctor,
+        ...restOfEntry
+      } = entry;
 
       const payload = {
         ...restOfEntry,
@@ -408,7 +449,9 @@ export default function RapidCardRegister() {
           age: entry.age || "", ageUnit: entry.ageUnit || "", gender: entry.gender || "-",
           source: entry.source || "-", doctor: entry.doctor || "Self",
           reportedBy: sessionStorage.getItem("loggedUser") || "Unknown",
-          criticalParameter: entry.pendingCriticalParam, flaggedAt: serverTimestamp(),
+          criticalParameter: pendingCriticalParam,
+          criticalReportedBy: pendingCriticalReportedBy,
+          flaggedAt: serverTimestamp(),
           status: "Pending", dept: CURRENT_DEPT, selectedTests: rapidOnlyTests
         });
       }
@@ -505,8 +548,11 @@ export default function RapidCardRegister() {
       <option>Negative</option>
     </select>
   );
+
+  console.log("criticalModalOpen =", criticalModalOpen);
   return (
-    <div className="register-section">
+    <>
+      <div className="register-section">
       <style>{overflowStyles}</style>
       <h3>💉 Rapid Card Register</h3>
       <div className="filter-bar">
@@ -563,10 +609,19 @@ export default function RapidCardRegister() {
           </thead>
           <tbody>
             {filteredEntries.map((e) => {
-              const scanned = e.scanned === "Yes";
-              const saved = e.status === "saved";
-              const isCrit = criticalReportedSet.has(e.compositeKey);
-              const missingReq = !areRequiredFieldsFilled(e);
+             const scanned = e.scanned === "Yes";
+             const saved = e.status === "saved";
+             
+             const isCriticalReported = criticalReportedSet.has(e.compositeKey);
+             const isPendingCritical = !!e.pendingCriticalParam;
+             
+             const isCriticalRed =
+               isCriticalReported ||
+               isPendingCritical ||
+               (scanned && !saved);
+             
+             const missingReq = !areRequiredFieldsFilled(e);
+
               const activeKeys = mapSelectedTestsToResultKeys(e);
               return (
                 <tr key={e.compositeKey} className={saved ? "row-green" : scanned ? "row-yellow" : "row-normal"}>
@@ -650,33 +705,123 @@ export default function RapidCardRegister() {
                       <option value="No">No</option><option value="Yes">Yes</option>
                     </select>
                   </td>
-                  <td style={{ textAlign: 'center' }}>
-                    {(isCrit || e.pendingCriticalParam) && (
-                      <span style={{ color: 'red', fontWeight: 'bold', fontSize: '9px' }}>{isCrit ? "REPORTED" : "PENDING SAVE"}</span>
-                    )}
-                  </td>
-                  <td
-                  style={{
-                    minWidth: "130px",
-                    fontWeight: "600",
-                    color: "#1e3a8a"
-                  }}
-                >
-                  {e.savedBy || "—"}
+                  
+                  <td style={{ textAlign: "center" }}>
+                  {(isCriticalReported || isPendingCritical) && (
+                    <span
+                      style={{
+                        color: "red",
+                        fontWeight: "bold",
+                        fontSize: "10px",
+                      }}
+                    >
+                      {isCriticalReported
+                        ? "CRITICAL REPORTED"
+                        : "CRITICAL PENDING SAVE"}
+                    </span>
+                  )}
                 </td>
 
-                  <td>
-                    <button onClick={() => triggerCritical(e)} disabled={isCrit || e.pendingCriticalParam || saved || !scanned || missingReq} className="critical-btn">Critical</button>
-                  </td>
-                  <td>
-                    <button className="save-btn" disabled={saving || saved || !scanned || missingReq} onClick={() => handleSave(e)}>Save</button>
-                  </td>
-                </tr>
+
+              <td
+            style={{
+              minWidth: "130px",
+              fontWeight: "600",
+              color: "#1e3a8a"
+            }}
+          >
+            {e.savedBy || "—"}
+          </td>
+
+          <td>
+            <button
+              onClick={() => triggerCritical(e)}
+              disabled={
+                isCriticalReported ||
+                isPendingCritical ||
+                saved ||
+                !scanned ||
+                missingReq
+              }
+              className={`critical-btn ${
+                !isCriticalRed ? "critical-btn-green" : ""
+              }`}
+            >
+              {isCriticalReported
+                ? "Critical Reported"
+                : isPendingCritical
+                ? "Critical Pending"
+                : "Critical"}
+            </button>
+          </td>
+
+          <td>
+            <button
+              className="save-btn"
+              disabled={saving || saved || !scanned || missingReq}
+              onClick={() => handleSave(e)}
+            >
+              Save
+            </button>
+          </td>                  
+             </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+      </div>
+
+{criticalModalOpen && (
+  <div className="critical-modal-overlay">
+    <div className="critical-modal">
+
+      <h3>Critical Alert</h3>
+
+      <label>Critical Parameters &amp; Values</label>
+
+      <textarea
+      value={criticalParameterInput}
+      readOnly
+      className="critical-params"
+      rows={8}
+    />
+
+      <label style={{ marginTop: "15px" }}>
+        Critical Reported By
+      </label>
+
+      <input
+        type="text"
+        value={criticalReportedByInput}
+        onChange={(e) => setCriticalReportedByInput(e.target.value)}
+        placeholder="Enter Name"
+      />
+
+      <div className="modal-actions">
+        <button
+          className="source-btn"
+          onClick={() => {
+            setCriticalModalOpen(false);
+            setCriticalPatient(null);
+          }}
+        >
+          Cancel
+        </button>
+
+        <button
+          className="save-btn"
+          style={{ width: "120px" }}
+          onClick={saveCriticalDetails}
+        >
+          Save
+        </button>
+      </div>
+
     </div>
-  );
+  </div>
+)}
+
+</>
+);
 }
