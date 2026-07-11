@@ -453,10 +453,10 @@ export default function BiochemistryMain() {
                   <th>Selected Tests</th>
                   <th>Remark</th>
                   <th>Scanned</th>
-                  <th>Status</th>
-                  <th>Saved By</th>
-                  <th>Critical</th>
-                  <th>Action</th>
+                    <th>Status</th>
+                    <th>Saved By</th>
+                    <th>Critical</th>
+                    <th>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -520,47 +520,28 @@ export default function BiochemistryMain() {
                         </select>
                       </td>
 
-                      <td
-                        style={{
-                          fontWeight: "600",
-                          color: isSaved
-                            ? "#16a34a"
-                            : isScanned
-                            ? "#ca8a04"
-                            : "#dc2626",
-                        }}
-                      >
-                        {isSaved
-                          ? "Saved"
-                          : isScanned
-                          ? "Scanned"
-                          : "Pending"}
-                      </td>
+                      <td style={{ textAlign: 'center' }}>
+     
+                        {(isCriticalReported ||
+                              isPendingCritical) && (
+                              <span
+                                style={{
+                                  color: "red",
+                                  fontWeight: "bold",
+                                  fontSize: "10px"
+                                }}
+                              >
+                                CRITICAL{" "}
+                                {isCriticalReported
+                                  ? "REPORTED"
+                                  : "PENDING SAVE"}
+                              </span>
+                            )}
+
+                        </td>
 
                       <td style={{ fontWeight: "600", color: "#1e3a8a" }}>
                         {p.savedBy || "—"}
-                      </td>
-
-
-
-                      <td style={{ textAlign: 'center' }}>
-     
-                       {(isCriticalReported ||
-                            isPendingCritical) && (
-                            <span
-                              style={{
-                                color: "red",
-                                fontWeight: "bold",
-                                fontSize: "10px"
-                              }}
-                            >
-                              CRITICAL{" "}
-                              {isCriticalReported
-                                ? "REPORTED"
-                                : "PENDING SAVE"}
-                            </span>
-                          )}
-
                       </td>
                       <td>
                         
