@@ -233,7 +233,6 @@
       "SERUM FOLIC ACID",
       "SERUM IGA LEVEL",
       "SLFT PLFG RATIO LILAC",
-      "SERUM PLGF RATIO LILAC",
       "SIROLIMUS LEVEL",
       "SS-A",
       "SS-A (RO),SS-B (LA) IGG ANTIBODIES",
@@ -279,7 +278,6 @@
       "RUBELLA IGG",
       "RUBELLA IGM",
       "ASO TITER",
-      "G6PD",
       "ADA",
       "URINE-ACR",
       "URINE-PCR"
