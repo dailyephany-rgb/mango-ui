@@ -420,8 +420,8 @@ if (config.workflow !== "outsource") return;
   routineStatuses.length > 0 &&
   routineStatuses.every(isRoutineDepartmentComplete);
   const insideLabItems = specialStatuses.filter(
-    s => s.dept === "Inside Lab"
-  );
+    s => s.workflow === "inside"
+);
   
   const outsourceItems = specialStatuses.filter(
     s => s.workflow === "outsource"
