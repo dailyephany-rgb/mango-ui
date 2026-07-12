@@ -3,53 +3,52 @@
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "../../firebaseConfig.js";
 
-export const ROUTINE_WORKFLOW_DEPARTMENTS = [
-  {
-    key: "Bio-Chemistry",
+export const ROUTINE_WORKFLOW_LOOKUP = {
+  "Bio-Chemistry": {
     label: "Bio-Chemistry",
     completedAtField: "biochemistryCompletedAt",
   },
-  {
-    key: "Hormones",
+
+  Hormones: {
     label: "Hormones",
     completedAtField: "hormonesCompletedAt",
   },
-  {
-    key: "Haematology",
+
+  Haematology: {
     label: "Haematology",
     completedAtField: "haematologyCompletedAt",
   },
-  {
-    key: "Blood Group",
+
+  "Blood-Group": {
     label: "Blood Group",
     completedAtField: "bloodGroupCompletedAt",
   },
-  {
-    key: "Coagulation",
+
+  Coagulation: {
     label: "Coagulation",
     completedAtField: "coagulationCompletedAt",
   },
-  {
-    key: "ESR",
+
+  ESR: {
     label: "ESR",
     completedAtField: "esrCompletedAt",
   },
-  {
-    key: "Serology",
+
+  Serology: {
     label: "Serology",
     completedAtField: "serologyCompletedAt",
   },
-  {
-    key: "Rapid Card",
+
+  RapidCard: {
     label: "Rapid Card",
     completedAtField: "rapidCardCompletedAt",
   },
-  {
-    key: "Urine Analysis",
+
+  "Urine Examination": {
     label: "Urine Analysis",
     completedAtField: "urineCompletedAt",
   },
-];
+};
 
 export const SPECIAL_WORKFLOW_DEPARTMENTS = [
   {
@@ -124,10 +123,7 @@ const getTestDepartment = (test) => {
   return (test?.dept || "").trim();
 };
 
-const hasDepartment = (selectedTests, departmentKey) =>
-  (selectedTests || []).some(
-    (test) => getTestDepartment(test).toLowerCase() === departmentKey.toLowerCase()
-  );
+
 
 const latestDate = (dates) => {
   const validDates = dates.map(toDate).filter(Boolean);
@@ -136,12 +132,26 @@ const latestDate = (dates) => {
 };
 
 const buildRoutineWorkflow = (selectedTests, details) => {
-  const departments = ROUTINE_WORKFLOW_DEPARTMENTS.filter((department) =>
-    hasDepartment(selectedTests, department.key)
-  ).map((department) => ({
-    ...department,
-    completedAt: toDate(details[department.completedAtField]),
-  }));
+  const processed = new Set();
+  const departments = [];
+
+  (selectedTests || []).forEach((test) => {
+    const deptKey = getTestDepartment(test);
+
+    if (!deptKey || processed.has(deptKey)) return;
+
+    processed.add(deptKey);
+
+    const config = ROUTINE_WORKFLOW_LOOKUP[deptKey];
+
+if (!config) return;
+
+departments.push({
+  key: deptKey,
+  ...config,
+  completedAt: toDate(details[config.completedAtField]),
+});
+  });
 
   const completed =
     departments.length > 0 &&
@@ -151,7 +161,9 @@ const buildRoutineWorkflow = (selectedTests, details) => {
     departments,
     hasRoutine: departments.length > 0,
     routineCompletedAt: completed
-      ? latestDate(departments.map((department) => department.completedAt))
+      ? latestDate(
+          departments.map((department) => department.completedAt)
+        )
       : null,
   };
 };
@@ -161,7 +173,11 @@ const hasSpecialWorkflow = (selectedTests, workflow) => {
     (item) => item.workflow === workflow
   );
 
-  return department ? hasDepartment(selectedTests, department.key) : false;
+  if (!department) return false;
+
+  return (selectedTests || []).some(
+    (test) => getTestDepartment(test) === department.key
+  );
 };
 
 const buildWorkflowRecord = (reportDetails) => {
@@ -197,8 +213,6 @@ const buildWorkflowRecord = (reportDetails) => {
     : "Pending";
 
     const timeCollected = toDate(reportDetails.timeCollected);
-
-    const timePrinted = toDate(reportDetails.timePrinted);
   const routineReportPrintedTime = toDate(reportDetails.routineReportPrintedTime);
   const insideLabReportPrintedTime = toDate(
     reportDetails.insideLabReportPrintedTime
@@ -220,7 +234,7 @@ const buildWorkflowRecord = (reportDetails) => {
     : routine.hasRoutine
     ? "Routine Pending"
     : "No Routine";
-
+    
 
     let workflowProgress = 0;
 
@@ -241,7 +255,7 @@ const buildWorkflowRecord = (reportDetails) => {
         chartData[k] = 0;
       });
       
-      let previousTime = timeCollected || timePrinted;
+      let previousTime = timeCollected;
       
       const completedDepartments = [...routine.departments]
         .filter((d) => d.completedAt)
@@ -257,12 +271,12 @@ const buildWorkflowRecord = (reportDetails) => {
             ESR: "esr",
             Haematology: "haematology",
             "Bio-Chemistry": "biochemistry",
-            "Blood Group": "bloodGroup",
+            "Blood-Group": "bloodGroup",
             Coagulation: "coagulation",
             Hormones: "hormones",
             Serology: "serology",
-            "Rapid Card": "rapidCard",
-            "Urine Analysis": "urine",
+            RapidCard: "rapidCard",
+            "Urine Examination": "urine",
           };
         
           const chartKey = keyMap[dept.key];
@@ -308,9 +322,11 @@ const totalWorkflowMinutes = workflowTimeline.reduce(
     diagnosticNo: reportDetails.diagnosticNo,
     patientName: reportDetails.name || "",
     source: reportDetails.source || "",
-        selectedTests,
-        timeCollected,
-        timePrinted,
+    selectedTests,
+    timeCollected,
+    routineReportPrintedTime,
+    routineReportPrinted: !!reportDetails.routineReportPrinted,
+
     hasRoutine: routine.hasRoutine,
     routineDepartments: routine.departments,
     routineCompletedAt: routine.routineCompletedAt,
@@ -347,10 +363,10 @@ const totalWorkflowMinutes = workflowTimeline.reduce(
 
 
       durations: {
-      collectedToRoutineCompleted: minutesBetween(
-        timeCollected || timePrinted,
-        routine.routineCompletedAt
-      ),
+        collectedToRoutineCompleted: minutesBetween(
+          timeCollected,
+          routine.routineCompletedAt
+        ),
       routineCompletedToPrinted: minutesBetween(
         routine.routineCompletedAt,
         routineReportPrintedTime
@@ -360,7 +376,7 @@ const totalWorkflowMinutes = workflowTimeline.reduce(
         whatsappSentTime
       ),
       collectedToRoutinePrinted: minutesBetween(
-        timeCollected || timePrinted,
+        timeCollected,
         routineReportPrintedTime
       ),
       routinePrintedToWhatsappSent: minutesBetween(
@@ -376,8 +392,8 @@ export const mergeWorkflowRecords = (reportRecords) =>
   reportRecords
     .filter((record) => record.regNo)
     .map((record) =>
-      buildWorkflowRecord(record)
-    );
+  buildWorkflowRecord(record)
+);
 
 const count = (records, predicate) => records.filter(predicate).length;
 
@@ -490,18 +506,26 @@ export const buildWorkflowSummary = (records) => {
   };
 };
 
-
-
 export const subscribeToWorkflowAnalytics = (onData, onError) => {
   let reportRecords = [];
 
   const emit = () => {
     const records = mergeWorkflowRecords(reportRecords);
 
+    const stackedBarRecords = records.filter(
+      (record) =>
+        record.hasRoutine &&
+        record.routineCompletedAt &&
+        record.routineReportPrinted &&
+        record.routineReportPrintedTime
+    );
+
     onData({
       records,
+      stackedBarRecords,
       summary: buildWorkflowSummary(records),
     });
+
   };
 
   const unsubscribeReport = onSnapshot(
@@ -524,4 +548,7 @@ export const subscribeToWorkflowAnalytics = (onData, onError) => {
     unsubscribeReport();
   };
 };
+  
+
+ 
 

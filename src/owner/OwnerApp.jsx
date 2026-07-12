@@ -26,7 +26,11 @@ export default function OwnerApp() {
 
   const [activeTab, setActiveTab] = useState("overview");
 
-  const { records, summary } = workflowData;
+  const {
+    records,
+    stackedBarRecords = [],
+    summary,
+  } = workflowData;
 
   useEffect(() => {
     const unsubscribe = subscribeToWorkflowAnalytics(
@@ -153,7 +157,7 @@ export default function OwnerApp() {
        <section className="owner-charts">
        <div className="chart-card full-width">
          <h3>Routine Workflow Duration</h3>
-         <WorkflowStackedBars records={records} />
+         <WorkflowStackedBars records={stackedBarRecords} />
        </div>
      </section>
       ) : (
