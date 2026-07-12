@@ -334,7 +334,7 @@ if (config.workflow === "inside") {
     );
 
 statuses.push({
-    dept: config.label,
+  dept: deptKey,
 
     reportType: "special",
 
