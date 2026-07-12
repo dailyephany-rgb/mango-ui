@@ -18,53 +18,53 @@ import {
 import "./MasterView_Rectangle.css";
 import UserMenu from "../auth/UserMenu";
 
-const ROUTINE_DEPARTMENTS = [
-  {
-    key: "Bio-Chemistry",
-    label: "Biochemistry",
-    collection: "biochemistry_register",
-  },
-  {
-    key: "Hormones",
-    label: "Hormones",
-    collection: "hormones_main",
-  },
-  {
-    key: "Blood Group",
-    label: "Blood Group",
-    collection: "bloodgroup_testing_register",
-  },
-  {
-    key: "Coagulation",
-    label: "Coagulation",
-    collection: "coagulation_register",
-  },
-  {
-    key: "Haematology",
-    label: "Haematology",
-    collection: "haematology_register",
-  },
-  {
-    key: "ESR",
-    label: "ESR",
-    collection: "esr_register",
-  },
-  {
-    key: "Serology",
-    label: "Serology",
-    collection: "serology_register",
-  },
-  {
-    key: "Rapid Card",
-    label: "Rapid Card",
-    collection: "rapid_card_register",
-  },
-  {
-    key: "Urine Analysis",
-    label: "Urine Analysis",
-    collection: "urine_analysis_register",
-  },
-];
+
+  const ROUTINE_DEPARTMENT_LOOKUP = {
+    "Bio-Chemistry": {
+      label: "Biochemistry",
+      collection: "biochemistry_register",
+    },
+  
+    Hormones: {
+      label: "Hormones",
+      collection: "hormones_main",
+    },
+  
+    "Blood-Group": {
+      label: "Blood Group",
+      collection: "bloodgroup_testing_register",
+    },
+  
+    Coagulation: {
+      label: "Coagulation",
+      collection: "coagulation_register",
+    },
+  
+    Haematology: {
+      label: "Haematology",
+      collection: "haematology_register",
+    },
+  
+    ESR: {
+      label: "ESR",
+      collection: "esr_register",
+    },
+  
+    Serology: {
+      label: "Serology",
+      collection: "serology_register",
+    },
+  
+    RapidCard: {
+      label: "Rapid Card",
+      collection: "rapid_card_register",
+    },
+  
+    "Urine Examination": {
+      label: "Urine Analysis",
+      collection: "urine_analysis_register",
+    },
+  };
 
 const SPECIAL_DEPARTMENTS = [
   {
@@ -233,50 +233,52 @@ const isRoutineDepartmentComplete = (dept) => {
 
       const selectedTests = workflow.selectedTests || [];
 
-      const hasDepartment = (name) =>
-      selectedTests.some((t) => {
-        const dept =
-          typeof t === "string"
-            ? t
-            : (t?.dept || "").trim();
-    
-        return dept.toLowerCase() === name.toLowerCase();
-      });
+      
 
-      ROUTINE_DEPARTMENTS.forEach(({ key, label, collection }) => {
-        if (!hasDepartment(key)) return;
+     
+     
+     
+      const processedDepartments = new Set();
+
+selectedTests.forEach((t) => {
+  const deptKey =
+    typeof t === "string"
+      ? t
+      : (t?.dept || "").trim();
+
+  if (!deptKey || processedDepartments.has(deptKey)) return;
+
+  processedDepartments.add(deptKey);
+
+  const config = ROUTINE_DEPARTMENT_LOOKUP[deptKey];
+
+  if (!config) return;
+
+  const departmentRecord = findIn(config.collection, reg);
+
+  statuses.push({
+    dept: config.label,
+
+    tests:
+      departmentRecord?.selectedTests ||
+      selectedTests
+        .filter(
+          (x) =>
+            typeof x !== "string" &&
+            (x.dept || "").trim() === deptKey
+        )
+        .map((x) => x.test),
+
+    scanned: departmentRecord?.scanned || "No",
+
+    saved: departmentRecord?.saved || "No",
+
+    validated: departmentRecord?.validated || false,
+
+    entered: departmentRecord?.entered || false,
+  });
+});
       
-        const departmentRecord = findIn(collection, reg);
-      
-        statuses.push({
-          dept: label,
-      
-          tests:
-            departmentRecord?.selectedTests ||
-            selectedTests
-              .filter((t) => {
-                const dept =
-                  typeof t === "string"
-                    ? t
-                    : (t?.dept || "").trim();
-      
-                return dept.toLowerCase() === key.toLowerCase();
-              })
-              .map((t) =>
-                typeof t === "string"
-                  ? t
-                  : t.test
-              ),
-      
-          scanned: departmentRecord?.scanned || "No",
-      
-          saved: departmentRecord?.saved || "No",
-      
-          validated: departmentRecord?.validated || false,
-      
-          entered: departmentRecord?.entered || false,
-        });
-      });
 
     
 
@@ -311,8 +313,15 @@ const isRoutineDepartmentComplete = (dept) => {
         // Outsource
         const departmentRecord = findIn(collection, reg);
       
-        if (!hasDepartment("Outsource") && !departmentRecord)
+        const hasOutsource = selectedTests.some(
+          (t) =>
+            typeof t !== "string" &&
+            (t.dept || "").trim() === "Outsource"
+        );
+        
+        if (!hasOutsource && !departmentRecord) {
           return;
+        }
       
         statuses.push({
           dept: label,
