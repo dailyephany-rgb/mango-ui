@@ -325,28 +325,40 @@ selectedTests.forEach((t) => {
 if (!config) return;
 
 if (config.workflow === "inside") {
-    const insideRecord =
-        (deptData[config.collection] || []).find(
-            x =>
-                x.regNo === reg &&
-                x.diagnosticNo === rec.diagnosticNo
-        );
+   
+  const insideRecord =
+    (deptData[config.collection] || []).find(
+        x =>
+            x.regNo === reg &&
+            x.diagnosticNo === rec.diagnosticNo
+    );
 
-    if (!insideRecord) return;
+statuses.push({
+    dept: config.label,
 
-    statuses.push({
-        dept: config.label,
+    reportType: "special",
 
-        reportType: "special",
-        workflow: "inside",
+    workflow: "inside",
 
-        tests: insideRecord.selectedTests || [],
+    // Use saved tests if available, otherwise use report_details
+    tests:
+        insideRecord?.selectedTests ||
+        selectedTests
+            .filter(
+                x =>
+                    typeof x !== "string" &&
+                    (x.dept || "").trim() === deptKey
+            )
+            .map(x => x.test),
 
-        saved: insideRecord.isSaved || false,
-        savedTime: insideRecord.timeSaved,
-    });
+    saved: insideRecord?.isSaved || false,
 
-    return;
+    savedTime: insideRecord?.timeSaved || null,
+});
+
+return;
+  
+  
 }
 
  
