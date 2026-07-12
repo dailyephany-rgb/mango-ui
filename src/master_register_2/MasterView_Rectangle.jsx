@@ -19,66 +19,97 @@ import "./MasterView_Rectangle.css";
 import UserMenu from "../auth/UserMenu";
 
 
-  const ROUTINE_DEPARTMENT_LOOKUP = {
+const DEPARTMENT_LOOKUP = {
     "Bio-Chemistry": {
       label: "Biochemistry",
       collection: "biochemistry_register",
+      workflow: "routine"
     },
   
     Hormones: {
       label: "Hormones",
       collection: "hormones_main",
+      workflow: "routine"
     },
   
     "Blood-Group": {
       label: "Blood Group",
       collection: "bloodgroup_testing_register",
+      workflow: "routine"
     },
   
     Coagulation: {
       label: "Coagulation",
       collection: "coagulation_register",
+      workflow: "routine"
     },
   
     Haematology: {
       label: "Haematology",
       collection: "haematology_register",
+      workflow: "routine"
     },
   
     ESR: {
       label: "ESR",
       collection: "esr_register",
+      workflow: "routine"
     },
   
     Serology: {
       label: "Serology",
       collection: "serology_register",
+      workflow: "routine"
     },
   
     RapidCard: {
       label: "Rapid Card",
       collection: "rapid_card_register",
+      workflow: "routine"
     },
   
     "Urine Examination": {
       label: "Urine Analysis",
       collection: "urine_analysis_register",
+      workflow: "routine"
+    },
+  
+    "Inside Lab": {
+      label: "Inside Lab",
+      collection: "inside_lab_results",
+      workflow: "inside",
+    },
+  
+    STERLING: {
+      label: "STERLING",
+      collection: "outsource_tracking",
+      workflow: "outsource",
+    },
+  
+    NEUBERG: {
+      label: "NEUBERG",
+      collection: "outsource_tracking",
+      workflow: "outsource",
+    },
+  
+    LIFECELL: {
+      label: "LIFECELL",
+      collection: "outsource_tracking",
+      workflow: "outsource",
+    },
+  
+    LILAC: {
+      label: "LILAC",
+      collection: "outsource_tracking",
+      workflow: "outsource",
+    },
+  
+    RELIABLE: {
+      label: "RELIABLE",
+      collection: "outsource_tracking",
+      workflow: "outsource",
     },
   };
-
-const SPECIAL_DEPARTMENTS = [
-  {
-    label: "Inside Lab",
-    collection: "inside_lab_results",
-    workflow: "inside",
-  },
-  {
-    key: "Outsource",
-    label: "Outsource",
-    collection: "outsource_tracking",
-    workflow: "outsource",
-  },
-];
 
 export default function MasterViewCard() {
 
@@ -105,18 +136,11 @@ export default function MasterViewCard() {
 
   // DEPARTMENT COLLECTIONS
   const DEPTS = [
-
-    "inside_lab_results",
-    "outsource_tracking",
-    "biochemistry_register",
-    "bloodgroup_testing_register",
-    "coagulation_register",
-    "esr_register",
-    "haematology_register",
-    "hormones_main",
-    "rapid_card_register",
-    "serology_register",
-    "urine_analysis_register",
+    ...new Set(
+      Object.values(DEPARTMENT_LOOKUP).map(
+        d => d.collection
+      )
+    ),
   ];
 
   // Helper to normalize dates for sorting
@@ -250,9 +274,9 @@ selectedTests.forEach((t) => {
 
   processedDepartments.add(deptKey);
 
-  const config = ROUTINE_DEPARTMENT_LOOKUP[deptKey];
+  const config = DEPARTMENT_LOOKUP[deptKey];
 
-  if (!config) return;
+  if (!config || config.workflow !== "routine") return;
 
   const departmentRecord = findIn(config.collection, reg);
 
@@ -278,96 +302,95 @@ selectedTests.forEach((t) => {
     entered: departmentRecord?.entered || false,
   });
 });
-      
 
-    
+const processedSpecialDepartments = new Set();
 
-      SPECIAL_DEPARTMENTS.forEach(({ label, collection, workflow }) => {
+selectedTests.forEach((t) => {
+  if (typeof t === "string") return;
 
-        if (workflow === "inside") {
-      
-          const insideRecord =
-            (deptData["inside_lab_results"] || []).find(
-              (x) =>
-                x.regNo === reg &&
-                x.diagnosticNo === rec.diagnosticNo
-            );
-      
-          if (!insideRecord) return;
-      
-          statuses.push({
-            dept: "Inside Lab",
-      
-            reportType: "special",
-      
-            tests: insideRecord.selectedTests || [],
-      
-            saved: insideRecord.isSaved || false,
-      
-            savedTime: insideRecord.timeSaved,
-          });
-      
-          return;
-        }
-      
-        // Outsource
-        const departmentRecord = findIn(collection, reg);
-      
-        const hasOutsource = selectedTests.some(
-          (t) =>
-            typeof t !== "string" &&
-            (t.dept || "").trim() === "Outsource"
-        );
-        
-        if (!hasOutsource && !departmentRecord) {
-          return;
-        }
-      
-        statuses.push({
-          dept: label,
-      
-          reportType: "special",
-      
-          tests:
-            departmentRecord?.selectedTests ||
-            selectedTests
-              .filter((t) => {
-                const dept =
-                  typeof t === "string"
-                    ? t
-                    : (t?.dept || "").trim();
-      
-                return (
-                  dept.toLowerCase() === "outsource"
-                );
-              })
-              .map((t) =>
-                typeof t === "string"
-                  ? t
-                  : t.test
-              ),
-      
-          sampleCollected:
-            departmentRecord?.status === "Scanned",
-      
-          outsourceSampleCollectedTime:
-            departmentRecord?.outsourcedCollectedTime,
-      
-          reportReceived:
-            departmentRecord?.isCollected || false,
-      
-          reportReceivedTime:
-            departmentRecord?.reportReceivedTime,
-      
-          reportGiven:
-            departmentRecord?.isGiven || false,
-      
-          reportGivenTime:
-            departmentRecord?.reportDeliveredTime,
-        });
-      
-      });
+  const deptKey = (t.dept || "").trim();
 
+  if (!deptKey || processedSpecialDepartments.has(deptKey)) return;
+
+  processedSpecialDepartments.add(deptKey);
+
+  // ---------- Inside Lab ----------
+  if (deptKey === "Inside Lab") {
+    const insideRecord =
+      (deptData["inside_lab_results"] || []).find(
+        (x) =>
+          x.regNo === reg &&
+          x.diagnosticNo === rec.diagnosticNo
+      );
+
+    if (!insideRecord) return;
+
+    statuses.push({
+      dept: "Inside Lab",
+
+      reportType: "special",
+
+      workflow: "inside",
+
+      tests: insideRecord.selectedTests || [],
+
+      saved: insideRecord.isSaved || false,
+
+      savedTime: insideRecord.timeSaved,
+    });
+
+    return;
+  }
+
+  // ---------- Outsource Vendors ----------
+  const config = DEPARTMENT_LOOKUP[deptKey];
+
+if (!config || config.workflow !== "outsource") return;
+
+  const departmentRecord =
+    (deptData[config.collection] || []).find(
+      (x) =>
+        x.regNo === reg &&
+        x.diagnosticNo === rec.diagnosticNo &&
+        (x.labName || "").trim() === deptKey
+    );
+
+  statuses.push({
+    dept: config.label,
+
+    reportType: "special",
+
+    workflow: "outsource",
+
+    tests:
+      departmentRecord?.selectedTests ||
+      selectedTests
+        .filter(
+          (x) =>
+            typeof x !== "string" &&
+            (x.dept || "").trim() === deptKey
+        )
+        .map((x) => x.test),
+
+    sampleCollected:
+      departmentRecord?.status === "Scanned",
+
+    outsourceSampleCollectedTime:
+      departmentRecord?.outsourcedCollectedTime,
+
+    reportReceived:
+      departmentRecord?.isCollected || false,
+
+    reportReceivedTime:
+      departmentRecord?.reportReceivedTime,
+
+    reportGiven:
+      departmentRecord?.isGiven || false,
+
+    reportGivenTime:
+      departmentRecord?.reportDeliveredTime,
+  });
+});
 
       // OVERALL
       const routineStatuses = statuses.filter(
@@ -383,7 +406,7 @@ selectedTests.forEach((t) => {
   );
   
   const outsourceItems = specialStatuses.filter(
-    s => s.dept === "Outsource"
+    s => s.workflow === "outsource"
   );
   
   const insideLabCompleted =

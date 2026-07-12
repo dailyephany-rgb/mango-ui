@@ -3,6 +3,7 @@ import { db } from "../../firebaseConfig.js";
 import { collection, onSnapshot } from "firebase/firestore";
 // IMPORT the JSON file
 import testTimingsData from "../data/test_timings.json";
+import OUTSOURCE_ROUTING from "../../Outsource.json";
 
 /* ====================== DATE UTILS ====================== */
 export const toDate = (v) => {
@@ -76,14 +77,17 @@ function buildStaffDistribution(rows, field) {
 
 
 /* ================= KPI COMPUTATION ====================== */
-export function computeKPIs(filteredMaster = [], mergedOutsourceRows = [], canonTests = []) {
-  const cleanCanon = canonTests.map(t => t.trim().toUpperCase());
+export function computeKPIs(
+  filteredMaster = [],
+  mergedOutsourceRows = [],
+  canonSet = new Set()
+) {
   
   // UPDATE: Unique count based on RegNo + DiagnosticNo
   const totalPatientsCollected = new Set(filteredMaster.map(m => `${m.regNo || m.id}_${m.diagnosticNo || m.billNo || "NA"}`)).size;
   const totalTestsCollected = filteredMaster.reduce((sum, m) => {
     const tests = normalizeTestsField(m.selectedTests || m.tests);
-    return sum + tests.filter(t => cleanCanon.includes(t)).length;
+    return sum + tests.filter(t => canonSet.has(t)).length;
   }, 0);
 
   const savedRows = mergedOutsourceRows.filter(r => r.isSaved);
@@ -91,7 +95,7 @@ export function computeKPIs(filteredMaster = [], mergedOutsourceRows = [], canon
   const totalPatientsSaved = new Set(savedRows.map(r => `${r.regNo}_${r.diagnosticNo}`)).size;
   const totalTestsSaved = savedRows.reduce((sum, r) => {
     const tests = normalizeTestsField(r.testArrayRaw);
-    return sum + tests.filter(t => cleanCanon.includes(t)).length;
+    return sum + tests.filter(t => canonSet.has(t)).length;
   }, 0);
 
   const totalPatientsGiven = new Set(mergedOutsourceRows.filter(r => r.isGiven).map(r => `${r.regNo}_${r.diagnosticNo}`)).size;
@@ -376,207 +380,12 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
   const masterRef = collection(db, "master_register");
   const outsourceRef = collection(db, "outsource_tracking");
 
-  const OUTSOURCE_ROUTING = {
-
-    "STERLING": [
-      "24 HOURS URINE METABOLIC EVALUATION",
-      "ACETONE",
-      "ACHR",
-      "ALBERT STAIN",
-      "ALDOLASE",
-      "ADRENOCORTICOTROPIC HORMONE ACTH",
-      "AFP (ALPHA FETO PROTEIN )",
-      "ALLERGY MIX PANEL",
-      "ALLERGY TEST-DRUGS",
-      "ALLERGY TEST-FOOD VEG",
-      "ALLERGY TEST-INHALANT",
-      "AMMONIA TEST",
-      "AMOEBIC SEROLOGY",
-      "ANA PROFILE",
-      "ANCA (IFA)",
-      "ANGIOTENSIN CONVERTING ENZYME (ACE) LEVEL",
-      "ANTI ANA BY IFA",
-      "ANTI CARDIOLIPIN ANTIBODIES IGG,IGM",
-      "ANTI CCP (ANTI CYCLIC CITRULLINATED PEPTIDE ANTIBODIES )",
-      "ANTI DS DNA ( IFA )",
-      "ANTI HAV IGG",
-      "ANTI HAV IGM",
-      "ANTI HBE ANTIBODIES",
-      "ANTI HBS",
-      "ANTI HEV IGM",
-      "ANTI TG (ANTI THYROGLOBULIN) ANTI BODY",
-      "ANTI TPO ANTIBODY",
-      "APLA PANEL (LUPUS ANTICOUGUELANT SCREEN , ACA, APLA IGG IGM BETA 2 GLYCOPROTIEN IGG , IGM )",
-      "ASPERGILUS SEROLOGY (GALACTOMANAN) ANTIGEN",
-      "BETA 2 GLYCOPROTEIN IGG IGM",
-      "BETA 2 MICROGLOBULIN",
-      "BETA D GLUCAN LEVEL",
-      "BETA GLOBINOPATHY GENE SEQUENCING",
-      "BILE ACID",
-      "BIOPSY EXTRA LARGE",
-      "BIOPSY LARGE",
-      "BIOPSY LARGEST",
-      "BIOPSY MEDIUM",
-      "BIOPSY SMALL",
-      "BIOPSY VERY LARGE",
-      "BODY FLUID FOR ANAEROBIC CULTURE",
-      "BODY FLUID, ROUTINE EXAMINATION",
-      "BONE MARROW EXAMINATION AND BIOPSY",
-      "BRCA 1 AND BRCA 2",
-      "BRUCELLA IGG IGM",
-      "C ANCA",
-      "CA -125 (OVARIAN CANCER )",
-      "CA 15.3",
-      "CA 19-9",
-      "C-ANCA",
-      "CBNET",
-      "CD4/ CD8 COUNTS", 
-      "CEA (CARCINO EMBRYONIC ANTIGEN )",
-      "CHIKUNGUNYA PCR",
-      "CHLAMYDIA TRACHOMATIS IGG",
-      "CHLAMYDIA TRACHOMATIS IGM",
-      "COMPLIMENT C3",
-      "COMPLIMENT C4",
-      "COOMBS TEST, DIRECT, BLOOD",
-      "CORTISOL",
-      "C-PEPTIDE",
-      "CULTURE FUNGAL",
-      "CYTOMEGALOVIRUS (CMV) IGM AND IGG",
-      "DHEA-S",
-      "ERYTHROPOIETIN",
-      "FDP (FIBRINOGEN DEGRADATION PRODUCTS)",
-      "FIBRINOGEN LEVEL",
-      "GROWTH HORMONE",
-      "HBEAG",
-      "HEPATITIS A VIRUS IGM ANTIBODIES",
-      "HEPATITIS B VIRUS DNA QUANTITATIVE",
-      "HEPATITIS BE VIRUS ANTIGEN / ANTIBODY EVALUATION",
-      "HEPATITIS E VIRUS IGM ANTIBODIES",
-      "HERPES ZOSTER IGG IGM",
-      "HLA B27 (PCR)",
-      "HOMOCYSTEINE",
-      "HS-CRP (QUANTITATIVE)",
-      "HSV I AND HSV II IGG IGM",
-      "IGE, TOTAL",
-      "IGG LEVEL",
-      "IGM LEVEL",
-      "IMMUNOPHENOTYPING FOR PLATELET FUNCTION TEST",
-      "INDIA INK PREPARATION",
-      "INDIRECT COOMBS TEST, SERUM",
-      "INHIBIN B",
-      "INSULIN FASTING",
-      "INSULIN RANDOM",
-      "INTERLEUKIN - 6 (IL-6)",
-      "LIPOPROTEIN",
-      "LITHIUM LEVEL",
-      "LACTATE LEVEL",
-      "LBC STERLING",
-      "LUPUS ANTICOAGULANT",
-      "MYELOMA PANEL",
-      "NMO WITH MOG ANTIBODY PROFILE FOR SERUM",
-      "OSMOLALITY SERUM",
-      "OSMOLALITY URINE",
-      "OSMOLALITY URINE 24 HRS",
-      "P-ANCA BY ELSA",
-      "P24 ANTIGEN",
-      "PARVOVIRUS B 19 IGG",
-      "PARVOVIRUS B 19 IGM",
-      "PLGF",
-      "PROTEIN C",
-      "PROTEIN ELECTROPHORESIS",
-      "PROTEIN S",
-      "PTH",
-      "RH ANTI BODY TITER",
-      "RPR (VDRL)",
-      "SAAG (SERUM-ASCITES ALBUMIN GRADIENT)",
-      "SERUM FOLIC ACID",
-      "SERUM IGA LEVEL",
-      "SIROLIMUS LEVEL",
-      "STOOL FOR REDUCING SUBSTANCE TEST",
-      "SS-A",
-      "SS-A (RO),SS-B (LA) IGG ANTIBODIES",
-      "SS-B",
-      "STONE ANALYSIS",
-      "STOOL FOR REDUCING SUBSTANCE TEST",
-      "TACROLIMUS LEVEL",
-      "TB GOLD (IGRAS) QUANTIFERON GAMMA INTERFERON",
-      "TB PCR BY GENE EXPERT",
-      "TESTOSTERONE, FREE, SERUM",
-      "THROAT SWAB FOR H1N1",
-      "TISSUE TRANSGLUTAMINASE IGA, TTG",
-      "TORCH-COMPLETE - 10",
-      "TOXO IGG IGM",
-      "TPHA",
-      "TUMOR NECROSIS FACTOR ALPHA",
-      "URINE MYOGLOBIN",
-      "URINE-MICROALBUMIN",
-      "VARICELLA ZOSTER VIRUS (VZV) IGG ANTIBODIES",
-      "VEG. FOOD ALLERGY PANEL"
-    ],
-
-    "NEUBERG": [
-      "HB ELECTROPHORESIS",
-      "NIPT NEUBERG"
-    ],
-
-    "LIFECELL": [
-      "BLOOD FOR KAROTYPING (BABY SHIELD",
-      "WHOLE EXOME SEQUENCING - NGS",
-      "HBB Gene Sequencing (Betaglobinopathy Gene)",
-      "PAP Smear LBC + HPV",
-      "DICE Panel with TB PCR",
-      "FOETAL AUTOPSY",
-      "FOETAL AUTOPSY AND WHOLE LEVEL SECQUENCING",
-      "FOETAL AUTOPSY WITH DNA STORAGE",
-      "HAEMOPHILIA PANEL",
-      "HPV DNA PCR DETECTOR LIQUID PAP SMEAR",
-      "FOETAL AUTOPSY,DNA STORAGE,PLACENTOSCOPE",
-      "Y Chromosome Microdeletion (YCMD)",
-      "BabyShield 11 Conditions- (Heel-Prick)",
-      "BabyShield 4 Conditions- (Heel-Prick)",
-      "BabyShield 62 Conditions- (Heel-Prick) – TMS",
-      "BabyShield 7 Conditions- (Heel-Prick)"
-    ],
-
-    "LILAC": [
-      "Combined FTS (Dual Marker + NT)",
-      "DOUBLE MARKER TEST",
-      "DUAL + PLGF (LILAC)",
-      "FTS QUAD",
-      "NIPT",
-      "SLFT PLFG RATIO LILAC",
-      "Quadruple Marker Test",
-      "InsighT (NIPS)",
-      "DMT EVIC DUO PE LUS"
-    ],
-
-    "RELIABLE": [
-      "FREE T3",
-      "CALCIUM CREATININE RATIO IN URINE",
-      "PROCALCITONIN",
-      "PRO BNP MARKER",
-      "PROTEIN CREATININE RATIO",
-      "PROTEIN, 24 HRS URINE",
-      "CPKMB",
-      "D DIMER",
-      "CPK NAC",
-      "MAGNESIUM",
-      "TESTESTERONE",
-      "TOTAL TESTOSTERONE",
-      "LIPASE",
-      "RUBELLA IGG",
-      "RUBELLA IGM",
-      "ASO TITER",
-      "G6PD",
-      "ADA",
-      "URINARY ALBUMIN CREATININE RATIO",
-      "URINE-ACR",
-      "URINE-PCR"
-    ]
-   
-  };
-
   const canonTests = OUTSOURCE_ROUTING[activeRegister] || [];
+
+    // Build once instead of repeatedly
+    const canonSet = new Set(
+      canonTests.map(test => test.trim().toUpperCase())
+    );
   let mCache = [], oCache = [];
 
   const publish = () => {
@@ -589,7 +398,7 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
       if (!t || (from && t < from) || (to && t > to)) return false;
       if (source && source !== "All" && String(row.source || "").toLowerCase() !== String(source).toLowerCase()) return false;
       const tests = normalizeTestsField(row.selectedTests || row.tests);
-      return tests.some(t => canonTests.map(c => c.trim().toUpperCase()).includes(t));
+      return tests.some(test => canonSet.has(test));
     });
 
     const filteredOutsource = oCache.filter(row => {
@@ -597,11 +406,16 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
       if (!t || (from && t < from) || (to && t > to)) return false;
       if (source && source !== "All" && String(row.source || "").toLowerCase() !== String(source).toLowerCase()) return false;
       const tests = normalizeTestsField(row.selectedTests || row.tests);
-      return tests.some(t => canonTests.map(c => c.trim().toUpperCase()).includes(t));
+return tests.some(test => canonSet.has(test));
     });
 
     const merged = mergeOutsourceRows(filteredOutsource, targetLab);
-    const results = computeKPIs(filteredMaster, merged, canonTests);
+    const results = computeKPIs(
+      filteredMaster,
+      merged,
+      canonTests,
+      canonSet
+    );
 
    
     

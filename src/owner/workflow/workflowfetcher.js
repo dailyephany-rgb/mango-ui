@@ -50,19 +50,37 @@ export const ROUTINE_WORKFLOW_LOOKUP = {
   },
 };
 
-export const SPECIAL_WORKFLOW_DEPARTMENTS = [
-  {
-    key: "MicroBiology",
+export const SPECIAL_WORKFLOW_LOOKUP = {
+  MicroBiology: {
     label: "Inside Lab",
     workflow: "inside",
   },
-  {
-    key: "Outsource",
+
+  STERLING: {
     label: "Outsource",
     workflow: "outsource",
   },
-];
 
+  NEUBERG: {
+    label: "Outsource",
+    workflow: "outsource",
+  },
+
+  LIFECELL: {
+    label: "Outsource",
+    workflow: "outsource",
+  },
+
+  LILAC: {
+    label: "Outsource",
+    workflow: "outsource",
+  },
+
+  RELIABLE: {
+    label: "Outsource",
+    workflow: "outsource",
+  },
+};
 export const ROUTINE_WORKFLOW_CHART_KEYS = [
   "esr",
   "haematology",
@@ -169,15 +187,13 @@ departments.push({
 };
 
 const hasSpecialWorkflow = (selectedTests, workflow) => {
-  const department = SPECIAL_WORKFLOW_DEPARTMENTS.find(
-    (item) => item.workflow === workflow
-  );
+  return (selectedTests || []).some((test) => {
+    const deptKey = getTestDepartment(test);
 
-  if (!department) return false;
+    const config = SPECIAL_WORKFLOW_LOOKUP[deptKey];
 
-  return (selectedTests || []).some(
-    (test) => getTestDepartment(test) === department.key
-  );
+    return config?.workflow === workflow;
+  });
 };
 
 const buildWorkflowRecord = (reportDetails) => {
