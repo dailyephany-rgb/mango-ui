@@ -74,7 +74,12 @@ const DEPARTMENT_LOOKUP = {
       workflow: "routine"
     },
   
-    "Inside Lab": {
+    MicroBiology: {
+      label: "Inside Lab",
+      collection: "inside_lab_results",
+      workflow: "inside",
+    },
+    "Clinical Pathology": {
       label: "Inside Lab",
       collection: "inside_lab_results",
       workflow: "inside",
@@ -315,37 +320,38 @@ selectedTests.forEach((t) => {
   processedSpecialDepartments.add(deptKey);
 
   // ---------- Inside Lab ----------
-  if (deptKey === "Inside Lab") {
+  const config = DEPARTMENT_LOOKUP[deptKey];
+
+if (!config) return;
+
+if (config.workflow === "inside") {
     const insideRecord =
-      (deptData["inside_lab_results"] || []).find(
-        (x) =>
-          x.regNo === reg &&
-          x.diagnosticNo === rec.diagnosticNo
-      );
+        (deptData[config.collection] || []).find(
+            x =>
+                x.regNo === reg &&
+                x.diagnosticNo === rec.diagnosticNo
+        );
 
     if (!insideRecord) return;
 
     statuses.push({
-      dept: "Inside Lab",
+        dept: config.label,
 
-      reportType: "special",
+        reportType: "special",
+        workflow: "inside",
 
-      workflow: "inside",
+        tests: insideRecord.selectedTests || [],
 
-      tests: insideRecord.selectedTests || [],
-
-      saved: insideRecord.isSaved || false,
-
-      savedTime: insideRecord.timeSaved,
+        saved: insideRecord.isSaved || false,
+        savedTime: insideRecord.timeSaved,
     });
 
     return;
-  }
+}
 
+ 
   // ---------- Outsource Vendors ----------
-  const config = DEPARTMENT_LOOKUP[deptKey];
-
-if (!config || config.workflow !== "outsource") return;
+if (config.workflow !== "outsource") return;
 
   const departmentRecord =
     (deptData[config.collection] || []).find(
