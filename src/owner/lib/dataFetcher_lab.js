@@ -2,7 +2,7 @@
 import { db } from "../../firebaseConfig.js";
 import { collection, onSnapshot } from "firebase/firestore";
 import testTimingsData from "../data/test_timings.json";
-import insideRouting from "../../inside_route_mapping.json";
+import insideRouting from "../../inside_room_routing.json";
 
 /* ====================== DATE UTILS ====================== */
 export const toDate = (v) => {
