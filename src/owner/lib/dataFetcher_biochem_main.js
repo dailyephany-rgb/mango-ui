@@ -6,6 +6,7 @@
 import { db } from "../../firebaseConfig.js";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import testTimings from "../data/test_timings.json";
+import biochemRouting from "../../biochem_routing.json";
 
 /* ====================== DATE UTILS ====================== */
 
@@ -42,30 +43,25 @@ export function normalizeTestsField(field) {
 
 /* ================= BIOCHEM MAIN TESTS =================== */
 
-const BIOCHEM_MAIN_TESTS_CANON = [
-  "ALBUMIN,SERUM", "ALKALINE PHOSPHATASE,SERUM", "BILIRUBIN(TOTAL,DIRECT & INDIRECT),SERUM",
-  "BLOOD GLUCOSE OGT", "BLOOD UREA,SERUM", "CALCIUM IONISED", "CHLORIDE,SERUM",
-  "CHOLESTEROL,SERUM", "CREATININE,SERUM", "CRP(C-REACTIVE PROTEIN,SERUM QUANTITATIVE)",
-  "DIRECT LDL CHOLESTROL,SERUM",
-  "ELECTROLYTES,SERUM", "G.G.T(GAMMA GLUTAMYL TRANSFERASE,SERUM)", "GLUCOSE FASTING,PLASMA",
-  "GLUCOSE POST - PRANDIAL( P.P. ),PLASMA", "GLUCOSE RANDOM,PLASMA", "GLYCOSYLATED HEMOGLOBIN(HbA1c)",
-  "HDL CHOLESTROL,SERUM",
-  "IRON,SERUM", "LACTATE DEHYDROGENASE,SERUM", "LFT (LIVER FUNCTION TEST)", "LIPID PROFILE",
-  "ORAL GLUCOSE TOLERANCE TEST(OGTT)", "POTASSIUM,SERUM", "RFT(RENAL FUNCTION TEST)",
-  "RHEUMATOID FACTOR QUANTITATIVE,SERUM", "SGOT(ASPARTATE AMINOTRANSFERASE,SERUM)",
-  "SGPT(ALANINE AMINOTRANSFERASE,SERUM)", "SODIUM,SERUM", "TOTAL PROTEIN,SERUM",
-  "TRIGLYCERIDES,SERUM", "TIBC", "AMYLASE,SERUM", "PHOSPHORUS,SERUM",
-  "TOTAL CALCIUM,SERUM", "URIC ACID, SERUM"
-];
+const BIOCHEM_MAIN_TESTS_CANON = Array.isArray(
+  biochemRouting?.MainAnalyzer?.tests
+)
+  ? biochemRouting.MainAnalyzer.tests
+  : [];
 
 const normalizeBiochem = (s = "") =>
   String(s).toLowerCase().replace(/[\s,._\-()]+/g, " ").replace(/fluid/g, "").trim();
 
-export function isBiochemMainTest(testName) {
-  if (!testName) return false;
-  const normTest = normalizeBiochem(testName);
-  return BIOCHEM_MAIN_TESTS_CANON.some((canonical) => normalizeBiochem(canonical) === normTest);
-}
+  export function isBiochemMainTest(testName) {
+    if (!testName) return false;
+  
+    const normTest = normalizeBiochem(testName);
+  
+    return BIOCHEM_MAIN_TESTS_CANON.some((canonical) => {
+      const target = normalizeBiochem(canonical);
+      return normTest === target || normTest.includes(target);
+    });
+  }
 
 export const extractBiochemMainTestCount = (record) => {
   const tests = normalizeTestsField(record.selectedTests || record.tests || record.test || []);

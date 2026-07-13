@@ -5,7 +5,8 @@
     "description": "Primary biochemistry analyzer for serum and plasma chemistry tests. Used for routine chemistry workload.",
     "vialColor": "Red",
     "tests": [
-    
+     "ABG",
+     "ALBUMIN + GLOBULIN + A/G RATIO,SERUM",
      "ALBUMIN,SERUM",
      "ALKALINE PHOSPHATASE,SERUM",
      "BILIRUBIN(TOTAL,DIRECT & INDIRECT),SERUM",

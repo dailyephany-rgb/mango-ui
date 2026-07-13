@@ -7,6 +7,8 @@
 
 
   "Bio-Chemistry": [
+    "ABG",
+    "ALBUMIN + GLOBULIN + A/G RATIO,SERUM",
     "ALBUMIN,SERUM",
     "ALKALINE PHOSPHATASE,SERUM",
     "BILIRUBIN(TOTAL,DIRECT & INDIRECT),SERUM",
@@ -42,10 +44,12 @@
     "PHOSPHORUS,SERUM",
     "TOTAL CALCIUM,SERUM",
     "URIC ACID, SERUM",
-    "TIBC"
+    "TIBC",
+    "ABG"
   ],
   "Clinical Pathology": [
-    "ABG",
+    
+    "ABS EOSINOPHIL COUNT",
     "BONE MARROW EXAMINATION",
     "CSF (CEREBROSPINAL FLUID, ROUTINE)",
     "FNAC, SLIDE EXAMINATION",
