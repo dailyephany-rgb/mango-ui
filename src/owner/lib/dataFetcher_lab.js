@@ -2,6 +2,7 @@
 import { db } from "../../firebaseConfig.js";
 import { collection, onSnapshot } from "firebase/firestore";
 import testTimingsData from "../data/test_timings.json";
+import insideRouting from "../../inside_route_mapping.json";
 
 /* ====================== DATE UTILS ====================== */
 export const toDate = (v) => {
@@ -207,56 +208,10 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
   const masterRef = collection(db, "master_register");
   const labRef = collection(db, "inside_lab_results");
 
-  const LAB_ROUTING = {
-    "FnacRegister": ["FNAC, SLIDE EXAMINATION"],
-
-    "PathologyRegister": [
-      "BONE MARROW EXAMINATION",
-      "PAP'S SMEAR (PAPANICOLAOU SMEAR)",
-      "PUS FOR CYTOLOGY EXAMINATION",
-      "STOOL EXAMINATION",
-      "AFB SMEAR",
-      "GRAM STAIN",
-      "KOH STAINING",
-      "SPUTUM EXAMINATION",
-      "SPUTUM FOR A.F.B.",
-      "Z N STAIN",
-      "WIDAL TEST (SERUM)",
-    
-      "ASCITIC FLUID",
-      "BONE MARROW ASPIRATION",
-      "FLUID FOR OCCULT BLOOD",
-      "SPUTUM FOR OCCULT BLOOD",
-      "VOMIT FOR OCCULT BLOOD",
-      "CYTOPATHOLOGY FOR MALIGNANT CELLS"],
-
-      "CultureRegister": [
-        "BLOOD CULTURE AEROBIC",
-        "CULTURE & SENSITIVITY",
-        "ENDOTRACHEAL TUBE FOR CULTURE AND SENSITIVITY",
-        "FUNGAL SMEAR",
-        "GRAM STAIN",
-        "KOH STAINING",
-        "PUS FOR CULTURE & SENSITIVITY",
-        "SPUTUM CULTURE & SENSITIVITY",
-        "SPUTUM EXAMINATION",
-        "SPUTUM FOR A.F.B.",
-        "STOOL CULTURE, SENSITIVITY",
-        "URINE CULTURE & SENSITIVITY",
-        "VAGINAL SWAB CULTURE & SENSITIVITY",
-        "Z N STAIN",
-      
-        "CSF CULTURE & SENSITIVITY",
-        "SWAB CULTURE & SENSITIVITY",
-        "AIR SAMPLING CULTURE & SENSITIVITY",
-        "CULTURE & SENSITIVITY HAND HYGIENE",
-        "SEMEN CULTURE & SENSITIVITY"
-      ],
-
-    "FluidRegister": ["CSF (CEREBROSPINAL FLUID, ROUTINE)", "PLEURAL FLUID, ROUTINE"]
-  };
-
-  const canonTests = LAB_ROUTING[activeRegister] || [];
+  const canonTests =
+  (insideRouting[activeRegister] || []).map(t =>
+    t.trim().toUpperCase()
+  );
   let mCache = [], lCache = [];
 
   const publish = () => {
