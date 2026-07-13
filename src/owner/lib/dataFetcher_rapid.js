@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 
 import testTimings from "../data/test_timings.json";
+import backroomRouting from "../../backroom_routing.json";
 
 /* ====================== DATE UTILS ====================== */
 
@@ -48,14 +49,10 @@ export function normalizeTestsField(field) {
 
 /* ================= RAPID CANON TESTS =================== */
 
-const RAPID_KEYWORDS = [
-   "MALARIA ANTIGEN DETECTION CARD, BLOOD",
-  "TROP-T CARD",
-  "DENGUE IGG , IGM & NS 1 ANTIGEN",
-  "TYPHOID IGG,IGM",
-  "CHIKUNGUNIA IGM"
-
-];
+const RAPID_KEYWORDS =
+  Array.isArray(backroomRouting?.RapidCardRegister)
+    ? backroomRouting.RapidCardRegister
+    : [];
 
 const normalizeRapid = (s = "") =>
   String(s).toUpperCase().replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim();

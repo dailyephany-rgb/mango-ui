@@ -43,15 +43,8 @@ export function normalizeTestsField(field) {
 
 /* ================= SEROLOGY CANON TESTS =================== */
 
-const SEROLOGY_TESTS_CANON = Array.isArray(backroomRouting?.SerologyRegister)
-  ? backroomRouting.SerologyRegister
-  : [
-  "HBSAG CARD",
-    "HCV (SERUM) CARD",
-    "HIV I & II (QUANTITATIVE) CARD",
-    "VDRL (SERUM)",
-    "OCCULT BLOOD" 
-  ];
+const SEROLOGY_TESTS_CANON =
+  backroomRouting.SerologyRegister || [];
 
 const normalizeSerology = (s = "") =>
   String(s).toUpperCase().replace(/[\s,._\-()]+/g, " ").trim();
