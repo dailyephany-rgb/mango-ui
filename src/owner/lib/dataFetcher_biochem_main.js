@@ -6,7 +6,7 @@
 import { db } from "../../firebaseConfig.js";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import testTimings from "../data/test_timings.json";
-import biochemRouting from "../../biochem_routing.json";
+import biochemRouting from "../../biochem_testRouting.json";
 
 /* ====================== DATE UTILS ====================== */
 
