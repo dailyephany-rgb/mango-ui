@@ -10,8 +10,7 @@
     "HBSAG CARD",
     "HCV (SERUM) CARD",
     "HIV I & II (QUANTITATIVE) CARD",
-    "VDRL (SERUM)",
-    "OCCULT BLOOD" 
+    "VDRL (SERUM)"
   ],
   
   "RapidCardRegister": [
@@ -19,7 +18,11 @@
     "TROP-T CARD",
     "DENGUE IGG , IGM & NS 1 ANTIGEN",
     "TYPHOID IGG,IGM",
-    "CHIKUNGUNIA IGM"
+    "CHIKUNGUNIA IGM",
+    "FLUID FOR OCCULT BLOOD",
+    "STOOL FOR OCCULT BLOOD",
+    "SPUTUM FOR OCCULT BLOOD",
+    "VOMIT FOR OCCULT BLOOD" 
   ],
   "UrineAnalysisRegister": [
     "URINE ANALYSIS",

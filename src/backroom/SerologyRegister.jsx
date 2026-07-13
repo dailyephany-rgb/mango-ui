@@ -30,7 +30,7 @@ const tableFixStyles = `
 }
 .backroom-table {
   width: 100%;
-  min-width: 1600px; 
+  min-width: 1500px; 
   border-collapse: separate; 
   border-spacing: 0;
 }
@@ -79,13 +79,12 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
   return saved ? JSON.parse(saved) : {};
 });
 
-  const testsForRegister = routing.SerologyRegister || [
-    "HBSAG CARD",
-    "HCV CARD",
-    "HIV CARD",
-    "VDRL (SERUM)",
-    "OCCULT BLOOD"
-  ];
+const testsForRegister = routing.SerologyRegister || [
+  "HBSAG CARD",
+  "HCV CARD",
+  "HIV CARD",
+  "VDRL (SERUM)"
+];
 
   const normalize = (s = "") =>
     s.toLowerCase().replace(/[\s,._()-]+/g, "").trim();
@@ -190,7 +189,10 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
         compositeKey,
         source: normalizeSource(entry.source || entry.category),
         results: {
-          hbsag: "-", hcv: "-", hiv: "-", vdrl: "-", occultblood: "-",
+          hbsag: "-",
+          hcv: "-",
+          hiv: "-",
+          vdrl: "-",
           ...(entry.results || {}),
           ...(saved.results || {}),
           ...typing 
@@ -220,7 +222,7 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
       if (n.includes("hcv")) keys.add("hcv");
       if (n.includes("hiv")) keys.add("hiv"); 
       if (n.includes("vdrl")) keys.add("vdrl"); 
-      if (n.includes("occultblood") || n.includes("occult")) keys.add("occultblood");
+      
     });
     return [...keys];
   };
@@ -533,7 +535,6 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
               <th>HCV Serum</th>
               <th>HIV</th>
               <th>VDRL</th>
-              <th>Occult Blood</th>
               <th>Scanned</th>
               <th>Status</th>
               <th>Saved By</th>
@@ -565,11 +566,10 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
                   <td>{getSerologySelectedTests(e.selectedTests || []).map(t => (typeof t === "object" ? t.test : t)).join(", ") || "—"}</td>
                   {[
                     { key: "hbsag", label: "hbsag" },
-                    { key: "hcv",   label: "hcv" },
-                    { key: "hiv",   label: "hiv" }, 
-                    { key: "vdrl",  label: "vdrl" },
-                    { key: "occultblood", label: "occult" }
-                  ].map(({ key, label }) => (
+                    { key: "hcv", label: "hcv" },
+                    { key: "hiv", label: "hiv" },
+                    { key: "vdrl", label: "vdrl" }
+                    ].map(({ key, label }) => (
                     <td key={key}>
                       {hasTest(e, label) ? (
                         <select value={e.results[key] || "Pending"} disabled={!scanned || saved} onChange={(ev) => handleChange(compositeKey, key, ev.target.value)}>

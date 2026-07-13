@@ -28,7 +28,7 @@ const overflowStyles = `
   }
   .backroom-table {
     width: 100%;
-    min-width: 2400px;
+    min-width: 2800px;
     border-collapse: separate;
     border-spacing: 0;
   }
@@ -131,13 +131,7 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
     });
   };
 
-  const rapidTests = [
-    { field: "malaria", label: "Malaria Antigen", match: "malaria antigen" },
-    { field: "tropt", label: "Trop-T", match: "trop" },
-    { field: "dengue", label: "Dengue IGG/IGM/NS1", match: "dengue" },
-    { field: "typhoid", label: "Typhoid IGG/IGM", match: "typhoid" },
-    { field: "chikungunya", label: "Chikungunya IgM", match: "chikungunia" },
-  ];
+ 
 
   const normalizeSource = (raw) => {
     if (!raw) return "Unknown";
@@ -225,22 +219,27 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
         results: {
           malaria: "Pending",
           tropt: "Pending",
-        
+      
           dengue_igg: "Pending",
           dengue_igm: "Pending",
           dengue_ns1: "Pending",
-        
+      
           typhoid_igg: "Pending",
           typhoid_igm: "Pending",
-        
+      
           chikungunya_igg: "Pending",
           chikungunya_igm: "Pending",
           chikungunya_ns1: "Pending",
-        
+      
+          stool_occult: "Pending",
+          fluid_occult: "Pending",
+          sputum_occult: "Pending",
+          vomit_occult: "Pending",
+      
           ...(entry.results || {}),
           ...(saved.results || {}),
           ...typing
-        },
+      },
         scanned: localScan ?? saved.scanned ?? "No",
         scannedTime: localScanTime ?? saved.scannedTime ??  null,
         urgent: entry.urgent || false, 
@@ -286,6 +285,22 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
         keys.add("chikungunya_igg");
         keys.add("chikungunya_igm");
         keys.add("chikungunya_ns1");
+      }
+
+      if (n.includes("stool") && n.includes("occult")) {
+        keys.add("stool_occult");
+      }
+      
+      if (n.includes("fluid") && n.includes("occult")) {
+        keys.add("fluid_occult");
+      }
+      
+      if (n.includes("sputum") && n.includes("occult")) {
+        keys.add("sputum_occult");
+      }
+      
+      if (n.includes("vomit") && n.includes("occult")) {
+        keys.add("vomit_occult");
       }
     });
     return [...keys];
@@ -587,6 +602,11 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
               <th colSpan={2}>Typhoid</th>
               <th colSpan={3}>Chikungunya</th>
 
+              <th rowSpan={2}>Stool OB</th>
+              <th rowSpan={2}>Fluid OB</th>
+              <th rowSpan={2}>Sputum OB</th>
+              <th rowSpan={2}>Vomit OB</th>
+
               <th rowSpan={2}>Scanned</th>
               <th rowSpan={2}>Status</th>
               <th rowSpan={2}>Saved By</th>
@@ -700,6 +720,35 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
                   ? renderResultDropdown(e, "chikungunya_ns1")
                   : "—"}
               </td>
+                              {/* Stool Occult Blood */}
+                <td>
+                  {activeKeys.includes("stool_occult")
+                    ? renderResultDropdown(e, "stool_occult")
+                    : "—"}
+                </td>
+
+                {/* Fluid Occult Blood */}
+                <td>
+                  {activeKeys.includes("fluid_occult")
+                    ? renderResultDropdown(e, "fluid_occult")
+                    : "—"}
+                </td>
+
+                {/* Sputum Occult Blood */}
+                <td>
+                  {activeKeys.includes("sputum_occult")
+                    ? renderResultDropdown(e, "sputum_occult")
+                    : "—"}
+                </td>
+
+                {/* Vomit Occult Blood */}
+                <td>
+                  {activeKeys.includes("vomit_occult")
+                    ? renderResultDropdown(e, "vomit_occult")
+                    : "—"}
+                </td>
+
+
                   <td>
                     <select value={e.scanned} disabled={saved} onChange={(ev) => handleScan(e.compositeKey, ev.target.value)}>
                       <option value="No">No</option><option value="Yes">Yes</option>
