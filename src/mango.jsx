@@ -428,6 +428,12 @@ export default function Mango() {
              <option>Dr. Pravesh Vyas</option>
              <option>Dr. Neha Agarwal</option>
              <option>Dr. Jyotsana Sharma</option>
+             <option>Dr. Lalit Mohan Rathi</option>
+             <option>Dr. Amit Singhvi</option>
+             <option>Dr. Consultant Obstretrics</option>
+
+
+
           </select>
           <label>Category</label>
           <select ref={categoryRef} name="category" value={formData.category} onChange={handleInputChange} onKeyDown={(e) => goNext(e, sourceRef)}>
