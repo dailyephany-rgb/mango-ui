@@ -22,9 +22,6 @@ const [expandedRows, setExpandedRows] =
 const [expandedBatches, setExpandedBatches] =
   useState({});
 
-const [viewMode, setViewMode] =
-  useState("product");
-
   const [searchTerm, setSearchTerm] =
     useState("");
     const today =
@@ -66,27 +63,16 @@ const [viewMode, setViewMode] =
       }
     
       if (searchTerm.trim()) {
-
-        const search =
-          searchTerm.toLowerCase();
-      
-        filtered = filtered.filter(row =>
-      
-          row.productName
-            ?.toLowerCase()
-            .includes(search)
-      
-          ||
-      
-          (
-            viewMode === "test" &&
-            row.testName
+    
+        filtered = filtered.filter(
+          row =>
+            row.productName
               ?.toLowerCase()
-              .includes(search)
-          )
-      
+              .includes(
+                searchTerm.toLowerCase()
+              )
         );
-      
+    
       }
     
       if (fromDate) {
@@ -134,8 +120,7 @@ const [viewMode, setViewMode] =
       actionFilter,
       searchTerm,
       fromDate,
-      toDate,
-      viewMode
+      toDate
     ]);
     
     const groupedRows = useMemo(() => {
@@ -144,37 +129,20 @@ const [viewMode, setViewMode] =
       const orderedRows = [...filteredRows];
       orderedRows.forEach(row => {
 
-        const key =
-
-        viewMode === "product"
-        
-        ? `${row.productName}__${row.machine}__${row.level || ""}`
-        
-        : `${row.productName}__${row.machine}__${row.level || ""}__${row.testName || "General"}`;
+      const key =
+      `${row.productName}__${row.machine}__${row.level || ""}`;
 
         if (!groups[key]) {
   
           groups[key] = {
-
             key,
-          
             productName: row.productName,
-          
-            testName:
-              row.testName || "-",
-          
             testNames: new Set(),
-          
             level: row.level || "",
-          
             machine: row.machine,
-          
             metricType: row.metricType || "",
-          
             totalUsage: 0,
-          
             records: []
-          
           };
     
         }
@@ -200,10 +168,7 @@ const [viewMode, setViewMode] =
           b.totalUsage - a.totalUsage
       );
     
-    }, [
-      filteredRows,
-      viewMode
-    ]);
+    }, [filteredRows]);
     
 
 
@@ -383,48 +348,9 @@ const [viewMode, setViewMode] =
   Consumption Ledger
 </h2>
 
-<div className="command-tabs">
-  
-
-  <button
-    className={
-      viewMode === "product"
-        ? "active-tab"
-        : ""
-    }
-    onClick={() => {
-      setExpandedRows({});
-      setExpandedBatches({});
-      setViewMode("product");
-    }}
-  >
-    Product View
-  </button>
-
-  <button
-    className={
-      viewMode === "test"
-        ? "active-tab"
-        : ""
-    }
-    onClick={() => {
-      setExpandedRows({});
-      setExpandedBatches({});
-      setViewMode("test");
-    }}
-  >
-    Test View
-  </button>
-
-</div>
-
 <input
   type="text"
-  placeholder={
-    viewMode === "product"
-      ? "Search product..."
-      : "Search product or test..."
-  }
+  placeholder="Search product..."
   value={searchTerm}
   onChange={(e) =>
     setSearchTerm(e.target.value)
@@ -631,13 +557,8 @@ return (
           ` (${group.level})`}
       </td>
       <td>
-      {viewMode === "product"
-
-      ? ([...group.testNames].join(", ") || "-")
-
-      : group.testName}
-
-      </td>
+      {[...group.testNames].join(", ") || "-"}
+    </td>
 
         <td>
           {[

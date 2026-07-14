@@ -42,6 +42,12 @@ export const testToReagentMap = {
   "GLUCOSE POST - PRANDIAL( P.P. ),PLASMA": { name: "GLUCOSE/5 PACK/300 SLIDES", qty: 1 },
   "GLUCOSE RANDOM,PLASMA": { name: "GLUCOSE/5 PACK/300 SLIDES", qty: 1 },
 
+
+  "ALBUMIN + GLOBULIN + A/G RATIO,SERUM": [
+    { name: "ALBUMIN/5 PACK/90 SLIDES", qty: 1 },
+    { name: "TOTAL PROTEIN/5 PACK/90 SLIDES", qty: 1 }
+  ],
+
   "BILIRUBIN(TOTAL,DIRECT & INDIRECT),SERUM": [
     { name: "TOT BILIRUBIN/5 PACK/300 SLIDES", qty: 1 },
     { name: "BUBC/5 PACK/300 SLIDES (DIRECT AND INDIRECT BILIRUBIN)", qty: 1 }
@@ -87,8 +93,6 @@ export const testToReagentMap = {
       { name: "ALT/5 PACK/300 SLIDES", qty: 1 },
       { name: "ALKP/5 PACK/300SLIDES", qty: 1 },
     ],
-
-
   },
 
   "RFT(RENAL FUNCTION TEST)": {
@@ -128,11 +132,13 @@ export const testToReagentMap = {
   "HIV I & II (QUANTITATIVE)": { name: "VITR HIV CMBO RGT PK (NONUS 100 WELLS)", qty: 1 },
   "HBSAG": { name: "VITROS HBSAG / 100 WELLS", qty: 1 },
   "BETA-HCG (HUMAN CHORIONIC GONADOTROPIN)": { name: "TOT B-hCG / 100 WELLS", qty: 1 },
-  "FOLATE": { name: "FOLATE 100 WELLS", qty: 1 },
   "PSA": { name: "TOTAL PSA 100 WELLS", qty: 1 },
   "HCV (SERUM)": { name: "ECI HCV 100 WELLS", qty: 1 },
   "TROP-T": { name: "HS TROP REAGENT 100 WELLS", qty: 1 },
   "TROPONIN I": { name: "HS TROPONIN I REAGENT 100 WELLS", qty: 1 },
+ 
+
+
 
   "ALBUMIN,SERUM - BACKUP": { name: "Yumizen CS Albumin", qty: 1 },
   "ALKALINE PHOSPHATASE,SERUM - BACKUP": { name: "Yumizen CS ALP", qty: 1 },
@@ -156,6 +162,12 @@ export const testToReagentMap = {
   "TRIGLYCERIDES,SERUM - BACKUP": { name: "Yumizen CS TRIGLYCERIDES", qty: 1 },
   "URIC ACID, SERUM - BACKUP": { name: "Yumizen CS URIC ACID", qty: 1 },
 
+  
+  "ALBUMIN + GLOBULIN + A/G RATIO,SERUM - BACKUP": [
+    { name: "Yumizen CS Albumin", qty: 1 },
+    { name: "Yumizen CS TOTAL PROTEIN", qty: 1 }
+  ],
+
   "BILIRUBIN(TOTAL,DIRECT & INDIRECT),SERUM - BACKUP": [
     { name: "Yumizen CS Bilirubin Direct 125 Ml Total", qty: 1 },
     { name: "Yumizen CS Bilirubin Total 125 Ml Total", qty: 1 }
@@ -164,8 +176,6 @@ export const testToReagentMap = {
   "LIPID PROFILE - BACKUP": [
       { name: "Yumizen CS CHOLESTROL", qty: 1 },
       { name: "Yumizen CS TRIGLYCERIDES", qty: 1 },
-      { name: "Yumizen CS DIRECT LDL", qty: 1 },
-      { name: "Yumizen CS HDL", qty: 1 },
     ],
   
 
@@ -223,6 +233,21 @@ export const testToReagentMap = {
       ],
       },
 
+
+  "AMH (ANTI MULLERIAN HORMONE) - BACKUP": { name: "Access AMH", qty: 1 },
+  "BETA-HCG (HUMAN CHORIONIC GONADOTROPIN)  - BACKUP": { name: "Access Total BhCG", qty: 1 },
+  "E2 (ESTRADIOL II)  - BACKUP": { name: "Access Sensitive Estradiol", qty: 1 },
+  "FSH (FOLLICLE STIMULATING HORMONE)  - BACKUP": { name: "Access hFSH", qty: 1 },
+  "FT4 (FREE THYROXINE)  - BACKUP": { name: "Access Free T4", qty: 1 },
+  "LH (LUTEINIZING HORMONE)  - BACKUP": { name: "Access hLH", qty: 1 },
+  "PROLACTIN  - BACKUP": { name: "Access Prolactin", qty: 1 },
+  "T3  - BACKUP": { name: "Access TOTAL T3", qty: 1 },
+  "T4  - BACKUP": { name: "Access TOTAL T4", qty: 1 },
+  "TSH (THYROID STIMULATING HORMONE)  - BACKUP": { name: "Access TSH Reagent", qty: 1 },
+  "PROGESTERONE  - BACKUP": { name: "Access Progesterone", qty: 1 },
+  "VITAMIN B12 LEVEL  - BACKUP": { name: "Access Vitamin B12 Reagent", qty: 1 },
+  "VITAMIN D25 (OH) TOTAL  - BACKUP": { name: "25 (OH) Vitamin D Total for use on Access", qty: 1 },
+  "PSA  - BACKUP": { name: "HYBRITECH PSA 2*50 TESTS", qty: 1 },
   "CRP(C-REACTIVE PROTEIN,SERUM QUANTITATIVE) - MISPA": { name: "AGAPPE CRP 30 TEST", qty: 1 },
   "GLYCOSYLATED HEMOGLOBIN(HbA1c) - MISPA": { name: "AGAPPE HBA1C 30 TEST", qty: 1 },
   "RHEUMATOID FACTOR QUANTITATIVE,SERUM - MISPA": { name: "AGAPPE RF 30 TEST", qty: 1 },
@@ -230,7 +255,6 @@ export const testToReagentMap = {
   "ELECTROLYTES,SERUM - GEM 3500": { name: "GEM 3/3.5 K BG/ISE/GL 450 Test BGEM", qty: 1 },
   "SODIUM,SERUM - GEM 3500": { name: "GEM 3/3.5 K BG/ISE/GL 450 Test BGEM", qty: 1 },
   "POTASSIUM,SERUM - GEM 3500": { name: "GEM 3/3.5 K BG/ISE/GL 450 Test BGEM", qty: 1 },
-  "CHLORIDE,SERUM - GEM 3500": { name: "GEM 3/3.5 K BG/ISE/GL 450 Test BGEM", qty: 1 },
   "CALCIUM IONISED - GEM 3500": { name: "GEM 3/3.5 K BG/ISE/GL 450 Test BGEM", qty: 1 },
 
   // --- HAEMATOLOGY 3-PART MAPPINGS ---
@@ -369,7 +393,7 @@ export const testToReagentMap = {
 
 "HIV I & II (QUANTITATIVE) CARD": { name: "HIV TRI DOT J.MITRA", qty: 1 },
 "VDRL (SERUM)": { name: "SYPHILLIS RAPID TEST STRIP ASPEN 50 TEST", qty: 1 },
-"OCCULT BLOOD": { name: "HAEMTEST OCCULT BLOOD KIT", qty: 1 },
+
 
 // --- RAPID CARD ---
 
@@ -380,6 +404,11 @@ export const testToReagentMap = {
 "TROP-T CARD": { name: "TROP-T SENSITIVE (LAXMI DISTRIBUTORS).", qty: 1 },
 "TYPHOID IGG , IGM": { name: "TYPHOID IGG / IGM 30 TEST", qty: 1 },
 "CHIKUNGUNIA IGM": { name: "CHICKUNGUNYA IGM J.MITRA 10 TEST", qty: 1 },
+"FLUID FOR OCCULT BLOOD": { name: "HAEMTEST OCCULT BLOOD KIT", qty: 1 },
+"SPUTUM FOR OCCULT BLOOD": { name: "HAEMTEST OCCULT BLOOD KIT", qty: 1 },
+"VOMIT FOR OCCULT BLOOD": { name: "HAEMTEST OCCULT BLOOD KIT", qty: 1 },
+"STOOL FOR OCCULT BLOOD": { name: "HAEMTEST OCCULT BLOOD KIT", qty: 1 },
+
 
 // --- URINE ---
 
