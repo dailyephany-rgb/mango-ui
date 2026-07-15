@@ -153,30 +153,27 @@
 
 
 
-  { "id": 99, "name": "ASSAYED CHEMISTRY CONTROL-1 (BIO RAD)","machineName":"VITROS 6500","inventoryType": "Control", "metricType": "rounds"},
-  { "id": 100, "name": "ASSAYED CHEMISTRY CONTROL-2 (BIO RAD)","machineName":"VITROS 6500","inventoryType": "Control","metricType": "rounds"},
-  { "id": 101, "name": "CRP PERF VERIFIER I","machineName":"VITROS 6500","inventoryType": "Control","metricType": "rounds"},
-  { "id": 102, "name": "CRP PERF VERIFIER II","machineName":"VITROS 6500","inventoryType": "Control","metricType": "rounds"},
+  { "id": 99, "name": "ASSAYED CHEMISTRY CONTROL-1 (BIO RAD)","machineName":"VITROS 6500","inventoryType": "Control", "metricType": "ml"},
+  { "id": 100, "name": "ASSAYED CHEMISTRY CONTROL-2 (BIO RAD)","machineName":"VITROS 6500","inventoryType": "Control","metricType": "ml"},
+  { "id": 101, "name": "CRP PERF VERIFIER I","machineName":"VITROS 6500","inventoryType": "Control","metricType": "ml"},
+  { "id": 102, "name": "CRP PERF VERIFIER II","machineName":"VITROS 6500","inventoryType": "Control","metricType": "ml"},
   
-  { "id": 103, "name": "Kit Diabetes Liq MP MAS I","machineName":"VITROS 6500","inventoryType": "Control","metricType": "rounds"},
-  { "id": 104, "name": "Kit Diabetes Liq MP MAS II","machineName":"VITROS 6500","inventoryType": "Control","metricType": "rounds"},
-  { "id": 105, "name": "IMMUNOASSAY PLUS CONTROL 3*4","machineName":"VITROS 6500","inventoryType": "Control","metricType": "rounds"},
-  { "id": 106, "name": "ECI HIV I&II CONTROL","machineName":"VITROS 6500","inventoryType": "Control","metricType": "rounds"},
+  { "id": 103, "name": "Kit Diabetes Liq MP MAS I","machineName":"VITROS 6500","inventoryType": "Control","metricType": "ml"},
+  { "id": 104, "name": "Kit Diabetes Liq MP MAS II","machineName":"VITROS 6500","inventoryType": "Control","metricType": "ml"},
+  { "id": 105, "name": "IMMUNOASSAY PLUS CONTROL 3*4","machineName":"VITROS 6500","inventoryType": "Control","metricType": "ml"},
+  { "id": 106, "name": "ECI HIV I&II CONTROL","machineName":"VITROS 6500","inventoryType": "Control","metricType": "ml"},
 
-  { "id": 107, "name": "ECI HBSAG CONTROL","machineName":"VITROS 6500","inventoryType": "Control","metricType": "rounds"},
+  { "id": 107, "name": "ECI HBSAG CONTROL","machineName":"VITROS 6500","inventoryType": "Control","metricType": "ml"},
 
 
-  { "id": 108, "name": "YUMIZEN CS N CONTROL","machineName":"Yumizen C-150","inventoryType": "Control","metricType": "rounds"},
+  { "id": 108, "name": "YUMIZEN CS N CONTROL","machineName":"Yumizen C-150","inventoryType": "Control","metricType": "ml"},
 
-  { "id": 109, "name": "YUMIZEN CS P CONTROL","machineName":"Yumizen C-150","inventoryType": "Control","metricType": "rounds"},
+  { "id": 109, "name": "YUMIZEN CS P CONTROL","machineName":"Yumizen C-150","inventoryType": "Control","metricType": "ml"},
 
-  { "id": 110, "name": "EQAS EXTERNAL CONTROL","machineName":"Access 2","inventoryType": "Control","metricType": "rounds"},
-  { "id": 111, "name": "ABX DIFFTROL (CONTROL) 1*3 ML/ 3 BOTTLES", "machineName":"5 Part Machine","inventoryType": "Control","metricType": "rounds"},
+  { "id": 110, "name": "EQAS EXTERNAL CONTROL","machineName":"Access 2","inventoryType": "Control","metricType": "ml"},
+  { "id": 111, "name": "ABX DIFFTROL (CONTROL) 1*3 ML/ 3 BOTTLES", "machineName":"5 Part Machine","inventoryType": "Control","metricType": "ml"},
 
-  { "id": 112, "name": "YUMIZEN CTRL I & II","machineName":"Yumizen C-150","inventoryType": "Control","metricType": "rounds"},
-
-  { "id": 113, "name": "URINE CONTROL LEVEL 1","machineName":"Urine","inventoryType": "Control","metricType": "rounds"},
-  { "id": 114, "name": "URINE CONTROL LEVEL 2","machineName":"Urine","inventoryType": "Control","metricType": "rounds"},
+  { "id": 112, "name": "YUMIZEN CTRL I & II","machineName":"Yumizen C-150","inventoryType": "Control","metricType": "ml"},
 
 
 
@@ -184,57 +181,58 @@
 
 
 
-  { "id": 115, "name": "Vitros Cal-01 Total","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
-  { "id": 116, "name": "Vitros Cal-02 Total","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
-  { "id": 117, "name": "Vitros Cal-03 Total","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
-  { "id": 118, "name": "Vitros Cal-04 Total","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
-  { "id": 119, "name": "Vitros Cal-07 Total","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
-  { "id": 120, "name": "Vitros Cal-25 Total","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
-  { "id": 121, "name": "Vitros Cal-29 Total","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
-  { "id": 122, "name": "Vitros Cal-33 Total","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
+
+  { "id": 113, "name": "Vitros Cal-01 Total","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
+  { "id": 114, "name": "Vitros Cal-02 Total","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
+  { "id": 115, "name": "Vitros Cal-03 Total","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
+  { "id": 116, "name": "Vitros Cal-04 Total","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
+  { "id": 117, "name": "Vitros Cal-07 Total","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
+  { "id": 118, "name": "Vitros Cal-25 Total","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
+  { "id": 119, "name": "Vitros Cal-29 Total","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
+  { "id": 120, "name": "Vitros Cal-33 Total","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
 
  
-  { "id": 123, "name": "TOT B-HCG CAL II BX/ 3 SET","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
+  { "id": 121, "name": "TOT B-HCG CAL II BX/ 3 SET","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
 
-  { "id": 124, "name": "ESTRADIOL CAL BOX","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
-  { "id": 125, "name": "FERRITIN CAL BOX/3 SET","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
-  { "id": 126, "name": "FSH CALIBRATOR BOX 1 SET","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
-  { "id": 127, "name": "FREE T4 CAL BOX","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
-  { "id": 128, "name": "VITROS HIV CMBO CALIB","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
-  { "id": 129, "name": "VITROS HBSAG ES CAL","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
-  { "id": 130, "name": "LH CALIBRATOR BOX/ 1 SET","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
-  { "id": 131, "name": "PROLACTIN CALIBRATOR BOX/ 1 SET","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
+  { "id": 122, "name": "ESTRADIOL CAL BOX","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
+  { "id": 123, "name": "FERRITIN CAL BOX/3 SET","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
+  { "id": 124, "name": "FSH CALIBRATOR BOX 1 SET","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
+  { "id": 125, "name": "FREE T4 CAL BOX","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
+  { "id": 126, "name": "VITROS HIV CMBO CALIB","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
+  { "id": 127, "name": "VITROS HBSAG ES CAL","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
+  { "id": 128, "name": "LH CALIBRATOR BOX/ 1 SET","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
+  { "id": 129, "name": "PROLACTIN CALIBRATOR BOX/ 1 SET","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
 
-  { "id": 132, "name": "PROGESTERONE CALIBRATOR BOX SET 3","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
+  { "id": 130, "name": "PROGESTERONE CALIBRATOR BOX SET 3","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
 
-  { "id": 133, "name": "TOT 4 Cal box/ 1 set","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
+  { "id": 131, "name": "TOT 4 Cal box/ 1 set","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
 
-  { "id": 134, "name": "TSH CALIBRATOR BOX 1 SET","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
+  { "id": 132, "name": "TSH CALIBRATOR BOX 1 SET","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
 
-  { "id": 135, "name": "FOLATE CALIBRATOR BOX 1 SET","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
-  { "id": 136, "name": "B12 CALIBRATOR BOX 1 SET","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
-  { "id": 137, "name": "25 OH VITAMIN D TOTAL CAL","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "rounds"},
+  { "id": 133, "name": "FOLATE CALIBRATOR BOX 1 SET","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
+  { "id": 134, "name": "B12 CALIBRATOR BOX 1 SET","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
+  { "id": 135, "name": "25 OH VITAMIN D TOTAL CAL","machineName":"VITROS 6500","inventoryType": "Calibrator","metricType": "ml"},
 
-{ "id": 138, "name": "Access AMH Calibrator S0-S5","machineName":"Access 2","inventoryType": "Calibrator","metricType": "rounds"},
+{ "id": 136, "name": "Access AMH Calibrator S0-S5","machineName":"Access 2","inventoryType": "Calibrator","metricType": "ml"},
 
-{ "id": 139, "name": "Access Sensitive Estradiol Calibrators","machineName":"Access 2","inventoryType": "Calibrator","metricType": "rounds"},
+{ "id": 137, "name": "Access Sensitive Estradiol Calibrators","machineName":"Access 2","inventoryType": "Calibrator","metricType": "ml"},
 
-{ "id": 140, "name": "Access hFSH Calibrators","machineName":"Access 2","inventoryType": "Calibrator","metricType": "rounds"},
+{ "id": 138, "name": "Access hFSH Calibrators","machineName":"Access 2","inventoryType": "Calibrator","metricType": "ml"},
 
-{ "id": 141, "name": "Access Free T4 Calibrators S0-S5","machineName":"Access 2","inventoryType": "Calibrator","metricType": "rounds"},
+{ "id": 139, "name": "Access Free T4 Calibrators S0-S5","machineName":"Access 2","inventoryType": "Calibrator","metricType": "ml"},
 
-{ "id": 142, "name": "Access hLH Calibrator","machineName":"Access 2","inventoryType": "Calibrator","metricType": "rounds"},
+{ "id": 140, "name": "Access hLH Calibrator","machineName":"Access 2","inventoryType": "Calibrator","metricType": "ml"},
 
-{ "id": 143, "name": "Access Prolactin Calibrator","machineName":"Access 2","inventoryType": "Calibrator","metricType": "rounds"},
+{ "id": 141, "name": "Access Prolactin Calibrator","machineName":"Access 2","inventoryType": "Calibrator","metricType": "ml"},
 
-{ "id": 144, "name": "Access Progesterone Calibrator","machineName":"Access 2","inventoryType": "Calibrator","metricType": "rounds"},
+{ "id": 142, "name": "Access Progesterone Calibrator","machineName":"Access 2","inventoryType": "Calibrator","metricType": "ml"},
 
-{ "id": 145, "name": "Access TSH Reagent Calibrator set 2.5 ml vial","machineName":"Access 2","inventoryType": "Calibrator","metricType": "rounds"},
+{ "id": 143, "name": "Access TSH Reagent Calibrator set 2.5 ml vial","machineName":"Access 2","inventoryType": "Calibrator","metricType": "ml"},
 
-{ "id": 146, "name": "Access Vitamin B12 Calibrator","machineName":"Access 2","inventoryType": "Calibrator","metricType": "rounds"},
-{ "id": 147, "name": "25 (OH) Vitamin D Total Calibrator","machineName":"Access 2","inventoryType": "Calibrator","metricType": "rounds"},
-{ "id": 148, "name": "HYBRITECH PSA CAL","machineName":"Access 2","inventoryType": "Calibrator","metricType": "rounds"},
-{ "id": 149, "name": "YUMIZEN CS MULTICAL","machineName":"Yumizen C-150","inventoryType": "Calibrator","metricType": "rounds"},
+{ "id": 144, "name": "Access Vitamin B12 Calibrator","machineName":"Access 2","inventoryType": "Calibrator","metricType": "ml"},
+{ "id": 145, "name": "25 (OH) Vitamin D Total Calibrator","machineName":"Access 2","inventoryType": "Calibrator","metricType": "ml"},
+{ "id": 146, "name": "HYBRITECH PSA CAL","machineName":"Access 2","inventoryType": "Calibrator","metricType": "ml"},
+{ "id": 147, "name": "YUMIZEN CS MULTICAL","machineName":"Yumizen C-150","inventoryType": "Calibrator","metricType": "ml"},
 
 
 
@@ -244,41 +242,44 @@
 
   
   
-  { "id": 150, "name": "VITROS CUVETTE BOX","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 151, "name":  "VITROS SAMPLE CUP","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 152, "name":   "VITROS MICROTIPS","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 153, "name":   "VITROS VARSA TIP","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 154, "name": "VITROS ERF","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 155, "name": "VITROS IWF","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 156, "name": "VITROS SR","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 157, "name": "VITROS MAINTAINANCE PACK","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 158, "name": "VITROS DECICENT PACK","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 159, "name": "VITROS HUMIDITY PACK","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 160, "name": "VITROS UWR","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 161, "name": "MISPA CUVETTES","machineName":"Mispa i2","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 162, "name": "MISPA MICROTIPS","machineName":"Mispa i2","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 163, "name": "C-150 DISTIL WATER","machineName":"Yumizen C-150","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 164, "name": "C-150 SAMPLE CUPS","machineName":"Yumizen C-150","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 165, "name": "C-150 SPECIAL WASH SOLUTION","machineName":"Yumizen C-150","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 148, "name": "VITROS CUVETTE BOX","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 149, "name":  "VITROS SAMPLE CUP","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 150, "name":   "VITROS MICROTIPS","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 151, "name":   "VITROS VARSA TIP","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 152, "name": "VITROS ERF","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 153, "name": "VITROS IWF","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 154, "name": "VITROS SR","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 155, "name": "VITROS MAINTAINANCE PACK","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 156, "name": "VITROS DECICENT PACK","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 157, "name": "VITROS HUMIDITY PACK","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 158, "name": "VITROS UWR","machineName":"VITROS 6500","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 159, "name": "MISPA CUVETTES","machineName":"Mispa i2","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 160, "name": "MISPA MICROTIPS","machineName":"Mispa i2","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 161, "name": "C-150 DISTIL WATER","machineName":"Yumizen C-150","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 162, "name": "C-150 SAMPLE CUPS","machineName":"Yumizen C-150","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 163, "name": "C-150 SPECIAL WASH SOLUTION","machineName":"Yumizen C-150","inventoryType": "Consumable","metricType": "packs"},
 
-  { "id": 166, "name": "C-150 CUVETTES","machineName":"Yumizen C-150","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 164, "name": "C-150 CUVETTES","machineName":"Yumizen C-150","inventoryType": "Consumable","metricType": "packs"},
 
-  { "id": 167, "name": "ACCESS SUBSTRATE","machineName":"Access 2","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 168, "name": "ACCESS WASH BUFFER","machineName":"Access 2","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 169, "name": "ACCESS RV","machineName":"Access 2","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 170, "name": "ACCESS WASTE BAG","machineName":"Access 2","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 171, "name": "ACCESS SAMPLE CUP","machineName":"Access 2","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 172, "name": "ACCESS CALIBRATOR CUP","machineName":"Access 2","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 173, "name": "ACCESS SYSTEM CHECK SOLUTION","machineName":"Access 2","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 165, "name": "ACCESS SUBSTRATE","machineName":"Access 2","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 166, "name": "ACCESS WASH BUFFER","machineName":"Access 2","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 167, "name": "ACCESS RV","machineName":"Access 2","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 168, "name": "ACCESS WASTE BAG","machineName":"Access 2","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 169, "name": "ACCESS SAMPLE CUP","machineName":"Access 2","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 170, "name": "ACCESS CALIBRATOR CUP","machineName":"Access 2","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 171, "name": "ACCESS SYSTEM CHECK SOLUTION","machineName":"Access 2","inventoryType": "Consumable","metricType": "packs"},
 
 
 
   
  
-  { "id": 174, "name": "YUMIZEN G CLEANER 4.5 L","machineName":"Yumizen G800","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 175, "name": "YUMIZEN C SORB","machineName":"Yumizen G800","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 176, "name": "YUMIZEN CUVETTES","machineName":"Yumizen G800","inventoryType": "Consumable","metricType": "packs"},
-  { "id": 177, "name": "YUMIZEN CLEAN SYS","machineName":"Yumizen G800","inventoryType": "Consumable","metricType": "packs"}
+  { "id": 172, "name": "YUMIZEN G CLEANER 4.5 L","machineName":"Yumizen G800","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 173, "name": "YUMIZEN C SORB","machineName":"Yumizen G800","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 174, "name": "YUMIZEN CUVETTES","machineName":"Yumizen G800","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 175, "name": "YUMIZEN CLEAN SYS","machineName":"Yumizen G800","inventoryType": "Consumable","metricType": "packs"},
+  { "id": 176, "name": "URINE CONTROL LEVEL 1","machineName":"Urine","inventoryType": "Control","metricType": "ml"},
+  { "id": 177, "name": "URINE CONTROL LEVEL 2","machineName":"Urine","inventoryType": "Control","metricType": "ml"}
+
 ]
 
 

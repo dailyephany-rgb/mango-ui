@@ -127,9 +127,6 @@ export default function InventoryIntake() {
       else if (metric === "packs") {
         setInventoryUnit("Packs");
       }
-      else if (metric === "rounds") {
-        setInventoryUnit("Rounds");
-    }
   
       const multiplier = reagentObj.defaultMultiplier || 1;
   
