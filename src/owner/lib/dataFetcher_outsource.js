@@ -408,12 +408,38 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
     const to = dateRange?.to ? new Date(dateRange.to + "T23:59:59") : null;
 
     const filteredMaster = mCache.filter(row => {
-  
       const t = toDate(row.timePrinted);
-      if (!t || (from && t < from) || (to && t > to)) return false;
-      if (source && source !== "All" && String(row.source || "").toLowerCase() !== String(source).toLowerCase()) return false;
+    
       const tests = normalizeTestsField(row.selectedTests || row.tests);
-      return tests.some(test => canonSet.has(test));
+    
+      const inDate =
+        t &&
+        (!from || t >= from) &&
+        (!to || t <= to);
+    
+      const sourceOk =
+        !source ||
+        source === "All" ||
+        String(row.source || "").toLowerCase() ===
+          String(source).toLowerCase();
+    
+      const testMatch =
+        tests.some(test => canonSet.has(test));
+    
+      if (!inDate || !sourceOk || !testMatch) {
+        console.log("MASTER REJECTED", {
+          regNo: row.regNo,
+          diagnosticNo: row.diagnosticNo,
+          printed: row.timePrinted,
+          source: row.source,
+          inDate,
+          sourceOk,
+          testMatch,
+          tests
+        });
+      }
+    
+      return inDate && sourceOk && testMatch;
     });
 
     console.log("Filtered Master Count:", filteredMaster.length);
