@@ -2,7 +2,7 @@
 
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "../../firebaseConfig.js";
-import { ownerFilters } from "../components/DateSourceFilter";
+
 
 export const ROUTINE_WORKFLOW_LOOKUP = {
   "Bio-Chemistry": {
@@ -130,33 +130,32 @@ const toDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
-const matchesOwnerFilters = (record) => {
+const matchesFilters = (record, source, dateRange) => {
   const printed = toDate(record.timePrinted);
 
   if (!printed) return false;
 
-  const { from, to, source } = ownerFilters.getState();
+  const from = dateRange?.from
+    ? new Date(dateRange.from + "T00:00:00")
+    : null;
 
-  if (from) {
-    const fromDate = new Date(from);
-    fromDate.setHours(0, 0, 0, 0);
+  const to = dateRange?.to
+    ? new Date(dateRange.to + "T23:59:59")
+    : null;
 
-    if (printed < fromDate) return false;
-  }
+  if (from && printed < from) return false;
+  if (to && printed > to) return false;
 
-  if (to) {
-    const toDateObj = new Date(to);
-    toDateObj.setHours(23, 59, 59, 999);
+  const normSource =
+    source && source !== "All"
+      ? source.trim().toUpperCase()
+      : null;
 
-    if (printed > toDateObj) return false;
-  }
+  if (normSource) {
+    const rowSource =
+      (record.source || "").trim().toUpperCase();
 
-  if (
-    source &&
-    source !== "All" &&
-    record.source !== source
-  ) {
-    return false;
+    if (rowSource !== normSource) return false;
   }
 
   return true;
@@ -555,12 +554,19 @@ export const buildWorkflowSummary = (records) => {
   };
 };
 
-export const subscribeToWorkflowAnalytics = (onData, onError) => {
+export const subscribeToWorkflowAnalytics = ({
+  onData,
+  onError,
+  source = "All",
+  dateRange,
+}) => {
   let reportRecords = [];
 
   const emit = () => {
     const filteredReports =
-      reportRecords.filter(matchesOwnerFilters);
+  reportRecords.filter((record) =>
+    matchesFilters(record, source, dateRange)
+  );
   
     const records =
       mergeWorkflowRecords(filteredReports);
@@ -596,14 +602,10 @@ export const subscribeToWorkflowAnalytics = (onData, onError) => {
     },
     onError
   );
-  const unsubscribeFilters =
-  ownerFilters.subscribe(() => {
-    emit();
-  });
+  
 
   return () => {
     unsubscribeReport();
-    unsubscribeFilters();
   };
 };
   

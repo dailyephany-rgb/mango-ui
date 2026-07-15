@@ -33,13 +33,15 @@ export default function OwnerApp() {
   } = workflowData;
 
   useEffect(() => {
-    const unsubscribe = subscribeToWorkflowAnalytics(
-      (data) => {
+    const unsubscribe = subscribeToWorkflowAnalytics({
+      onData: (data) => {
         setWorkflowData(data);
         setLoading(false);
       },
-      console.error
-    );
+      onError: console.error,
+      source,
+      dateRange,
+    });
 
     return () => unsubscribe && unsubscribe();
   }, []);
