@@ -381,6 +381,9 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
   const outsourceRef = collection(db, "outsource_tracking");
 
   const canonTests = OUTSOURCE_ROUTING[activeRegister] || [];
+  console.log("activeRegister:", activeRegister);
+  console.log("canonTests length:", canonTests.length);
+  console.log("Available keys:", Object.keys(OUTSOURCE_ROUTING));
 
     // Build once instead of repeatedly
     const canonSet = new Set(
