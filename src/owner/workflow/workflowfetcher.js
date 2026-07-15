@@ -2,6 +2,7 @@
 
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "../../firebaseConfig.js";
+import { ownerFilters } from "../components/DateSourceFilter";
 
 export const ROUTINE_WORKFLOW_LOOKUP = {
   "Bio-Chemistry": {
@@ -127,6 +128,38 @@ const toDate = (value) => {
 
   const parsed = value instanceof Date ? value : new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const matchesOwnerFilters = (record) => {
+  const printed = toDate(record.timePrinted);
+
+  if (!printed) return false;
+
+  const { from, to, source } = ownerFilters.getState();
+
+  if (from) {
+    const fromDate = new Date(from);
+    fromDate.setHours(0, 0, 0, 0);
+
+    if (printed < fromDate) return false;
+  }
+
+  if (to) {
+    const toDateObj = new Date(to);
+    toDateObj.setHours(23, 59, 59, 999);
+
+    if (printed > toDateObj) return false;
+  }
+
+  if (
+    source &&
+    source !== "All" &&
+    record.source !== source
+  ) {
+    return false;
+  }
+
+  return true;
 };
 
 const minutesBetween = (start, end) => {
@@ -526,7 +559,11 @@ export const subscribeToWorkflowAnalytics = (onData, onError) => {
   let reportRecords = [];
 
   const emit = () => {
-    const records = mergeWorkflowRecords(reportRecords);
+    const filteredReports =
+      reportRecords.filter(matchesOwnerFilters);
+  
+    const records =
+      mergeWorkflowRecords(filteredReports);
 
     const stackedBarRecords = records.filter(
       (record) =>
@@ -559,9 +596,14 @@ export const subscribeToWorkflowAnalytics = (onData, onError) => {
     },
     onError
   );
+  const unsubscribeFilters =
+  ownerFilters.subscribe(() => {
+    emit();
+  });
 
   return () => {
     unsubscribeReport();
+    unsubscribeFilters();
   };
 };
   
