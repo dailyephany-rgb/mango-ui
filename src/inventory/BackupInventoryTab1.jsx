@@ -30,7 +30,7 @@ export default function DeptInventoryTab() {
   // --- CALIBRATION MODAL STATE --
 
   const [showCalModal, setShowCalModal] = useState(false);
-  const [calSelections, setCalSelections] = useState({});
+  const [calDeductions, setCalDeductions] = useState({});
   const [calReason, setCalReason] = useState("Machine Demand");
   const [calResult, setCalResult] = useState("Success");
   const [calRootCause, setCalRootCause] = useState("");
@@ -45,7 +45,7 @@ export default function DeptInventoryTab() {
   const [qcLevel, setQCLevel] = useState("Level I");
   const [qcPerformedBy, setQCPerformedBy] = useState("");
   const [otherReason, setOtherReason] = useState("");
-  const [qcSelections, setQCSelections] = useState({});
+  const [qcDeductions, setQCDeductions] = useState({});
   const [baseLineValue, setBaseLineValue] = useState("");
   const [actualOutput, setActualOutput] = useState("");
   const [qcResult, setQCResult] = useState("Success");
@@ -642,10 +642,9 @@ try {
 
   const handleConfirmCalibration = async () => {
 
-    const selections = Object.keys(calSelections)
-  .filter(name => calSelections[name]);
+    const selections = Object.keys(calDeductions).filter(name => Number(calDeductions[name]) > 0);
     if (selections.length === 0) {
-      alert("Please select at least one calibrator.");
+      alert("Please enter quantities.");
       return;
     }
   
@@ -657,7 +656,7 @@ try {
       const calibrationAuditDetails = [];
   
       for (const name of selections) {
-        const qty = 1;
+        const qty = Number(calDeductions[name]);
         const item = activeCalibrators.find(c => c.reagentName === name);
   
         if (item) {
@@ -755,7 +754,7 @@ try {
       });
   
       // ✅ CLEAN RESET
-      setCalSelections({});
+      setCalDeductions({});
       setCalRootCause("");
       setCalCorrectiveAction("");
       setCalPreventativeAction("");
@@ -773,9 +772,8 @@ try {
   };
 
   const handleConfirmQC = async () => {
-    const selections = Object.keys(qcSelections)
-  .filter(name => qcSelections[name]);
-    if (selections.length === 0) { alert("Please select at least one control.");return; }
+    const selections = Object.keys(qcDeductions).filter(name => Number(qcDeductions[name]) > 0);
+    if (selections.length === 0) { alert("Please enter quantities."); return; }
     try {
       const batch = writeBatch(db);
       const qcAuditDetails = [];
@@ -784,7 +782,7 @@ try {
       let expiryDates = [];
 
       for (const name of selections) {
-        const qty = 1;
+        const qty = Number(qcDeductions[name]);
         const item = activeControls.find(c => c.reagentName === name);
         if (item) {
           const docRef = doc(db, "inventory_logs", item.id);
@@ -883,7 +881,7 @@ try {
           : "ACCESS 2",
            });
 
-      setQCSelections({});
+      setQCDeductions({});
       setBaseLineValue("");
       setActualOutput("");
       setQCResult("Success");
@@ -1403,7 +1401,7 @@ try {
               }}
             >
   <label className="label-dim" style={{ marginBottom: '10px', display: 'block' }}>
-  Control & Use 1 Round:
+    Control & Quantity Used:
   </label>
 
   <table style={{ width: '100%', color: 'white' }}>
@@ -1430,16 +1428,23 @@ try {
             </small>
           </td>
           <td>
-             <input
-          type="checkbox"
-          checked={qcSelections[ctrl.reagentName] || false}
-          onChange={(e)=>
-            setQCSelections({
-              ...qcSelections,
-              [ctrl.reagentName]: e.target.checked
-            })
-          }
-        />
+            <input
+              type="number"
+              value={qcDeductions[ctrl.reagentName] || ""}
+              onChange={(e) =>
+                setQCDeductions({
+                  ...qcDeductions,
+                  [ctrl.reagentName]: e.target.value
+                })
+              }
+              style={{
+                width: '60px',
+                background: '#222',
+                color: 'white',
+                border: '1px solid #444',
+                padding: '4px'
+              }}
+            />
           </td>
         </tr>
       ))}
@@ -1561,7 +1566,7 @@ try {
   }}
 >
   <label className="label-dim" style={{ marginBottom: '10px', display: 'block' }}>
-  Calibrator & Use 1 Round:
+    Calibrator & Quantity Used:
   </label>
 
   <table style={{ width: '100%', color: 'white' }}>
@@ -1590,17 +1595,25 @@ try {
           </td>
 
           <td style={{ textAlign: 'right', width: '80px' }}>
-           <input
-            type="checkbox"
-            checked={calSelections[cal.reagentName] || false}
-            onChange={(e)=>
-              setCalSelections({
-                ...calSelections,
-                [cal.reagentName]: e.target.checked
-              })
-            }
-          />
-
+            <input
+              type="number"
+              placeholder="0"
+              value={calDeductions[cal.reagentName] || ""}
+              onChange={(e) =>
+                setCalDeductions({
+                  ...calDeductions,
+                  [cal.reagentName]: e.target.value
+                })
+              }
+              style={{
+                  width: '60px',
+                  background: '#222',
+                  color: 'white',
+                  border: '1px solid #444',
+                  padding: '4px',
+                  textAlign: 'center'
+              }}
+            />
           </td>
         </tr>
       ))}

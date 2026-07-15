@@ -29,7 +29,7 @@ export default function HaemInventoryTab() {
   const [showQCModal, setShowQCModal] = useState(false);
   const [maintenanceReason, setMaintenanceReason] = useState("Routine");
   const [maintenanceDeductions, setMaintenanceDeductions] = useState({});
-  const [qcSelections, setQCSelections] = useState({});
+  const [qcDeductions, setQCDeductions] = useState({});
   const [qcReason, setQCReason] = useState("DAILY");
   const [otherReason, setOtherReason] = useState("");
   const [qcResult, setQCResult] = useState("Success");
@@ -253,12 +253,11 @@ batch.update(
 
  
   const handleConfirmQC = async () => {
-    const selections = Object.keys(qcSelections)
-    .filter(id => qcSelections[id]);
+  const selections = Object.keys(qcDeductions).filter(id => Number(qcDeductions[id]) > 0);
 
   // 🔥 VALIDATION (ADD THIS BLOCK)
   if (selections.length === 0) {
-    alert("Please select at least one control.");
+    alert("Please enter quantities.");
     return;
   }
 
@@ -276,7 +275,7 @@ batch.update(
     let controlNames = [];
   
     for (const id of selections) {
-      const qty = 1;
+        const qty = Number(qcDeductions[id]);
         const item = inventory.find(i => i.id === id);
         if (item) {
 
@@ -375,7 +374,8 @@ batch.update(
         actualOutput,
         controlNames: controlNames.join(", "),
         controlsUsed: qcAuditDetails,
-        deductions: qcSelections,  
+        deductions: qcDeductions,
+      
         reason: qcReason === "OTHER" ? otherReason : qcReason,
         result: qcResult,
         levelsUsed: qcLevel,
@@ -385,7 +385,7 @@ batch.update(
       });
       
 
-      setQCSelections({});
+      setQCDeductions({});
 
       setQCReason("DAILY");
       setQCResult("Success");
@@ -1298,9 +1298,7 @@ batch.update(
 
         {/* QUANTITY TABLE */}
         <div className="cal-list" style={{ marginTop: '20px' }}>
-        <label className="label-dim">
-        Control & Use 1 Round:
-          </label>
+          <label className="label-dim">Control & Quantity Used:</label>
 
           <table style={{ width: '100%', color: 'white' }}>
             <tbody>
@@ -1314,16 +1312,23 @@ batch.update(
                         </small>
                       </td>
                   <td style={{ textAlign: 'right' }}>
-                  <input
-                    type="checkbox"
-                    checked={qcSelections[ctrl.id] || false}
-                    onChange={(e)=>
-                        setQCSelections({
-                            ...qcSelections,
-                            [ctrl.id]: e.target.checked
+                    <input
+                      type="number"
+                      value={qcDeductions[ctrl.id] || ""}
+                      onChange={(e) =>
+                        setQCDeductions({
+                          ...qcDeductions,
+                          [ctrl.id]: e.target.value
                         })
-                    }
-                />
+                      }
+                      style={{
+                        width: '60px',
+                        background: '#222',
+                        color: 'white',
+                        border: '1px solid #444',
+                        textAlign: 'center'
+                      }}
+                    />
                   </td>
                 </tr>
               ))}

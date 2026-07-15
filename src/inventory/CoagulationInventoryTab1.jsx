@@ -28,7 +28,8 @@ export default function CoagulationInventory() {
   const [showMaintenanceModal, setShowMaintenanceModal] = useState(false);
   const [showQCModal, setShowQCModal] = useState(false);
   const [maintenanceDeductions, setMaintenanceDeductions] = useState({});
-  const [qcSelections, setQCSelections] = useState({});
+  const [qcDeductions, setQCDeductions] = useState({});
+
   // 🔥 NEW QC FIELDS
   const [qcReason, setQCReason] = useState("DAILY");
   const [qcResult, setQCResult] = useState("Success");
@@ -139,17 +140,8 @@ export default function CoagulationInventory() {
 
   // 4. ACTION HANDLERS
   const handleConfirmAction = async (type) => {
-    const deductions =
-  type === "QC"
-    ? qcSelections
-    : maintenanceDeductions;
-
-  const selections =
-  type === "QC"
-    ? Object.keys(qcSelections).filter(id => qcSelections[id])
-    : Object.keys(maintenanceDeductions).filter(
-        id => Number(maintenanceDeductions[id]) > 0
-      );
+    const deductions = type === "QC" ? qcDeductions : maintenanceDeductions;
+    const selections = Object.keys(deductions).filter(id => Number(deductions[id]) > 0);
     
     try {
       const batch = writeBatch(db);
@@ -157,10 +149,7 @@ export default function CoagulationInventory() {
       const qcAuditDetails = [];
       let controlNames = [];
       for (const id of selections) {
-        const qty =
-        type === "QC"
-          ? 1
-          : Number(deductions[id]);
+        const qty = Number(deductions[id]);
         const item = inventory.find(i => i.id === id);
       
         if (item) {
@@ -279,6 +268,8 @@ export default function CoagulationInventory() {
 
       await addDoc(collection(db, type === "QC" ? "qc_logs" : "maintenance_logs"), {
         timestamp: serverTimestamp(),
+        deductions,
+      
         ...(type === "QC" && {
           eventType: "Control",
           machine: "YUMIZEN G800",
@@ -298,10 +289,8 @@ export default function CoagulationInventory() {
           preventativeAction: qcResult === "Failure" ? preventativeAction : "N/A"
         })
       });
-          
-          type === "QC"
-      ? setQCSelections({})
-      : setMaintenanceDeductions({});
+      
+      type === "QC" ? setQCDeductions({}) : setMaintenanceDeductions({});
       
       if (type === "QC") {
         setQCReason("DAILY");
@@ -1136,7 +1125,7 @@ export default function CoagulationInventory() {
 
       {/* QUANTITY TABLE */}
       <div className="cal-list" style={{ marginTop: '15px' }}>
-        <label className="label-dim">Control & Use 1 Round:</label>
+        <label className="label-dim">Control & Quantity Used:</label>
 
         <table style={{ width: '100%', color: 'white' }}>
           <tbody>
@@ -1151,16 +1140,24 @@ export default function CoagulationInventory() {
                   </small>
                 </td>
                 <td style={{ textAlign: 'right', width: '80px' }}>
-                <input
-                  type="checkbox"
-                  checked={qcSelections[ctrl.id] || false}
-                  onChange={(e)=>
-                      setQCSelections({
-                          ...qcSelections,
-                          [ctrl.id]: e.target.checked
+                  <input
+                    type="number"
+                    value={qcDeductions[ctrl.id] || ""}
+                    onChange={(e) =>
+                      setQCDeductions({
+                        ...qcDeductions,
+                        [ctrl.id]: e.target.value
                       })
-                  }
-              />
+                    }
+                    style={{
+                      width: '60px',
+                      background: '#222',
+                      color: 'white',
+                      border: '1px solid #444',
+                      padding: '4px',
+                      textAlign: 'center'
+                    }}
+                  />
                 </td>
               </tr>
             ))}
@@ -1174,14 +1171,14 @@ export default function CoagulationInventory() {
         <button
           className="btn-modal-confirm"
           onClick={async () => {
-            const selections = Object.keys(qcSelections).filter(
-              id => qcSelections[id]
-          );
-          
-          if (selections.length === 0) {
-              alert("Please select at least one control.");
+            const selections = Object.keys(qcDeductions).filter(
+              id => Number(qcDeductions[id]) > 0
+            );
+
+            if (selections.length === 0) {
+              alert("Enter quantities");
               return;
-          }
+            }
 
             await handleConfirmAction("QC");
 

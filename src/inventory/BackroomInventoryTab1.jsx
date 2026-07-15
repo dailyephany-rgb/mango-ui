@@ -38,7 +38,6 @@ export default function BackroomInventoryTab() {
   const [qcPH, setQCPH] = useState("");
   const [qcSpecificGravity, setQCSpecificGravity] = useState("");
   const [qcRemarks, setQCRemarks] = useState("");
-  const [useOneRound, setUseOneRound] = useState(false);
 
   // WASTE
   const [showWasteModal, setShowWasteModal] = useState(false);
@@ -573,11 +572,6 @@ export default function BackroomInventoryTab() {
 
   const handleConfirmQC = async () => {
 
-    if (!useOneRound) {
-      alert("Please confirm that 1 round of control was used.");
-      return;
-    }
-
     try {
 
       const selectedControl = activeControls.find(ctrl =>
@@ -596,26 +590,6 @@ export default function BackroomInventoryTab() {
           boxNo: selectedControl.boxNo || "",
           expiryDate: selectedControl.expiryDate || "N/A"
         });
-
-        const currentQty = Number(selectedControl.totalTests || 0);
-
-      const newTotal = Math.max(0, currentQty - 1);
-
-      const initialCapacity =
-        Number(selectedControl.inventoryQty) || 1;
-
-      const newHealth = Math.round(
-        (newTotal / initialCapacity) * 100
-      );
-
-      await updateDoc(
-        doc(db, "inventory_logs", selectedControl.id),
-        {
-          totalTests: newTotal,
-          health: newHealth,
-          status: newTotal <= 0 ? "Consumed" : "Activated"
-        }
-      );
 
         await addConsumptionLedgerEntry({
           productName:
@@ -685,7 +659,7 @@ export default function BackroomInventoryTab() {
       setQCPH("");
       setQCSpecificGravity("");
       setQCRemarks("");
-      setUseOneRound(false);
+  
       setShowQCModal(false);
   
       alert("Urine QC Logged.");
@@ -1340,28 +1314,6 @@ export default function BackroomInventoryTab() {
   }}
 />
 
-</div>
-
-<div className="cal-form-group">
-  <label>Control Used:</label>
-
-  <label
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "8px",
-      color: "white",
-      marginTop: "6px"
-    }}
-  >
-    <input
-      type="checkbox"
-      checked={useOneRound}
-      onChange={(e) => setUseOneRound(e.target.checked)}
-    />
-
-    Use 1 Round
-  </label>
 </div>
 
 <div className="cal-form-group">
