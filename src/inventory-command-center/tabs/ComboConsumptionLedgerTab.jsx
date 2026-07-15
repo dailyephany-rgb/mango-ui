@@ -4,7 +4,7 @@ import React, {useMemo,useState} from "react";
 import DateRangeFilter
 from "../components/DateRangeFilter";
 
-const ConsumptionLedgerTab = ({
+const ComboConsumptionLedgerTab = ({
   ledgerEntries
 }) => {
 
@@ -21,9 +21,10 @@ const [expandedRows, setExpandedRows] =
   useState({});
 const [expandedBatches, setExpandedBatches] =
   useState({});
+  const [expandedProducts, setExpandedProducts] =
+  useState({});
 
-const [viewMode, setViewMode] =
-  useState("product");
+;
 
   const [searchTerm, setSearchTerm] =
     useState("");
@@ -69,23 +70,32 @@ const [viewMode, setViewMode] =
 
         const search =
           searchTerm.toLowerCase();
-      
-        filtered = filtered.filter(row =>
-      
-          row.productName
-            ?.toLowerCase()
-            .includes(search)
-      
-          ||
-      
-          (
-            viewMode === "test" &&
+          
+          filtered = filtered.filter(row =>
+
+            row.productName
+              ?.toLowerCase()
+              .includes(search)
+          
+            ||
+          
             row.testName
               ?.toLowerCase()
               .includes(search)
-          )
-      
-        );
+          
+            ||
+          
+            row.category
+              ?.toLowerCase()
+              .includes(search)
+          
+            ||
+          
+            row.machine
+              ?.toLowerCase()
+              .includes(search)
+          
+          );
       
       }
     
@@ -127,16 +137,17 @@ const [viewMode, setViewMode] =
     
       return filtered;
     
-    }, [
+    }, 
+    [
       ledgerEntries,
       machineFilter,
       typeFilter,
       actionFilter,
       searchTerm,
       fromDate,
-      toDate,
-      viewMode
-    ]);
+      toDate
+    ]
+    );
     
     const groupedRows = useMemo(() => {
     
@@ -144,13 +155,7 @@ const [viewMode, setViewMode] =
       const orderedRows = [...filteredRows];
       orderedRows.forEach(row => {
 
-        const key =
-
-        viewMode === "product"
-        
-        ? `${row.productName}__${row.machine}__${row.level || ""}`
-        
-        : `${row.productName}__${row.machine}__${row.level || ""}__${row.testName || "General"}`;
+        const key = `${row.testName}__${row.category}__${row.machine}`;
 
         if (!groups[key]) {
   
@@ -158,16 +163,13 @@ const [viewMode, setViewMode] =
 
             key,
           
-            productName: row.productName,
+            testName: row.testName || "-",
           
-            testName:
-              row.testName || "-",
-          
-            testNames: new Set(),
-          
-            level: row.level || "",
+            category: row.category || "-",
           
             machine: row.machine,
+          
+            inventoryType: row.inventoryType,
           
             metricType: row.metricType || "",
           
@@ -188,9 +190,7 @@ const [viewMode, setViewMode] =
           row.actionType === "Consumed" &&
           row.testName
         ) {
-          groups[key].testNames.add(
-            row.testName
-          );
+          
         }
     
       });
@@ -201,8 +201,7 @@ const [viewMode, setViewMode] =
       );
     
     }, [
-      filteredRows,
-      viewMode
+      filteredRows
     ]);
     
 
@@ -271,6 +270,18 @@ const [viewMode, setViewMode] =
         }));
       
       };
+
+      const toggleProduct = (key) => {
+
+        setExpandedProducts(prev => ({
+      
+          ...prev,
+      
+          [key]: !prev[key]
+      
+        }));
+      
+      };
       
       const toggleBatch = (key) => {
       
@@ -281,6 +292,47 @@ const [viewMode, setViewMode] =
           [key]: !prev[key]
       
         }));
+      
+      };
+
+
+      const getProductBreakdown = (records) => {
+
+        const products = {};
+      
+        records.forEach(record => {
+      
+          const key = record.productName || "Unknown";
+      
+          if (!products[key]) {
+      
+            products[key] = {
+      
+              productName: key,
+      
+              totalUsage: 0,
+      
+              metricType: record.metricType || "",
+      
+              records: []
+      
+            };
+      
+          }
+      
+          products[key].totalUsage +=
+            Number(record.qty || 0);
+      
+          products[key].records.push(record);
+      
+        });
+      
+        return Object.values(products).sort(
+          (a, b) =>
+            a.productName.localeCompare(
+              b.productName
+            )
+        );
       
       };
 
@@ -362,10 +414,23 @@ const [viewMode, setViewMode] =
         });
       
         return Object.values(batches).sort(
-          (a, b) =>
-            a.batchNo.localeCompare(
+          (a, b) => {
+        
+            const aNum = Number(a.batchNo);
+            const bNum = Number(b.batchNo);
+        
+            if (
+              !Number.isNaN(aNum) &&
+              !Number.isNaN(bNum)
+            ) {
+              return aNum - bNum;
+            }
+        
+            return a.batchNo.localeCompare(
               b.batchNo
-            )
+            );
+        
+          }
         );
       
       };
@@ -380,51 +445,22 @@ const [viewMode, setViewMode] =
 <div className="command-filter-bar">
 
 <h2>
-  Consumption Ledger
+Combo Consumption Ledger
 </h2>
 
 <div className="command-tabs">
-  
 
   <button
-    className={
-      viewMode === "product"
-        ? "active-tab"
-        : ""
-    }
-    onClick={() => {
-      setExpandedRows({});
-      setExpandedBatches({});
-      setViewMode("product");
-    }}
+    className="active-tab"
   >
-    Product View
-  </button>
-
-  <button
-    className={
-      viewMode === "test"
-        ? "active-tab"
-        : ""
-    }
-    onClick={() => {
-      setExpandedRows({});
-      setExpandedBatches({});
-      setViewMode("test");
-    }}
-  >
-    Test View
+    Combo View
   </button>
 
 </div>
 
 <input
   type="text"
-  placeholder={
-    viewMode === "product"
-      ? "Search product..."
-      : "Search product or test..."
-  }
+  placeholder="Search product, test or category..."
   value={searchTerm}
   onChange={(e) =>
     setSearchTerm(e.target.value)
@@ -526,12 +562,32 @@ const [viewMode, setViewMode] =
 
 </div>
 
+{groupedRows.length === 0 && (
+
+<div
+  className="empty-state"
+  style={{
+    padding: "30px",
+    textAlign: "center",
+    fontWeight: "600"
+  }}
+>
+
+  No combo consumption records found.
+
+</div>
+
+)}
+
+
+{groupedRows.length > 0 && (
 
 <div className="inventory-command-table">
-{Object.entries(
-  machineGroups
-).map(
-  ([machine, types]) => (
+{Object.entries(machineGroups)
+  .sort(([a], [b]) =>
+    a.localeCompare(b)
+  )
+  .map(([machine, types]) => (
 
   
     <div
@@ -582,24 +638,24 @@ const [viewMode, setViewMode] =
     <tr>
 
     <th>
-  Product Name
-  </th>
+  Test Name
+</th>
 
-  <th>
-    Test Name
-  </th>
+<th>
+  Category
+</th>
 
-  <th>
+<th>
   Activity Types
-  </th>
+</th>
 
-  <th>
-  Total Usage
-  </th>
+<th>
+Total Usage
+</th>
 
-  <th>
+<th>
   View
-  </th>
+</th>
 
     </tr>
 
@@ -610,12 +666,6 @@ const [viewMode, setViewMode] =
 
   {groups.map(group => {
 
-const batches =
-  getBatchBreakdown(
-    group.records
-  );
-
-
 
 return (
 
@@ -624,20 +674,13 @@ return (
   >
    
                      <tr>
-                          <td>
-        {group.productName}
+                 <td>
+              {group.testName}
+            </td>
 
-        {group.level &&
-          ` (${group.level})`}
-      </td>
-      <td>
-      {viewMode === "product"
-
-      ? ([...group.testNames].join(", ") || "-")
-
-      : group.testName}
-
-      </td>
+            <td>
+              {group.category}
+            </td>
 
         <td>
           {[
@@ -697,192 +740,281 @@ return (
                     }}
                   >
 
-                    <thead>
+                  <thead>
 
-                      <tr>
+                  <tr>
 
-                      <th>
-                        Batch No
-                      </th>
+                  <th>
+                  Product Name
+                  </th>
 
-                      <th>
-                        Box No
-                      </th>
+                  <th>
+                  Activity Types
+                  </th>
 
-                      <th>
-                        Consumed
-                      </th>
+                  <th>
+                  Total Usage
+                  </th>
 
-                        <th>
-                          Waste
-                        </th>
+                  <th>
+                  View
+                  </th>
 
-                        <th>
-                          Bonus
-                        </th>
+                  </tr>
 
-                        <th>
-                          Excess
-                        </th>
+                  </thead>
 
-                        <th>
-                        Total
-                      </th>
 
-                      <th>
-                        View
-                      </th>
+                  <tbody>
 
-                      </tr>
+{(() => {
 
-                    </thead>
+  const products =
+    getProductBreakdown(group.records);
 
-                    <tbody>
+  return products.map(product => {
 
-                      {batches.map(
-                        batch => {
+    const productKey =
+      `${group.key}_${product.productName}`;
 
-                          const total =
-                          batch.consumed +
-                          batch.waste +
-                          batch.bonus +
-                          batch.excess;
-                            return (
+    return (
 
-                              <React.Fragment
-                               key={`${batch.batchNo}_${batch.boxNo}`}>
-                                <tr>
-                            
-                                <td>
-                                  {batch.batchNo}
-                                </td>
+      <React.Fragment
+        key={productKey}
+      >
 
-                                <td>
-                                  {batch.boxNo}
-                                </td>
+        <tr>
 
-                                <td>
-                                  {batch.consumed}
-                                </td>
-                            
-                                  <td>
-                                    {batch.waste}
-                                  </td>
-                            
-                                  <td>
-                                    {batch.bonus}
-                                  </td>
-                            
-                                  <td>
-                                    {batch.excess}
-                                  </td>
-                            
-                                  <td>
-                                    {total}
-                                  </td>
-                            
-                                  <td>
-                            
-                                    <button
-                                      className="btn-mini"
-                                      onClick={() =>
-                                        toggleBatch(
-                                          `${group.key}_${batch.batchNo}_${batch.boxNo}`
-                                        )
-                                      }
-                                    >
-                                      {expandedBatches[
-                                      `${group.key}_${batch.batchNo}_${batch.boxNo}`
-                                      ]
-                                        ? "▲"
-                                        : "▼"}
-                                    </button>
-                            
-                                  </td>
-                            
-                                </tr>
-                            
-                                {expandedBatches[
-                                `${group.key}_${batch.batchNo}_${batch.boxNo}`
-                                ] && (
-                            
-                                  <tr>
-                            
-                                    <td colSpan={7}>
-                            
-                                      <table
-                                        style={{
-                                          width: "100%",
-                                          marginTop: "10px"
-                                        }}
-                                      >
-                            
-                                        <thead>
-                            
-                                          <tr>
-                            
-                                            <th>Date</th>
-                            
-                                            <th>Action</th>
-                            
-                                            <th>Qty</th>
-                            
-                                            <th>Test / Event</th>
-                            
-                                          </tr>
-                            
-                                        </thead>
-                            
-                                        <tbody>
-                            
-                                          {batch.records.map(
-                                            (record, index) => (
-                            
-                                              <tr
-                                                key={index}
-                                              >
-                            
-                                                <td>
-                                                  {record.timestamp
-                                                    ?.toDate?.()
-                                                    ?.toLocaleString()}
-                                                </td>
-                            
-                                                <td>
-                                                  {record.actionType}
-                                                </td>
-                            
-                                                <td>
-                                                  {record.qty}
-                                                </td>
-                            
-                                                <td>
-                                                  {record.testName}
-                                                </td>
-                            
-                                              </tr>
-                            
-                                            )
-                                          )}
-                            
-                                        </tbody>
-                            
-                                      </table>
-                            
-                                    </td>
-                            
-                                  </tr>
-                            
-                                )}
-                            
-                              </React.Fragment>
-                            
-                            );
-                        
-                        })}
+          <td>
+            {product.productName}
+          </td>
 
-                  
-                    </tbody>
+          <td>
+
+            {[
+              ...new Set(
+                product.records.map(
+                  r => r.actionType
+                )
+              )
+            ].join(", ")}
+
+          </td>
+
+          <td>
+
+            {product.totalUsage}
+            {" "}
+            {product.metricType}
+
+          </td>
+
+          <td>
+
+            <button
+              className="btn-mini"
+              onClick={() =>
+                toggleProduct(
+                  productKey
+                )
+              }
+            >
+
+              {expandedProducts[
+                productKey
+              ]
+                ? "▲"
+                : "▼"}
+
+            </button>
+
+          </td>
+
+        </tr>
+
+        {expandedProducts[productKey] && (() => {
+
+const batches =
+  getBatchBreakdown(product.records);
+
+return (
+
+  <tr>
+
+    <td colSpan={4}>
+
+      <table style={{ width: "100%" }}>
+
+        <thead>
+
+          <tr>
+
+            <th>Batch No</th>
+
+            <th>Box No</th>
+
+            <th>Consumed</th>
+
+            <th>Waste</th>
+
+            <th>Bonus</th>
+
+            <th>Excess</th>
+
+            <th>Total</th>
+
+            <th>View</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          {batches.map(batch => {
+
+            const batchKey =
+              `${productKey}_${batch.batchNo}_${batch.boxNo}`;
+
+            const total =
+              batch.consumed +
+              batch.waste +
+              batch.bonus +
+              batch.excess;
+
+            return (
+
+              <React.Fragment key={batchKey}>
+
+                <tr>
+
+                  <td>{batch.batchNo}</td>
+
+                  <td>{batch.boxNo}</td>
+
+                  <td>{batch.consumed}</td>
+
+                  <td>{batch.waste}</td>
+
+                  <td>{batch.bonus}</td>
+
+                  <td>{batch.excess}</td>
+
+                  <td>{total}</td>
+
+                  <td>
+
+                    <button
+                      className="btn-mini"
+                      onClick={() =>
+                        toggleBatch(batchKey)
+                      }
+                    >
+                      {expandedBatches[batchKey]
+                        ? "▲"
+                        : "▼"}
+                    </button>
+
+                  </td>
+
+                </tr>
+
+                {expandedBatches[batchKey] && (
+
+<tr>
+
+  <td colSpan={8}>
+
+    <table
+      style={{
+        width: "100%",
+        marginTop: "10px"
+      }}
+    >
+
+      <thead>
+
+        <tr>
+
+          <th>Date</th>
+
+          <th>Action</th>
+
+          <th>Qty</th>
+
+          <th>Test / Event</th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        {batch.records.map(
+          (record, index) => (
+
+            <tr key={index}>
+
+              <td>
+                {record.timestamp
+                  ?.toDate?.()
+                  ?.toLocaleString()}
+              </td>
+
+              <td>
+                {record.actionType}
+              </td>
+
+              <td>
+                {record.qty}
+              </td>
+
+              <td>
+                {record.testName}
+              </td>
+
+            </tr>
+
+          )
+        )}
+
+      </tbody>
+
+    </table>
+
+  </td>
+
+</tr>
+
+)}
+
+              </React.Fragment>
+
+            );
+
+          })}
+
+        </tbody>
+
+      </table>
+
+    </td>
+
+  </tr>
+
+);
+
+})()}
+
+      </React.Fragment>
+
+    );
+
+  });
+
+})()}
+
+</tbody>
 
                   </table>
 
@@ -912,6 +1044,7 @@ return (
 ))}
 
 </div>
+)}
 
 </div>
 
@@ -919,4 +1052,4 @@ return (
 
 };
 
-export default ConsumptionLedgerTab;
+export default ComboConsumptionLedgerTab;

@@ -7,9 +7,7 @@ import {
   getDocs,
   writeBatch,
   getDoc,
-  doc,
-  addDoc,
-  serverTimestamp
+  doc
 } from "firebase/firestore";
 
 import { addConsumptionLedgerEntry } from "../inventory-command-center/utils/consumptionledger";
@@ -485,43 +483,6 @@ export const getVitrosDeductibleTests = async (
 };
 
 
-const addComboConsumptionLedgerEntry = async (entry) => {
-
-  try {
-
-    await addDoc(
-      collection(db, "combo_consumption_ledger"),
-      {
-        ...entry,
-        timestamp: serverTimestamp()
-      }
-    );
-
-  } catch (err) {
-
-    console.error(
-      "Error adding combo ledger:",
-      err
-    );
-
-  }
-
-};
-
-const COMBO_TESTS = [
-  "LFT (LIVER FUNCTION TEST)",
-  "RFT(RENAL FUNCTION TEST)",
-  "LIPID PROFILE",
-  "ELECTROLYTES,SERUM"
-];
-
-const isComboTest = (testName = "") => {
-
-  return COMBO_TESTS.includes(testName);
-
-};
-
-
 export const handleInventoryDeduction = async (relevantTests, category = "GENERAL") => {
   console.time("TOTAL INVENTORY DEDUCTION");
   if (!relevantTests || relevantTests.length === 0) return;
@@ -531,10 +492,13 @@ export const handleInventoryDeduction = async (relevantTests, category = "GENERA
   const catKey = category.toUpperCase();
 
   let targetDeductions = [];
-  
 
   relevantTests.forEach(testName => {
-  
+    const normalize = (s = "") =>
+  s.toUpperCase()
+    .replace(/[\s,._()-]+/g, "")
+    .trim();
+
 const mappingKey = Object.keys(testToReagentMap).find(
   key => normalize(key) === normalize(testName)
 );
@@ -549,9 +513,6 @@ let mapping = testToReagentMap[mappingKey];
     ) {
       mapping = mapping[catKey] || mapping["GENERAL"];
     }
-
-    
-    
 
     const items = Array.isArray(mapping) ? mapping : [mapping];
 
@@ -665,38 +626,6 @@ querySnapshot.docs.forEach(docSnap => {
           
             qty: item.qty
           });
-
-
-
-          if (isComboTest(item.sourceTest)) {
-
-            await addComboConsumptionLedgerEntry({
-              productName: data.reagentName,
-          
-              batchNo:
-                data.lotNo ||
-                data.batchNo ||
-                "N/A",
-          
-              boxNo: data.boxNo || "",
-          
-              machine: data.machineName || "N/A",
-          
-              inventoryType: "Reagent",
-          
-              metricType:
-                data.metricType || "",
-          
-              testName: item.sourceTest,
-          
-              category: catKey,
-          
-              actionType: "Consumed",
-          
-              qty: item.qty
-            });
-          
-          }
 
         
       }

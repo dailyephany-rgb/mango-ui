@@ -4,8 +4,12 @@ import React, {useMemo,useState} from "react";
 import DateRangeFilter
 from "../components/DateRangeFilter";
 
+import ComboConsumptionLedgerTab
+from "./ComboConsumptionLedgerTab";
+
 const ConsumptionLedgerTab = ({
-  ledgerEntries
+  ledgerEntries,
+  comboLedgerEntries
 }) => {
 
   const [machineFilter, setMachineFilter] =
@@ -416,6 +420,19 @@ const [viewMode, setViewMode] =
     Test View
   </button>
 
+  <button
+  className={
+    viewMode === "combo"
+      ? "active-tab"
+      : ""
+  }
+  onClick={() => {
+    setViewMode("combo");
+  }}
+>
+  Combo View
+</button>
+
 </div>
 
 <input
@@ -526,6 +543,8 @@ const [viewMode, setViewMode] =
 
 </div>
 
+
+{viewMode !== "combo" && (
 
 <div className="inventory-command-table">
 {Object.entries(
@@ -912,6 +931,15 @@ return (
 ))}
 
 </div>
+)}
+
+{viewMode === "combo" && (
+
+<ComboConsumptionLedgerTab
+  ledgerEntries={comboLedgerEntries}
+/>
+
+)}
 
 </div>
 

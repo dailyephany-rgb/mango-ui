@@ -26,8 +26,6 @@ const InventoryCommandCenter = () => {
   const [qcLogs, setQCLogs] = useState([]);
   const [calibrationLogs, setCalibrationLogs] = useState([]);
   const [ledgerEntries, setLedgerEntries] = useState([]);
-  const [comboLedgerEntries, setComboLedgerEntries] =
-  useState([]);
 
   useEffect(() => {
 
@@ -77,7 +75,7 @@ const InventoryCommandCenter = () => {
     );
 
     const unsubLedger = onSnapshot(
-     query(
+      query(
         collection(db, "consumption_ledger"),
         orderBy("timestamp", "desc")
       ),
@@ -91,35 +89,12 @@ const InventoryCommandCenter = () => {
         setLedgerEntries(data);
       }
     );
-    const unsubComboLedger = onSnapshot(
-      query(
-        collection(db, "combo_consumption_ledger"),
-        orderBy("timestamp", "desc")
-      ),
-      (snapshot) => {
-    
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-    
-        setComboLedgerEntries(data);
-    
-      }
-    );
 
     return () => {
-
       unsubInventory();
-    
       unsubQC();
-    
       unsubCalibration();
-    
       unsubLedger();
-    
-      unsubComboLedger();
-    
     };
 
   }, []);
@@ -223,9 +198,8 @@ const InventoryCommandCenter = () => {
 
       {activeTab === "Ledger" && (
         <ConsumptionLedgerTab
-        ledgerEntries={ledgerEntries}
-        comboLedgerEntries={comboLedgerEntries}
-      />
+          ledgerEntries={ledgerEntries}
+        />
       )}
       
       {activeTab === "Cost" && (
