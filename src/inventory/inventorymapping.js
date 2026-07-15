@@ -528,6 +528,7 @@ export const handleInventoryDeduction = async (relevantTests, category = "GENERA
 
   const batch = writeBatch(db);
   const inventoryRef = collection(db, "inventory_logs");
+  const catKey = category.toUpperCase();
   const normalize = (s = "") =>
   s.toUpperCase()
     .replace(/[\s,._()-]+/g, "")
