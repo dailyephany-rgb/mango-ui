@@ -413,7 +413,6 @@ return tests.some(test => canonSet.has(test));
     const results = computeKPIs(
       filteredMaster,
       merged,
-      canonTests,
       canonSet
     );
 
