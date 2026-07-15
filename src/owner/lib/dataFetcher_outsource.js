@@ -90,15 +90,37 @@ export function computeKPIs(
     return sum + tests.filter(t => canonSet.has(t)).length;
   }, 0);
 
-  const savedRows = mergedOutsourceRows.filter(r => r.isSaved);
-  // UPDATE: Unique count based on RegNo + DiagnosticNo
-  const totalPatientsSaved = new Set(savedRows.map(r => `${r.regNo}_${r.diagnosticNo}`)).size;
-  const totalTestsSaved = savedRows.reduce((sum, r) => {
-    const tests = normalizeTestsField(r.testArrayRaw);
-    return sum + tests.filter(t => canonSet.has(t)).length;
-  }, 0);
+  /* ================= OUTSOURCE STAGES ================= */
 
-  const totalPatientsGiven = new Set(mergedOutsourceRows.filter(r => r.isGiven).map(r => `${r.regNo}_${r.diagnosticNo}`)).size;
+// Stage 1 : Collect button pressed
+const outsourcedRows = mergedOutsourceRows.filter(
+  r => r.timeOutsourcedCollected
+);
+
+const totalPatientsOutsourced = new Set(
+  outsourcedRows.map(r => `${r.regNo}_${r.diagnosticNo}`)
+).size;
+
+const totalTestsOutsourced = outsourcedRows.reduce((sum, r) => {
+  const tests = normalizeTestsField(r.testArrayRaw);
+  return sum + tests.filter(t => canonSet.has(t)).length;
+}, 0);
+
+// Stage 2 : Mark Received button pressed
+const reportReceivedRows = mergedOutsourceRows.filter(
+  r => r.timeReportReceived
+);
+
+const totalPatientsReportsDelivered = new Set(
+  reportReceivedRows.map(r => `${r.regNo}_${r.diagnosticNo}`)
+).size;
+
+// Stage 3 : Deliver button pressed
+const totalPatientsReportsGiven = new Set(
+  mergedOutsourceRows
+    .filter(r => r.isGiven)
+    .map(r => `${r.regNo}_${r.diagnosticNo}`)
+).size;
 
   /**
    * DYNAMIC SLA LIMITS FROM JSON
@@ -240,29 +262,48 @@ const deliveredByDistribution =
   ); 
 
   return {
+    // Patient KPIs
     totalPatientsCollected,
+    totalPatientsOutsourced,
+    totalPatientsReportsDelivered,
+    totalPatientsReportsGiven,
+  
+    // Pending KPIs
+    pendingOutsourceCollection: Math.max(
+      0,
+      totalPatientsCollected - totalPatientsOutsourced
+    ),
+  
+    pendingReportGiving: Math.max(
+      0,
+      totalPatientsReportsDelivered - totalPatientsReportsGiven
+    ),
+  
+    // Test KPIs
     totalTestsCollected,
-    totalPatientsSaved,
-    totalTestsSaved,
-    totalPatientsGiven,
-    totalPatientsPendingReport: Math.max(0, totalPatientsSaved - totalPatientsGiven),
-    totalPatientsPendingScans: Math.max(0, totalPatientsCollected - totalPatientsSaved),
-    totalTestsPending: Math.max(0, totalTestsCollected - totalTestsSaved),
+    totalTestsOutsourced,
+  
+    pendingTestsOutsource: Math.max(
+      0,
+      totalTestsCollected - totalTestsOutsourced
+    ),
+  
+    // Time KPIs
     avgCollectedToReceived: formatTAT(avgMinutesSR),
     avgReceivedToDelivered: formatTAT(avgMinutesRG),
     slowestEntry: slowest,
     slaScore,
-
+  
     // Staff analytics
     collectedByDistribution,
     receivedByDistribution,
     deliveredByDistribution,
-    
+  
     // Delay analytics
     violators: violators.sort((a, b) => b.excess - a.excess),
     totalCount: totalValidForSLA,
-    withinCount: withinCount
-    };
+    withinCount
+  };
 }
 
 /* ================= MERGE LAB ROWS ====================== */

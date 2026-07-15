@@ -4,15 +4,16 @@ import React from "react";
 export default function KPIBlocks({ kpis = {} }) {
   const {
     totalPatientsCollected,
-    totalPatientsSaved,
-    totalPatientsGiven,
-    totalPatientsPendingReport,
-    totalPatientsPendingScans,
+    totalPatientsOutsourced,
+    totalPatientsReportsDelivered,
+    totalPatientsReportsGiven,
+    pendingOutsourceCollection,
+    pendingReportGiving,
     totalTestsCollected,
-    totalTestsSaved,
-    totalTestsPending,
-    avgCollectedToSaved,
-    avgSavedToGiven,
+    totalTestsOutsourced,
+    pendingTestsOutsource,
+    avgCollectedToReceived,
+    avgReceivedToDelivered,
     slowestEntry
   } = kpis;
 
@@ -25,33 +26,33 @@ export default function KPIBlocks({ kpis = {} }) {
       </div>
 
       <div className="kpi-card">
-        <div className="kpi-title">Patients Saved</div>
-        <div className="kpi-value">{totalPatientsSaved ?? 0}</div>
-        <div className="kpi-sub">Saved in Lab</div>
+      <div className="kpi-title">Patients Collected by Outsource</div>
+      <div className="kpi-value">{totalPatientsOutsourced ?? 0}</div>
+      <div className="kpi-sub">Collect button pressed</div>
       </div>
 
       <div className="kpi-card">
-        <div className="kpi-title">Patients Given</div>
-        <div className="kpi-value">{totalPatientsGiven ?? 0}</div>
-        <div className="kpi-sub">Report delivered</div>
+      <div className="kpi-title">Patients Reports Delivered</div>
+      <div className="kpi-value">{totalPatientsReportsDelivered ?? 0}</div>
+      <div className="kpi-sub">Mark Received pressed</div>
       </div>
 
       <div className="kpi-card">
-        <div className="kpi-title">Pending Report Giving</div>
-        <div className="kpi-value">{totalPatientsPendingReport ?? 0}</div>
-        <div className="kpi-sub">Saved but not given</div>
+      <div className="kpi-title">Patients Reports Given</div>
+      <div className="kpi-value">{totalPatientsReportsGiven ?? 0}</div>
+      <div className="kpi-sub">Deliver button pressed</div>
       </div>
 
       <div className="kpi-card">
-        <div className="kpi-title">Pending Records</div>
-        <div className="kpi-value">{totalPatientsPendingScans ?? 0}</div>
-        <div className="kpi-sub">Patients awaiting save</div>
+      <div className="kpi-title">Pending Outsource Collection</div>
+      <div className="kpi-value">{pendingOutsourceCollection ?? 0}</div>
+      <div className="kpi-sub">Collected − Outsourced</div>
       </div>
 
       <div className="kpi-card">
-        <div className="kpi-title">Tests Collected</div>
-        <div className="kpi-value">{totalTestsCollected ?? 0}</div>
-        <div className="kpi-sub">Master register tests</div>
+      <div className="kpi-title">Tests Given to Outsource</div>
+      <div className="kpi-value">{totalTestsOutsourced ?? 0}</div>
+      <div className="kpi-sub">Collect button pressed</div>
       </div>
 
       <div className="kpi-card">
@@ -61,9 +62,9 @@ export default function KPIBlocks({ kpis = {} }) {
       </div>
 
       <div className="kpi-card">
-        <div className="kpi-title">Tests Pending</div>
-        <div className="kpi-value">{totalTestsPending ?? 0}</div>
-        <div className="kpi-sub">Collected − Saved</div>
+      <div className="kpi-title">Pending Tests for Outsource</div>
+      <div className="kpi-value">{pendingTestsOutsource ?? 0}</div>
+      <div className="kpi-sub">Collected − Outsourced</div>
       </div>
 
       {/* 🛠️ UPDATED: Flipped titles and kept kpi-tat for red font */}
@@ -74,9 +75,9 @@ export default function KPIBlocks({ kpis = {} }) {
       </div>
 
       <div className="kpi-card">
-        <div className="kpi-title">Avg Saved → Given</div>
-        <div className="kpi-value">{avgSavedToGiven ?? "—"}</div>
-        <div className="kpi-sub">Delivery time</div>
+      <div className="kpi-title">Avg Report Received → Given</div>
+      <div className="kpi-value">{avgReceivedToDelivered ?? "—"}</div>
+      <div className="kpi-sub">Report received → Delivered</div>
       </div>
 
       <div className="kpi-card">
