@@ -380,10 +380,7 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
   const masterRef = collection(db, "master_register");
   const outsourceRef = collection(db, "outsource_tracking");
 
-  const canonTests = OUTSOURCE_ROUTING[activeRegister] || [];
-  console.log("activeRegister:", activeRegister);
-  console.log("canonTests length:", canonTests.length);
-  console.log("Available keys:", Object.keys(OUTSOURCE_ROUTING));
+  const canonTests = OUTSOURCE_ROUTING[targetLab] || [];
 
     // Build once instead of repeatedly
     const canonSet = new Set(
@@ -392,78 +389,19 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
   let mCache = [], oCache = [];
 
   const publish = () => {
-
-    console.log("========================================");
-    console.log("OUTSOURCE PUBLISH");
-    console.log("========================================");
-    console.log("Master Register Docs:", mCache.length);
-    console.log("Outsource Tracking Docs:", oCache.length);
-    console.log("Active Register:", activeRegister);
-    console.log("Target Lab:", targetLab);
-    console.log("Date Range:", dateRange);
-    console.log("Source:", source);
-
-
-
-
     // UPDATE: STRICT MIDNIGHT IST STRINGS
     const from = dateRange?.from ? new Date(dateRange.from + "T00:00:00") : null;
     const to = dateRange?.to ? new Date(dateRange.to + "T23:59:59") : null;
 
     const filteredMaster = mCache.filter(row => {
       const t = toDate(row.timePrinted);
-    
+      if (!t || (from && t < from) || (to && t > to)) return false;
+      if (source && source !== "All" && String(row.source || "").toLowerCase() !== String(source).toLowerCase()) return false;
       const tests = normalizeTestsField(row.selectedTests || row.tests);
-    
-      const inDate =
-        t &&
-        (!from || t >= from) &&
-        (!to || t <= to);
-    
-      const sourceOk =
-        !source ||
-        source === "All" ||
-        String(row.source || "").toLowerCase() ===
-          String(source).toLowerCase();
-    
-      const testMatch =
-        tests.some(test => canonSet.has(test));
-    
-      if (!inDate || !sourceOk || !testMatch) {
-        console.log("MASTER REJECTED", {
-          regNo: row.regNo,
-          diagnosticNo: row.diagnosticNo,
-          printed: row.timePrinted,
-          source: row.source,
-          inDate,
-          sourceOk,
-          testMatch,
-          tests
-        });
-      }
-    
-      return inDate && sourceOk && testMatch;
+      return tests.some(test => canonSet.has(test));
     });
 
-    console.log("Filtered Master Count:", filteredMaster.length);
-
-      if (filteredMaster.length) {
-        console.log("Sample Master:", filteredMaster[0]);
-      }
-
-      filteredMaster.slice(0, 5).forEach((row, i) => {
-        console.log(`MASTER ${i + 1}`, {
-          regNo: row.regNo,
-          diagnosticNo: row.diagnosticNo,
-          source: row.source,
-          printed: row.timePrinted,
-          tests: normalizeTestsField(row.selectedTests || row.tests)
-        });
-      });
-
     const filteredOutsource = oCache.filter(row => {
-
-      
       const t = toDate(row.timePrinted);
       if (!t || (from && t < from) || (to && t > to)) return false;
       if (source && source !== "All" && String(row.source || "").toLowerCase() !== String(source).toLowerCase()) return false;
@@ -471,33 +409,7 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
 return tests.some(test => canonSet.has(test));
     });
 
-
-    console.log("Filtered Outsource Count:", filteredOutsource.length);
-
-if (filteredOutsource.length) {
-  console.log("Sample Outsource:", filteredOutsource[0]);
-}
-
-filteredOutsource.slice(0, 5).forEach((row, i) => {
-  console.log(`OUTSOURCE ${i + 1}`, {
-    regNo: row.regNo,
-    diagnosticNo: row.diagnosticNo,
-    labName: row.labName,
-    source: row.source,
-    printed: row.timePrinted,
-    tests: normalizeTestsField(row.selectedTests || row.tests)
-  });
-});
-
     const merged = mergeOutsourceRows(filteredOutsource, targetLab);
-
-    console.log("Merged Rows:", merged.length);
-
-    if (merged.length) {
-      console.log("Merged Sample:", merged[0]);
-    }
-
-    console.log("Computing KPIs...");
     const results = computeKPIs(
       filteredMaster,
       merged,
