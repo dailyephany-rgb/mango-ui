@@ -1,9 +1,14 @@
 
 // src/owner/OwnerApp.jsx
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+  useContext,
+} from "react";
 ;
 
 import DateSourceFilter from "./components/DateSourceFilter";
+import { OwnerContext } from "./OwnerContext.jsx";
 
 import WorkflowKPIBlocks from "./workflow/WorkflowKPIBlocks";
 import WorkflowStackedBars from "./workflow/WorkflowStackedBars";
@@ -14,7 +19,8 @@ import { subscribeToWorkflowAnalytics } from "./workflow/workflowfetcher";
 import "./OwnerUI.css";
 
 export default function OwnerApp() {
-  
+
+  const { source, dateRange } = useContext(OwnerContext);
 
   const [workflowData, setWorkflowData] = useState({
     records: [],
@@ -44,7 +50,7 @@ export default function OwnerApp() {
     });
 
     return () => unsubscribe && unsubscribe();
-  }, []);
+  }, [source, dateRange]);
 
   if (loading) {
     return (
