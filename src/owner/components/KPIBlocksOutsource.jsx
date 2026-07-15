@@ -18,7 +18,7 @@ export default function KPIBlocks({ kpis = {} }) {
   } = kpis;
 
   return (
-    <div className="kpi-row">
+    <div className="kpi-row outsource-kpi-row">
       <div className="kpi-card">
         <div className="kpi-title">Patients Collected</div>
         <div className="kpi-value">{totalPatientsCollected ?? 0}</div>
@@ -38,30 +38,17 @@ export default function KPIBlocks({ kpis = {} }) {
       </div>
 
       <div className="kpi-card">
-     
       <div className="kpi-card">
       <div className="kpi-title">Patients Reports Given</div>
-
-      <div className="kpi-value">
-        {totalPatientsReportsGiven ?? 0}
-      </div>
-
-      <div
-        style={{
-          fontSize: "15px",
-          fontWeight: 600,
-          color: "#2563eb",
-          marginTop: "6px"
-        }}
-      >
-        Pending Giving: {pendingReportGiving ?? 0}
-      </div>
-
-      <div className="kpi-sub">
-        Deliver button pressed
-      </div>
+      <div className="kpi-value">{totalPatientsReportsGiven ?? 0}</div>
+      <div className="kpi-sub">Deliver button pressed</div>
     </div>
 
+    <div className="kpi-card">
+      <div className="kpi-title">Pending Report Giving</div>
+      <div className="kpi-value">{pendingReportGiving ?? 0}</div>
+      <div className="kpi-sub">Report received − Report given</div>
+    </div>
       </div>
 
       <div className="kpi-card">

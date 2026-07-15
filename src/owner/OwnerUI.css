@@ -170,3 +170,20 @@
 
 .badge.violation { background: #fee2e2; color: #b91c1c; }
 .badge.borderline { background: #fef3c7; color: #b45309; }
+
+/* ================================
+   OUTSOURCE KPI GRID
+================================ */
+
+.outsource-kpi-row {
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.outsource-kpi-row .kpi-card {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
