@@ -408,7 +408,15 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
     const to = dateRange?.to ? new Date(dateRange.to + "T23:59:59") : null;
 
     const filteredMaster = mCache.filter(row => {
-      console.log("Filtered Master Count:", filteredMaster.length);
+  
+      const t = toDate(row.timePrinted);
+      if (!t || (from && t < from) || (to && t > to)) return false;
+      if (source && source !== "All" && String(row.source || "").toLowerCase() !== String(source).toLowerCase()) return false;
+      const tests = normalizeTestsField(row.selectedTests || row.tests);
+      return tests.some(test => canonSet.has(test));
+    });
+
+    console.log("Filtered Master Count:", filteredMaster.length);
 
       if (filteredMaster.length) {
         console.log("Sample Master:", filteredMaster[0]);
@@ -423,41 +431,34 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
           tests: normalizeTestsField(row.selectedTests || row.tests)
         });
       });
-      const t = toDate(row.timePrinted);
-      if (!t || (from && t < from) || (to && t > to)) return false;
-      if (source && source !== "All" && String(row.source || "").toLowerCase() !== String(source).toLowerCase()) return false;
-      const tests = normalizeTestsField(row.selectedTests || row.tests);
-      return tests.some(test => canonSet.has(test));
-    });
 
     const filteredOutsource = oCache.filter(row => {
 
-      console.log("Filtered Outsource Count:", filteredOutsource.length);
-
-      if (filteredOutsource.length) {
-        console.log("Sample Outsource:", filteredOutsource[0]);
-      }
-
-      filteredOutsource.slice(0, 5).forEach((row, i) => {
-        console.log(`OUTSOURCE ${i + 1}`, {
-          regNo: row.regNo,
-          diagnosticNo: row.diagnosticNo,
-          labName: row.labName,
-          source: row.source,
-          printed: row.timePrinted,
-          tests: normalizeTestsField(row.selectedTests || row.tests)
-        });
-      });
-
-
-
-
+      
       const t = toDate(row.timePrinted);
       if (!t || (from && t < from) || (to && t > to)) return false;
       if (source && source !== "All" && String(row.source || "").toLowerCase() !== String(source).toLowerCase()) return false;
       const tests = normalizeTestsField(row.selectedTests || row.tests);
 return tests.some(test => canonSet.has(test));
     });
+
+
+    console.log("Filtered Outsource Count:", filteredOutsource.length);
+
+if (filteredOutsource.length) {
+  console.log("Sample Outsource:", filteredOutsource[0]);
+}
+
+filteredOutsource.slice(0, 5).forEach((row, i) => {
+  console.log(`OUTSOURCE ${i + 1}`, {
+    regNo: row.regNo,
+    diagnosticNo: row.diagnosticNo,
+    labName: row.labName,
+    source: row.source,
+    printed: row.timePrinted,
+    tests: normalizeTestsField(row.selectedTests || row.tests)
+  });
+});
 
     const merged = mergeOutsourceRows(filteredOutsource, targetLab);
 
