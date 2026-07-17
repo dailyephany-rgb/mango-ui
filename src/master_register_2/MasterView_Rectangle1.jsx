@@ -236,14 +236,8 @@ useEffect(() => {
 
  
   // Helper
-
-
-  const findIn = (dept, reg, diagnosticNo) =>
-  (deptData[dept] || []).find(
-    (x) =>
-      x.regNo === reg &&
-      x.diagnosticNo === diagnosticNo
-  );
+const findIn = (dept, reg) =>
+(deptData[dept] || []).find((x) => x.regNo === reg);
 
 const isRoutineDepartmentComplete = (dept) => {
   return (
@@ -289,11 +283,7 @@ selectedTests.forEach((t) => {
 
   if (!config || config.workflow !== "routine") return;
 
-  const departmentRecord = findIn(
-    config.collection,
-    reg,
-    rec.diagnosticNo
-  );
+  const departmentRecord = findIn(config.collection, reg);
 
   statuses.push({
     dept: config.label,
