@@ -30,7 +30,7 @@ export default function DeptInventoryTab() {
   // --- CALIBRATION MODAL STATE --
 
   const [showCalModal, setShowCalModal] = useState(false);
-  const [calDeductions, setCalDeductions] = useState({});
+  const [calSelections, setCalSelections] = useState({});
   const [calReason, setCalReason] = useState("Machine Demand");
   const [calResult, setCalResult] = useState("Success");
   const [calPerformedBy, setCalPerformedBy] = useState("");
@@ -44,7 +44,7 @@ export default function DeptInventoryTab() {
   const [qcReason, setQCReason] = useState("DAILY");
   const [qcLevel, setQCLevel] = useState("Level I");
   const [otherReason, setOtherReason] = useState("");
-  const [qcDeductions, setQCDeductions] = useState({});
+  const [qcSelections, setQCSelections] = useState({});
   const [baseLineValue, setBaseLineValue] = useState("");
   const [actualOutput, setActualOutput] = useState("");
   const [qcResult, setQCResult] = useState("Success");
@@ -610,7 +610,8 @@ batch.update(
  
   const handleConfirmCalibration = async () => {
 
-    const selections = Object.keys(calDeductions).filter(name => Number(calDeductions[name]) > 0);
+    const selections = Object.keys(calSelections)
+    .filter(name => calSelections[name]);
     const machineName =
      activeTab === "Hormones"
     ? "VITROS 6500 - HORMONES"
@@ -628,7 +629,7 @@ batch.update(
       const calibrationAuditDetails = [];
   
       for (const name of selections) {
-        const qty = Number(calDeductions[name]);
+        const qty = 1;
         const item = activeCalibrators.find(c => c.reagentName === name);
   
         if (item) {
@@ -728,7 +729,7 @@ batch.update(
       });
   
       // ✅ CLEAN RESET
-      setCalDeductions({});
+      setCalSelections({});
       setCalRootCause("");
       setCalPerformedBy("");
       setCalParameters("");
@@ -747,7 +748,8 @@ batch.update(
 
 
   const handleConfirmQC = async () => {
-    const selections = Object.keys(qcDeductions).filter(name => Number(qcDeductions[name]) > 0);
+    const selections = Object.keys(qcSelections)
+    .filter(name => qcSelections[name]);
     if (selections.length === 0) { alert("Please enter quantities."); return; }
     try {
       const batch = writeBatch(db);
@@ -761,7 +763,7 @@ batch.update(
 
 
       for (const name of selections) {
-        const qty = Number(qcDeductions[name]);
+        const qty = 1;
         const item = activeControls.find(c => c.reagentName === name);
         if (item) {
           const docRef = doc(db, "inventory_logs", item.id);
@@ -865,7 +867,7 @@ batch.update(
         machine: machineName
       });
 
-      setQCDeductions({});
+      setQCSelections({});
       setBaseLineValue("");
       setActualOutput("");
       setQCResult("Success");
@@ -1436,7 +1438,7 @@ batch.update(
   <thead>
       <tr>
         <th style={{ textAlign: 'left' }}>Control</th>
-        <th style={{ textAlign: 'center' }}>Qty Used</th>
+        <th style={{ textAlign: 'center' }}>Use 1 Round</th>
      </tr>
        </thead>
       <tbody>
@@ -1454,15 +1456,14 @@ batch.update(
 
           <td>
             <input
-              type="number"
-
-              value={qcDeductions[ctrl.reagentName] || ""}
-              onChange={(e) =>
-                setQCDeductions({
-                  ...qcDeductions,
-                  [ctrl.reagentName]: e.target.value
+             type="checkbox"
+            checked={qcSelections[ctrl.reagentName] || false}
+            onChange={(e)=>
+                setQCSelections({
+                    ...qcSelections,
+                    [ctrl.reagentName]: e.target.checked
                 })
-              }
+            }
               style={{
                 width: '60px',
                 background: '#222',
@@ -1627,7 +1628,7 @@ batch.update(
     </th>
 
     <th style={{ textAlign: 'center' }}>
-      Qty Used
+    Use 1 Round
     </th>
      </tr>
     </thead>
@@ -1679,24 +1680,15 @@ batch.update(
                 }}
               >
             <input
-              type="number"
-              placeholder="0"
-              value={calDeductions[cal.reagentName] || ""}
-              onChange={(e) =>
-                setCalDeductions({
-                  ...calDeductions,
-                  [cal.reagentName]: e.target.value
-                })
-              }
-              style={{
-                  width: '60px',
-                  background: '#222',
-                  color: 'white',
-                  border: '1px solid #444',
-                  padding: '4px',
-                  textAlign: 'center'
-              }}
-            />
+    type="checkbox"
+    checked={calSelections[cal.reagentName] || false}
+    onChange={(e)=>
+        setCalSelections({
+            ...calSelections,
+            [cal.reagentName]: e.target.checked
+        })
+    }
+/>
           </td>
         </tr>
       ))}
