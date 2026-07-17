@@ -1,21 +1,13 @@
 
 // ------------------------------------------------------
-// src/owner/lib/dataFetcher_rapid.js — Rapid Card Analytics (STRICT Time Printed)
+// ESR Analysis — ALIGNED WITH HORMONES LOGIC
 // ------------------------------------------------------
 
 import { db } from "../../firebaseConfig.js";
-import {
-  collection,
-  onSnapshot,
-  query,
-  orderBy,
-} from "firebase/firestore";
-
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import testTimings from "../data/test_timings.json";
-import backroomRouting from "../../backroom_routing.json";
 
 /* ====================== DATE UTILS ====================== */
-
 export const toDate = (v) => {
   if (!v) return null;
   if (typeof v?.toDate === "function") return v.toDate();
@@ -30,7 +22,6 @@ export const minutesDiff = (a, b) => {
 };
 
 /* ================= TEST NORMALIZATION =================== */
-
 export function normalizeTestsField(field) {
   if (!field) return [];
   if (Array.isArray(field)) {
@@ -47,34 +38,28 @@ export function normalizeTestsField(field) {
   return [];
 }
 
-/* ================= RAPID CANON TESTS =================== */
+/* ================= ESR CANON TESTS =================== */
+const ESR_TESTS_CANON = ["ESR"];
 
-const RAPID_KEYWORDS =
-  Array.isArray(backroomRouting?.RapidCardRegister)
-    ? backroomRouting.RapidCardRegister
-    : [];
+// CHANGED TO UPPERCASE TO MATCH HORMONES LOGIC
+const normalizeESR = (s = "") =>
+  String(s).toUpperCase().replace(/[\s,._\-()]+/g, " ").trim();
 
-const normalizeRapid = (s = "") =>
-  String(s).toUpperCase().replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
-
-export function isRapidTest(testName) {
+export function isESRTest(testName) {
   if (!testName) return false;
-  const n = normalizeRapid(testName);
-  
-  return RAPID_KEYWORDS.some((k) => {
-    const target = normalizeRapid(k);
-    return n === target || n.includes(target);
+  const normTest = normalizeESR(testName);
+  return ESR_TESTS_CANON.some((canonical) => {
+    const target = normalizeESR(canonical);
+    return normTest.includes(target) || target.includes(normTest);
   });
 }
 
-export const extractRapidTestCount = (record) => {
+export const extractESRTestCount = (record) => {
   const rawTests = normalizeTestsField(record.selectedTests || record.tests || record.test || []);
-  const matches = rawTests.filter(testName => isRapidTest(testName));
-  return matches.length;
+  return rawTests.filter(isESRTest).length > 0 ? 1 : 0;
 };
 
 /* ================= MERGE DEPT ROWS ====================== */
-
 export function mergeDeptRows(rows = []) {
   const out = {};
   rows.forEach((r) => {
@@ -85,25 +70,25 @@ export function mergeDeptRows(rows = []) {
     const printedDate = toDate(r.timePrinted);
     if (!printedDate) return; 
 
-    const key = `${regId}_${diagNo}_rapid`;
+    // FIXED KEY: Match Hormones structure (RegNo + DiagNo)
+    const key = `${regId}_${diagNo}_esr`;
     if (!out[key]) {
       out[key] = {
         regNo: regId,
-        diagnosticNo: diagNo, 
+        diagnosticNo: diagNo,
         name: r.name || r.patientName || "",
-        department: "rapid",
+        department: "ESR",
         source: r.source || "",
         timePrinted: printedDate, 
         timeCollected: toDate(r.timeCollected),
-        timeScanned: toDate(r.timeScanned || r.scannedTime),
-        timeSaved: toDate(r.timeSaved || r.savedTime),
-        savedBy:r.savedBy || "",
-        validatedBy: r.validatedBy || "",
-        enteredBy: r.enteredBy || "",
-        enteredTime: toDate(r.enteredTime),
+        timeScanned: toDate(r.scannedTime || r.timeScanned),
+        timeSaved: toDate(r.savedTime || r.timeSaved),
+        savedBy: r.savedBy || "",
         timeValidated: toDate(r.validatedTime || r.timeValidated),
+        validatedBy: r.validatedBy || "",
         isSaved: r.saved === "Yes" || !!(r.savedTime || r.timeSaved),
         isValidated: r.validated === true || r.status === "validated" || !!(r.validatedTime || r.timeValidated),
+        enteredBy: r.enteredBy || "", enteredTime: toDate( r.enteredTime),
         isCritical: r.critical === "Yes", 
         testList: new Set(),
       };
@@ -115,31 +100,28 @@ export function mergeDeptRows(rows = []) {
     ...r,
     test: Array.from(r.testList).join(", "),
     selectedTests: Array.from(r.testList),
-    tests: Array.from(r.testList),
   }));
 }
 
 /* ================= SLA VIOLATIONS ======================= */
-
 export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to_saved") {
   const violators = [];
   unifiedRows.forEach((row) => {
-    const allowed = timingMap["rapid"]?.[stage] ?? timingMap.default?.[stage] ?? 30;
-    
+    const allowed = timingMap["esr"]?.[stage] ?? timingMap.default?.[stage] ?? 30;
     let start;
     let end;
-    
+
     switch (stage) {
       case "scanned_to_saved":
         start = toDate(row.timeScanned);
         end = toDate(row.timeSaved);
         break;
-    
+
       case "saved_to_validated":
         start = toDate(row.timeSaved);
         end = toDate(row.timeValidated);
         break;
-    
+
       case "validated_to_entered":
         start = toDate(row.timeValidated);
         end = toDate(
@@ -148,25 +130,19 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
         );
         break;
 
-        case "turnaround":
-        start = toDate(row.timeCollected);
-        end = toDate(row.timeValidated);
-        break;
-    
-    
       default:
         return;
     }
-    
+
     if (!start || !end)
       return;
-    
-    const duration =
-      (end - start) /
-      60000;
+
+    const duration = Math.round(
+      (end - start) / 60000
+    );
     
     if (duration > allowed) {
-      const excess = duration - allowed;
+      const excess = duration - allowed; 
       const status = duration <= allowed * 1.5 ? "borderline" : "violation";
       
       violators.push({
@@ -174,11 +150,11 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
         diagnosticNo: row.diagnosticNo,
         name: row.name,
         test: row.test,
-        duration: Math.round(duration),
+        duration,
         excess: Math.round(excess),
         allowed,
         status,
-        department: "rapid",
+        department: "ESR",
       
         savedBy:
           row.savedBy || "NA",
@@ -207,24 +183,24 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
 }
 
 /* ================= KPI COMPUTATION ====================== */
-
-export function computeKPIs(masterRows = [], rapidRows = []) {
-  const masterRapid = masterRows.filter((m) => {
+export function computeKPIs(masterRows = [], esrRows = []) {
+  const masterESR = masterRows.filter((m) => {
     const tests = normalizeTestsField(m.selectedTests || m.tests || m.test || []);
-    return tests.some(isRapidTest);
+    return tests.some(isESRTest);
   });
 
-  const totalPatientsCollected = new Set(masterRapid.map((m) => `${m.regNo}_${m.diagnosticNo || m.billNo || "NA"}`)).size;
-  const totalTestsCollected = masterRapid.reduce((sum, m) => sum + extractRapidTestCount(m), 0);
+  // Aligned with Hormones Set logic
+  const totalPatientsCollected = new Set(masterESR.map((m) => `${m.regNo}_${m.diagnosticNo || m.billNo || "NA"}`)).size;
+  const totalTestsCollected = masterESR.reduce((sum, m) => sum + extractESRTestCount(m), 0);
   
-  const savedRows = rapidRows.filter(r => r.isSaved);
+  const savedRows = esrRows.filter(r => r.isSaved);
   const totalPatientsSaved = new Set(savedRows.map((r) => `${r.regNo}_${r.diagnosticNo}`)).size;
-  const totalTestsSaved = savedRows.reduce((sum, r) => sum + extractRapidTestCount(r), 0);
+  const totalTestsSaved = savedRows.reduce((sum, r) => sum + extractESRTestCount(r), 0);
   
-  const validatedRows = rapidRows.filter((r) => r.isValidated);
+  const validatedRows = esrRows.filter((r) => r.isValidated);
   const totalPatientsValidated = new Set(validatedRows.map((r) => `${r.regNo}_${r.diagnosticNo}`)).size;
 
-  const totalPatientsCritical = rapidRows.filter(r => r.isCritical).length;
+  const totalPatientsCritical = esrRows.filter(r => r.isCritical).length;
   
   const averages = { 
     printedToCollected: [], 
@@ -234,7 +210,7 @@ export function computeKPIs(masterRows = [], rapidRows = []) {
     collectedToValidated: [] 
   };
 
-  rapidRows.forEach((r) => {
+  esrRows.forEach((r) => {
     const A = minutesDiff(r.timePrinted, r.timeCollected);
     const B = minutesDiff(r.timeCollected, r.timeScanned);
     const C = minutesDiff(r.timeScanned, r.timeSaved);
@@ -264,12 +240,15 @@ export function computeKPIs(masterRows = [], rapidRows = []) {
 }
 
 /* ================= SUBSCRIBE OVERVIEW =================== */
-
 export function subscribeOverview({ onData, source = "All", dateRange }) {
-  const applyFilters = (mRows, rRows) => {
+  const masterRef = query(collection(db, "master_register"), orderBy("timePrinted", "asc"));
+  const esrRef = query(collection(db, "esr_register"), orderBy("timePrinted", "asc"));
+  
+  let masterRows = []; let esrRows = [];
+
+  const publish = () => {
     const from = dateRange?.from ? new Date(dateRange.from + "T00:00:00") : null;
     const to = dateRange?.to ? new Date(dateRange.to + "T23:59:59") : null;
-    const normSource = source && source !== "All" ? source.trim().toUpperCase() : null;
 
     const filterFn = (row) => {
       const t = toDate(row.timePrinted);
@@ -277,6 +256,7 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
       if (from && t < from) return false;
       if (to && t > to) return false;
 
+      const normSource = source && source !== "All" ? source.trim().toUpperCase() : null;
       if (normSource) {
         const rowSource = (row.source || "").trim().toUpperCase();
         if (rowSource !== normSource) return false;
@@ -284,27 +264,18 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
       return true;
     };
 
-    return {
-      filteredMaster: mRows.filter(filterFn),
-      filteredRapid: rRows.filter(filterFn),
-    };
-  };
+    const filteredMaster = masterRows.filter(filterFn);
+    const filteredESR = esrRows.filter(filterFn);
 
-  const masterRef = query(collection(db, "master_register"), orderBy("timePrinted", "asc"));
-  const rapidRef = query(collection(db, "rapid_card_register"), orderBy("timePrinted", "asc"));
-  
-  let masterRows = []; 
-  let rapidRows = [];
+    const merged = mergeDeptRows(filteredESR);
+    const unified = unifyForCharts(merged);
+    const violators = computeSLAViolations(unified, testTimings);
 
-  const publish = () => {
-    const { filteredMaster, filteredRapid } = applyFilters(masterRows, rapidRows);
-    const merged = mergeDeptRows(filteredRapid);
     onData({
       masterRows: filteredMaster,
       deptRows: merged,
-      unifiedRows: unifyForCharts(
-        merged
-      ),
+      unifiedRows: unified,
+      violators,
       kpis: computeKPIs(
         filteredMaster,
         merged
@@ -316,30 +287,18 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
     });
   };
 
-  const unsubMaster = onSnapshot(masterRef, (snap) => { 
-    masterRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
-    publish(); 
-  });
-  
-  const unsubRapid = onSnapshot(rapidRef, (snap) => { 
-    rapidRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
+  const unsubMaster = onSnapshot(masterRef, (snap) => { masterRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
+  const unsubESR = onSnapshot(esrRef, (snap) => { 
+    esrRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
+    console.log("DEBUG: Raw ESR documents from Firestore:", esrRows.length, esrRows);
     publish(); 
   });
 
-  return () => { 
-    unsubMaster?.(); 
-    unsubRapid?.(); 
-  };
+  return () => { unsubMaster?.(); unsubESR?.(); };
 }
-/* ================= UNIFY FOR CHARTS ===================== */
 
 export function unifyForCharts(rows = []) {
-  return rows.map((r) => ({
-    ...r,
-    regNo: r.diagnosticNo, // Use diagnosticNo as the primary label for TimeBricks/Charts
-    patientName: r.name,
-    tests: r.selectedTests,
-  }));
+  return rows.map((r) => ({ ...r, patientName: r.name, tests: r.selectedTests }));
 }
 
 export function computeStaffAnalytics(
@@ -774,11 +733,8 @@ export function computeStaffAnalytics(
         enteredAverages,
       timelines:
         enteredTimelines,
-    },
-  };
-}
+          },
+        };
+      }
 
-
-export async function fetchTestTimings() { 
-  return testTimings || {}; 
-}
+export async function fetchTestTimings() { return testTimings || {}; }

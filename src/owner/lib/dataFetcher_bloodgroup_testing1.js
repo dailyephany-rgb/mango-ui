@@ -1,6 +1,6 @@
 
 // ------------------------------------------------------
-// Blood Group Retesting — STRICT Time Printed Implementation
+// Blood Group Testing — STRICT Time Printed Implementation
 // ------------------------------------------------------
 
 import { db } from "../../firebaseConfig.js";
@@ -74,6 +74,7 @@ export function mergeDeptRows(rows = []) {
     const printedDate = toDate(r.timePrinted);
     if (!printedDate) return; 
 
+    // UPDATE: Unique key combines RegNo and DiagnosticNo
     const key = `${regId}_${diagNo}_bloodgroup`;
     if (!out[key]) {
       out[key] = {
@@ -86,11 +87,14 @@ export function mergeDeptRows(rows = []) {
         timeCollected: toDate(r.timeCollected),
         timeScanned: toDate(r.scannedTime || r.timeScanned),
         timeSaved: toDate(r.savedTime || r.timeSaved),
-        timeValidated: toDate(r.validatedTime || r.timeValidated),
-        isSaved: r.saved === "Yes" || !!(r.savedTime || r.timeSaved),
         savedBy: r.savedBy || "",
-        isValidated: r.validated === true || r.status === "validated" || !!(r.validatedTime || r.timeValidated),
+        timeValidated: toDate(r.validatedTime || r.timeValidated),
+        timeEntered: toDate(r.enteredTime || r.timeEntered),
+        isSaved: r.saved === "Yes" || !!(r.savedTime || r.timeSaved),
+        isValidated: r.validated === true || r.status === "validated"
+         || !!(r.validatedTime || r.timeValidated),
         validatedBy: r.validatedBy || "",
+        enteredBy: r.enteredBy,
         testList: new Set(),
       };
     }
@@ -111,35 +115,37 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
   unifiedRows.forEach((row) => {
     const allowed = timingMap["bloodgroup"]?.[stage] ?? timingMap.default?.[stage] ?? 30;
     let start;
-    let end;
-    
-    switch (stage) {
-      case "scanned_to_saved":
-        start = toDate(row.timeScanned);
-        end = toDate(row.timeSaved);
-        break;
-    
-      case "saved_to_validated":
-        start = toDate(row.timeSaved);
-        end = toDate(row.timeValidated);
-        break;
+let end;
 
-        case "turnaround":
-        start = toDate(row.timeCollected);
-        end = toDate(row.timeValidated);
-        break;
-    
-    
-      default:
-        return;
-    }
-    
-    if (!start || !end)
-      return;
-    
-    const duration = Math.round(
-      (end - start) / 60000
+switch (stage) {
+  case "scanned_to_saved":
+    start = toDate(row.timeScanned);
+    end = toDate(row.timeSaved);
+    break;
+
+  case "saved_to_validated":
+    start = toDate(row.timeSaved);
+    end = toDate(row.timeValidated);
+    break;
+
+  case "validated_to_entered":
+    start = toDate(row.timeValidated);
+    end = toDate(
+      row.timeEntered ||
+      row.enteredTime
     );
+    break;
+
+  default:
+    return;
+}
+
+if (!start || !end)
+  return;
+
+const duration = Math.round(
+  (end - start) / 60000
+);
     
     if (duration > allowed) {
       const excess = duration - allowed; 
@@ -162,6 +168,9 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
         validatedBy:
           row.validatedBy || "NA",
       
+        enteredBy:
+          row.enteredBy || "NA",
+      
         timeScanned:
           row.timeScanned,
       
@@ -170,6 +179,9 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
       
         timeValidated:
           row.timeValidated,
+      
+        enteredTime:
+          row.timeEntered,
       });
     }
   });
@@ -184,6 +196,7 @@ export function computeKPIs(masterRows = [], bgRows = []) {
     return tests.some(isBloodGroupTest);
   });
 
+  // UPDATE: Unique DiagnosticNo-based visits
   const totalPatientsCollected = new Set(masterBG.map((m) => `${m.regNo}_${m.diagnosticNo || m.billNo || "NA"}`)).size;
   const totalTestsCollected = masterBG.reduce((sum, m) => sum + extractBloodGroupTestCount(m), 0);
   
@@ -209,7 +222,7 @@ export function computeKPIs(masterRows = [], bgRows = []) {
     const B = minutesDiff(r.timeCollected, r.timeScanned);
     const C = minutesDiff(r.timeScanned, r.timeSaved);
     const D = minutesDiff(r.timeSaved, r.timeValidated);
-    const TAT = minutesDiff(r.timeCollected, r.timeValidated);
+    const TAT = minutesDiff(r.timeCollected, r.timeValidated); 
     
     if (A != null) averages.printedToCollected.push(A);
     if (B != null) averages.collectedToScanned.push(B);
@@ -241,9 +254,8 @@ export function computeKPIs(masterRows = [], bgRows = []) {
     slowestEntry,
   };
 }
-
-
 /* ================= STAFF ANALYTICS ====================== */
+
 export function computeStaffAnalytics(
   rows = []
 ) {
@@ -386,6 +398,17 @@ export function computeStaffAnalytics(
         "timeSaved",
         "timeValidated"
       ),
+
+    entered:
+      buildStats(
+        rows.filter(
+          (r) =>
+            r.timeEntered
+        ),
+        "enteredBy",
+        "timeValidated",
+        "timeEntered"
+      ),
   };
 }
 
@@ -393,12 +416,11 @@ export function computeStaffAnalytics(
 
 export function subscribeOverview({ onData, source = "All", dateRange }) {
   const masterRef = query(collection(db, "master_register"), orderBy("timePrinted", "asc"));
-  const bgRef = query(collection(db, "bloodgroup_retesting_register"), orderBy("timePrinted", "asc"));
+  const bgRef = query(collection(db, "bloodgroup_testing_register"), orderBy("timePrinted", "asc"));
   
   let masterRows = []; let bgRows = [];
 
   const publish = () => {
-    // UPDATED: Strict IST Midnight strings
     const from = dateRange?.from ? new Date(dateRange.from + "T00:00:00") : null;
     const to = dateRange?.to ? new Date(dateRange.to + "T23:59:59") : null;
 
@@ -421,38 +443,20 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
 
     const merged = mergeDeptRows(filteredBG);
     const unified = unifyForCharts(merged);
-    
-      const violators =
-        computeSLAViolations(
-          unified,
-          testTimings
-        );
-  
-      const staffAnalytics =
-        computeStaffAnalytics(
-          merged
-        );
-  
-        onData({
-          masterRows:
-            filteredMaster,
         
-          deptRows:
-            merged,
-        
-          unifiedRows:
-            unified,
-        
-          violators,
-        
-          kpis:
-            computeKPIs(
-              filteredMaster,
-              merged
-            ),
-        
-          staffAnalytics,
-        });
+    const violators = computeSLAViolations(unified,testTimings );
+    const staffAnalytics =computeStaffAnalytics(merged);
+
+    onData({masterRows:filteredMaster,
+
+      deptRows:merged,
+      unifiedRows:unified,
+      violators,
+
+      kpis:computeKPIs(filteredMaster,merged),
+
+      staffAnalytics,
+    });
   };
 
   const unsubMaster = onSnapshot(masterRef, (snap) => { masterRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
@@ -464,7 +468,7 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
 export function unifyForCharts(rows = []) {
   return rows.map((r) => ({
     ...r,
-    regNo: r.diagnosticNo, // UPDATED: Maps diagnosticNo to regNo key for TimeBricks display
+    regNo: r.diagnosticNo, // Use diagnosticNo as primary label for charts/TimeBricks
     patientName: r.name,
     tests: r.selectedTests,
   }));

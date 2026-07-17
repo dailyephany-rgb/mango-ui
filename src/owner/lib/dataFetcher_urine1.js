@@ -1,6 +1,7 @@
 
 // ------------------------------------------------------
-// Blood Group Retesting — STRICT Time Printed Implementation
+// src/owner/lib/dataFetcher_urine.js
+// Urine Analysis — Analytics Data Fetcher (STRICT + MULTI-COUNT FIX)
 // ------------------------------------------------------
 
 import { db } from "../../firebaseConfig.js";
@@ -40,26 +41,46 @@ export function normalizeTestsField(field) {
   return [];
 }
 
-/* ================= BLOOD GROUP CANON TESTS =================== */
+/* ================= URINE CANON TESTS =================== */
 
-const BG_TESTS_CANON = ["ABO GROUP & RH TYPE"];
+const URINE_TESTS_CANON = [
+  "PREGNANCY TEST",
+  "URINE ANALYSIS",
+  "URINE FOR ALBUMIN",
+  "URINE FOR BILE PIGMENTS",
+  "URINE FOR BILE SALTS",
+  "URINE FOR KETONE BODIES",
+  "URINE FOR SUGAR"
+];
 
-const normalizeBG = (s = "") =>
+const normalizeUrine = (s = "") =>
   String(s).toLowerCase().replace(/[\s,._\-()]+/g, " ").trim();
 
-export function isBloodGroupTest(testName) {
+export function isUrineTest(testName) {
   if (!testName) return false;
-  const normTest = normalizeBG(testName);
-  return BG_TESTS_CANON.some((canonical) => {
-    const target = normalizeBG(canonical);
+  const normTest = normalizeUrine(testName);
+  return URINE_TESTS_CANON.some((canonical) => {
+    const target = normalizeUrine(canonical);
     return normTest.includes(target) || target.includes(normTest);
   });
 }
 
-export const extractBloodGroupTestCount = (record) => {
+export const extractUrineTestCount = (record) => {
   const rawTests = normalizeTestsField(record.selectedTests || record.tests || record.test || []);
-  const hasMatch = rawTests.some(testName => isBloodGroupTest(testName));
-  return (hasMatch || record.regNo) ? 1 : 0;
+  const uniqueMatches = new Set();
+  
+  rawTests.forEach(testName => {
+    const normTest = normalizeUrine(testName);
+    URINE_TESTS_CANON.forEach(canonical => {
+      const target = normalizeUrine(canonical);
+      if (normTest.includes(target) || target.includes(normTest)) {
+        uniqueMatches.add(target); 
+      }
+    });
+  });
+
+  const count = uniqueMatches.size;
+  return count > 0 ? count : (record.regNo ? 1 : 0);
 };
 
 /* ================= MERGE DEPT ROWS ====================== */
@@ -74,13 +95,13 @@ export function mergeDeptRows(rows = []) {
     const printedDate = toDate(r.timePrinted);
     if (!printedDate) return; 
 
-    const key = `${regId}_${diagNo}_bloodgroup`;
+    const key = `${regId}_${diagNo}_urine`;
     if (!out[key]) {
       out[key] = {
         regNo: regId,
         diagnosticNo: diagNo, 
         name: r.name || r.patientName || "",
-        department: "Blood Group",
+        department: "Urine Examination",
         source: r.source || "",
         timePrinted: printedDate, 
         timeCollected: toDate(r.timeCollected),
@@ -88,9 +109,8 @@ export function mergeDeptRows(rows = []) {
         timeSaved: toDate(r.savedTime || r.timeSaved),
         timeValidated: toDate(r.validatedTime || r.timeValidated),
         isSaved: r.saved === "Yes" || !!(r.savedTime || r.timeSaved),
-        savedBy: r.savedBy || "",
         isValidated: r.validated === true || r.status === "validated" || !!(r.validatedTime || r.timeValidated),
-        validatedBy: r.validatedBy || "",
+        isCritical: r.critical === "Yes",
         testList: new Set(),
       };
     }
@@ -104,42 +124,44 @@ export function mergeDeptRows(rows = []) {
   }));
 }
 
-/* ================= SLA VIOLATIONS (STRICT ROUNDING) ======================= */
+/* ================= SLA VIOLATIONS ======================= */
 
 export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to_saved") {
   const violators = [];
   unifiedRows.forEach((row) => {
-    const allowed = timingMap["bloodgroup"]?.[stage] ?? timingMap.default?.[stage] ?? 30;
+    const allowed = timingMap["urine"]?.[stage] ?? timingMap.default?.[stage] ?? 30;
     let start;
     let end;
-    
-    switch (stage) {
-      case "scanned_to_saved":
-        start = toDate(row.timeScanned);
-        end = toDate(row.timeSaved);
-        break;
-    
-      case "saved_to_validated":
-        start = toDate(row.timeSaved);
-        end = toDate(row.timeValidated);
-        break;
 
-        case "turnaround":
-        start = toDate(row.timeCollected);
-        end = toDate(row.timeValidated);
-        break;
-    
-    
-      default:
+      switch (stage) {
+        case "scanned_to_saved":
+          start = toDate(row.timeScanned);
+          end = toDate(row.timeSaved);
+          break;
+
+        case "saved_to_validated":
+          start = toDate(row.timeSaved);
+          end = toDate(row.timeValidated);
+          break;
+
+        case "validated_to_entered":
+          start = toDate(row.timeValidated);
+          end = toDate(
+            row.enteredTime ||
+            row.timeEntered
+          );
+          break;
+
+        default:
+          return;
+      }
+
+      if (!start || !end)
         return;
-    }
-    
-    if (!start || !end)
-      return;
-    
-    const duration = Math.round(
-      (end - start) / 60000
-    );
+
+      const duration = Math.round(
+        (end - start) / 60000
+      );
     
     if (duration > allowed) {
       const excess = duration - allowed; 
@@ -154,13 +176,16 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
         excess: Math.round(excess),
         allowed,
         status,
-        department: "Blood Group",
+        department: "urine",
       
         savedBy:
           row.savedBy || "NA",
       
         validatedBy:
           row.validatedBy || "NA",
+      
+        enteredBy:
+          row.enteredBy || "NA",
       
         timeScanned:
           row.timeScanned,
@@ -170,6 +195,9 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
       
         timeValidated:
           row.timeValidated,
+      
+        enteredTime:
+          row.enteredTime,
       });
     }
   });
@@ -178,21 +206,23 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
 
 /* ================= KPI COMPUTATION ====================== */
 
-export function computeKPIs(masterRows = [], bgRows = []) {
-  const masterBG = masterRows.filter((m) => {
+export function computeKPIs(masterRows = [], urineRows = []) {
+  const masterUrine = masterRows.filter((m) => {
     const tests = normalizeTestsField(m.selectedTests || m.tests || m.test || []);
-    return tests.some(isBloodGroupTest);
+    return tests.some(isUrineTest);
   });
 
-  const totalPatientsCollected = new Set(masterBG.map((m) => `${m.regNo}_${m.diagnosticNo || m.billNo || "NA"}`)).size;
-  const totalTestsCollected = masterBG.reduce((sum, m) => sum + extractBloodGroupTestCount(m), 0);
+  const totalPatientsCollected = new Set(masterUrine.map((m) => `${m.regNo}_${m.diagnosticNo || m.billNo || "NA"}`)).size;
+  const totalTestsCollected = masterUrine.reduce((sum, m) => sum + extractUrineTestCount(m), 0);
   
-  const savedRows = bgRows.filter(r => r.isSaved);
+  const savedRows = urineRows.filter(r => r.isSaved);
   const totalPatientsSaved = new Set(savedRows.map((r) => `${r.regNo}_${r.diagnosticNo}`)).size;
-  const totalTestsSaved = savedRows.reduce((sum, r) => sum + extractBloodGroupTestCount(r), 0);
+  const totalTestsSaved = savedRows.reduce((sum, r) => sum + extractUrineTestCount(r), 0);
   
-  const validatedRows = bgRows.filter((r) => r.isValidated);
+  const validatedRows = urineRows.filter((r) => r.isValidated);
   const totalPatientsValidated = new Set(validatedRows.map((r) => `${r.regNo}_${r.diagnosticNo}`)).size;
+
+  const totalPatientsCritical = urineRows.filter(r => r.isCritical).length;
   
   const averages = { 
     printedToCollected: [], 
@@ -201,30 +231,19 @@ export function computeKPIs(masterRows = [], bgRows = []) {
     savedToValidated: [],
     collectedToValidated: [] 
   };
-  
-  let slowestEntry = null;
 
-  bgRows.forEach((r) => {
+  urineRows.forEach((r) => {
     const A = minutesDiff(r.timePrinted, r.timeCollected);
     const B = minutesDiff(r.timeCollected, r.timeScanned);
     const C = minutesDiff(r.timeScanned, r.timeSaved);
     const D = minutesDiff(r.timeSaved, r.timeValidated);
     const TAT = minutesDiff(r.timeCollected, r.timeValidated);
-    
+
     if (A != null) averages.printedToCollected.push(A);
     if (B != null) averages.collectedToScanned.push(B);
     if (C != null) averages.scannedToSaved.push(C);
     if (D != null) averages.savedToValidated.push(D);
     if (TAT != null) averages.collectedToValidated.push(TAT);
-
-    if (C != null && (!slowestEntry || C > slowestEntry.delay)) {
-      slowestEntry = {
-        regNo: r.regNo,
-        delay: C,
-        patientName: r.name || "",
-        tests: r.selectedTests || [],
-      };
-    }
   });
 
   const avg = (arr) => arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : null;
@@ -233,131 +252,101 @@ export function computeKPIs(masterRows = [], bgRows = []) {
     totalPatientsCollected, totalTestsCollected, totalPatientsSaved, totalPatientsValidated,
     totalTestsSaved, totalPatientsPendingScans: Math.max(0, totalPatientsCollected - totalPatientsSaved),
     totalTestsPending: Math.max(0, totalTestsCollected - totalTestsSaved),
+    totalPatientsCritical,
     avgPrintedToCollected: avg(averages.printedToCollected),
     avgCollectedToScanned: avg(averages.collectedToScanned),
     avgScannedToSaved: avg(averages.scannedToSaved),
     avgSavedToValidated: avg(averages.savedToValidated),
     avgTurnaroundTime: avg(averages.collectedToValidated),
-    slowestEntry,
   };
 }
 
-
 /* ================= STAFF ANALYTICS ====================== */
-export function computeStaffAnalytics(
-  rows = []
-) {
-  const buildStats = (
+
+export function computeStaffAnalytics(rows = []) {
+  const buildAnalytics = (
     rows,
-    staffKey,
-    startKey,
-    endKey
+    staffField,
+    startField,
+    endField
   ) => {
     const map = {};
 
     rows.forEach((r) => {
       const staff =
-        r[staffKey] ||
-        "Unknown";
+        r?.[staffField]?.trim?.();
+
+      if (!staff) return;
 
       if (!map[staff]) {
         map[staff] = {
-          name: staff,
           count: 0,
           durations: [],
-          timeline: {},
+          timeline: [],
         };
       }
 
       map[staff].count++;
 
-      const mins =
-        minutesDiff(
-          r[startKey],
-          r[endKey]
-        );
+      const mins = minutesDiff(
+        r[startField],
+        r[endField]
+      );
 
       if (mins != null) {
-        map[
-          staff
-        ].durations.push(
+        map[staff].durations.push(
           mins
         );
       }
 
-      const d =
-        toDate(
-          r[endKey]
-        );
+      const t = toDate(
+        r[endField]
+      );
 
-      if (d) {
+      if (t) {
         const hour =
-          d.getHours();
+          t.getHours();
 
-        map[
-          staff
-        ].timeline[
+        map[staff].timeline.push(
           hour
-        ] =
-          (
-            map[
-              staff
-            ]
-              .timeline[
-              hour
-            ] || 0
-          ) + 1;
+        );
       }
     });
 
     return {
       distribution:
-        Object.values(
-          map
-        ).map((s) => ({
-          name:
-            s.name,
-          value:
-            s.count,
-        })),
+        Object.entries(map).map(
+          ([name, v]) => ({
+            name,
+            value: v.count,
+          })
+        ),
 
       averages:
-        Object.values(
-          map
-        ).map((s) => ({
-          name:
-            s.name,
-          value:
-            s
-              .durations
-              .length
-              ? Math.round(
-                  s.durations.reduce(
-                    (
-                      a,
-                      b
-                    ) =>
-                      a +
-                      b,
-                    0
-                  ) /
-                    s
-                      .durations
-                      .length
-                )
-              : 0,
-        })),
+        Object.entries(map).map(
+          ([name, v]) => ({
+            name,
+            value:
+              v.durations.length
+                ? Math.round(
+                    v.durations.reduce(
+                      (a, b) =>
+                        a + b,
+                      0
+                    ) /
+                      v.durations
+                        .length
+                  )
+                : null,
+          })
+        ),
 
       timelines:
         Object.fromEntries(
-          Object.values(
-            map
-          ).map(
-            (
-              s
-            ) => [
-              s.name,
-              s.timeline,
+          Object.entries(map).map(
+            ([name, v]) => [
+              name,
+              v.timeline,
             ]
           )
         ),
@@ -365,27 +354,27 @@ export function computeStaffAnalytics(
   };
 
   return {
-    testing:
-      buildStats(
-        rows.filter(
-          (r) =>
-            r.timeSaved
-        ),
-        "savedBy",
-        "timeScanned",
-        "timeSaved"
-      ),
+    testing: buildAnalytics(
+      rows,
+      "savedBy",
+      "timeScanned",
+      "timeSaved"
+    ),
 
     validated:
-      buildStats(
-        rows.filter(
-          (r) =>
-            r.timeValidated
-        ),
+      buildAnalytics(
+        rows,
         "validatedBy",
         "timeSaved",
         "timeValidated"
       ),
+
+    entered: buildAnalytics(
+      rows,
+      "enteredBy",
+      "timeValidated",
+      "timeEntered"
+    ),
   };
 }
 
@@ -393,12 +382,11 @@ export function computeStaffAnalytics(
 
 export function subscribeOverview({ onData, source = "All", dateRange }) {
   const masterRef = query(collection(db, "master_register"), orderBy("timePrinted", "asc"));
-  const bgRef = query(collection(db, "bloodgroup_retesting_register"), orderBy("timePrinted", "asc"));
+  const urineRef = query(collection(db, "urine_analysis_register"), orderBy("timePrinted", "asc"));
   
-  let masterRows = []; let bgRows = [];
+  let masterRows = []; let urineRows = [];
 
   const publish = () => {
-    // UPDATED: Strict IST Midnight strings
     const from = dateRange?.from ? new Date(dateRange.from + "T00:00:00") : null;
     const to = dateRange?.to ? new Date(dateRange.to + "T23:59:59") : null;
 
@@ -407,64 +395,49 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
       if (!t) return false;
       if (from && t < from) return false;
       if (to && t > to) return false;
-
+    
       const normSource = source && source !== "All" ? source.trim().toUpperCase() : null;
       if (normSource) {
         const rowSource = (row.source || "").trim().toUpperCase();
         if (rowSource !== normSource) return false;
       }
+    
       return true;
     };
-
-    const filteredMaster = masterRows.filter(filterFn);
-    const filteredBG = bgRows.filter(filterFn);
-
-    const merged = mergeDeptRows(filteredBG);
-    const unified = unifyForCharts(merged);
     
-      const violators =
-        computeSLAViolations(
-          unified,
-          testTimings
-        );
-  
-      const staffAnalytics =
+    const filteredMaster = masterRows.filter(filterFn);
+    const filteredUrine = urineRows.filter(filterFn);
+
+    const merged = mergeDeptRows(filteredUrine);
+    const unified = unifyForCharts(merged);
+    const violators = computeSLAViolations(unified, testTimings);
+
+    onData({
+      masterRows: filteredMaster,
+      deptRows: merged,
+      unifiedRows: unified,
+      violators,
+      kpis: computeKPIs(
+        filteredMaster,
+        merged
+      ),
+      staffAnalytics:
         computeStaffAnalytics(
           merged
-        );
-  
-        onData({
-          masterRows:
-            filteredMaster,
-        
-          deptRows:
-            merged,
-        
-          unifiedRows:
-            unified,
-        
-          violators,
-        
-          kpis:
-            computeKPIs(
-              filteredMaster,
-              merged
-            ),
-        
-          staffAnalytics,
-        });
+        ),
+    });
   };
 
   const unsubMaster = onSnapshot(masterRef, (snap) => { masterRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
-  const unsubBG = onSnapshot(bgRef, (snap) => { bgRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
+  const unsubUrine = onSnapshot(urineRef, (snap) => { urineRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
 
-  return () => { unsubMaster?.(); unsubBG?.(); };
+  return () => { unsubMaster?.(); unsubUrine?.(); };
 }
 
 export function unifyForCharts(rows = []) {
   return rows.map((r) => ({
     ...r,
-    regNo: r.diagnosticNo, // UPDATED: Maps diagnosticNo to regNo key for TimeBricks display
+    regNo: r.diagnosticNo, // Use diagnosticNo as primary label for charts/TimeBricks
     patientName: r.name,
     tests: r.selectedTests,
   }));

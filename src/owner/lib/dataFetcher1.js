@@ -1,18 +1,11 @@
 
 // ------------------------------------------------------
-// src/owner/lib/dataFetcher_rapid.js — Rapid Card Analytics (STRICT Time Printed)
+// Coagulation Analysis — STRICT Time Printed Implementation
 // ------------------------------------------------------
 
 import { db } from "../../firebaseConfig.js";
-import {
-  collection,
-  onSnapshot,
-  query,
-  orderBy,
-} from "firebase/firestore";
-
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import testTimings from "../data/test_timings.json";
-import backroomRouting from "../../backroom_routing.json";
 
 /* ====================== DATE UTILS ====================== */
 
@@ -47,30 +40,32 @@ export function normalizeTestsField(field) {
   return [];
 }
 
-/* ================= RAPID CANON TESTS =================== */
+/* ================= COAGULATION CANON TESTS =================== */
 
-const RAPID_KEYWORDS =
-  Array.isArray(backroomRouting?.RapidCardRegister)
-    ? backroomRouting.RapidCardRegister
-    : [];
+const COAG_TESTS_CANON = [
+  "APTT",
+  "BLEEDING TIME",
+  "CLOTTING TIME",
+  "COAGULATION PROFILE",
+  "PROTHOMBIN TIME ( PT-INR ), PLASMA"
+];
 
-const normalizeRapid = (s = "") =>
-  String(s).toUpperCase().replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+const normalizeCoag = (s = "") =>
+  String(s).toLowerCase().replace(/[\s,._\-()]+/g, " ").trim();
 
-export function isRapidTest(testName) {
+export function isCoagTest(testName) {
   if (!testName) return false;
-  const n = normalizeRapid(testName);
-  
-  return RAPID_KEYWORDS.some((k) => {
-    const target = normalizeRapid(k);
-    return n === target || n.includes(target);
+  const normTest = normalizeCoag(testName);
+  return COAG_TESTS_CANON.some((canonical) => {
+    const target = normalizeCoag(canonical);
+    return normTest.includes(target) || target.includes(normTest);
   });
 }
 
-export const extractRapidTestCount = (record) => {
+export const extractCoagTestCount = (record) => {
   const rawTests = normalizeTestsField(record.selectedTests || record.tests || record.test || []);
-  const matches = rawTests.filter(testName => isRapidTest(testName));
-  return matches.length;
+  const matchingTests = rawTests.filter(testName => isCoagTest(testName));
+  return matchingTests.length > 0 ? matchingTests.length : (record.regNo ? 1 : 0);
 };
 
 /* ================= MERGE DEPT ROWS ====================== */
@@ -85,26 +80,28 @@ export function mergeDeptRows(rows = []) {
     const printedDate = toDate(r.timePrinted);
     if (!printedDate) return; 
 
-    const key = `${regId}_${diagNo}_rapid`;
+    // UPDATE: Unique key combines RegNo and diagnosticNo
+    const key = `${regId}_${diagNo}_coag`;
     if (!out[key]) {
       out[key] = {
         regNo: regId,
-        diagnosticNo: diagNo, 
+        diagnosticNo: diagNo,
         name: r.name || r.patientName || "",
-        department: "rapid",
+        department: "Coagulation",
         source: r.source || "",
         timePrinted: printedDate, 
         timeCollected: toDate(r.timeCollected),
-        timeScanned: toDate(r.timeScanned || r.scannedTime),
-        timeSaved: toDate(r.timeSaved || r.savedTime),
-        savedBy:r.savedBy || "",
+        timeScanned: toDate(r.scannedTime || r.timeScanned),
+        timeSaved: toDate(r.savedTime || r.timeSaved),
+        savedBy: r.savedBy || "",
         validatedBy: r.validatedBy || "",
         enteredBy: r.enteredBy || "",
         enteredTime: toDate(r.enteredTime),
+
         timeValidated: toDate(r.validatedTime || r.timeValidated),
         isSaved: r.saved === "Yes" || !!(r.savedTime || r.timeSaved),
         isValidated: r.validated === true || r.status === "validated" || !!(r.validatedTime || r.timeValidated),
-        isCritical: r.critical === "Yes", 
+        isCritical: r.critical === "Yes",
         testList: new Set(),
       };
     }
@@ -115,58 +112,62 @@ export function mergeDeptRows(rows = []) {
     ...r,
     test: Array.from(r.testList).join(", "),
     selectedTests: Array.from(r.testList),
-    tests: Array.from(r.testList),
   }));
 }
 
-/* ================= SLA VIOLATIONS ======================= */
+/* ================= SLA VIOLATIONS (STRICT ROUNDING FIX) ======================= */
 
 export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to_saved") {
   const violators = [];
   unifiedRows.forEach((row) => {
-    const allowed = timingMap["rapid"]?.[stage] ?? timingMap.default?.[stage] ?? 30;
-    
+    const allowed = timingMap["coagulation"]?.[stage] ?? timingMap.default?.[stage] ?? 30;
     let start;
     let end;
-    
-    switch (stage) {
-      case "scanned_to_saved":
-        start = toDate(row.timeScanned);
-        end = toDate(row.timeSaved);
-        break;
-    
-      case "saved_to_validated":
-        start = toDate(row.timeSaved);
-        end = toDate(row.timeValidated);
-        break;
-    
-      case "validated_to_entered":
-        start = toDate(row.timeValidated);
-        end = toDate(
-          row.enteredTime ||
-          row.timeEntered
-        );
-        break;
 
-        case "turnaround":
-        start = toDate(row.timeCollected);
-        end = toDate(row.timeValidated);
-        break;
-    
-    
-      default:
+      switch (stage) {
+        case "scanned_to_saved":
+          start = toDate(
+            row.timeScanned
+          );
+          end = toDate(
+            row.timeSaved
+          );
+          break;
+
+        case "saved_to_validated":
+          start = toDate(
+            row.timeSaved
+          );
+          end = toDate(
+            row.timeValidated
+          );
+          break;
+
+        case "validated_to_entered":
+          start = toDate(
+            row.timeValidated
+          );
+          end = toDate(
+            row.enteredTime
+          );
+          break;
+
+        default:
+          return;
+      }
+
+      if (!start || !end)
         return;
-    }
-    
-    if (!start || !end)
-      return;
-    
-    const duration =
-      (end - start) /
-      60000;
+
+      const rawDuration =
+        (end - start) /
+        60000;
+
+      const duration =
+        Math.round(rawDuration);
     
     if (duration > allowed) {
-      const excess = duration - allowed;
+      const excess = duration - allowed; 
       const status = duration <= allowed * 1.5 ? "borderline" : "violation";
       
       violators.push({
@@ -174,11 +175,11 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
         diagnosticNo: row.diagnosticNo,
         name: row.name,
         test: row.test,
-        duration: Math.round(duration),
+        duration,
         excess: Math.round(excess),
         allowed,
         status,
-        department: "rapid",
+        department: "Coagulation",
       
         savedBy:
           row.savedBy || "NA",
@@ -202,29 +203,30 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
           row.enteredTime,
       });
     }
+    
   });
   return violators.sort((a, b) => b.excess - a.excess);
 }
 
 /* ================= KPI COMPUTATION ====================== */
 
-export function computeKPIs(masterRows = [], rapidRows = []) {
-  const masterRapid = masterRows.filter((m) => {
+export function computeKPIs(masterRows = [], coagRows = []) {
+  const masterCoag = masterRows.filter((m) => {
     const tests = normalizeTestsField(m.selectedTests || m.tests || m.test || []);
-    return tests.some(isRapidTest);
+    return tests.some(isCoagTest);
   });
 
-  const totalPatientsCollected = new Set(masterRapid.map((m) => `${m.regNo}_${m.diagnosticNo || m.billNo || "NA"}`)).size;
-  const totalTestsCollected = masterRapid.reduce((sum, m) => sum + extractRapidTestCount(m), 0);
+  const totalPatientsCollected = new Set(masterCoag.map((m) => `${m.regNo}_${m.diagnosticNo || m.billNo || "NA"}`)).size;
+  const totalTestsCollected = masterCoag.reduce((sum, m) => sum + extractCoagTestCount(m), 0);
   
-  const savedRows = rapidRows.filter(r => r.isSaved);
+  const savedRows = coagRows.filter(r => r.isSaved);
   const totalPatientsSaved = new Set(savedRows.map((r) => `${r.regNo}_${r.diagnosticNo}`)).size;
-  const totalTestsSaved = savedRows.reduce((sum, r) => sum + extractRapidTestCount(r), 0);
+  const totalTestsSaved = savedRows.reduce((sum, r) => sum + extractCoagTestCount(r), 0);
   
-  const validatedRows = rapidRows.filter((r) => r.isValidated);
+  const validatedRows = coagRows.filter((r) => r.isValidated);
   const totalPatientsValidated = new Set(validatedRows.map((r) => `${r.regNo}_${r.diagnosticNo}`)).size;
 
-  const totalPatientsCritical = rapidRows.filter(r => r.isCritical).length;
+  const totalPatientsCritical = coagRows.filter(r => r.isCritical).length;
   
   const averages = { 
     printedToCollected: [], 
@@ -234,7 +236,7 @@ export function computeKPIs(masterRows = [], rapidRows = []) {
     collectedToValidated: [] 
   };
 
-  rapidRows.forEach((r) => {
+  coagRows.forEach((r) => {
     const A = minutesDiff(r.timePrinted, r.timeCollected);
     const B = minutesDiff(r.timeCollected, r.timeScanned);
     const C = minutesDiff(r.timeScanned, r.timeSaved);
@@ -266,10 +268,15 @@ export function computeKPIs(masterRows = [], rapidRows = []) {
 /* ================= SUBSCRIBE OVERVIEW =================== */
 
 export function subscribeOverview({ onData, source = "All", dateRange }) {
-  const applyFilters = (mRows, rRows) => {
+  const masterRef = query(collection(db, "master_register"), orderBy("timePrinted", "asc"));
+  const coagRef = query(collection(db, "coagulation_register"), orderBy("timePrinted", "asc"));
+  
+  let masterRows = []; let coagRows = [];
+
+  const publish = () => {
+    // UPDATE: Force T00:00:00 for local IST midnight transition
     const from = dateRange?.from ? new Date(dateRange.from + "T00:00:00") : null;
     const to = dateRange?.to ? new Date(dateRange.to + "T23:59:59") : null;
-    const normSource = source && source !== "All" ? source.trim().toUpperCase() : null;
 
     const filterFn = (row) => {
       const t = toDate(row.timePrinted);
@@ -277,6 +284,7 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
       if (from && t < from) return false;
       if (to && t > to) return false;
 
+      const normSource = source && source !== "All" ? source.trim().toUpperCase() : null;
       if (normSource) {
         const rowSource = (row.source || "").trim().toUpperCase();
         if (rowSource !== normSource) return false;
@@ -284,27 +292,19 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
       return true;
     };
 
-    return {
-      filteredMaster: mRows.filter(filterFn),
-      filteredRapid: rRows.filter(filterFn),
-    };
-  };
+    const filteredMaster = masterRows.filter(filterFn);
+    const filteredCoag = coagRows.filter(filterFn);
 
-  const masterRef = query(collection(db, "master_register"), orderBy("timePrinted", "asc"));
-  const rapidRef = query(collection(db, "rapid_card_register"), orderBy("timePrinted", "asc"));
-  
-  let masterRows = []; 
-  let rapidRows = [];
+    const merged = mergeDeptRows(filteredCoag);
+    const unified = unifyForCharts(merged);
+    
+    const violators = computeSLAViolations(unified, testTimings);
 
-  const publish = () => {
-    const { filteredMaster, filteredRapid } = applyFilters(masterRows, rapidRows);
-    const merged = mergeDeptRows(filteredRapid);
     onData({
       masterRows: filteredMaster,
       deptRows: merged,
-      unifiedRows: unifyForCharts(
-        merged
-      ),
+      unifiedRows: unified,
+      violators,
       kpis: computeKPIs(
         filteredMaster,
         merged
@@ -314,47 +314,37 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
           merged
         ),
     });
+    
   };
 
-  const unsubMaster = onSnapshot(masterRef, (snap) => { 
-    masterRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
-    publish(); 
-  });
-  
-  const unsubRapid = onSnapshot(rapidRef, (snap) => { 
-    rapidRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
-    publish(); 
-  });
+  const unsubMaster = onSnapshot(masterRef, (snap) => { masterRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
+  const unsubCoag = onSnapshot(coagRef, (snap) => { coagRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
 
-  return () => { 
-    unsubMaster?.(); 
-    unsubRapid?.(); 
-  };
+  return () => { unsubMaster?.(); unsubCoag?.(); };
 }
-/* ================= UNIFY FOR CHARTS ===================== */
 
 export function unifyForCharts(rows = []) {
   return rows.map((r) => ({
     ...r,
-    regNo: r.diagnosticNo, // Use diagnosticNo as the primary label for TimeBricks/Charts
     patientName: r.name,
     tests: r.selectedTests,
   }));
 }
-
 export function computeStaffAnalytics(
   rows = []
 ) {
+
   /* =========================
      TESTING (savedBy)
   ========================= */
 
-  const savedRows = rows.filter(
-    (r) =>
-      r.savedBy &&
-      r.timeScanned &&
-      r.timeSaved
-  );
+  const savedRows =
+    rows.filter(
+      (r) =>
+        r.savedBy &&
+        r.timeScanned &&
+        r.timeSaved
+    );
 
   const totalSaved =
     savedRows.length;
@@ -426,29 +416,23 @@ export function computeStaffAnalytics(
   const distribution =
     Object.entries(
       distributionMap
-    )
-      .map(
-        ([
-          name,
-          count,
-        ]) => ({
-          name,
-          count,
-          percentage:
-            totalSaved
-              ? Math.round(
-                  (count /
-                    totalSaved) *
-                    100
-                )
-              : 0,
-        })
-      )
-      .sort(
-        (a, b) =>
-          b.count -
-          a.count
-      );
+    ).map(
+      ([
+        name,
+        count,
+      ]) => ({
+        name,
+        count,
+        percentage:
+          totalSaved
+            ? Math.round(
+                (count /
+                  totalSaved) *
+                  100
+              )
+            : 0,
+      })
+    );
 
   const averages =
     Object.entries(
@@ -563,29 +547,23 @@ export function computeStaffAnalytics(
   const validatedDistribution =
     Object.entries(
       validatedDistributionMap
-    )
-      .map(
-        ([
-          name,
-          count,
-        ]) => ({
-          name,
-          count,
-          percentage:
-            totalValidated
-              ? Math.round(
-                  (count /
-                    totalValidated) *
-                    100
-                )
-              : 0,
-        })
-      )
-      .sort(
-        (a, b) =>
-          b.count -
-          a.count
-      );
+    ).map(
+      ([
+        name,
+        count,
+      ]) => ({
+        name,
+        count,
+        percentage:
+          totalValidated
+            ? Math.round(
+                (count /
+                  totalValidated) *
+                  100
+              )
+            : 0,
+      })
+    );
 
   const validatedAverages =
     Object.entries(
@@ -700,29 +678,23 @@ export function computeStaffAnalytics(
   const enteredDistribution =
     Object.entries(
       enteredDistributionMap
-    )
-      .map(
-        ([
-          name,
-          count,
-        ]) => ({
-          name,
-          count,
-          percentage:
-            totalEntered
-              ? Math.round(
-                  (count /
-                    totalEntered) *
-                    100
-                )
-              : 0,
-        })
-      )
-      .sort(
-        (a, b) =>
-          b.count -
-          a.count
-      );
+    ).map(
+      ([
+        name,
+        count,
+      ]) => ({
+        name,
+        count,
+        percentage:
+          totalEntered
+            ? Math.round(
+                (count /
+                  totalEntered) *
+                  100
+              )
+            : 0,
+      })
+    );
 
   const enteredAverages =
     Object.entries(
@@ -778,7 +750,4 @@ export function computeStaffAnalytics(
   };
 }
 
-
-export async function fetchTestTimings() { 
-  return testTimings || {}; 
-}
+export async function fetchTestTimings() { return testTimings || {}; }

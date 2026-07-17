@@ -1,194 +1,80 @@
 
 
-// src/owner_ui/OwnerRapidPage.jsx
+// src/owner/OwnerSerology.jsx
 import React, { useEffect, useMemo, useState, useContext } from "react";
-import { OwnerContext } from "../owner/OwnerContext.jsx";
+import { OwnerContext } from "./OwnerContext.jsx";
 
-import DateSourceFilter from "../owner/components/DateSourceFilter";
-import KPIBlocks from "../owner/components/KPIBlocks";
-import PatientListModal from "../owner/components/PatientListModal";
-import DelayTable from "../owner/components/DelayTable";
+import DateSourceFilter from "./components/DateSourceFilter";
+import KPIBlocks from "./components/KPIBlocks";
+import PatientListModal from "./components/PatientListModal";
+import DelayTable from "./components/DelayTable";
 
-import CountsBar from "../owner/charts/CountsBar";
-import StackedStageLines from "../owner/charts/StackedStageLines";
-import TimeBricks from "../owner/charts/TimeBricks";
-import DelayHistogram from "../owner/charts/DelayHistogram";
-import SLAScoreDonut from "../owner/charts/SLAScoreDonut";
-import StaffDistribution from "../owner/charts/StaffDistribution";
-import StaffAvgCards from "../owner/charts/StaffAvgCards";
-import StaffTimeline from "../owner/charts/StaffTimeline";
+import CountsBar from "./charts/CountsBar";
+import StackedStageLines from "./charts/StackedStageLines";
+import TimeBricks from "./charts/TimeBricks";
+import DelayHistogram from "./charts/DelayHistogram";
+import SLAScoreDonut from "./charts/SLAScoreDonut";
+import StaffDistribution from "./charts/StaffDistribution";
+import StaffAvgCards from "./charts/StaffAvgCards";
+import StaffTimeline from "./charts/StaffTimeline";
+
 
 import {
   subscribeOverview,
   fetchTestTimings,
   computeSLAViolations,
   minutesDiff,
-} from "../owner/lib/dataFetcher_rapid.js";
+} from "./lib/dataFetcher_serology.js";
 
-export default function OwnerRapidPage() {
+export default function OwnerSerologyPage() {
   const { dateRange, source } = useContext(OwnerContext);
 
-  const [rawRows, setRawRows] = useState([]); 
-  const [fetchedKpis, setFetchedKpis] = useState(null);
+  // State for data from the fetcher
+  const [deptRows, setDeptRows] = useState([]);
+  const [fetchedKpis,setFetchedKpis,] = useState(null);
+
   const [testTimings, setTestTimings] = useState({});
-  
-  const [activeTab, setActiveTab] = useState("overview");
-  const [staffTab, setStaffTab] = useState("testing");
-  const [staffAnalytics, setStaffAnalytics] = useState(null);
   const [openModal, setOpenModal] = useState(false);
   const [modalData, setModalData] = useState([]);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [staffTab, setStaffTab] = useState("testing");
+  const [ staffAnalytics,setStaffAnalytics,] = useState(null);
   const [stageFilter, setStageFilter] = useState("turnaround");
   const [chartSearch, setChartSearch] = useState("");
   const [chartExpanded, setChartExpanded] = useState(false);
   const [delayStage, setDelayStage] = useState("scanned_to_saved");
-  const [timebrickSearch,setTimebrickSearch,] = useState("");
+  const [timebrickSearch, setTimebrickSearch] = useState("");
 
-  // 1. SUBSCRIBE (Hormones Style)
+  // SUBSCRIBE + FILTER
   useEffect(() => {
     const unsub = subscribeOverview({
       source,
       dateRange,
-      onData: ({ unifiedRows,kpis,staffAnalytics,}) => {setRawRows(
-          unifiedRows || [] );
+      onData: ({
+        unifiedRows,
+        kpis,
+        staffAnalytics,
+      }) => {
+        setDeptRows(
+          unifiedRows || []
+        );
       
-        setFetchedKpis( kpis || null);
+        setFetchedKpis(
+          kpis || null
+        );
       
-        setStaffAnalytics( staffAnalytics || null);
-      }
+        setStaffAnalytics(
+          staffAnalytics ||
+            null
+        );
+      },
     });
 
     fetchTestTimings().then((t) => setTestTimings(t || {}));
     return () => unsub && unsub();
   }, [source, dateRange]);
 
-  // 2. DATA ASSIGNMENT
-  const deptRows = useMemo(() => {
-    return rawRows.map(r => ({
-      ...r,
-      times: [r.timeScanned, r.timeSaved, r.timeValidated].filter(Boolean)
-    }));
-  }, [rawRows]);
-
-  // 3. CALCULATE SLOWEST ENTRY
-  const slowestEntry = useMemo(() => {
-    let slowest = null;
-    deptRows.forEach((r) => {
-      const delay = minutesDiff(r.timeScanned, r.timeSaved);
-      if (delay !== null && (!slowest || delay > slowest.delay)) {
-        slowest = {
-          regNo: r.regNo,
-          patientName: r.name || r.patientName || "Unknown",
-          delay: delay,
-          tests: r.selectedTests || []
-        };
-      }
-    });
-    return slowest;
-  }, [deptRows]);
-
-  // 4. MERGED KPIs (Trusting the fetcher!)
-  const kpis = useMemo(() => {
-    if (!fetchedKpis) return null;
-    return {
-      ...fetchedKpis,
-      slowestEntry: slowestEntry 
-    };
-  }, [fetchedKpis, slowestEntry]);
-
-  // 5. COUNTS FOR CHARTS
-  const countsForBar = useMemo(
-    () => ({
-      totalPrinted: kpis?.totalPatientsCollected ?? 0,
-      scanned: deptRows.filter((r) => r.timeScanned).length,
-      saved: deptRows.filter((r) => r.isSaved || r.timeSaved).length,
-      validated: deptRows.filter((r) => r.isValidated || r.timeValidated).length,
-    }),
-    [deptRows, kpis]
-  );
-
-  const overviewForKPI = {
-    totalPrinted: kpis?.totalPatientsCollected ?? 0,
-    scanned: countsForBar.scanned,
-    saved: countsForBar.saved,
-    validated: countsForBar.validated,
-  };
-
-  const filteredStageRows = useMemo(() => {
-    const query =
-      chartSearch.trim().toLowerCase();
-  
-    if (!query) {
-      return deptRows;
-    }
-  
-    return deptRows.filter((row) => {
-      const regNo = String(
-        row.regNo || ""
-      ).toLowerCase();
-  
-      const diagNo = String(
-        row.diagnosticNo || ""
-      ).toLowerCase();
-  
-      return (
-        regNo.includes(query) ||
-        diagNo.includes(query)
-      );
-    });
-  }, [deptRows, chartSearch]);
-
-  const stackedChartSLA = useMemo(() => {
-    const dept =
-      testTimings?.rapid;
-  
-    if (!dept) return null;
-  
-    switch (stageFilter) {
-      case "printed":
-        return null;
-  
-      case "collected":
-        return (
-          dept.collected_to_scanned ??
-          null
-        );
-  
-      case "saved":
-        return (
-          dept.scanned_to_saved ??
-          null
-        );
-  
-      case "validated":
-        return (
-          dept.saved_to_validated ??
-          null
-        );
-
-      case "entered":
-          return (
-            dept.validated_to_entered ??
-            null
-          );
-  
-      case "turnaround":
-        return (
-          dept.turnaround ??
-          null
-        );
-      
-      case "complete":
-          return (
-            dept.complete_analysis ??
-            null
-          );
-
-      default:
-        return null;
-    }
-  }, [stageFilter, testTimings]);
-
-  // 6. SLA VIOLATORS
+  // SLA VIOLATORS (Calculated from filtered deptRows)
   const violators = useMemo(
     () =>
       computeSLAViolations(
@@ -203,67 +89,237 @@ export default function OwnerRapidPage() {
     ]
   );
 
-  return (
-    <div className="owner-root">
-      <header className="owner-header">
-        <h1>Rapid Card — Analytics</h1>
-        <div className="tab-buttons">
-          {["overview", "delays", "timebricks","staff",].map((t) => (
-            <button
-              key={t}
-              className={activeTab === t ? "active" : ""}
-              onClick={() => setActiveTab(t)}
-            >
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
-        </div>
+  const slowestEntry = useMemo(() => {
+    let slowest = null;
+  
+    deptRows.forEach((r) => {
+      const delay = minutesDiff(
+        r.timeScanned,
+        r.timeSaved
+      );
+  
+      if (
+        delay !== null &&
+        (!slowest ||
+          delay > slowest.delay)
+      ) {
+        slowest = {
+          regNo: r.regNo,
+          patientName:
+            r.name ||
+            r.patientName ||
+            "Unknown",
+          delay,
+          tests:
+            r.selectedTests || [],
+        };
+      }
+    });
+  
+    return slowest;
+  }, [deptRows]);
+  
+  const finalKpis = useMemo(() => {
+    if (!fetchedKpis) return null;
+  
+    return {
+      ...fetchedKpis,
+      slowestEntry,
+    };
+  }, [
+    fetchedKpis,
+    slowestEntry,
+  ]);
 
-        {activeTab === "staff" && (
-            <div
-              className="tab-buttons"
-              style={{
-                marginTop: 12,
-              }}
-            >
-              {[
-                "testing",
-                "validated",
-                "entered",
-              ].map((t) => (
-                <button
-                  key={t}
-                  className={
-                    staffTab === t
-                      ? "active"
-                      : ""
-                  }
-                  onClick={() =>
-                    setStaffTab(t)
-                  }
-                >
-                  {t.charAt(0)
-                    .toUpperCase() +
-                    t.slice(1)}
-                </button>
-              ))}
-            </div>
-          )}
+  // COUNTS FOR BAR CHART
+  const countsForBar = useMemo(
+    () => ({
+      totalPrinted:
+        finalKpis
+          ?.totalPatientsCollected ??
+        0,
+  
+      scanned:
+        deptRows.filter(
+          (r) => r.timeScanned
+        ).length,
+  
+      saved:
+        finalKpis
+          ?.totalPatientsSaved ??
+        0,
+  
+      validated:
+        finalKpis
+          ?.totalPatientsValidated ??
+        0,
+    }),
+    [deptRows, finalKpis]
+  );
 
+        // DATA FOR KPI BLOCKS
+        const overviewForKPI = {
+        totalPrinted:
+          finalKpis
+            ?.totalPatientsCollected ??
+          0,
+
+        scanned:
+          countsForBar.scanned,
+
+        saved:
+          countsForBar.saved,
+
+        validated:
+          countsForBar.validated,
+      };
+
+      const filteredStageRows = useMemo(() => {
+        const query =
+          chartSearch.trim().toLowerCase();
+      
+        if (!query) {
+          return deptRows;
+        }
+      
+        return deptRows.filter((row) => {
+          const regNo = String(
+            row.regNo || ""
+          ).toLowerCase();
+      
+          const diagNo = String(
+            row.diagnosticNo || ""
+          ).toLowerCase();
+      
+          return (
+            regNo.includes(query) ||
+            diagNo.includes(query)
+          );
+        });
+      }, [deptRows, chartSearch]);
+
+      const stackedChartSLA = useMemo(() => {
+        const dept =
+          testTimings?.serology;
+      
+        if (!dept) return null;
+      
+        switch (stageFilter) {
+          case "printed":
+            return null;
+      
+          case "collected":
+            return (
+              dept.collected_to_scanned ??
+              null
+            );
+      
+          case "saved":
+            return (
+              dept.scanned_to_saved ??
+              null
+            );
+      
+          case "validated":
+            return (
+              dept.saved_to_validated ??
+              null
+            );
+
+          case "entered":
+              return (
+                dept.validated_to_entered ??
+                null
+              );
+      
+          case "turnaround":
+            return (
+              dept.turnaround ??
+              null
+            );
+          
+          case "complete":
+              return (
+                dept.complete_analysis ??
+                null
+              );
+
+      
+          default:
+            return null;
+        }
+      }, [stageFilter, testTimings]);
+
+        return (
+          <div className="owner-root">
+            <header className="owner-header">
+              <h1>Serology — Analytics</h1>
+
+              <div className="tab-buttons">
+        {[
+          "overview",
+          "delays",
+          "timebricks",
+          "staff",
+        ].map((t) => (
+          <button
+            key={t}
+            className={
+              activeTab === t
+                ? "active"
+                : ""
+            }
+            onClick={() =>
+              setActiveTab(t)
+            }
+          >
+            {t.charAt(0).toUpperCase() +
+              t.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "staff" && (
+  <div
+    className="tab-buttons"
+    style={{
+      marginTop: 12,
+    }}
+  >
+    {[
+      "testing",
+      "validated",
+      "entered",
+    ].map((t) => (
+      <button
+        key={t}
+        className={
+          staffTab === t
+            ? "active"
+            : ""
+        }
+        onClick={() =>
+          setStaffTab(t)
+        }
+      >
+        {t.charAt(0)
+          .toUpperCase() +
+          t.slice(1)}
+      </button>
+    ))}
+  </div>
+)}
 
       </header>
 
       <DateSourceFilter />
-
-        {activeTab !== "staff" && (
+      
+              {activeTab !== "staff" && (
           <KPIBlocks
-            overview={
-              overviewForKPI
-            }
-            kpis={kpis || {}}
+            overview={overviewForKPI}
+            kpis={finalKpis || {}}
           />
         )}
-
       {activeTab === "overview" && (
         <section className="owner-charts">
           <div className="chart-card">
@@ -275,7 +331,8 @@ export default function OwnerRapidPage() {
   <div
     style={{
       display: "flex",
-      justifyContent: "space-between",
+      justifyContent:
+        "space-between",
       alignItems: "center",
       gap: 12,
       flexWrap: "wrap",
@@ -325,7 +382,7 @@ export default function OwnerRapidPage() {
         </option>
 
         <option value="entered">
-          Validated → Entered
+           Validated → Entered
         </option>
 
         <option value="turnaround">
@@ -335,6 +392,7 @@ export default function OwnerRapidPage() {
         <option value="complete">
           Complete Analysis
         </option>
+
       </select>
 
       <input
@@ -357,40 +415,38 @@ export default function OwnerRapidPage() {
         }}
       />
 
-      <button
-        onClick={() =>
-          setChartExpanded(true)
-        }
-        style={{
-          width: 36,
-          height: 36,
-          border:
-            "1px solid #d1d5db",
-          borderRadius: 8,
-          background: "#fff",
-          cursor: "pointer",
-          fontSize: 18,
-        }}
-            >
-              ↗
-            </button>
-          </div>
-        </div>
-
-        <StackedStageLines
-          unifiedRows={
-            filteredStageRows
+        <button
+          onClick={() =>
+            setChartExpanded(true)
           }
-          stageFilter={
-            stageFilter
-          }
-          slaLimit={
-            stackedChartSLA
-          }
-        />
+          style={{
+            width: 36,
+            height: 36,
+            border:
+              "1px solid #d1d5db",
+            borderRadius: 8,
+            background: "#fff",
+            cursor: "pointer",
+            fontSize: 18,
+          }}
+        >
+          ↗
+        </button>
       </div>
+    </div>
 
-
+    <StackedStageLines
+      unifiedRows={
+        filteredStageRows
+      }
+      stageFilter={
+        stageFilter
+      }
+      slaLimit={
+        stackedChartSLA
+      }
+    />
+  </div>
         </section>
       )}
 
@@ -438,10 +494,6 @@ export default function OwnerRapidPage() {
           <option value="validated_to_entered">
             Validated → Entered
           </option>
-
-          <option value="turnaround">
-            Turnaround (Collected → Validated)
-          </option>
         </select>
       </div>
 
@@ -449,6 +501,7 @@ export default function OwnerRapidPage() {
         violators={violators}
       />
     </div>
+
 
           <div className="chart-card">
             <h3>SLA Score</h3>
@@ -466,7 +519,6 @@ export default function OwnerRapidPage() {
 {activeTab === "timebricks" && (
   <section className="owner-charts">
     <div className="chart-card full-width">
-
       <div
         style={{
           display: "flex",
@@ -511,18 +563,19 @@ export default function OwnerRapidPage() {
         <TimeBricks
           unifiedRows={deptRows}
           testTimings={testTimings}
-          department="rapid"
+          department="serology"
           search={timebrickSearch}
+          dateRange={dateRange}
           onBrickClick={(p) => {
             setModalData([p]);
             setOpenModal(true);
           }}
         />
       </div>
-
     </div>
   </section>
 )}
+           
 
 {activeTab === "staff" && (
   <section className="owner-charts">
@@ -585,8 +638,7 @@ export default function OwnerRapidPage() {
 
         <div className="chart-card">
           <h3>
-            Avg Save → Validate by
-            Staff
+            Avg Save → Validate by Staff
           </h3>
 
           <StaffAvgCards
@@ -629,8 +681,7 @@ export default function OwnerRapidPage() {
 
         <div className="chart-card">
           <h3>
-            Avg Validate → Enter by
-            Staff
+            Avg Validate → Enter by Staff
           </h3>
 
           <StaffAvgCards
@@ -650,14 +701,14 @@ export default function OwnerRapidPage() {
             timelines={
               staffAnalytics?.entered
                 ?.timelines || {}
-                }
-              />
-            </div>
-          </>
-        )}
-
-      </section>
+            }
+          />
+        </div>
+      </>
     )}
+
+  </section>
+)}
 
       <PatientListModal 
         open={openModal} 
@@ -758,18 +809,9 @@ export default function OwnerRapidPage() {
             Saved → Validated
           </option>
 
-          <option value="entered">
-            Validated → Entered
-          </option>
-
           <option value="turnaround">
             Turnaround Time
           </option>
-
-          <option value="complete">
-            Complete Analysis
-          </option>
-
         </select>
 
         <input
@@ -807,8 +849,9 @@ export default function OwnerRapidPage() {
         />
       </div>
     </div>
-    </div>
-  )}
+  </div>
+)}
+
     </div>
   );
 }

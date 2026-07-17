@@ -1,34 +1,32 @@
 
-
-// src/owner_ui/OwnerRapidPage.jsx
 import React, { useEffect, useMemo, useState, useContext } from "react";
-import { OwnerContext } from "../owner/OwnerContext.jsx";
+import { OwnerContext } from "./OwnerContext.jsx";
 
-import DateSourceFilter from "../owner/components/DateSourceFilter";
-import KPIBlocks from "../owner/components/KPIBlocks";
-import PatientListModal from "../owner/components/PatientListModal";
-import DelayTable from "../owner/components/DelayTable";
+import DateSourceFilter from "./components/DateSourceFilter";
+import KPIBlocks from "./components/KPIBlocks";
+import PatientListModal from "./components/PatientListModal";
+import DelayTable from "./components/DelayTable";
 
-import CountsBar from "../owner/charts/CountsBar";
-import StackedStageLines from "../owner/charts/StackedStageLines";
-import TimeBricks from "../owner/charts/TimeBricks";
-import DelayHistogram from "../owner/charts/DelayHistogram";
-import SLAScoreDonut from "../owner/charts/SLAScoreDonut";
-import StaffDistribution from "../owner/charts/StaffDistribution";
-import StaffAvgCards from "../owner/charts/StaffAvgCards";
-import StaffTimeline from "../owner/charts/StaffTimeline";
+import CountsBar from "./charts/CountsBar";
+import StackedStageLines from "./charts/StackedStageLines";
+import TimeBricks from "./charts/TimeBricks";
+import DelayHistogram from "./charts/DelayHistogram";
+import SLAScoreDonut from "./charts/SLAScoreDonut";
+import StaffDistribution from "./charts/StaffDistribution";
+import StaffAvgCards from "./charts/StaffAvgCards";
+import StaffTimeline from "./charts/StaffTimeline";
 
 import {
   subscribeOverview,
   fetchTestTimings,
   computeSLAViolations,
   minutesDiff,
-} from "../owner/lib/dataFetcher_rapid.js";
+} from "./lib/dataFetcher_haem.js";
 
-export default function OwnerRapidPage() {
+export default function OwnerHaemPage() {
   const { dateRange, source } = useContext(OwnerContext);
 
-  const [rawRows, setRawRows] = useState([]); 
+  const [rawRows, setRawRows] = useState([]);
   const [fetchedKpis, setFetchedKpis] = useState(null);
   const [testTimings, setTestTimings] = useState({});
   
@@ -41,77 +39,43 @@ export default function OwnerRapidPage() {
   const [chartSearch, setChartSearch] = useState("");
   const [chartExpanded, setChartExpanded] = useState(false);
   const [delayStage, setDelayStage] = useState("scanned_to_saved");
-  const [timebrickSearch,setTimebrickSearch,] = useState("");
+  const [timebrickSearch, setTimebrickSearch] = useState("");
 
-  // 1. SUBSCRIBE (Hormones Style)
   useEffect(() => {
     const unsub = subscribeOverview({
       source,
       dateRange,
-      onData: ({ unifiedRows,kpis,staffAnalytics,}) => {setRawRows(
-          unifiedRows || [] );
+
+      onData: ({
+        unifiedRows,
+        kpis,
+        staffAnalytics,
+      }) => {
+        setRawRows(
+          unifiedRows || []
+        );
       
-        setFetchedKpis( kpis || null);
+        setFetchedKpis(
+          kpis || null
+        );
       
-        setStaffAnalytics( staffAnalytics || null);
-      }
+        setStaffAnalytics(
+          staffAnalytics ||
+            null
+        );
+      },
     });
 
     fetchTestTimings().then((t) => setTestTimings(t || {}));
     return () => unsub && unsub();
   }, [source, dateRange]);
 
-  // 2. DATA ASSIGNMENT
   const deptRows = useMemo(() => {
     return rawRows.map(r => ({
       ...r,
       times: [r.timeScanned, r.timeSaved, r.timeValidated].filter(Boolean)
     }));
   }, [rawRows]);
-
-  // 3. CALCULATE SLOWEST ENTRY
-  const slowestEntry = useMemo(() => {
-    let slowest = null;
-    deptRows.forEach((r) => {
-      const delay = minutesDiff(r.timeScanned, r.timeSaved);
-      if (delay !== null && (!slowest || delay > slowest.delay)) {
-        slowest = {
-          regNo: r.regNo,
-          patientName: r.name || r.patientName || "Unknown",
-          delay: delay,
-          tests: r.selectedTests || []
-        };
-      }
-    });
-    return slowest;
-  }, [deptRows]);
-
-  // 4. MERGED KPIs (Trusting the fetcher!)
-  const kpis = useMemo(() => {
-    if (!fetchedKpis) return null;
-    return {
-      ...fetchedKpis,
-      slowestEntry: slowestEntry 
-    };
-  }, [fetchedKpis, slowestEntry]);
-
-  // 5. COUNTS FOR CHARTS
-  const countsForBar = useMemo(
-    () => ({
-      totalPrinted: kpis?.totalPatientsCollected ?? 0,
-      scanned: deptRows.filter((r) => r.timeScanned).length,
-      saved: deptRows.filter((r) => r.isSaved || r.timeSaved).length,
-      validated: deptRows.filter((r) => r.isValidated || r.timeValidated).length,
-    }),
-    [deptRows, kpis]
-  );
-
-  const overviewForKPI = {
-    totalPrinted: kpis?.totalPatientsCollected ?? 0,
-    scanned: countsForBar.scanned,
-    saved: countsForBar.saved,
-    validated: countsForBar.validated,
-  };
 
   const filteredStageRows = useMemo(() => {
     const query =
@@ -139,7 +103,7 @@ export default function OwnerRapidPage() {
 
   const stackedChartSLA = useMemo(() => {
     const dept =
-      testTimings?.rapid;
+      testTimings?.haem;
   
     if (!dept) return null;
   
@@ -176,8 +140,8 @@ export default function OwnerRapidPage() {
           dept.turnaround ??
           null
         );
-      
-      case "complete":
+  
+        case "complete":
           return (
             dept.complete_analysis ??
             null
@@ -188,7 +152,41 @@ export default function OwnerRapidPage() {
     }
   }, [stageFilter, testTimings]);
 
-  // 6. SLA VIOLATORS
+  const slowestEntry = useMemo(() => {
+    let slowest = null;
+    deptRows.forEach((r) => {
+      const delay = minutesDiff(r.timeScanned, r.timeSaved);
+      if (delay !== null && (!slowest || delay > slowest.delay)) {
+        slowest = {
+          regNo: r.regNo,
+          patientName: r.patientName || r.name || "Unknown",
+          delay: delay,
+          tests: r.tests || []
+        };
+      }
+    });
+    return slowest;
+  }, [deptRows]);
+
+  const kpis = useMemo(() => {
+    if (!fetchedKpis) return null;
+    return { ...fetchedKpis, slowestEntry };
+  }, [fetchedKpis, slowestEntry]);
+
+  const countsForBar = useMemo(() => ({
+    totalPrinted: kpis?.totalPatientsCollected ?? 0,
+    scanned: deptRows.filter((r) => r.timeScanned).length,
+    saved: deptRows.filter((r) => r.isSaved || r.timeSaved).length,
+    validated: deptRows.filter((r) => r.isValidated || r.timeValidated).length,
+  }), [deptRows, kpis]);
+
+  const overviewForKPI = {
+    totalPrinted: kpis?.totalPatientsCollected ?? 0,
+    scanned: countsForBar.scanned,
+    saved: countsForBar.saved,
+    validated: countsForBar.validated,
+  };
+
   const violators = useMemo(
     () =>
       computeSLAViolations(
@@ -206,7 +204,7 @@ export default function OwnerRapidPage() {
   return (
     <div className="owner-root">
       <header className="owner-header">
-        <h1>Rapid Card — Analytics</h1>
+        <h1>Haematology — Analytics</h1>
         <div className="tab-buttons">
           {["overview", "delays", "timebricks","staff",].map((t) => (
             <button
@@ -218,179 +216,160 @@ export default function OwnerRapidPage() {
             </button>
           ))}
         </div>
-
-        {activeTab === "staff" && (
-            <div
-              className="tab-buttons"
-              style={{
-                marginTop: 12,
-              }}
-            >
-              {[
-                "testing",
-                "validated",
-                "entered",
-              ].map((t) => (
-                <button
-                  key={t}
-                  className={
-                    staffTab === t
-                      ? "active"
-                      : ""
-                  }
-                  onClick={() =>
-                    setStaffTab(t)
-                  }
-                >
-                  {t.charAt(0)
-                    .toUpperCase() +
-                    t.slice(1)}
-                </button>
+                {activeTab === "staff" && (
+          <div
+            className="tab-buttons"
+            style={{
+              marginTop: 12,
+            }}
+          >
+            {[ "testing","validated","entered",].map((t) => (
+              <button  key={t} className={ staffTab === t ? "active": ""} onClick={() => setStaffTab(t)}> {t.charAt(0) .toUpperCase() +t.slice(1)}
+              </button>
               ))}
             </div>
           )}
 
+        </header>
 
-      </header>
+        <DateSourceFilter />
 
-      <DateSourceFilter />
+            {activeTab !==
+              "staff" && (
+              <KPIBlocks
+                overview={
+                  overviewForKPI
+                }
+                kpis={kpis || {}}
+              />
+            )}
 
-        {activeTab !== "staff" && (
-          <KPIBlocks
-            overview={
-              overviewForKPI
-            }
-            kpis={kpis || {}}
-          />
-        )}
 
       {activeTab === "overview" && (
         <section className="owner-charts">
-          <div className="chart-card">
-            <h3>Counts Bar</h3>
-            <CountsBar counts={countsForBar} />
-          </div>
+          <div className="chart-card"><CountsBar counts={countsForBar} /></div>
+        
           <div className="chart-card">
 
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      gap: 12,
-      flexWrap: "wrap",
-      marginBottom: 16,
-    }}
-  >
-    <h3 style={{ margin: 0 }}>
-      Stacked Stage Timeline
-    </h3>
+          <div
+            style={{
+              display: "flex",
+              justifyContent:
+                "space-between",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+              marginBottom: 16,
+            }}
+          >
+            <h3 style={{ margin: 0 }}>
+              Stacked Stage Timeline
+            </h3>
 
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-      }}
-    >
-      <select
-        value={stageFilter}
-        onChange={(e) =>
-          setStageFilter(
-            e.target.value
-          )
-        }
-        style={{
-          padding: "6px 10px",
-          borderRadius: 8,
-          border:
-            "1px solid #d1d5db",
-          fontSize: 14,
-        }}
-      >
-        <option value="printed">
-          Printed → Collected
-        </option>
-
-        <option value="collected">
-          Collected → Scanned
-        </option>
-
-        <option value="saved">
-          Scanned → Saved
-        </option>
-
-        <option value="validated">
-          Saved → Validated
-        </option>
-
-        <option value="entered">
-          Validated → Entered
-        </option>
-
-        <option value="turnaround">
-          Turnaround Time
-        </option>
-
-        <option value="complete">
-          Complete Analysis
-        </option>
-      </select>
-
-      <input
-        type="text"
-        placeholder="Search Reg or Diag No..."
-        value={chartSearch}
-        onChange={(e) =>
-          setChartSearch(
-            e.target.value
-          )
-        }
-        style={{
-          width: 220,
-          padding:
-            "7px 12px",
-          border:
-            "1px solid #d1d5db",
-          borderRadius: 8,
-          fontSize: 14,
-        }}
-      />
-
-      <button
-        onClick={() =>
-          setChartExpanded(true)
-        }
-        style={{
-          width: 36,
-          height: 36,
-          border:
-            "1px solid #d1d5db",
-          borderRadius: 8,
-          background: "#fff",
-          cursor: "pointer",
-          fontSize: 18,
-        }}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
             >
-              ↗
-            </button>
+              <select
+                value={stageFilter}
+                onChange={(e) =>
+                  setStageFilter(
+                    e.target.value
+                  )
+                }
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  border:
+                    "1px solid #d1d5db",
+                  fontSize: 14,
+                }}
+              >
+                <option value="printed">
+                  Printed → Collected
+                </option>
+
+                <option value="collected">
+                  Collected → Scanned
+                </option>
+
+                <option value="saved">
+                  Scanned → Saved
+                </option>
+
+                <option value="validated">
+                  Saved → Validated
+                </option>
+
+                <option value="entered">
+                  Validated → Entered
+                </option>
+
+                <option value="turnaround">
+                  Turnaround Time
+                </option>
+
+                <option value="complete">
+                  Complete Analysis
+                </option>
+
+              </select>
+
+              <input
+                type="text"
+                placeholder="Search Reg or Diag No..."
+                value={chartSearch}
+                onChange={(e) =>
+                  setChartSearch(
+                    e.target.value
+                  )
+                }
+                style={{
+                  width: 220,
+                  padding:
+                    "7px 12px",
+                  border:
+                    "1px solid #d1d5db",
+                  borderRadius: 8,
+                  fontSize: 14,
+                }}
+              />
+
+              <button
+                onClick={() =>
+                  setChartExpanded(true)
+                }
+                style={{
+                  width: 36,
+                  height: 36,
+                  border:
+                    "1px solid #d1d5db",
+                  borderRadius: 8,
+                  background: "#fff",
+                  cursor: "pointer",
+                  fontSize: 18,
+                }}
+              >
+                ↗
+              </button>
+            </div>
           </div>
+
+          <StackedStageLines
+            unifiedRows={
+              filteredStageRows
+            }
+            stageFilter={
+              stageFilter
+            }
+            slaLimit={
+              stackedChartSLA
+            }
+          />
         </div>
-
-        <StackedStageLines
-          unifiedRows={
-            filteredStageRows
-          }
-          stageFilter={
-            stageFilter
-          }
-          slaLimit={
-            stackedChartSLA
-          }
-        />
-      </div>
-
-
         </section>
       )}
 
@@ -438,10 +417,6 @@ export default function OwnerRapidPage() {
           <option value="validated_to_entered">
             Validated → Entered
           </option>
-
-          <option value="turnaround">
-            Turnaround (Collected → Validated)
-          </option>
         </select>
       </div>
 
@@ -450,78 +425,67 @@ export default function OwnerRapidPage() {
       />
     </div>
 
+
           <div className="chart-card">
-            <h3>SLA Score</h3>
-            <SLAScoreDonut 
-              total={deptRows.length} 
-              within={deptRows.length - violators.length} 
-            />
+            <SLAScoreDonut total={deptRows.length} within={deptRows.length - violators.length} />
           </div>
           <div className="chart-card full-width">
           <DelayTable violators={violators} stage={delayStage}/>
-          </div>
+            </div>
         </section>
       )}
 
 {activeTab === "timebricks" && (
-  <section className="owner-charts">
-    <div className="chart-card full-width">
-
-      <div
+  <>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        marginBottom: 16,
+      }}
+    >
+      <input
+        type="text"
+        placeholder="Search Reg or Diag No..."
+        value={timebrickSearch}
+        onChange={(e) =>
+          setTimebrickSearch(
+            e.target.value
+          )
+        }
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
-          gap: 12,
-          flexWrap: "wrap",
+          width: 260,
+          padding: "8px 12px",
+          borderRadius: 8,
+          border:
+            "1px solid #d1d5db",
+          fontSize: 14,
+        }}
+      />
+    </div>
+
+    <section className="owner-charts">
+      <div
+        className="chart-card full-width"
+        style={{
+          overflow: "visible",
         }}
       >
-        <h3 style={{ margin: 0 }}>
-          Time Bricks Chart
-        </h3>
+        <h3>Time Bricks Chart</h3>
 
-        <input
-          type="text"
-          placeholder="Search Reg or Diag No..."
-          value={timebrickSearch}
-          onChange={(e) =>
-            setTimebrickSearch(
-              e.target.value
-            )
-          }
-          style={{
-            width: 250,
-            padding: "8px 12px",
-            border: "1px solid #d1d5db",
-            borderRadius: 8,
-            fontSize: 14,
-          }}
-        />
-      </div>
-
-      <div
-        style={{
-          height: "600px",
-          width: "100%",
-          background: "#fff",
-          borderRadius: "8px",
-        }}
-      >
         <TimeBricks
           unifiedRows={deptRows}
           testTimings={testTimings}
-          department="rapid"
           search={timebrickSearch}
+          department="haem"
           onBrickClick={(p) => {
             setModalData([p]);
             setOpenModal(true);
           }}
         />
       </div>
-
-    </div>
-  </section>
+    </section>
+  </>
 )}
 
 {activeTab === "staff" && (
@@ -541,9 +505,7 @@ export default function OwnerRapidPage() {
         </div>
 
         <div className="chart-card">
-          <h3>
-            Avg Scan → Save by Staff
-          </h3>
+          <h3>Avg Scan → Save by Staff</h3>
 
           <StaffAvgCards
             data={
@@ -650,7 +612,7 @@ export default function OwnerRapidPage() {
             timelines={
               staffAnalytics?.entered
                 ?.timelines || {}
-                }
+            }
               />
             </div>
           </>
@@ -659,19 +621,18 @@ export default function OwnerRapidPage() {
       </section>
     )}
 
-      <PatientListModal 
-        open={openModal} 
-        onClose={() => setOpenModal(false)} 
-        patients={modalData} 
-      />
+      <PatientListModal open={openModal} onClose={() => setOpenModal(false)} patients={modalData} />
 
-{chartExpanded && (
+      {chartExpanded && (
   <div
-    onClick={() => setChartExpanded(false)}
+    onClick={() =>
+      setChartExpanded(false)
+    }
     style={{
       position: "fixed",
       inset: 0,
-      background: "rgba(0,0,0,0.5)",
+      background:
+        "rgba(0,0,0,0.5)",
       display: "flex",
       justifyContent: "center",
       alignItems: "center",
@@ -679,7 +640,9 @@ export default function OwnerRapidPage() {
     }}
   >
     <div
-      onClick={(e) => e.stopPropagation()}
+      onClick={(e) =>
+        e.stopPropagation()
+      }
       style={{
         width: "95vw",
         height: "90vh",
@@ -694,7 +657,8 @@ export default function OwnerRapidPage() {
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          justifyContent:
+            "space-between",
           alignItems: "center",
           marginBottom: 20,
         }}
@@ -738,7 +702,8 @@ export default function OwnerRapidPage() {
           style={{
             padding: "8px 12px",
             borderRadius: 8,
-            border: "1px solid #d1d5db",
+            border:
+              "1px solid #d1d5db",
             fontSize: 14,
           }}
         >
@@ -747,68 +712,75 @@ export default function OwnerRapidPage() {
           </option>
 
           <option value="collected">
-            Collected → Scanned
-          </option>
+                Collected → Scanned
+              </option>
 
-          <option value="saved">
-            Scanned → Saved
-          </option>
+              <option value="saved">
+                Scanned → Saved
+              </option>
 
-          <option value="validated">
-            Saved → Validated
-          </option>
+              <option value="validated">
+                Saved → Validated
+              </option>
 
-          <option value="entered">
-            Validated → Entered
-          </option>
+              <option value="entered">
+                Validated → Entered
+              </option>
 
-          <option value="turnaround">
-            Turnaround Time
-          </option>
+              <option value="turnaround">
+                Turnaround Time
+              </option>
+              
+              <option value="complete">
+                Complete Analysis
+              </option>
 
-          <option value="complete">
-            Complete Analysis
-          </option>
+            </select>
 
-        </select>
+            <input
+              type="text"
+              placeholder="Search Reg or Diag No..."
+              value={chartSearch}
+              onChange={(e) =>
+                setChartSearch(
+                  e.target.value
+                )
+              }
+              style={{
+                width: 250,
+                padding: "8px 12px",
+                borderRadius: 8,
+                border:
+                  "1px solid #d1d5db",
+                fontSize: 14,
+              }}
+            />
+          </div>
 
-        <input
-          type="text"
-          placeholder="Search Reg or Diag No..."
-          value={chartSearch}
-          onChange={(e) =>
-            setChartSearch(
-              e.target.value
-            )
-          }
-          style={{
-            width: 250,
-            padding: "8px 12px",
-            borderRadius: 8,
-            border: "1px solid #d1d5db",
-            fontSize: 14,
-          }}
-        />
+          {/* Chart */}
+          <div
+            style={{
+              flex: 1,
+              minHeight: 0,
+              paddingBottom: 35,
+            }}
+          >
+            <StackedStageLines
+              unifiedRows={
+                filteredStageRows
+              }
+              stageFilter={
+                stageFilter
+              }
+              slaLimit={
+                stackedChartSLA
+              }
+              height={650}
+            />
+          </div>
+        </div>
       </div>
-
-      {/* Chart */}
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          paddingBottom: 35,
-        }}
-      >
-        <StackedStageLines
-          unifiedRows={filteredStageRows}
-          stageFilter={stageFilter}
-          slaLimit={stackedChartSLA}
-          height={650}
-        />
-      </div>
-    </div>
-    </div>
-  )}
+    )}
     </div>
   );
 }

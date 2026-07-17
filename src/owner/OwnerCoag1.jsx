@@ -1,59 +1,70 @@
 
 
-// src/owner_ui/OwnerRapidPage.jsx
+// ------------------------------------------------------
+// src/owner/OwnerCoagPage.jsx
+// Coagulation Analytics Page - Optimized with Slowest Entry Restore
+// ------------------------------------------------------
+
 import React, { useEffect, useMemo, useState, useContext } from "react";
-import { OwnerContext } from "../owner/OwnerContext.jsx";
+import { OwnerContext } from "./OwnerContext.jsx";
 
-import DateSourceFilter from "../owner/components/DateSourceFilter";
-import KPIBlocks from "../owner/components/KPIBlocks";
-import PatientListModal from "../owner/components/PatientListModal";
-import DelayTable from "../owner/components/DelayTable";
+import DateSourceFilter from "./components/DateSourceFilter";
+import KPIBlocks from "./components/KPIBlocks";
+import PatientListModal from "./components/PatientListModal";
+import DelayTable from "./components/DelayTable";
 
-import CountsBar from "../owner/charts/CountsBar";
-import StackedStageLines from "../owner/charts/StackedStageLines";
-import TimeBricks from "../owner/charts/TimeBricks";
-import DelayHistogram from "../owner/charts/DelayHistogram";
-import SLAScoreDonut from "../owner/charts/SLAScoreDonut";
-import StaffDistribution from "../owner/charts/StaffDistribution";
-import StaffAvgCards from "../owner/charts/StaffAvgCards";
-import StaffTimeline from "../owner/charts/StaffTimeline";
+import CountsBar from "./charts/CountsBar";
+import StackedStageLines from "./charts/StackedStageLines";
+import TimeBricks from "./charts/TimeBricks"; // Now powered by react-calendar-timeline
+import DelayHistogram from "./charts/DelayHistogram";
+import SLAScoreDonut from "./charts/SLAScoreDonut";
+import StaffDistribution from "./charts/StaffDistribution";
+import StaffAvgCards from "./charts/StaffAvgCards";
+import StaffTimeline from "./charts/StaffTimeline";
 
 import {
   subscribeOverview,
   fetchTestTimings,
   computeSLAViolations,
-  minutesDiff,
-} from "../owner/lib/dataFetcher_rapid.js";
+  toDate,
+  normalizeTestsField
+} from "./lib/dataFetcher.js";
 
-export default function OwnerRapidPage() {
+// Helper for slowest entry calculation
+const toMinutes = (a, b) => {
+  const A = toDate(a);
+  const B = toDate(b);
+  return A && B && B > A ? Math.round((B - A) / 60000) : null;
+};
+
+export default function OwnerCoagPage() {
   const { dateRange, source } = useContext(OwnerContext);
 
-  const [rawRows, setRawRows] = useState([]); 
+  const [deptRows, setDeptRows] = useState([]); 
   const [fetchedKpis, setFetchedKpis] = useState(null);
+  const [baseViolators, setBaseViolators] = useState([]);
   const [testTimings, setTestTimings] = useState({});
-  
+  const [openModal, setOpenModal] = useState(false);
+  const [modalData, setModalData] = useState([]);
   const [activeTab, setActiveTab] = useState("overview");
   const [staffTab, setStaffTab] = useState("testing");
   const [staffAnalytics, setStaffAnalytics] = useState(null);
-  const [openModal, setOpenModal] = useState(false);
-  const [modalData, setModalData] = useState([]);
   const [stageFilter, setStageFilter] = useState("turnaround");
   const [chartSearch, setChartSearch] = useState("");
   const [chartExpanded, setChartExpanded] = useState(false);
-  const [delayStage, setDelayStage] = useState("scanned_to_saved");
-  const [timebrickSearch,setTimebrickSearch,] = useState("");
-
-  // 1. SUBSCRIBE (Hormones Style)
+  const [delayStage, setDelayStage] =  useState("scanned_to_saved");
+  const [timebrickSearch, setTimebrickSearch] = useState("");
+  
   useEffect(() => {
     const unsub = subscribeOverview({
       source,
       dateRange,
-      onData: ({ unifiedRows,kpis,staffAnalytics,}) => {setRawRows(
-          unifiedRows || [] );
-      
-        setFetchedKpis( kpis || null);
-      
-        setStaffAnalytics( staffAnalytics || null);
+      onData: (payload = {}) => {
+        // Use data pre-filtered by timePrinted in dataFetcher
+        if (payload.unifiedRows) setDeptRows(payload.unifiedRows || []);
+        if (payload.kpis) setFetchedKpis(payload.kpis);
+        if (payload.violators) setBaseViolators(payload.violators || []);
+        if (payload.staffAnalytics) setStaffAnalytics( payload.staffAnalytics ||null);
       }
     });
 
@@ -61,57 +72,59 @@ export default function OwnerRapidPage() {
     return () => unsub && unsub();
   }, [source, dateRange]);
 
-  // 2. DATA ASSIGNMENT
-  const deptRows = useMemo(() => {
-    return rawRows.map(r => ({
-      ...r,
-      times: [r.timeScanned, r.timeSaved, r.timeValidated].filter(Boolean)
-    }));
-  }, [rawRows]);
-
-  // 3. CALCULATE SLOWEST ENTRY
+  // 1. Restore Slowest Entry Logic based on current deptRows
   const slowestEntry = useMemo(() => {
     let slowest = null;
     deptRows.forEach((r) => {
-      const delay = minutesDiff(r.timeScanned, r.timeSaved);
-      if (delay !== null && (!slowest || delay > slowest.delay)) {
+      const delay = toMinutes(r.timeScanned, r.timeSaved);
+      if (delay != null && (!slowest || delay > slowest.delay)) {
         slowest = {
           regNo: r.regNo,
-          patientName: r.name || r.patientName || "Unknown",
-          delay: delay,
-          tests: r.selectedTests || []
+          delay,
+          tests: normalizeTestsField(r.tests || r.test),
+          timeScanned: r.timeScanned,
+          timeSaved: r.timeSaved,
+          patientName: r.name || r.patientName
         };
       }
     });
     return slowest;
   }, [deptRows]);
 
-  // 4. MERGED KPIs (Trusting the fetcher!)
-  const kpis = useMemo(() => {
-    if (!fetchedKpis) return null;
-    return {
-      ...fetchedKpis,
-      slowestEntry: slowestEntry 
-    };
-  }, [fetchedKpis, slowestEntry]);
+  // 2. Final KPIs for Display
+  const finalKpis = useMemo(() => ({
+    ...(fetchedKpis || {}),
+    slowestEntry // Inject the calculated slowest entry
+  }), [fetchedKpis, slowestEntry]);
 
-  // 5. COUNTS FOR CHARTS
-  const countsForBar = useMemo(
-    () => ({
-      totalPrinted: kpis?.totalPatientsCollected ?? 0,
-      scanned: deptRows.filter((r) => r.timeScanned).length,
-      saved: deptRows.filter((r) => r.isSaved || r.timeSaved).length,
-      validated: deptRows.filter((r) => r.isValidated || r.timeValidated).length,
-    }),
-    [deptRows, kpis]
+  // 3. Map overview for charts
+  const overviewForKPI = useMemo(() => ({
+    totalPrinted: finalKpis?.totalPatientsCollected ?? 0,
+    scanned: deptRows.filter(r => r.timeScanned).length,
+    saved: finalKpis?.totalPatientsSaved ?? 0,
+    validated: finalKpis?.totalPatientsValidated ?? 0
+  }), [finalKpis, deptRows]);
+
+  const countsForBar = useMemo(() => ({
+    totalPrinted: overviewForKPI.totalPrinted,
+    scanned: overviewForKPI.scanned,
+    saved: overviewForKPI.saved,
+    validated: overviewForKPI.validated
+  }), [overviewForKPI]);
+
+  const violators = useMemo(
+    () =>
+      computeSLAViolations(
+        deptRows,
+        testTimings,
+        delayStage
+      ),
+    [
+      deptRows,
+      testTimings,
+      delayStage,
+    ]
   );
-
-  const overviewForKPI = {
-    totalPrinted: kpis?.totalPatientsCollected ?? 0,
-    scanned: countsForBar.scanned,
-    saved: countsForBar.saved,
-    validated: countsForBar.validated,
-  };
 
   const filteredStageRows = useMemo(() => {
     const query =
@@ -139,7 +152,7 @@ export default function OwnerRapidPage() {
 
   const stackedChartSLA = useMemo(() => {
     const dept =
-      testTimings?.rapid;
+      testTimings?.coagulation;
   
     if (!dept) return null;
   
@@ -182,87 +195,92 @@ export default function OwnerRapidPage() {
             dept.complete_analysis ??
             null
           );
-
+  
       default:
         return null;
     }
   }, [stageFilter, testTimings]);
 
-  // 6. SLA VIOLATORS
-  const violators = useMemo(
-    () =>
-      computeSLAViolations(
-        deptRows,
-        testTimings,
-        delayStage
-      ),
-    [
-      deptRows,
-      testTimings,
-      delayStage,
-    ]
-  );
 
   return (
     <div className="owner-root">
       <header className="owner-header">
-        <h1>Rapid Card — Analytics</h1>
+        <h1>Coagulation — Analytics</h1>
         <div className="tab-buttons">
-          {["overview", "delays", "timebricks","staff",].map((t) => (
-            <button
-              key={t}
-              className={activeTab === t ? "active" : ""}
-              onClick={() => setActiveTab(t)}
+            <button 
+              className={activeTab === "overview" ? "active" : ""} 
+              onClick={() => setActiveTab("overview")}
             >
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
-        </div>
+                  Overview
+                </button>
+                <button 
+                  className={activeTab === "delays" ? "active" : ""} 
+                  onClick={() => setActiveTab("delays")}
+                >
+                  Delays
+                </button>
+                <button 
+                  className={activeTab === "timebricks" ? "active" : ""} 
+                  onClick={() => setActiveTab("timebricks")}
+                >
+                  Time Bricks
+                </button>
 
-        {activeTab === "staff" && (
-            <div
-              className="tab-buttons"
-              style={{
-                marginTop: 12,
-              }}
-            >
-              {[
-                "testing",
-                "validated",
-                "entered",
-              ].map((t) => (
                 <button
-                  key={t}
                   className={
-                    staffTab === t
+                    activeTab === "staff"
                       ? "active"
                       : ""
                   }
                   onClick={() =>
-                    setStaffTab(t)
+                    setActiveTab("staff")
                   }
                 >
-                  {t.charAt(0)
-                    .toUpperCase() +
-                    t.slice(1)}
+                  Staff
                 </button>
-              ))}
-            </div>
-          )}
+              </div>
 
+              {activeTab === "staff" && (
+        <div
+          className="tab-buttons"
+          style={{
+            marginTop: 12,
+          }}
+        >
+          {[
+            "testing",
+            "validated",
+            "entered",
+          ].map((t) => (
+            <button
+              key={t}
+              className={
+                staffTab === t
+                  ? "active"
+                  : ""
+              }
+              onClick={() =>
+                setStaffTab(t)
+              }
+            >
+              {t.charAt(0)
+                .toUpperCase() +
+                t.slice(1)}
+            </button>
+          ))}
+        </div>
+      )}
 
       </header>
 
       <DateSourceFilter />
 
-        {activeTab !== "staff" && (
-          <KPIBlocks
-            overview={
-              overviewForKPI
-            }
-            kpis={kpis || {}}
-          />
-        )}
+      {activeTab !== "staff" && (
+        <KPIBlocks
+          overview={overviewForKPI}
+          kpis={finalKpis}
+        />
+      )}
 
       {activeTab === "overview" && (
         <section className="owner-charts">
@@ -275,7 +293,8 @@ export default function OwnerRapidPage() {
   <div
     style={{
       display: "flex",
-      justifyContent: "space-between",
+      justifyContent:
+        "space-between",
       alignItems: "center",
       gap: 12,
       flexWrap: "wrap",
@@ -335,6 +354,7 @@ export default function OwnerRapidPage() {
         <option value="complete">
           Complete Analysis
         </option>
+
       </select>
 
       <input
@@ -371,26 +391,24 @@ export default function OwnerRapidPage() {
           cursor: "pointer",
           fontSize: 18,
         }}
-            >
-              ↗
-            </button>
+      >
+        ↗
+      </button>
+              </div>
+            </div>
+
+            <StackedStageLines
+              unifiedRows={
+                filteredStageRows
+              }
+              stageFilter={
+                stageFilter
+              }
+              slaLimit={
+                stackedChartSLA
+              }
+            />
           </div>
-        </div>
-
-        <StackedStageLines
-          unifiedRows={
-            filteredStageRows
-          }
-          stageFilter={
-            stageFilter
-          }
-          slaLimit={
-            stackedChartSLA
-          }
-        />
-      </div>
-
-
         </section>
       )}
 
@@ -438,10 +456,6 @@ export default function OwnerRapidPage() {
           <option value="validated_to_entered">
             Validated → Entered
           </option>
-
-          <option value="turnaround">
-            Turnaround (Collected → Validated)
-          </option>
         </select>
       </div>
 
@@ -452,76 +466,69 @@ export default function OwnerRapidPage() {
 
           <div className="chart-card">
             <h3>SLA Score</h3>
-            <SLAScoreDonut 
-              total={deptRows.length} 
-              within={deptRows.length - violators.length} 
-            />
+            <SLAScoreDonut total={deptRows.length} within={deptRows.length - violators.length} />
           </div>
           <div className="chart-card full-width">
-          <DelayTable violators={violators} stage={delayStage}/>
+            <DelayTable violators={violators} />
           </div>
         </section>
       )}
 
+      
 {activeTab === "timebricks" && (
-  <section className="owner-charts">
-    <div className="chart-card full-width">
-
-      <div
+  <>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        marginBottom: 16,
+      }}
+    >
+      <input
+        type="text"
+        placeholder="Search Reg or Diag No..."
+        value={timebrickSearch}
+        onChange={(e) =>
+          setTimebrickSearch(
+            e.target.value
+          )
+        }
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
-          gap: 12,
-          flexWrap: "wrap",
+          width: 260,
+          padding: "8px 12px",
+          borderRadius: 8,
+          border:
+            "1px solid #d1d5db",
+          fontSize: 14,
         }}
-      >
-        <h3 style={{ margin: 0 }}>
-          Time Bricks Chart
-        </h3>
-
-        <input
-          type="text"
-          placeholder="Search Reg or Diag No..."
-          value={timebrickSearch}
-          onChange={(e) =>
-            setTimebrickSearch(
-              e.target.value
-            )
-          }
-          style={{
-            width: 250,
-            padding: "8px 12px",
-            border: "1px solid #d1d5db",
-            borderRadius: 8,
-            fontSize: 14,
-          }}
-        />
-      </div>
-
-      <div
-        style={{
-          height: "600px",
-          width: "100%",
-          background: "#fff",
-          borderRadius: "8px",
-        }}
-      >
-        <TimeBricks
-          unifiedRows={deptRows}
-          testTimings={testTimings}
-          department="rapid"
-          search={timebrickSearch}
-          onBrickClick={(p) => {
-            setModalData([p]);
-            setOpenModal(true);
-          }}
-        />
-      </div>
-
+      />
     </div>
-  </section>
+
+    <section className="owner-charts">
+      <div className="chart-card full-width">
+        <h3>Time Bricks Chart</h3>
+
+        <div
+          style={{
+            height: "600px",
+            marginTop: "10px",
+          }}
+        >
+          <TimeBricks
+            unifiedRows={deptRows}
+            testTimings={testTimings}
+            dateRange={dateRange}
+            search={timebrickSearch}
+            department="coagulation"
+            onBrickClick={(p) => {
+              setModalData([p]);
+              setOpenModal(true);
+            }}
+          />
+        </div>
+      </div>
+    </section>
+  </>
 )}
 
 {activeTab === "staff" && (
@@ -612,66 +619,65 @@ export default function OwnerRapidPage() {
       </>
     )}
 
-    {staffTab === "entered" && (
-      <>
-        <div className="chart-card">
-          <h3>
-            Entry Distribution
-          </h3>
+          {staffTab === "entered" && (
+            <>
+              <div className="chart-card">
+                <h3>
+                  Entry Distribution
+                </h3>
 
-          <StaffDistribution
-            data={
-              staffAnalytics?.entered
-                ?.distribution || []
-            }
-          />
-        </div>
+                <StaffDistribution
+                  data={
+                    staffAnalytics?.entered
+                      ?.distribution || []
+                  }
+                />
+              </div>
 
-        <div className="chart-card">
-          <h3>
-            Avg Validate → Enter by
-            Staff
-          </h3>
+              <div className="chart-card">
+                <h3>
+                  Avg Validate → Enter by
+                  Staff
+                </h3>
 
-          <StaffAvgCards
-            data={
-              staffAnalytics?.entered
-                ?.averages || []
-            }
-          />
-        </div>
+                <StaffAvgCards
+                  data={
+                    staffAnalytics?.entered
+                      ?.averages || []
+                  }
+                />
+              </div>
 
-        <div className="chart-card full-width">
-          <h3>
-            Entry Timeline
-          </h3>
+              <div className="chart-card full-width">
+                <h3>
+                  Entry Timeline
+                </h3>
 
-          <StaffTimeline
-            timelines={
-              staffAnalytics?.entered
-                ?.timelines || {}
-                }
-              />
-            </div>
-          </>
-        )}
+                <StaffTimeline
+                  timelines={
+                    staffAnalytics?.entered
+                      ?.timelines || {}
+                  }
+                />
+              </div>
+            </>
+          )}
 
-      </section>
-    )}
+        </section>
+      )}
 
-      <PatientListModal 
-        open={openModal} 
-        onClose={() => setOpenModal(false)} 
-        patients={modalData} 
-      />
+      <PatientListModal open={openModal} onClose={() => setOpenModal(false)} patients={modalData} />
 
-{chartExpanded && (
+      {chartExpanded && (
   <div
-    onClick={() => setChartExpanded(false)}
+    onClick={() =>
+      setChartExpanded(false)
+    }
     style={{
       position: "fixed",
       inset: 0,
-      background: "rgba(0,0,0,0.5)",
+      background:
+        "rgba(0,0,0,0.5)",
       display: "flex",
       justifyContent: "center",
       alignItems: "center",
@@ -679,7 +685,9 @@ export default function OwnerRapidPage() {
     }}
   >
     <div
-      onClick={(e) => e.stopPropagation()}
+      onClick={(e) =>
+        e.stopPropagation()
+      }
       style={{
         width: "95vw",
         height: "90vh",
@@ -694,7 +702,8 @@ export default function OwnerRapidPage() {
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          justifyContent:
+            "space-between",
           alignItems: "center",
           marginBottom: 20,
         }}
@@ -738,7 +747,8 @@ export default function OwnerRapidPage() {
           style={{
             padding: "8px 12px",
             borderRadius: 8,
-            border: "1px solid #d1d5db",
+            border:
+              "1px solid #d1d5db",
             fontSize: 14,
           }}
         >
@@ -767,9 +777,9 @@ export default function OwnerRapidPage() {
           </option>
 
           <option value="complete">
-            Complete Analysis
+           Complete Analysis
           </option>
-
+          
         </select>
 
         <input
@@ -785,7 +795,8 @@ export default function OwnerRapidPage() {
             width: 250,
             padding: "8px 12px",
             borderRadius: 8,
-            border: "1px solid #d1d5db",
+            border:
+              "1px solid #d1d5db",
             fontSize: 14,
           }}
         />
@@ -800,15 +811,21 @@ export default function OwnerRapidPage() {
         }}
       >
         <StackedStageLines
-          unifiedRows={filteredStageRows}
-          stageFilter={stageFilter}
-          slaLimit={stackedChartSLA}
+          unifiedRows={
+            filteredStageRows
+          }
+          stageFilter={
+            stageFilter
+          }
+          slaLimit={
+            stackedChartSLA
+          }
           height={650}
-        />
-      </div>
-    </div>
-    </div>
-  )}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

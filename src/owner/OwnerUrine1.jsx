@@ -1,6 +1,6 @@
 
 
-// src/owner_ui/OwnerRapidPage.jsx
+// src/owner_ui/OwnerUrinePage.jsx
 import React, { useEffect, useMemo, useState, useContext } from "react";
 import { OwnerContext } from "../owner/OwnerContext.jsx";
 
@@ -18,42 +18,55 @@ import StaffDistribution from "../owner/charts/StaffDistribution";
 import StaffAvgCards from "../owner/charts/StaffAvgCards";
 import StaffTimeline from "../owner/charts/StaffTimeline";
 
+
 import {
   subscribeOverview,
   fetchTestTimings,
-  computeSLAViolations,
-  minutesDiff,
-} from "../owner/lib/dataFetcher_rapid.js";
+  computeSLAViolations
+} from "../owner/lib/dataFetcher_urine.js";
 
-export default function OwnerRapidPage() {
+export default function OwnerUrinePage() {
   const { dateRange, source } = useContext(OwnerContext);
 
+  // 1. Unified State (Hormones Pattern)
   const [rawRows, setRawRows] = useState([]); 
   const [fetchedKpis, setFetchedKpis] = useState(null);
   const [testTimings, setTestTimings] = useState({});
-  
   const [activeTab, setActiveTab] = useState("overview");
   const [staffTab, setStaffTab] = useState("testing");
-  const [staffAnalytics, setStaffAnalytics] = useState(null);
+  const [staffAnalytics,setStaffAnalytics,] = useState(null);
   const [openModal, setOpenModal] = useState(false);
   const [modalData, setModalData] = useState([]);
   const [stageFilter, setStageFilter] = useState("turnaround");
   const [chartSearch, setChartSearch] = useState("");
   const [chartExpanded, setChartExpanded] = useState(false);
   const [delayStage, setDelayStage] = useState("scanned_to_saved");
-  const [timebrickSearch,setTimebrickSearch,] = useState("");
+  const [timebrickSearch, setTimebrickSearch] = useState("");
 
-  // 1. SUBSCRIBE (Hormones Style)
+  // 2. Subscribe (Standardized)
   useEffect(() => {
     const unsub = subscribeOverview({
       source,
       dateRange,
-      onData: ({ unifiedRows,kpis,staffAnalytics,}) => {setRawRows(
-          unifiedRows || [] );
       
-        setFetchedKpis( kpis || null);
+      onData: ({
+        unifiedRows,
+        kpis,
+        violators: vList,
+        staffAnalytics,
+      }) => {
+        setRawRows(
+          unifiedRows || []
+        );
       
-        setStaffAnalytics( staffAnalytics || null);
+        setFetchedKpis(
+          kpis || null
+        );
+      
+        setStaffAnalytics(
+          staffAnalytics ||
+            null
+        );
       }
     });
 
@@ -61,7 +74,7 @@ export default function OwnerRapidPage() {
     return () => unsub && unsub();
   }, [source, dateRange]);
 
-  // 2. DATA ASSIGNMENT
+  // 3. Process Rows for Charts/Bricks
   const deptRows = useMemo(() => {
     return rawRows.map(r => ({
       ...r,
@@ -69,48 +82,58 @@ export default function OwnerRapidPage() {
     }));
   }, [rawRows]);
 
-  // 3. CALCULATE SLOWEST ENTRY
+  const violators = useMemo(
+    () =>
+      computeSLAViolations(
+        deptRows,
+        testTimings,
+        delayStage
+      ),
+    [
+      deptRows,
+      testTimings,
+      delayStage,
+    ]
+  );
+
+  // 4. Extract Slowest Entry from Violators
   const slowestEntry = useMemo(() => {
     let slowest = null;
-    deptRows.forEach((r) => {
-      const delay = minutesDiff(r.timeScanned, r.timeSaved);
-      if (delay !== null && (!slowest || delay > slowest.delay)) {
+    violators.forEach((v) => {
+      if (!slowest || v.duration > slowest.delay) {
         slowest = {
-          regNo: r.regNo,
-          patientName: r.name || r.patientName || "Unknown",
-          delay: delay,
-          tests: r.selectedTests || []
+          regNo: v.regNo,
+          patientName: v.name,
+          delay: v.duration,
+          tests: v.test
         };
       }
     });
     return slowest;
-  }, [deptRows]);
+  }, [violators]);
 
-  // 4. MERGED KPIs (Trusting the fetcher!)
+  // 5. Final KPI Object (Merging fetched data with UI-derived slowest entry)
   const kpis = useMemo(() => {
     if (!fetchedKpis) return null;
     return {
       ...fetchedKpis,
-      slowestEntry: slowestEntry 
+      slowestEntry
     };
   }, [fetchedKpis, slowestEntry]);
 
-  // 5. COUNTS FOR CHARTS
-  const countsForBar = useMemo(
-    () => ({
-      totalPrinted: kpis?.totalPatientsCollected ?? 0,
-      scanned: deptRows.filter((r) => r.timeScanned).length,
-      saved: deptRows.filter((r) => r.isSaved || r.timeSaved).length,
-      validated: deptRows.filter((r) => r.isValidated || r.timeValidated).length,
-    }),
-    [deptRows, kpis]
-  );
+  // 6. Chart & Overview Data
+  const countsForBar = useMemo(() => ({
+    totalPrinted: kpis?.totalPatientsCollected ?? 0,
+    scanned: deptRows.filter(r => r.timeScanned).length,
+    saved: kpis?.totalPatientsSaved ?? 0,
+    validated: kpis?.totalPatientsValidated ?? 0
+  }), [deptRows, kpis]);
 
   const overviewForKPI = {
     totalPrinted: kpis?.totalPatientsCollected ?? 0,
     scanned: countsForBar.scanned,
-    saved: countsForBar.saved,
-    validated: countsForBar.validated,
+    saved: kpis?.totalPatientsSaved ?? 0,
+    validated: kpis?.totalPatientsValidated ?? 0
   };
 
   const filteredStageRows = useMemo(() => {
@@ -139,7 +162,7 @@ export default function OwnerRapidPage() {
 
   const stackedChartSLA = useMemo(() => {
     const dept =
-      testTimings?.rapid;
+      testTimings?.urine_analysis;
   
     if (!dept) return null;
   
@@ -176,39 +199,26 @@ export default function OwnerRapidPage() {
           dept.turnaround ??
           null
         );
-      
+
       case "complete":
           return (
             dept.complete_analysis ??
             null
           );
-
+        
       default:
         return null;
     }
   }, [stageFilter, testTimings]);
 
-  // 6. SLA VIOLATORS
-  const violators = useMemo(
-    () =>
-      computeSLAViolations(
-        deptRows,
-        testTimings,
-        delayStage
-      ),
-    [
-      deptRows,
-      testTimings,
-      delayStage,
-    ]
-  );
+
 
   return (
     <div className="owner-root">
       <header className="owner-header">
-        <h1>Rapid Card — Analytics</h1>
+        <h1>Urine Examination — Analytics</h1>
         <div className="tab-buttons">
-          {["overview", "delays", "timebricks","staff",].map((t) => (
+          {["overview", "delays", "timebricks", "staff",].map((t) => (
             <button
               key={t}
               className={activeTab === t ? "active" : ""}
@@ -218,51 +228,48 @@ export default function OwnerRapidPage() {
             </button>
           ))}
         </div>
-
         {activeTab === "staff" && (
-            <div
-              className="tab-buttons"
-              style={{
-                marginTop: 12,
-              }}
-            >
-              {[
-                "testing",
-                "validated",
-                "entered",
-              ].map((t) => (
-                <button
-                  key={t}
-                  className={
-                    staffTab === t
-                      ? "active"
-                      : ""
-                  }
-                  onClick={() =>
-                    setStaffTab(t)
-                  }
-                >
-                  {t.charAt(0)
-                    .toUpperCase() +
-                    t.slice(1)}
-                </button>
-              ))}
-            </div>
-          )}
+  <div
+    className="tab-buttons"
+    style={{
+      marginTop: 12,
+    }}
+  >
+    {[
+      "testing",
+      "validated",
+      "entered",
+    ].map((t) => (
+      <button
+        key={t}
+        className={
+          staffTab === t
+            ? "active"
+            : ""
+        }
+        onClick={() =>
+          setStaffTab(t)
+        }
+      >
+        {t.charAt(0).toUpperCase() +
+          t.slice(1)}
+      </button>
+    ))}
+  </div>
+)}
 
 
       </header>
 
       <DateSourceFilter />
-
-        {activeTab !== "staff" && (
-          <KPIBlocks
-            overview={
-              overviewForKPI
-            }
-            kpis={kpis || {}}
-          />
-        )}
+      
+      {/* 🟢 Correct Keys (Critical, TAT, etc.) now pass through to KPIBlocks */}
+      {activeTab !== "staff" && (
+        <KPIBlocks
+          overview={overviewForKPI}
+          kpis={kpis || {}}
+        />
+      )}
 
       {activeTab === "overview" && (
         <section className="owner-charts">
@@ -272,124 +279,125 @@ export default function OwnerRapidPage() {
           </div>
           <div className="chart-card">
 
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      gap: 12,
-      flexWrap: "wrap",
-      marginBottom: 16,
-    }}
-  >
-    <h3 style={{ margin: 0 }}>
-      Stacked Stage Timeline
-    </h3>
+          <div
+            style={{
+              display: "flex",
+              justifyContent:
+                "space-between",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+              marginBottom: 16,
+            }}
+          >
+            <h3 style={{ margin: 0 }}>
+              Stacked Stage Timeline
+            </h3>
 
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-      }}
-    >
-      <select
-        value={stageFilter}
-        onChange={(e) =>
-          setStageFilter(
-            e.target.value
-          )
-        }
-        style={{
-          padding: "6px 10px",
-          borderRadius: 8,
-          border:
-            "1px solid #d1d5db",
-          fontSize: 14,
-        }}
-      >
-        <option value="printed">
-          Printed → Collected
-        </option>
-
-        <option value="collected">
-          Collected → Scanned
-        </option>
-
-        <option value="saved">
-          Scanned → Saved
-        </option>
-
-        <option value="validated">
-          Saved → Validated
-        </option>
-
-        <option value="entered">
-          Validated → Entered
-        </option>
-
-        <option value="turnaround">
-          Turnaround Time
-        </option>
-
-        <option value="complete">
-          Complete Analysis
-        </option>
-      </select>
-
-      <input
-        type="text"
-        placeholder="Search Reg or Diag No..."
-        value={chartSearch}
-        onChange={(e) =>
-          setChartSearch(
-            e.target.value
-          )
-        }
-        style={{
-          width: 220,
-          padding:
-            "7px 12px",
-          border:
-            "1px solid #d1d5db",
-          borderRadius: 8,
-          fontSize: 14,
-        }}
-      />
-
-      <button
-        onClick={() =>
-          setChartExpanded(true)
-        }
-        style={{
-          width: 36,
-          height: 36,
-          border:
-            "1px solid #d1d5db",
-          borderRadius: 8,
-          background: "#fff",
-          cursor: "pointer",
-          fontSize: 18,
-        }}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
             >
-              ↗
-            </button>
+              <select
+                value={stageFilter}
+                onChange={(e) =>
+                  setStageFilter(
+                    e.target.value
+                  )
+                }
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 8,
+                  border:
+                    "1px solid #d1d5db",
+                  fontSize: 14,
+                }}
+              >
+                <option value="printed">
+                  Printed → Collected
+                </option>
+
+                <option value="collected">
+                  Collected → Scanned
+                </option>
+
+                <option value="saved">
+                  Scanned → Saved
+                </option>
+
+                <option value="validated">
+                  Saved → Validated
+                </option>
+
+                <option value="entered">
+                  Validated → Entered
+                </option>
+
+                <option value="turnaround">
+                  Turnaround Time
+                </option>
+
+                <option value="complete">
+                  Complete Analysis
+                </option>
+
+              </select>
+
+              <input
+                type="text"
+                placeholder="Search Reg or Diag No..."
+                value={chartSearch}
+                onChange={(e) =>
+                  setChartSearch(
+                    e.target.value
+                  )
+                }
+                style={{
+                  width: 220,
+                  padding:
+                    "7px 12px",
+                  border:
+                    "1px solid #d1d5db",
+                  borderRadius: 8,
+                  fontSize: 14,
+                }}
+              />
+
+              <button
+                onClick={() =>
+                  setChartExpanded(true)
+                }
+                style={{
+                  width: 36,
+                  height: 36,
+                  border:
+                    "1px solid #d1d5db",
+                  borderRadius: 8,
+                  background: "#fff",
+                  cursor: "pointer",
+                  fontSize: 18,
+                }}
+              >
+                ↗
+              </button>
+            </div>
           </div>
+
+          <StackedStageLines
+            unifiedRows={
+              filteredStageRows
+            }
+            stageFilter={
+              stageFilter
+            }
+            slaLimit={
+              stackedChartSLA
+            }
+          />
         </div>
-
-        <StackedStageLines
-          unifiedRows={
-            filteredStageRows
-          }
-          stageFilter={
-            stageFilter
-          }
-          slaLimit={
-            stackedChartSLA
-          }
-        />
-      </div>
-
 
         </section>
       )}
@@ -437,10 +445,6 @@ export default function OwnerRapidPage() {
 
           <option value="validated_to_entered">
             Validated → Entered
-          </option>
-
-          <option value="turnaround">
-            Turnaround (Collected → Validated)
           </option>
         </select>
       </div>
@@ -511,7 +515,7 @@ export default function OwnerRapidPage() {
         <TimeBricks
           unifiedRows={deptRows}
           testTimings={testTimings}
-          department="rapid"
+          department="urine"
           search={timebrickSearch}
           onBrickClick={(p) => {
             setModalData([p]);
@@ -585,8 +589,7 @@ export default function OwnerRapidPage() {
 
         <div className="chart-card">
           <h3>
-            Avg Save → Validate by
-            Staff
+            Avg Save → Validate by Staff
           </h3>
 
           <StaffAvgCards
@@ -629,8 +632,7 @@ export default function OwnerRapidPage() {
 
         <div className="chart-card">
           <h3>
-            Avg Validate → Enter by
-            Staff
+            Avg Validate → Enter by Staff
           </h3>
 
           <StaffAvgCards
@@ -650,22 +652,21 @@ export default function OwnerRapidPage() {
             timelines={
               staffAnalytics?.entered
                 ?.timelines || {}
-                }
-              />
-            </div>
-          </>
-        )}
-
-      </section>
+            }
+          />
+        </div>
+      </>
     )}
+
+  </section>
+)}
 
       <PatientListModal 
         open={openModal} 
         onClose={() => setOpenModal(false)} 
         patients={modalData} 
       />
-
-{chartExpanded && (
+    {chartExpanded && (
   <div
     onClick={() => setChartExpanded(false)}
     style={{
@@ -807,8 +808,8 @@ export default function OwnerRapidPage() {
         />
       </div>
     </div>
-    </div>
-  )}
+  </div>
+)}    
     </div>
   );
 }

@@ -438,10 +438,6 @@ export default function OwnerRapidPage() {
           <option value="validated_to_entered">
             Validated → Entered
           </option>
-
-          <option value="turnaround">
-            Turnaround (Collected → Validated)
-          </option>
         </select>
       </div>
 
