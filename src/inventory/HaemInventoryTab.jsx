@@ -166,13 +166,14 @@ export default function HaemInventoryTab() {
   };
 
   const getMachineName = (item) => {
-    return (
-      item.machineName ||
-      item.machineAssigned ||
-      (activeHaemTab === "3-part"
-        ? "3-Part Machine"
-        : "5-Part Machine")
-    );
+    if (item.machineName) return item.machineName;
+  
+    if (item.machineAssigned === "3-part") return "3 Part Machine";
+    if (item.machineAssigned === "5-part") return "5 Part Machine";
+  
+    return activeHaemTab === "3-part"
+      ? "3 Part Machine"
+      : "5 Part Machine";
   };
 
   const handleConfirmMaintenance = async () => {
