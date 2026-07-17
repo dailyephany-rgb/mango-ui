@@ -279,6 +279,20 @@ export default function DeptInventoryTab() {
     return Math.round((remaining / total) * 100);
   };
 
+  const getMachineName = (item) => {
+    const machine = item.machineName || "";
+  
+    if (machine) {
+      return machine
+        .replace(" - HORMONES", "")
+        .replace(" - BIOCHEM", "")
+        .trim();
+    }
+  
+    return "VITROS 6500";
+  };
+
+
 
   const handleBonus = async (item) => {
     const unit = item.packUnit || "Tests";
@@ -321,10 +335,7 @@ export default function DeptInventoryTab() {
         batchNo:item.lotNo || "N/A",
          boxNo: item.boxNo || "",
   
-        machine:
-          activeTab === "Hormones"
-            ? "VITROS 6500 - HORMONES"
-            : "VITROS 6500",
+         machine: getMachineName(item),
   
         inventoryType:
           item.isControl
@@ -418,10 +429,7 @@ export default function DeptInventoryTab() {
           boxNo: item.boxNo || "",
 
   
-        machine:
-          activeTab === "Hormones"
-            ? "VITROS 6500 - HORMONES"
-            : "VITROS 6500",
+        machine: getMachineName(item),
         
       
         inventoryType:
@@ -482,10 +490,7 @@ export default function DeptInventoryTab() {
             item.lotNo || "N/A",
           boxNo: item.boxNo || "",
         
-          machine:
-            activeTab === "Hormones"
-              ? "VITROS 6500 - HORMONES"
-              : "VITROS 6500",
+          machine: getMachineName(item),
         
           inventoryType: "Consumable",
 
@@ -598,10 +603,7 @@ batch.update(
         batchNo: item?.lotNo || "N/A",
         boxNo: item.boxNo || "",
       
-        machine:
-          activeTab === "Hormones"
-            ? "VITROS 6500 - HORMONES"
-            : "VITROS 6500",
+        machine: getMachineName(item),
       
         inventoryType:
           item?.isControl
@@ -639,9 +641,9 @@ batch.update(
     const selections = Object.keys(calSelections)
     .filter(name => calSelections[name]);
     const machineName =
-     activeTab === "Hormones"
-    ? "VITROS 6500 - HORMONES"
-    : "VITROS 6500";
+    getMachineName(activeCalibrators.find(c => calSelections[c.reagentName])) ||
+    "VITROS 6500";
+
     if (selections.length === 0) {
       alert("Please enter quantities.");
       return;
@@ -783,9 +785,8 @@ batch.update(
       let controlNames = [];
       let batchNumbers = [];
       let expiryDates = [];
-      const machineName = activeTab === "Hormones"
-      ? "VITROS 6500 - HORMONES"
-      : "VITROS 6500";
+      const machineName =getMachineName(activeControls.find(c => qcSelections[c.reagentName])) ||
+      "VITROS 6500";
 
 
       for (const name of selections) {
