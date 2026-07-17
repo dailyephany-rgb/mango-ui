@@ -120,11 +120,24 @@ export default function DeptInventoryTab() {
         const biochemCalibrators = ["Vitros Cal-01 Total", "VITROS CALIBRATOR KIT 2", "CHEMISTRY CALIBRATOR"].map(n => n.toUpperCase());
 
         const hormoneNames = [
-          "HYBRITECH PSA 2*50 TESTS", "Access AMΗ", "FOLATE 100 WELLS", "FSH/ 100 WELLS",
-          "TOT B-hCG / 100 WELLS", "VITROS HBSAG / 100 WELLS", "VITR HIV CMBO RGT PK (NONUS 100 WELLS)",
-          "FERRITIN/ 100 WELLS", "25 OH VITAMIN D / TOTAL 100", "B12 100 WELLS",
-          "PROGESTERONE/ 100 WELLS", "ESTRADIOL / 100 WELLS", "PROLACTIN / 100 WELLS",
-          "LH/ 100 WELLS", "FREE T4 / 100 WELLS", "TOT T3 / 100 WELLS", "TOT T4 / 100 WELLS",
+          "TOTAL PSA 100 WELLS",
+          "ECI HCV 100 WELLS",
+          "HS TROP REAGENT 100 WELLS",
+          "HS TROPONIN I REAGENT 100 WELLS",
+          "VITROS HBSAG / 100 WELLS",
+          "TOT B-hCG / 100 WELLS",
+          "VITROS HBSAG / 100 WELLS",
+          "VITR HIV CMBO RGT PK (NONUS 100 WELLS)",
+          "FERRITIN/ 100 WELLS",
+          "25 OH VITAMIN D / TOTAL 100",
+          "B12 100 WELLS",
+          "PROGESTERONE/ 100 WELLS",
+          "ESTRADIOL / 100 WELLS",
+          "PROLACTIN / 100 WELLS",
+          "LH/ 100 WELLS",
+          "FREE T4 / 100 WELLS",
+          "TOT T3 / 100 WELLS",
+          "TOT T4 / 100 WELLS",
           "TSH3 REAGENT/ 100 WELLS"
         ].map(n => n.toUpperCase());
 
