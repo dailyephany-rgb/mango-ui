@@ -90,7 +90,7 @@ export default function WorkflowStackedBars({ records = [], height = 480 }) {
   
   const data = useMemo(() => {
     return records.map((record, index) => ({
-      x: record.regNo,
+      x: record.diagnosticNo,
   
       regNo: record.regNo,
       diagnosticNo: record.diagnosticNo,
