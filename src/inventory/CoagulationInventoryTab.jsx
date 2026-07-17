@@ -185,7 +185,7 @@ export default function CoagulationInventory() {
                 "N/A",
               boxNo: item.boxNo || "",
           
-              machine: "YUMIZEN G-800",
+              machine: "Yumizen G800",
           
               inventoryType: "Control",
 
@@ -215,7 +215,7 @@ export default function CoagulationInventory() {
                 "N/A",
               boxNo: item.boxNo || "",
           
-              machine: "YUMIZEN G-800",
+              machine: "Yumizen G800",
           
               inventoryType: "Maintenance",
 
@@ -383,7 +383,7 @@ export default function CoagulationInventory() {
             "N/A",
             boxNo: item.boxNo || "",
         
-          machine: "YUMIZEN G-800",
+            machine: "Yumizen G800",
         
           inventoryType:
             item.coagGroup === "Controls"
@@ -451,7 +451,7 @@ export default function CoagulationInventory() {
           "N/A",
           boxNo: item.boxNo || "",
       
-        machine: "YUMIZEN G-800",
+          machine: "Yumizen G800",
       
         inventoryType:
           item.coagGroup === "Controls"
@@ -527,7 +527,7 @@ export default function CoagulationInventory() {
           "N/A",
         boxNo: item.boxNo || "",
       
-        machine: "YUMIZEN G-800",
+        machine: "Yumizen G800",
       
         inventoryType:
           item.coagGroup === "Controls"
@@ -1351,7 +1351,7 @@ export default function CoagulationInventory() {
                       "N/A",
                       boxNo: item.boxNo || "",
                   
-                    machine: "YUMIZEN G-800",
+                      machine: "Yumizen G800",
                   
                     inventoryType:
                       item.coagGroup === "Controls"
