@@ -158,10 +158,21 @@ export default function HaemInventoryTab() {
     return Math.round((remaining / total) * 100);
   };
 
+
   const getHealthColor = (pct) => {
     if (pct > 50) return "bg-high";
     if (pct > 15) return "bg-medium";
     return "bg-low";
+  };
+
+  const getMachineName = (item) => {
+    return (
+      item.machineName ||
+      item.machineAssigned ||
+      (activeHaemTab === "3-part"
+        ? "3-Part Machine"
+        : "5-Part Machine")
+    );
   };
 
   const handleConfirmMaintenance = async () => {
@@ -220,10 +231,7 @@ batch.update(
           "N/A",
           boxNo: item.boxNo || "",
       
-        machine:
-          activeHaemTab === "3-part"
-            ? "3-Part Machine"
-            : "5-Part Machine",
+          machine: getMachineName(item),
 
          metricType:
             item.metricType || "",
@@ -298,10 +306,7 @@ batch.update(
               "N/A",
               boxNo: item.boxNo || "",
           
-            machine:
-              activeHaemTab === "3-part"
-                ? "3-Part Machine"
-                : "5-Part Machine",
+              machine: getMachineName(item),
           
             inventoryType: "Control",
 
@@ -363,11 +368,7 @@ batch.update(
       await addDoc(collection(db, "qc_logs"), {
         timestamp: serverTimestamp(),
         eventType: "Control",
-        machine:
-          activeHaemTab === "3-part"
-            ? "3-part"
-            : "5-part",
-
+        machine: getMachineName(selectedControl),
         performedBy: qcPerformedBy,
         batchNo: selectedControl?.lotNo || "N/A",
         boxNo: selectedControl?.boxNo || "",
@@ -466,10 +467,7 @@ batch.update(
           item.batchNo || item.lotNo || "N/A",
         boxNo: item.boxNo || "",
   
-        machine:
-          activeHaemTab === "3-part"
-            ? "3-Part Machine"
-            : "5-Part Machine",
+        machine: getMachineName(item),
   
         inventoryType:
           item.haemGroup === "Controls"
@@ -542,10 +540,7 @@ batch.update(
         
         boxNo: item.boxNo || "",
   
-        machine:
-          activeHaemTab === "3-part"
-            ? "3-Part Machine"
-            : "5-Part Machine",
+        machine: getMachineName(item),
   
         inventoryType:
           item.haemGroup === "Controls"
@@ -620,10 +615,7 @@ batch.update(
           "N/A",
         boxNo: item.boxNo || "",
       
-        machine:
-          activeHaemTab === "3-part"
-            ? "3-Part Machine"
-            : "5-Part Machine",
+        machine: getMachineName(item),
       
         inventoryType:
           item.haemGroup === "Controls"
@@ -1470,10 +1462,7 @@ batch.update(
                   "N/A",
                   boxNo: item.boxNo || "",
               
-                machine:
-                  activeHaemTab === "3-part"
-                    ? "3-Part Machine"
-                    : "5-Part Machine",
+                  machine: getMachineName(item),
               
                 inventoryType:
                   item?.haemGroup === "Controls"
