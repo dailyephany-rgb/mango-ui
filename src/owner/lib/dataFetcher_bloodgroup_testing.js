@@ -261,161 +261,274 @@ export function computeKPIs(masterRows = [], bgRows = []) {
 }
 /* ================= STAFF ANALYTICS ====================== */
 
-export function computeStaffAnalytics(
-  rows = []
-) {
-  const buildStats = (
-    rows,
-    staffKey,
-    startKey,
-    endKey
-  ) => {
-    const map = {};
 
-    rows.forEach((r) => {
-      const staff =
-        r[staffKey] ||
-        "Unknown";
+export function computeStaffAnalytics(rows = []) {
 
-      if (!map[staff]) {
-        map[staff] = {
-          name: staff,
-          count: 0,
-          durations: [],
-          timeline: {},
-        };
+  const savedRows = rows.filter(
+    (r) => (r.isSaved || r.timeSaved) && r.savedBy
+  );
+
+  const totalSaved = savedRows.length;
+
+  const distributionMap = {};
+  const avgMap = {};
+  const timelines = {};
+
+  savedRows.forEach((r) => {
+    const user = r.savedBy;
+  
+    distributionMap[user] =
+      (distributionMap[user] || 0) + 1;
+  
+    const mins = minutesDiff(
+      r.timeScanned,
+      r.timeSaved
+    );
+  
+    if (mins != null) {
+      if (!avgMap[user]) {
+        avgMap[user] = [];
       }
-
-      map[staff].count++;
-
-      const mins =
-        minutesDiff(
-          r[startKey],
-          r[endKey]
-        );
-
-      if (mins != null) {
-        map[
-          staff
-        ].durations.push(
-          mins
-        );
+    
+      avgMap[user].push(mins);
+    
+      if (!timelines[user]) {
+        timelines[user] = [];
       }
+    
+      timelines[user].push({
+        regNo: r.regNo,
+        x: r.diagnosticNo || r.regNo,
+        diagnosticNo: r.diagnosticNo || "NA",
+        name: r.name,
+        test: r.test,
+        selectedTests: r.selectedTests || [],
+        duration: mins,
+        timeScanned: r.timeScanned,
+        timeSaved: r.timeSaved,
+      });
+    }
+  });
 
-      const d =
-        toDate(
-          r[endKey]
-        );
+    const distribution = Object.entries(
+      distributionMap
+    ).map(([name, count]) => ({
+      name,
+      count,
+      percentage:
+        totalSaved > 0
+          ? Number(
+              ((count / totalSaved) * 100).toFixed(1)
+            )
+          : 0,
+    }));
 
-      if (d) {
-        const hour =
-          d.getHours();
+     const averages = Object.entries(
+      avgMap
+    ).map(([name, values]) => ({
+      name,
+      avgMinutes:
+        values.length > 0
+          ? Math.round(
+              values.reduce(
+                (sum, v) => sum + v,
+                0
+              ) / values.length
+            )
+          : 0,
+    }));
 
-        map[
-          staff
-        ].timeline[
-          hour
-        ] =
-          (
-            map[
-              staff
-            ]
-              .timeline[
-              hour
-            ] || 0
-          ) + 1;
-      }
+    /* =========================
+   VALIDATED (validatedBy)
+========================= */
+
+const validatedRows = rows.filter(
+  (r) =>
+    (r.isValidated || r.timeValidated) &&
+    r.validatedBy
+);
+const totalValidated = validatedRows.length;
+const validatedDistributionMap = {};
+const validatedAvgMap = {};
+const validatedTimelines = {};
+
+validatedRows.forEach((r) => {
+  const user = r.validatedBy;
+
+  validatedDistributionMap[user] =
+    (validatedDistributionMap[user] || 0) + 1;
+
+  const mins = minutesDiff(
+    r.timeSaved,
+    r.timeValidated
+  );
+
+  if (mins != null) {
+    if (!validatedAvgMap[user]) {
+      validatedAvgMap[user] = [];
+    }
+
+    validatedAvgMap[user].push(mins);
+
+    if (!validatedTimelines[user]) {
+      validatedTimelines[user] = [];
+    }
+
+    validatedTimelines[user].push({
+      x: r.diagnosticNo || r.regNo,
+      regNo: r.regNo,
+      diagnosticNo: r.diagnosticNo || "NA",
+      name: r.name,
+      test: r.test,
+      selectedTests: r.selectedTests || [],
+      duration: mins,
+      timeSaved: r.timeSaved,
+      timeValidated: r.timeValidated,
     });
+  }
+});
 
-    return {
-      distribution:
-        Object.values(
-          map
-        ).map((s) => ({
-          name:
-            s.name,
-          value:
-            s.count,
-        })),
-
-      averages:
-        Object.values(
-          map
-        ).map((s) => ({
-          name:
-            s.name,
-          value:
-            s
-              .durations
-              .length
-              ? Math.round(
-                  s.durations.reduce(
-                    (
-                      a,
-                      b
-                    ) =>
-                      a +
-                      b,
-                    0
-                  ) /
-                    s
-                      .durations
-                      .length
-                )
-              : 0,
-        })),
-
-      timelines:
-        Object.fromEntries(
-          Object.values(
-            map
-          ).map(
+const validatedDistribution =
+  Object.entries(
+    validatedDistributionMap
+  ).map(([name, count]) => ({
+    name,
+    count,
+    percentage:
+      totalValidated > 0
+        ? Number(
             (
-              s
-            ) => [
-              s.name,
-              s.timeline,
-            ]
+              (count /
+                totalValidated) *
+              100
+            ).toFixed(1)
           )
-        ),
-    };
-  };
+        : 0,
+    }));
+        const validatedAverages =
+      Object.entries(
+        validatedAvgMap
+      ).map(([name, values]) => ({
+        name,
+        avgMinutes:
+          values.length > 0
+            ? Math.round(
+                values.reduce(
+                  (sum, v) =>
+                    sum + v,
+                  0
+                ) / values.length
+              )
+            : 0,
+   }));
 
-  return {
-    testing:
-      buildStats(
-        rows.filter(
-          (r) =>
-            r.timeSaved
-        ),
-        "savedBy",
-        "timeScanned",
-        "timeSaved"
-      ),
+/* =========================
+   ENTERED (enteredBy)
+========================= */
 
-    validated:
-      buildStats(
-        rows.filter(
-          (r) =>
-            r.timeValidated
-        ),
-        "validatedBy",
-        "timeSaved",
-        "timeValidated"
-      ),
+const enteredRows = rows.filter(
+  (r) =>
+    r.enteredBy &&
+    r.timeValidated &&
+    r.timeEntered
+);
+const totalEntered = enteredRows.length;
 
-    entered:
-      buildStats(
-        rows.filter(
-          (r) =>
-            r.timeEntered
-        ),
-        "enteredBy",
-        "timeValidated",
-        "timeEntered"
-      ),
-  };
+const enteredDistributionMap = {};
+const enteredAvgMap = {};
+const enteredTimelines = {};
+
+enteredRows.forEach((r) => {
+  const user = r.enteredBy.trim();
+  if (!user) return;
+
+  enteredDistributionMap[user] =
+    (enteredDistributionMap[user] || 0) + 1;
+
+  const mins = minutesDiff(
+    r.timeValidated,
+    r.timeEntered
+  );
+
+  if (mins != null) {
+    if (!enteredAvgMap[user]) {
+      enteredAvgMap[user] = [];
+    }
+
+    enteredAvgMap[user].push(mins);
+
+    if (!enteredTimelines[user]) {
+      enteredTimelines[user] = [];
+    }
+
+    enteredTimelines[user].push({
+      x: r.diagnosticNo || r.regNo,
+      regNo: r.regNo,
+      diagnosticNo: r.diagnosticNo || "NA",
+      name: r.name,
+      test: r.test,
+      selectedTests: r.selectedTests || [],
+      duration: mins,
+      timeValidated: r.timeValidated,
+      timeEntered: r.timeEntered,
+    });
+  }
+});
+
+const enteredDistribution = Object.entries(
+  enteredDistributionMap
+).map(([name, count]) => ({
+  name,
+  count,
+  percentage:
+    totalEntered > 0
+      ? Number(
+          ((count / totalEntered) * 100).toFixed(1)
+        )
+      : 0,
+}));
+
+const enteredAverages = Object.entries(
+  enteredAvgMap
+).map(([name, values]) => ({
+  name,
+  avgMinutes:
+    values.length > 0
+      ? Math.round(
+          values.reduce(
+            (sum, v) => sum + v,
+            0
+          ) / values.length
+        )
+      : 0,
+}));
+
+return {
+  testing: {
+    totalSaved,
+    distribution,
+    averages,
+    timelines,
+  },
+
+  validated: {
+    totalValidated,
+    distribution: validatedDistribution,
+    averages: validatedAverages,
+    timelines: validatedTimelines,
+  },
+  entered: {
+    totalEntered,
+    distribution: enteredDistribution,
+    averages: enteredAverages,
+    timelines: enteredTimelines,
+  },
+};
+
+   
 }
+
+
 
 /* ================= SUBSCRIBE OVERVIEW =================== */
 

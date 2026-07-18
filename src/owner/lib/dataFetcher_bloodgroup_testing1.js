@@ -136,6 +136,11 @@ switch (stage) {
     );
     break;
 
+    case "turnaround":
+    start = toDate(row.timeCollected);
+    end = toDate(row.timeValidated);
+    break;
+
   default:
     return;
 }
