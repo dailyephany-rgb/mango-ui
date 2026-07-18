@@ -17,12 +17,10 @@ export const users = [
     username: "Aakansha",
     password: "0708"
   },
-
   {
     username: "Basant",
-    password: "1502"
+    password: "1705"
   },
-
 
   {
     username: "Tamanna",
@@ -66,7 +64,7 @@ export const users = [
 
   {
     username: "Shweta",
-    password: "1201"
+    password: "2222"
   },
 
   {
@@ -76,7 +74,7 @@ export const users = [
 
   {
     username: "Murad",
-    password: "0210"
+    password: "3333"
   },
 
   {
