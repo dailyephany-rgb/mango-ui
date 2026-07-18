@@ -147,6 +147,12 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
           row.timeEntered
         );
         break;
+
+        case "turnaround":
+        start = toDate(row.timeCollected);
+        end = toDate(row.timeValidated);
+        break;
+    
     
       default:
         return;

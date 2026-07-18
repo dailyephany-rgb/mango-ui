@@ -403,11 +403,16 @@ export function computeStaffAnalytics(
         ] = [];
       }
 
-      timelines[
-        staff
-      ].push({
-        ...r,
+      timelines[staff].push({
+        x: r.diagnosticNo || r.regNo,
+        regNo: r.regNo,
+        diagnosticNo: r.diagnosticNo || "NA",
+        name: r.name,
+        test: r.test,
+        selectedTests: r.selectedTests || [],
         duration,
+        timeScanned: r.timeScanned,
+        timeSaved: r.timeSaved,
       });
     }
   });
@@ -539,11 +544,16 @@ export function computeStaffAnalytics(
           ] = [];
         }
 
-        validatedTimelines[
-          staff
-        ].push({
-          ...r,
+        validatedTimelines[staff].push({
+          x: r.diagnosticNo || r.regNo,
+          regNo: r.regNo,
+          diagnosticNo: r.diagnosticNo || "NA",
+          name: r.name,
+          test: r.test,
+          selectedTests: r.selectedTests || [],
           duration,
+          timeSaved: r.timeSaved,
+          timeValidated: r.timeValidated,
         });
       }
     }
@@ -676,11 +686,16 @@ export function computeStaffAnalytics(
           ] = [];
         }
 
-        enteredTimelines[
-          staff
-        ].push({
-          ...r,
+        enteredTimelines[staff].push({
+          x: r.diagnosticNo || r.regNo,
+          regNo: r.regNo,
+          diagnosticNo: r.diagnosticNo || "NA",
+          name: r.name,
+          test: r.test,
+          selectedTests: r.selectedTests || [],
           duration,
+          timeValidated: r.timeValidated,
+          enteredTime: r.enteredTime,
         });
       }
     }
