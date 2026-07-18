@@ -340,43 +340,22 @@ const [pendingCritical, setPendingCritical] = useState(() => {
         });
       }
 
-     
+      const { pendingCritText, compositeKey: unused, id, phone, tests, father, doctor, ...restOfEntry } = entry;
 
       const rawLocalTime = localScanTimes[compositeKey];
       const scanTime = rawLocalTime ? new Date(rawLocalTime) : null;
 
       const payload = {
-        regNo: entry.regNo,
+        ...restOfEntry,
         compositeKey: compositeKey,
-        diagnosticNo: entry.diagnosticNo || "—",
-      
-        name: entry.name || "",
-        age: entry.age || "",
-        ageUnit: entry.ageUnit || "",
-        gender: entry.gender || "-",
-      
-        source: entry.source || "-",
-        category: entry.category || "-",
-      
-        selectedTests: cleanTests,
-      
-        startTime: entry.startTime || "",
-        endTime: entry.endTime || "",
-        duration: entry.duration || "",
-        result: entry.result || "",
-      
+        selectedTests: cleanTests, 
         scanned: "Yes",
-        scannedTime: scanTime
-          ? Timestamp.fromDate(scanTime)
-          : (entry.scannedTime || null),
-      
+        scannedTime: scanTime ? Timestamp.fromDate(scanTime) : (entry.scannedTime || null),
         saved: "Yes",
         savedTime: serverTimestamp(),
-        savedBy: sessionStorage.getItem("loggedUser") || "Unknown",
-      
+        savedBy:  sessionStorage.getItem("loggedUser") || "Unknown",
         timePrinted: ensureFirestoreTimestamp(entry.timePrinted),
         timeCollected: ensureFirestoreTimestamp(entry.timeCollected),
-      
         status: "saved",
         critical: isCritical
       };

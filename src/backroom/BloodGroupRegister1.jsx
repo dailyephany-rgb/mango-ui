@@ -236,41 +236,20 @@ export default function BloodGroupRegister() {
         .map((t) => (typeof t === "string" ? t : t?.test || ""))
         .filter((testName) => testName.toLowerCase().includes("abo group"));
 
-        const dbPayload = {
-          regNo: entry.regNo,
-          compositeKey,
-          diagnosticNo: entry.diagnosticNo || "—",
-        
-          name: entry.name || "",
-          age: entry.age || "",
-          ageUnit: entry.ageUnit || "",
-          gender: entry.gender || "-",
-        
-          source: entry.source || "-",
-          category: entry.category || "-",
-        
-          selectedTests: filteredTests,
-        
-          bloodGroup: entry.bloodGroup || "",
-          rhFactor: entry.rhFactor || "",
-          result: entry.result || "",
-        
-          scanned: "Yes",
-          scannedTime: scanTime
-            ? Timestamp.fromDate(scanTime)
-            : (entry.scannedTime || null),
-        
-          saved: "Yes",
-          savedTime: serverTimestamp(),
-          savedBy: sessionStorage.getItem("loggedUser") || "Unknown",
-        
-          timeCollected: entry.timeCollected ?? null,
-          timePrinted: entry.timePrinted ?? null,
-        
-          status: "saved",
-          type: tab,
-        };
-        
+      const payload = {
+        ...entry,
+        selectedTests: filteredTests,
+        scanned: "Yes",
+        scannedTime: scanTime ? Timestamp.fromDate(scanTime) : (entry.scannedTime || null),
+        saved: "Yes",
+        savedTime: serverTimestamp(),
+        savedBy:  sessionStorage.getItem("loggedUser") || "Unknown",
+        timeCollected: entry.timeCollected ?? null,
+        status: "saved",
+        type: tab,
+      };
+
+      const { tests, id, father, doctor, phone, ...dbPayload } = payload;
       const col = tab === "testing" ? "bloodgroup_testing_register" : "bloodgroup_retesting_register";
 
       // Save using compositeKey

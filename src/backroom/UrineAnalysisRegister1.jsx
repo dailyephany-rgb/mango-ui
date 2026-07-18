@@ -371,41 +371,28 @@ export default function UrineAnalysisRegister() {
     const isCritical = (criticalReportedSet.has(compositeKey) || hasPendingCritical) ? "Yes" : "No";
 
     try {
-      
+      const { pendingCriticalParam, compositeKey: unusedKey, id, phone, tests, father, doctor, ...restOfEntry } = entry;
       
       const scanTimeRaw = entry.scannedTime;
       const scanTimeTs = scanTimeRaw ? Timestamp.fromDate(new Date(scanTimeRaw)) : null;
 
-      const payload = {
-        regNo: entry.regNo,
-        compositeKey,
-        diagnosticNo: entry.diagnosticNo || "-",
-      
-        name: entry.name || "",
-        age: entry.age || "",
-        ageUnit: entry.ageUnit || "",
-        gender: entry.gender || "-",
-      
-        source: entry.source || "-",
-        category: entry.category || "-",
-      
-        selectedTests: filteredTests,
-        results: filteredResults,
-      
-        scanned: "Yes",
-        scannedTime: scanTimeTs,
-      
-        saved: "Yes",
-        savedTime: serverTimestamp(),
-        savedBy: sessionStorage.getItem("loggedUser") || "Unknown",
-      
-        status: "saved",
-        critical: isCritical
-      };
-      
       await setDoc(
         doc(db, "urine_analysis_register", compositeKey),
-        payload,
+        {
+          ...restOfEntry,
+          compositeKey: compositeKey,
+          diagnosticNo: entry.diagnosticNo || "-",
+          source: entry.source || "-",
+          selectedTests: filteredTests, 
+          results: filteredResults,
+          scanned: "Yes",
+          scannedTime: scanTimeTs,
+          saved: "Yes",
+          savedTime: serverTimestamp(),
+          savedBy: sessionStorage.getItem("loggedUser") || "Unknown",
+          status: "saved",
+          critical: isCritical
+        },
         { merge: true }
       );
       try {

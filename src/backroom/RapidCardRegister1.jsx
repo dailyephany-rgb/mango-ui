@@ -423,37 +423,16 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
 
       const hasPendingCritical = !!pendingCriticalParam;
 
-      const payload = {
-        regNo: entry.regNo,
-        compositeKey: compositeKey,
-        diagnosticNo: entry.diagnosticNo || "—",
-      
-        name: entry.name || "",
-        age: entry.age || "",
-        ageUnit: entry.ageUnit || "",
-        gender: entry.gender || "-",
-      
-        source: entry.source || "-",
-        category: entry.category || "-",
-      
-        selectedTests: rapidOnlyTests,
-        results: cleanedResults,
-      
-        scanned: "Yes",
-        scannedTime: scanTime
-          ? Timestamp.fromDate(new Date(scanTime))
-          : null,
-      
-        saved: "Yes",
-        savedTime: serverTimestamp(),
-        savedBy: sessionStorage.getItem("loggedUser") || "Unknown",
-      
-        status: "saved",
-        critical:
-          (criticalReportedSet.has(compositeKey) || hasPendingCritical)
-            ? "Yes"
-            : "No"
-      };
+      const {
+        pendingCriticalParam: _pendingCriticalParam,
+        compositeKey: unused,
+        id,
+        phone,
+        tests,
+        father,
+        doctor,
+        ...restOfEntry
+      } = entry;
 
       const payload = {
         ...restOfEntry,
