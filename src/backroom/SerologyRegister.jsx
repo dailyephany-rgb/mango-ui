@@ -386,20 +386,7 @@ const testsForRegister = routing.SerologyRegister || [
         critical: isCritical
       };
 
-      const payload = {
-        ...restOfEntry,
-        compositeKey: compositeKey,
-        selectedTests: simpleTests, 
-        results: cleanedResults, 
-        scanned: "Yes",
-        scannedTime: scanTime ? Timestamp.fromDate(new Date(scanTime)) : null, 
-        saved: "Yes",
-        savedTime: serverTimestamp(),
-        savedBy: sessionStorage.getItem("loggedUser") || "Unknown",
-        status: "saved",
-        critical: isCritical
-      };
-
+      
       await setDoc(doc(db, "serology_register", compositeKey), payload, { merge: true });
 
       try {
