@@ -671,11 +671,10 @@ export function computeStaffAnalytics(
           duration,
           timeValidated: r.timeValidated,
           enteredTime: r.enteredTime,
-        }
+        });
       }
-    }
-  );
-
+    });
+ 
   const enteredDistribution =
     Object.entries(
       enteredDistributionMap
