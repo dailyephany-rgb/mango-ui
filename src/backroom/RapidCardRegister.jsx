@@ -455,19 +455,7 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
             : "No"
       };
 
-      const payload = {
-        ...restOfEntry,
-        compositeKey: compositeKey,
-        selectedTests: rapidOnlyTests,
-        results: cleanedResults,
-        scanned: "Yes",
-        scannedTime: scanTime ? Timestamp.fromDate(new Date(scanTime)) : null,
-        saved: "Yes",
-        savedTime: serverTimestamp(),
-        savedBy: sessionStorage.getItem("loggedUser") || "Unknown",
-        status: "saved",
-        critical: (criticalReportedSet.has(compositeKey) || hasPendingCritical) ? "Yes" : "No"
-      };
+     
 
       await setDoc(doc(db, "rapid_card_register", compositeKey), payload, { merge: true });
 
