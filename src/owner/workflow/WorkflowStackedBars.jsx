@@ -105,7 +105,7 @@
    );
  }
  
- function WorkflowChart({ data }) {
+ function WorkflowChart({ data, highlightSLA }) {
    const chartKeys = ROUTINE_WORKFLOW_CHART_KEYS.filter(
      (stage) =>
        stage !== PRINTED_STAGE_KEY ||
@@ -161,10 +161,12 @@
                <Cell
                  key={`${patient.diagnosticNo}-${stage}`}
                  fill={
-                   stage !== PRINTED_STAGE_KEY && patient.slaLookup?.[stage]
-                     ? SLA_VIOLATION_COLOR
-                     : ROUTINE_WORKFLOW_COLORS[stage]
-                 }
+                  highlightSLA &&
+                  stage !== PRINTED_STAGE_KEY &&
+                  patient.slaLookup?.[stage]
+                    ? SLA_VIOLATION_COLOR
+                    : ROUTINE_WORKFLOW_COLORS[stage]
+                }
                />
              ))}
            </Bar>
@@ -177,6 +179,7 @@
  export default function WorkflowStackedBars({ records = [], height = 480 }) {
    const [search, setSearch] = useState("");
    const [printMode, setPrintMode] = useState("with");
+   const [highlightSLA, setHighlightSLA] = useState(false);
    const [isExpanded, setIsExpanded] = useState(false);
  
    const data = useMemo(() => {
@@ -280,6 +283,21 @@
            <option value="with">With Print Time</option>
            <option value="without">Without Print Time</option>
          </select>
+
+         <select
+          value={highlightSLA ? "violations" : "all"}
+          onChange={(event) =>
+            setHighlightSLA(event.target.value === "violations")
+          }
+          style={{
+            border: "1px solid #d1d5db",
+            borderRadius: 6,
+            padding: "8px 10px",
+          }}
+        >
+          <option value="all">All</option>
+          <option value="violations">Show SLA Violations</option>
+        </select>
  
          
  
@@ -336,7 +354,10 @@
                 No workflows match the selected filters.
               </div>
             ) : (
-              <WorkflowChart data={data} />
+              <WorkflowChart
+              data={data}
+              highlightSLA={highlightSLA}
+            />
             )}
           </div>
  
@@ -392,7 +413,10 @@
            }}
          >
            <div style={{ flex: 1 }}>
-             <WorkflowChart data={data} />
+             <WorkflowChart
+              data={data}
+              highlightSLA={highlightSLA}
+            />
            </div>
          </div>
  
