@@ -669,9 +669,17 @@ if (config.workflow !== "outsource") return;
 
   const renderCardHeader = (
     showPrint = true,
-    showWhatsapp = false
+    showWhatsapp = false,
+    printByLabel = "",
+    extraClass = ""
   ) => (
-    <div className={`card-header-row ${showPrint ? "" : "no-print"}`}>
+
+
+    <div
+  className={`card-header-row ${
+    extraClass || (showPrint ? "" : "no-print")
+  }`}
+>
       <div>Reg No</div>
       <div>Diagnostic</div>
       <div>Name</div>
@@ -681,12 +689,16 @@ if (config.workflow !== "outsource") return;
       <div>Category</div>
       <div>Status</div>
   
-      {showWhatsapp && <div>Printed By</div>}
+      {showWhatsapp && <div>Receipt Saved By</div>}
+
       {showPrint && <div>Print</div>}
-  
+
+      {printByLabel && <div>{printByLabel}</div>}
+
       {showWhatsapp && <div>WhatsApp</div>}
+
       {showWhatsapp && <div>WhatsApp Sent By</div>}
-  
+        
       <div>Expand</div>
     </div>
   );
@@ -833,8 +845,8 @@ if (config.workflow !== "outsource") return;
         </div>
 
         <div>
-          {rec.routineReportPrintedBy || "—"}
-        </div>
+        {rec.receiptSavedBy || "—"}
+      </div>
 
         <div>
           <button
@@ -848,6 +860,10 @@ if (config.workflow !== "outsource") return;
             {rec.routineReportPrinted ? "Printed" : "Print Report"}
           </button>
         </div>
+
+       <div>
+        {rec.routineReportPrintedBy || "—"}
+      </div>
 
         <div>
           <button
@@ -904,7 +920,9 @@ if (config.workflow !== "outsource") return;
     return (
       <div key={rec.workflowId} className="master-card">
          <div
-            className={`card-top ${isInsideLab ? "" : "no-print"}`}
+            className={`card-top ${
+              isInsideLab ? "inside-lab" : "no-print"
+            }`}
             onClick={() => toggle(rec.workflowId)}
           >
           {renderCommonCardTop(rec)}
@@ -939,6 +957,13 @@ if (config.workflow !== "outsource") return;
     </button>
   </div>
 ) : null}
+
+
+{isInsideLab && (
+  <div>
+    {rec.insideLabReportPrintedBy || "—"}
+  </div>
+)}
 
 <div>
 <button
@@ -1024,7 +1049,7 @@ if (config.workflow !== "outsource") return;
 
         {reportView === "routine" && (
           <div className="card-scroll">
-            {renderCardHeader(true, true)}
+           {renderCardHeader(true, true, "Printed By")}
             {filtered.map(renderRoutineCard)}
           </div>
         )}
@@ -1036,7 +1061,7 @@ if (config.workflow !== "outsource") return;
           Inside Lab
           </h3>
          <div className="card-scroll">
-          {renderCardHeader(true, false)}
+         {renderCardHeader(true, false,"Inside Lab Printed By","inside-lab")}
           {insideLabRows.map(renderSpecialCard)}
         </div>
 

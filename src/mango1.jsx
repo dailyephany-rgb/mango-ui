@@ -254,7 +254,7 @@ export default function Mango() {
         ...formData,
         regNo,
         diagnosticNo: diagNo,
-        receiptSavedBy: sessionStorage.getItem("loggedUser") |"Unknown",
+        enteredBy:  sessionStorage.getItem("loggedUser") || "Unknown",
         timePrinted: fullTimePrinted,
         timeCollected: finalTimeCollected,
         urgent: formData.urgent || false,
@@ -292,7 +292,6 @@ export default function Mango() {
         
           timePrinted: fullTimePrinted,
           timeCollected: finalTimeCollected,
-          receiptSavedBy: sessionStorage.getItem("loggedUser") || "Unknown",
         };
 
         await setDoc(

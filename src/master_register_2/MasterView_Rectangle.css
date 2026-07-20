@@ -137,8 +137,9 @@
 120px   /* Phone */
 110px   /* Category */
 120px   /* Status */
-120px   /* Printed By */
+120px   /* Receipt Saved By */
 130px   /* Print */
+120px   /* Printed By */
 150px   /* WhatsApp */
 140px   /* WhatsApp Sent By */
 60px;   /* Expand */
@@ -183,6 +184,7 @@
 .master-card:last-child{
   border-bottom:1px solid #dbe3ef;
 }
+
 .card-top{
   display:grid;
 
@@ -194,12 +196,15 @@
 90px
 120px
 110px
-120px
-120px
-130px
-150px
-140px
-60px;
+120px   /* Status */
+120px   /* Receipt Saved By */
+130px   /* Print */
+120px   /* Printed By */
+150px   /* WhatsApp */
+140px   /* WhatsApp Sent By */
+60px;   /* Expand */
+
+
 
   align-items:center;
 
@@ -245,6 +250,27 @@
         110px
         120px
         50px;
+}
+
+
+/* ===== 11-column layout (Inside Lab) ===== */
+
+.card-header-row.inside-lab,
+.card-top.inside-lab{
+    grid-template-columns:
+        110px
+        140px
+        240px
+        220px
+        90px
+        120px
+        110px
+        120px   /* Status */
+        130px   /* Print */
+        140px   /* Inside Lab Printed By */
+        60px;   /* Expand */
+
+    width:1640px;
 }
 
 /* ===== Status Tag ===== */
@@ -570,6 +596,20 @@
 .card-top > div:nth-child(11),
 .card-top > div:nth-child(12),
 .card-top > div:nth-child(13){
+    justify-content:center;
+}
+
+/* Inside Lab */
+
+.card-header-row.inside-lab > div:nth-child(8),
+.card-header-row.inside-lab > div:nth-child(9),
+.card-header-row.inside-lab > div:nth-child(10),
+.card-header-row.inside-lab > div:nth-child(11),
+
+.card-top.inside-lab > div:nth-child(8),
+.card-top.inside-lab > div:nth-child(9),
+.card-top.inside-lab > div:nth-child(10),
+.card-top.inside-lab > div:nth-child(11){
     justify-content:center;
 }
 
