@@ -579,6 +579,19 @@ export const subscribeToWorkflowAnalytics = ({
         record.routineReportPrintedTime
     );
 
+    console.log(
+      "Stacked Bar Records:",
+      stackedBarRecords.map((r) => ({
+        regNo: r.regNo,
+        diagnosticNo: r.diagnosticNo,
+        hasRoutine: r.hasRoutine,
+        routineCompletedAt: r.routineCompletedAt,
+        routineReportPrinted: r.routineReportPrinted,
+        routineReportPrintedTime: r.routineReportPrintedTime,
+        chartData: r.chartData,
+      }))
+    );
+
     onData({
       records,
       stackedBarRecords,

@@ -172,14 +172,6 @@ export default function OutsourceRegister() {
         updatePayload,
         { merge: true }
       );
-
-      await setDoc(
-        doc(db, "report_details", entry.id),
-        {
-          outsourceReportReceived: true,
-        },
-        { merge: true }
-      );
       
       setLocalOutsourceData(prev => {
         const updated = { ...prev };
@@ -210,23 +202,14 @@ export default function OutsourceRegister() {
       const reportSnap = await getDoc(reportRef);
   
       const batch = writeBatch(db);
-
+  
+      // Outsource tracking
       batch.set(
         doc(db, "outsource_tracking", trackingId),
         {
           isGiven: true,
           reportDeliveredTime: serverTimestamp(),
           deliveredBy: currentUser,
-        },
-        { merge: true }
-      );
-  
-      // Outsource tracking
-      
-      batch.set(
-        reportRef,
-        {
-          outsourceReportDelivered: true,
         },
         { merge: true }
       );
@@ -305,14 +288,6 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
           isCollected: false,
           isGiven: false,
         }
-      );
-
-      await setDoc(
-        doc(db, "report_details", entry.id),
-        {
-          outsourceCollected: true,
-        },
-        { merge: true }
       );
         
     }

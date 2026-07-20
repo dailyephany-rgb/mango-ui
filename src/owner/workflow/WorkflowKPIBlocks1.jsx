@@ -86,45 +86,29 @@ export default function WorkflowKPIBlocks({ summary = {} }) {
         </div>
       </section>
 
-     
-     
       <section className="workflow-section">
-  <h3>Outsource</h3>
+        <h3>Outsource</h3>
 
-  <div className="kpi-row">
-    <Card
-      title="Outsource Patients"
-      value={summary.outsourceTotal}
-      subtitle="Reports requiring outsource workflow"
-    />
+        <div className="kpi-row">
+          <Card
+            title="Outsource Patients"
+            value={summary.outsourceTotal}
+            subtitle="Reports requiring outsource workflow"
+          />
 
-    <Card
-      title="Remaining"
-      value={summary.outsourceRemaining}
-      subtitle="Samples yet to be collected"
-    />
+          <Card
+            title="Pending"
+            value={summary.outsourcePending}
+            subtitle="Waiting for workflow completion"
+          />
 
-    <Card
-      title="Collected"
-      value={summary.outsourceCollected}
-      subtitle="Samples collected and sent"
-    />
-
-    <Card
-      title="Reports Received"
-      value={summary.outsourceReportReceived}
-      subtitle="Reports received from outsource lab"
-    />
-
-    <Card
-      title="Reports Delivered"
-      value={summary.outsourceReportDelivered}
-      subtitle="Reports delivered to patients"
-    />
-  </div>
-</section>
-
-
+          <Card
+            title="Completed"
+            value={summary.outsourceCompleted}
+            subtitle="Outsource workflow completed"
+          />
+        </div>
+      </section>
     </>
   );
 }

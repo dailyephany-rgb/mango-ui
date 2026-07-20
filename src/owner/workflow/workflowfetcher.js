@@ -389,7 +389,22 @@ const totalWorkflowMinutes = workflowTimeline.reduce(
     insideLabReportPrintedBy: reportDetails.insideLabReportPrintedBy || "",
 
     hasOutsource,
-    outsourceCompleted: Boolean(outsourceCompletedAt),
+
+    outsourceCollected: Boolean(
+      reportDetails.outsourceCollected
+    ),
+
+    outsourceReportReceived: Boolean(
+      reportDetails.outsourceReportReceived
+    ),
+
+    outsourceReportDelivered: Boolean(
+      reportDetails.outsourceReportDelivered
+    ),
+
+    outsourceCompleted: Boolean(
+      outsourceCompletedAt
+    ),
 
     whatsappRequired: Boolean(reportDetails.whatsappRequired),
     whatsappSent: Boolean(reportDetails.whatsappSent),
@@ -512,14 +527,31 @@ export const buildWorkflowSummary = (records) => {
     ),
 
     outsourceTotal: outsourceRecords.length,
-    outsourcePending: count(
-      outsourceRecords,
-      (record) => !record.outsourceCompleted
-    ),
-    outsourceCompleted: count(
-      outsourceRecords,
-      (record) => record.outsourceCompleted
-    ),
+
+outsourceRemaining: count(
+  outsourceRecords,
+  (record) => !record.outsourceCollected
+),
+
+  outsourceCollected: count(
+    outsourceRecords,
+    (record) => record.outsourceCollected
+  ),
+
+  outsourceReportReceived: count(
+    outsourceRecords,
+    (record) => record.outsourceReportReceived
+  ),
+
+  outsourceReportDelivered: count(
+    outsourceRecords,
+    (record) => record.outsourceReportDelivered
+  ),
+
+  outsourceCompleted: count(
+    outsourceRecords,
+    (record) => record.outsourceCompleted
+  ),
 
     routineAvgCompletion: averageMinutes(
       records,
