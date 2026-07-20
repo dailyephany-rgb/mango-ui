@@ -447,6 +447,7 @@ const totalWorkflowMinutes = workflowTimeline.reduce(
     whatsappSent: Boolean(reportDetails.whatsappSent),
     whatsappSentTime,
     whatsappSentBy: reportDetails.whatsappSentBy || "",
+    receiptSavedBy: reportDetails.receiptSavedBy || "",
 
       routineStatus,
       insideLabStatus,
@@ -604,6 +605,12 @@ outsourceRemaining: count(
     ),
 
     staffDistribution: {
+
+      receipt: buildStaffDistribution(
+        records,
+        "receiptSavedBy"
+      ),
+
       routine: buildStaffDistribution(
         records,
         "routineReportPrintedBy"

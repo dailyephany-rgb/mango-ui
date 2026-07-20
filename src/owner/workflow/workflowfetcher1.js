@@ -2,6 +2,7 @@
 
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "../../firebaseConfig.js";
+import testMapping from "../../test_mapping.json";
 
 
 export const ROUTINE_WORKFLOW_LOOKUP = {
@@ -119,6 +120,25 @@ export const ROUTINE_WORKFLOW_LABELS = {
   rapidCard: "Rapid Card",
   urine: "Urine Analysis",
   printed: "Report Printed",
+};
+
+const ROUTINE_SLA_KEYS = {
+  "Bio-Chemistry": "biochem",
+  "Hormones": "hormones",
+  "Haematology": "haem",
+  "Blood-Group": "bloodgroup",
+  "Coagulation": "coagulation",
+  "ESR": "esr",
+  "Serology": "serology",
+  "RapidCard": "rapid",
+  "Urine Examination": "urine_analysis",
+};
+
+const getDepartmentSLA = (departmentKey) => {
+  const slaKey = ROUTINE_SLA_KEYS[departmentKey];
+  const slaLimit = Number(testMapping?.[slaKey]?.turnaround);
+
+  return Number.isFinite(slaLimit) ? slaLimit : null;
 };
 
 const toDate = (value) => {
@@ -328,6 +348,15 @@ const buildWorkflowRecord = (reportDetails) => {
           };
         
           const chartKey = keyMap[dept.key];
+          const elapsedFromCollection = minutesBetween(timeCollected, dept.completedAt);
+          const slaLimit = getDepartmentSLA(dept.key);
+          const slaViolated =
+            slaLimit != null &&
+            elapsedFromCollection != null &&
+            elapsedFromCollection > slaLimit;
+          const slaOverrunMinutes = slaViolated
+            ? elapsedFromCollection - slaLimit
+            : 0;
         
           workflowTimeline.push({
             key: chartKey,
@@ -335,6 +364,10 @@ const buildWorkflowRecord = (reportDetails) => {
             startedAt: previousTime,
             completedAt: dept.completedAt,
             minutes,
+            elapsedFromCollection,
+            slaLimit,
+            slaViolated,
+            slaOverrunMinutes,
           });
         
           chartData[chartKey] = minutes;
@@ -353,6 +386,10 @@ if (routineReportPrintedTime && previousTime) {
       startedAt: previousTime,
       completedAt: routineReportPrintedTime,
       minutes,
+      elapsedFromCollection: minutesBetween(timeCollected, routineReportPrintedTime),
+      slaLimit: null,
+      slaViolated: false,
+      slaOverrunMinutes: 0,
     });
 
     chartData.printed = minutes;

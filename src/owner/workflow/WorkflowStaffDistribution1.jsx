@@ -17,7 +17,6 @@ import {
 
 export default function WorkflowStaffDistribution({
   data = {
-    receipt: [],
     routine: [],
     insideLab: [],
     whatsapp: [],
@@ -101,10 +100,9 @@ export default function WorkflowStaffDistribution({
             cursor: "pointer",
           }}
         >
-          <option value="receipt">Receipt Saved By</option>
-          <option value="routine">Routine Report Printed By</option>
-          <option value="insideLab">Inside Lab Report Printed By</option>
-          <option value="whatsapp">WhatsApp Sent By</option>
+          <option value="routine">Routine Reports</option>
+          <option value="insideLab">Inside Lab Reports</option>
+          <option value="whatsapp">WhatsApp</option>
         </select>
 
 
