@@ -1022,12 +1022,12 @@ if (config.workflow !== "outsource") return;
         </div>
       </div>
 
-            {reportView === "routine" && (
-        <div className="card-scroll">
-          {renderCardHeader(true)}
-          {filtered.map(renderRoutineCard)}
-        </div>
-      )}
+        {reportView === "routine" && (
+          <div className="card-scroll">
+            {renderCardHeader(true, true)}
+            {filtered.map(renderRoutineCard)}
+          </div>
+        )}
 
 
       {reportView === "special" && (
