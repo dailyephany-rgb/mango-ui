@@ -295,6 +295,9 @@ selectedTests.forEach((t) => {
     rec.diagnosticNo
   );
 
+
+
+
   statuses.push({
     dept: config.label,
 
@@ -383,41 +386,41 @@ if (config.workflow !== "outsource") return;
         (x.labName || "").trim() === deptKey
     );
 
-  statuses.push({
-    dept: config.label,
-
-    reportType: "special",
-
-    workflow: "outsource",
-
-    tests:
-      departmentRecord?.selectedTests ||
-      selectedTests
-        .filter(
-          (x) =>
-            typeof x !== "string" &&
-            (x.dept || "").trim() === deptKey
-        )
-        .map((x) => x.test),
-
-    sampleCollected:
-      departmentRecord?.status === "Scanned",
-
-    outsourceSampleCollectedTime:
-      departmentRecord?.outsourcedCollectedTime,
-
-    reportReceived:
-      departmentRecord?.isCollected || false,
-
-    reportReceivedTime:
-      departmentRecord?.reportReceivedTime,
-
-    reportGiven:
-      departmentRecord?.isGiven || false,
-
-    reportGivenTime:
-      departmentRecord?.reportDeliveredTime,
-  });
+    statuses.push({
+      dept: config.label,
+    
+      reportType: "special",
+    
+      workflow: "outsource",
+    
+      tests:
+        departmentRecord?.selectedTests ||
+        selectedTests
+          .filter(
+            x =>
+              typeof x !== "string" &&
+              (x.dept || "").trim() === deptKey
+          )
+          .map(x => x.test),
+    
+      sampleCollected:
+        departmentRecord?.isCollected || false,
+    
+      outsourceSampleCollectedTime:
+        departmentRecord?.outsourcedCollectedTime,
+    
+      reportReceived:
+        departmentRecord?.isReceived || false,
+    
+      reportReceivedTime:
+        departmentRecord?.reportReceivedTime,
+    
+      reportGiven:
+        departmentRecord?.isGiven || false,
+    
+      reportGivenTime:
+        departmentRecord?.reportDeliveredTime,
+    });
 });
 
       // OVERALL

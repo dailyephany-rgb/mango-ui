@@ -680,8 +680,9 @@ if (config.workflow !== "outsource") return;
       <div>Phone</div>
       <div>Category</div>
       <div>Status</div>
-      {showPrint && <div>Print Report</div>}
+      {showPrint && <div>Print</div>}
       {showWhatsapp && <div>WhatsApp</div>}
+      <div></div>
     </div>
   );
 
@@ -815,7 +816,7 @@ if (config.workflow !== "outsource") return;
 
   const renderRoutineCard = (rec) => (
     <div key={rec.id} className="master-card">
-      <div className="card-top" onClick={() => toggle(rec.id)}>
+      <div className="card-top">
         {renderCommonCardTop(rec)}
 
         <div className={`status-tag ${getColor(rec.overallStatus)}`}>
@@ -862,6 +863,15 @@ if (config.workflow !== "outsource") return;
               : "WhatsApp Required"}
           </button>
         </div>
+
+              <div>
+        <button
+          className="expand-btn"
+          onClick={() => toggle(rec.id)}
+        >
+          {expanded === rec.id ? "▲" : "▼"}
+        </button>
+      </div>
       </div>
 
       {expanded === rec.id && renderRoutineDropdown(rec)}
@@ -873,10 +883,9 @@ if (config.workflow !== "outsource") return;
 
     return (
       <div key={rec.workflowId} className="master-card">
-       <div
-        className={`card-top ${isInsideLab ? "" : "no-print"}`}
-        onClick={() => toggle(rec.workflowId)}
-      >
+         <div
+            className={`card-top ${isInsideLab ? "" : "no-print"}`}
+          >
           {renderCommonCardTop(rec)}
 
           <div
@@ -890,7 +899,6 @@ if (config.workflow !== "outsource") return;
           </div>
 
           
-          
           {isInsideLab ? (
   <div>
     <button
@@ -899,21 +907,32 @@ if (config.workflow !== "outsource") return;
           ? "printed-btn printed"
           : "printed-btn"
       }
-      disabled={!rec.workflowCompleted || 
+      disabled={!rec.workflowCompleted ||
         rec.insideLabReportPrinted}
-        onClick={(e) => {
-          e.stopPropagation();
-          handleInsideLabReportPrint(rec);
-        }}
+      onClick={(e) => {
+        e.stopPropagation();
+        handleInsideLabReportPrint(rec);
+      }}
     >
       {rec.insideLabReportPrinted ? "Printed" : "Print Report"}
     </button>
   </div>
 ) : null}
-                  
-        </div>
 
-        {expanded === rec.workflowId && renderSpecialDropdown(rec)}
+<div>
+  <button
+    className="expand-btn"
+    onClick={() => toggle(rec.workflowId)}
+  >
+    {expanded === rec.workflowId ? "▲" : "▼"}
+  </button>
+</div>
+
+</div>
+
+{expanded === rec.workflowId && renderSpecialDropdown(rec)}
+
+
       </div>
     );
   };
