@@ -258,17 +258,40 @@ export default function OutsourceRegister() {
       
 
   const handleStatusChange = async (entry, newStatus) => {
+
+    console.log("========== COLLECT CLICKED ==========");
+    console.log("Entry:", entry);
+    console.log("Status:", newStatus);
+
     try {
       setSaving(true);
   
       const trackingId = entry.uniqueTrackingId;
+
+      console.log("Tracking ID:", trackingId);
       const now = new Date().toISOString();
   
       const trackingRef = doc(db, "outsource_tracking", trackingId);
+
+      console.log("Tracking Ref:", trackingRef.path);
   
       const existingDoc = await getDoc(trackingRef);
 
+      console.log("Document Exists:", existingDoc.exists());
+
+      if (existingDoc.exists()) {
+        console.log("Existing Data:", existingDoc.data());
+      }
+
 if (newStatus === "Scanned" && !existingDoc.exists()) {
+  console.log("Creating outsource_tracking document...");
+console.log({
+  trackingId,
+  regNo: entry.regNo,
+  diagnosticNo: entry.accessionNo,
+  name: entry.name,
+  labName: entry.labName,
+});
   await setDoc(
     trackingRef,
        
@@ -306,6 +329,8 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
           isGiven: false,
         }
       );
+
+      console.log("✅ outsource_tracking document created");
 
       await setDoc(
         doc(db, "report_details", entry.id),
