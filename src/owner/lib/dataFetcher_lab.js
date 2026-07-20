@@ -234,98 +234,40 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
       return tests.some(t => canonTests.includes(t));
     });
 
-    const filteredLab = lCache.filter(row => {
-      if (
-        row.regNo === "VHJ-172102" &&
-        row.diagnosticNo === "A260720146"
-      ) {
-        console.log("DEBUG ENTRY", {
-          department: row.department,
-          targetDept,
-          source: row.source,
-          selectedSource: source,
-          tests: normalizeTestsField(row.selectedTests || row.tests),
-          canonTests,
-          timePrinted: row.timePrinted,
-          date: row.date
-        });
-      }
-    
-      const t = toDate(row.timePrinted || row.date);
-    
-      if (!t || (from && t < from) || (to && t > to)) {
-        if (row.regNo === "VHJ-172102") console.log("FAILED: DATE");
-        return false;
-      }
-    
-      if (source && source !== "All") {
-        const regId = row.regNo || row.id;
-        const diagNo = row.diagnosticNo || row.billNo || "NA";
-        const currentComposite = `${regId}_${diagNo}`;
-    
-        if (
-          String(masterSourceMap[currentComposite] || "").toLowerCase() !==
-          String(source).toLowerCase()
-        ) {
-          if (row.regNo === "VHJ-172102") {
-            console.log("FAILED: SOURCE", {
-              masterSource: masterSourceMap[currentComposite],
-              rowSource: row.source,
-              currentComposite
-            });
-          }
-          return false;
-        }
-      }
-    
-      if (
-        String(row.department || "").trim().toUpperCase() !==
-        String(targetDept || "").trim().toUpperCase()
-      ) {
-        if (row.regNo === "VHJ-172102") {
-          console.log("FAILED: DEPARTMENT", {
-            rowDepartment: row.department,
-            targetDept
-          });
-        }
-        return false;
-      }
-    
-      const tests = normalizeTestsField(row.selectedTests || row.tests);
-    
-      if (!tests.some(test => canonTests.includes(test))) {
-        if (row.regNo === "VHJ-172102") {
-          console.log("FAILED: TESTS", {
-            tests,
-            canonTests
-          });
-        }
-        return false;
-      }
-    
-      return true;
-    });
-    
-    console.log(
-      "LOOKING FOR ENTRY",
-      filteredLab.find(
-        r =>
-          r.regNo === "VHJ-172102" &&
-          r.diagnosticNo === "A260720146"
-      )
-    );
-      
+  
+  const filteredLab = lCache.filter(row => {
+    const t = toDate(row.timePrinted || row.date);
+
+  if (!t || (from && t < from) || (to && t > to)) return false;
+
+  if (source && source !== "All") {
+    const regId = row.regNo || row.id;
+    const diagNo = row.diagnosticNo || row.billNo || "NA";
+    const currentComposite = `${regId}_${diagNo}`;
+
+    if (
+      String(masterSourceMap[currentComposite] || "").toLowerCase() !==
+      String(source).toLowerCase()
+    ) {
+      return false;
+    }
+  }
+
+  if (
+    String(row.department || "").trim().toUpperCase() !==
+    String(targetDept || "").trim().toUpperCase()
+  ) {
+    return false;
+  }
+
+  const tests = normalizeTestsField(row.selectedTests || row.tests);
+
+  return tests.some(test => canonTests.includes(test));
+});
 
     const merged = mergeDeptRows(filteredLab, targetDept);
 
-    console.log(
-      "MERGED ENTRY",
-      merged.find(
-        r =>
-          r.regNo === "VHJ-172102" &&
-          r.diagnosticNo === "A260720146"
-      )
-    );
+    
 
    
       const kpis = computeKPIs(filteredMaster, merged, canonTests, targetDept);
@@ -350,18 +292,9 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
   };
 
   const unsub1 = onSnapshot(masterRef, (s) => { mCache = s.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
+  
   const unsub2 = onSnapshot(labRef, (s) => {
     lCache = s.docs.map(d => ({ id: d.id, ...d.data() }));
-  
-    console.log(
-      "RAW ENTRY",
-      lCache.find(
-        r =>
-          r.regNo === "VHJ-172102" &&
-          r.diagnosticNo === "A260720146"
-      )
-    );
-  
     publish();
   });
   return () => { unsub1(); unsub2(); };
