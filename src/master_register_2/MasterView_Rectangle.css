@@ -11,8 +11,13 @@
 
 .card-scroll{
   width:100%;
+  max-width:100%;
+
   overflow-x:auto;
   overflow-y:hidden;
+
+  display:block;
+
   padding-bottom:6px;
 }
 
@@ -154,7 +159,7 @@
 
   box-shadow:none;
 
-  min-width:1480px;
+  width:1510px;
 }
 
 /* ===== Card ===== */
@@ -163,7 +168,6 @@
   background:#fff;
 
   border:1px solid #dbe3ef;
-
   border-top:none;
 
   margin-bottom:0;
@@ -172,9 +176,8 @@
 
   box-shadow:none;
 
-  overflow:hidden;
+  overflow:visible;
 }
-
 .master-card:last-child{
   border-bottom:1px solid #dbe3ef;
 }
@@ -204,7 +207,7 @@
 
   transition:background .15s ease;
 
-  min-width:1480px;
+  width:1510px;
 }
 
 .card-top:hover{
