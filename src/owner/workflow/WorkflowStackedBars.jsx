@@ -27,7 +27,6 @@
    ) ||
    "printed";
  
- const SLA_VIOLATION_COLOR = "#dc2626";
  
  
  function CustomTooltip({ active, payload }) {
@@ -53,13 +52,12 @@
        {patient.workflowTimeline?.map((stage) => (
          <div key={stage.key} style={{ marginBottom: 8 }}>
            <div
+             
              style={{
-               color:
-                 stage.key !== PRINTED_STAGE_KEY && stage.slaViolated
-                   ? SLA_VIOLATION_COLOR
-                   : ROUTINE_WORKFLOW_COLORS[stage.key],
-               fontWeight: 600,
-             }}
+              color: ROUTINE_WORKFLOW_COLORS[stage.key],
+              fontWeight: 600,
+            }}
+
            >
              {stage.label}
            </div>
@@ -79,20 +77,8 @@
            <div style={{ marginTop: 4 }}>Stage Duration</div>
            <div>{stage.minutes} min</div>
  
-           {stage.key !== PRINTED_STAGE_KEY && stage.slaLimit != null && (
-             <>
-               <div style={{ marginTop: 4 }}>Elapsed From Collection</div>
-               <div>{stage.elapsedFromCollection} min</div>
-               <div style={{ marginTop: 4 }}>SLA Target</div>
-               <div>{stage.slaLimit} min</div>
-               <div style={{ marginTop: 4 }}>
-                 {stage.slaViolated ? "❌ SLA Violated" : "✅ Within SLA"}
-               </div>
-               {stage.slaViolated && (
-                 <div>{stage.slaOverrunMinutes} minutes over SLA</div>
-               )}
-             </>
-           )}
+        
+
          </div>
        ))}
  
@@ -122,7 +108,7 @@
            top: 20,
            right: 20,
            left: 10,
-           bottom: 60,
+           bottom: 90,
          }}
        >
          <CartesianGrid strokeDasharray="3 3" />
@@ -139,8 +125,7 @@
  
          <Tooltip content={<CustomTooltip />} />
  
-         <Legend verticalAlign="bottom" height={36} />
- 
+          
          {chartKeys.map((stage) => (
            <Bar
              key={stage}
@@ -152,13 +137,9 @@
            >
              {data.map((patient) => (
                <Cell
-                 key={`${patient.diagnosticNo}-${stage}`}
-                 fill={
-                   stage !== PRINTED_STAGE_KEY && patient.slaLookup?.[stage]
-                     ? SLA_VIOLATION_COLOR
-                     : ROUTINE_WORKFLOW_COLORS[stage]
-                 }
-               />
+               key={`${patient.diagnosticNo}-${stage}`}
+               fill={ROUTINE_WORKFLOW_COLORS[stage]}
+             />
              ))}
            </Bar>
          ))}
@@ -212,13 +193,7 @@
              : record.totalWorkflowMinutes;
          }
  
-         const slaLookup = (workflowTimeline || []).reduce((lookup, stage) => {
-           if (stage.key !== PRINTED_STAGE_KEY) {
-             lookup[stage.key] = Boolean(stage.slaViolated);
-           }
- 
-           return lookup;
-         }, {});
+         
  
          return {
            x: record.diagnosticNo,
@@ -230,7 +205,7 @@
            ...chartData,
  
            workflowTimeline,
-           slaLookup,
+           
  
            totalWorkflowMinutes,
          };
@@ -292,27 +267,8 @@
        </div>
 
 
-       <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginBottom: 12,
-          fontSize: 13,
-          color: "#4b5563",
-        }}
-      >
-        <span
-          style={{
-            width: 12,
-            height: 12,
-            background: SLA_VIOLATION_COLOR,
-            borderRadius: 2,
-            display: "inline-block",
-          }}
-        />
-        <span>Red segment = Department exceeded SLA</span>
-      </div>
+
+          
  
          <div style={{ width: "100%", height }}>
             {data.length === 0 ? (
@@ -332,6 +288,57 @@
               <WorkflowChart data={data} />
             )}
           </div>
+
+      
+              <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginTop: 10,
+            marginBottom: 12,
+            padding: "0 16px",
+            color: "#6b7280",
+            fontSize: 13,
+            fontWeight: 500,
+          }}
+        >
+          <span>← Earlier Collections</span>
+          <span>Later Collections →</span>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 20,
+            flexWrap: "wrap",
+            marginBottom: 16,
+            fontSize: 13,
+          }}
+        >
+          {ROUTINE_WORKFLOW_CHART_KEYS.map((stage) => (
+            <div
+              key={stage}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <span
+                style={{
+                  width: 12,
+                  height: 12,
+                  background: ROUTINE_WORKFLOW_COLORS[stage],
+                  borderRadius: 2,
+                  display: "inline-block",
+                }}
+              />
+              <span>{ROUTINE_WORKFLOW_LABELS[stage]}</span>
+            </div>
+          ))}
+        </div>
  
        {isExpanded && (
          <div
