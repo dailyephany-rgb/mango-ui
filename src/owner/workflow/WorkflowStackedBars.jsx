@@ -127,14 +127,7 @@
        >
          <CartesianGrid strokeDasharray="3 3" />
  
-         <XAxis
-           dataKey="x"
-           label={{
-             value: "Patients",
-             position: "insideBottom",
-             offset: -15,
-           }}
-         />
+         
  
          <YAxis
            label={{
