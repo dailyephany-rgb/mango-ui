@@ -254,9 +254,9 @@ const buildWorkflowRecord = (reportDetails) => {
     ? "Completed"
     : "Pending";
   
-  const outsourceStatus = !hasOutsource
+    const outsourceStatus = !hasOutsource
     ? "Not Required"
-    : outsourceCompletedAt
+    : reportDetails.outsourceReportDelivered
     ? "Completed"
     : "Pending";
 
@@ -403,7 +403,7 @@ const totalWorkflowMinutes = workflowTimeline.reduce(
     ),
 
     outsourceCompleted: Boolean(
-      outsourceCompletedAt
+      reportDetails.outsourceReportDelivered
     ),
 
     whatsappRequired: Boolean(reportDetails.whatsappRequired),
