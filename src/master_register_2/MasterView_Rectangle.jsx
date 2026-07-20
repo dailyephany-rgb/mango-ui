@@ -680,11 +680,17 @@ if (config.workflow !== "outsource") return;
       <div>Phone</div>
       <div>Category</div>
       <div>Status</div>
+  
+      {showWhatsapp && <div>Printed By</div>}
       {showPrint && <div>Print</div>}
+  
       {showWhatsapp && <div>WhatsApp</div>}
-      <div></div>
+      {showWhatsapp && <div>WhatsApp Sent By</div>}
+  
+      <div>Expand</div>
     </div>
   );
+
 
   const renderCommonCardTop = (rec) => (
     <>
@@ -816,11 +822,18 @@ if (config.workflow !== "outsource") return;
 
   const renderRoutineCard = (rec) => (
     <div key={rec.id} className="master-card">
-      <div className="card-top">
+       <div
+          className="card-top"
+          onClick={() => toggle(rec.id)}
+        >
         {renderCommonCardTop(rec)}
 
         <div className={`status-tag ${getColor(rec.overallStatus)}`}>
           {rec.overallStatus}
+        </div>
+
+        <div>
+          {rec.routineReportPrintedBy || "—"}
         </div>
 
         <div>
@@ -864,11 +877,18 @@ if (config.workflow !== "outsource") return;
           </button>
         </div>
 
+         <div>
+        {rec.whatsappSentBy || "—"}
+      </div>
+
               <div>
-        <button
-          className="expand-btn"
-          onClick={() => toggle(rec.id)}
-        >
+               <button
+              className="expand-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggle(rec.id);
+              }}
+            >
           {expanded === rec.id ? "▲" : "▼"}
         </button>
       </div>
@@ -885,6 +905,7 @@ if (config.workflow !== "outsource") return;
       <div key={rec.workflowId} className="master-card">
          <div
             className={`card-top ${isInsideLab ? "" : "no-print"}`}
+            onClick={() => toggle(rec.workflowId)}
           >
           {renderCommonCardTop(rec)}
 
@@ -920,10 +941,13 @@ if (config.workflow !== "outsource") return;
 ) : null}
 
 <div>
-  <button
-    className="expand-btn"
-    onClick={() => toggle(rec.workflowId)}
-  >
+<button
+  className="expand-btn"
+  onClick={(e) => {
+    e.stopPropagation();
+    toggle(rec.workflowId);
+  }}
+>
     {expanded === rec.workflowId ? "▲" : "▼"}
   </button>
 </div>

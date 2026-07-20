@@ -129,17 +129,19 @@
   display:grid;
 
   grid-template-columns:
-  110px
-  140px
-  240px
-  220px
-  90px
-  120px
-  110px
-  120px
-  130px
-  150px
-  50px;
+110px   /* Reg */
+140px   /* Diagnostic */
+240px   /* Name */
+220px   /* Doctor */
+90px    /* Source */
+120px   /* Phone */
+110px   /* Category */
+120px   /* Status */
+120px   /* Printed By */
+130px   /* Print */
+150px   /* WhatsApp */
+140px   /* WhatsApp Sent By */
+60px;   /* Expand */
 
   align-items:center;
 
@@ -159,7 +161,7 @@
 
   box-shadow:none;
 
-  width:1510px;
+  width:1900px;
 }
 
 /* ===== Card ===== */
@@ -185,17 +187,19 @@
   display:grid;
 
   grid-template-columns:
-      110px
-      140px
-      240px
-      220px
-      90px
-      120px
-      110px
-      120px
-      130px
-      150px
-      50px;
+110px
+140px
+240px
+220px
+90px
+120px
+110px
+120px
+120px
+130px
+150px
+140px
+60px;
 
   align-items:center;
 
@@ -207,7 +211,7 @@
 
   transition:background .15s ease;
 
-  width:1510px;
+  width:1900px;
 }
 
 .card-top:hover{
@@ -557,10 +561,15 @@
 .card-header-row > div:nth-child(9),
 .card-header-row > div:nth-child(10),
 .card-header-row > div:nth-child(11),
+.card-header-row > div:nth-child(12),
+.card-header-row > div:nth-child(13),
+
 .card-top > div:nth-child(8),
 .card-top > div:nth-child(9),
 .card-top > div:nth-child(10),
-.card-top > div:nth-child(11){
+.card-top > div:nth-child(11),
+.card-top > div:nth-child(12),
+.card-top > div:nth-child(13){
     justify-content:center;
 }
 
