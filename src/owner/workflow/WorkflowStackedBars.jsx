@@ -29,10 +29,6 @@
  
  const SLA_VIOLATION_COLOR = "#dc2626";
  
- const hasSLAViolation = (record) =>
-   record.workflowTimeline?.some(
-     (stage) => stage.key !== PRINTED_STAGE_KEY && stage.slaViolated
-   );
  
  function CustomTooltip({ active, payload }) {
    if (!active || !payload?.length) return null;
@@ -181,7 +177,6 @@
  export default function WorkflowStackedBars({ records = [], height = 480 }) {
    const [search, setSearch] = useState("");
    const [printMode, setPrintMode] = useState("with");
-   const [slaMode, setSlaMode] = useState("all");
    const [isExpanded, setIsExpanded] = useState(false);
  
    const data = useMemo(() => {
@@ -197,13 +192,6 @@
              .toLowerCase()
              .includes(searchValue)
          );
-       })
-       .filter((record) => {
-         if (slaMode === "all") return true;
- 
-         const hasViolation = hasSLAViolation(record);
- 
-         return slaMode === "violations" ? hasViolation : !hasViolation;
        })
        .map((record) => {
          const chartData = { ...record.chartData };
@@ -254,7 +242,7 @@
            totalWorkflowMinutes,
          };
        });
-   }, [records, search, printMode, slaMode]);
+      }, [records, search, printMode]);
  
    return (
      <>
@@ -293,19 +281,7 @@
            <option value="without">Without Print Time</option>
          </select>
  
-         <select
-           value={slaMode}
-           onChange={(event) => setSlaMode(event.target.value)}
-           style={{
-             border: "1px solid #d1d5db",
-             borderRadius: 6,
-             padding: "8px 10px",
-           }}
-         >
-           <option value="all">All</option>
-           <option value="within">Within SLA</option>
-           <option value="violations">SLA Violations</option>
-         </select>
+         
  
          <button
            type="button"
