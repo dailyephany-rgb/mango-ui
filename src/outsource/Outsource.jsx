@@ -109,6 +109,7 @@ export default function OutsourceRegister() {
                 mobileNo: "",
               
                 isCollected: false,
+                isReceived: false,
                 isGiven: false,
               
                 outsourcedCollectedTime: null,
@@ -160,7 +161,7 @@ export default function OutsourceRegister() {
         receivedBy: currentUser,
         receivedStatus: "Yes",
       
-        isCollected: true,
+        isReceived: true,
       };
 
       await setDoc(
@@ -179,6 +180,20 @@ export default function OutsourceRegister() {
           outsourceReportReceived: true,
         },
         { merge: true }
+      );
+
+
+      setEntries(prev =>
+        prev.map(e =>
+          e.uniqueTrackingId === trackingId
+            ? {
+                ...e,
+                isReceived: true,
+                reportReceivedTime: new Date().toISOString(),
+                receivedBy: currentUser,
+              }
+            : e
+        )
       );
       
       setLocalOutsourceData(prev => {
@@ -246,6 +261,19 @@ export default function OutsourceRegister() {
       }
   
       await batch.commit();
+
+      setEntries(prev =>
+        prev.map(e =>
+          e.uniqueTrackingId === trackingId
+            ? {
+                ...e,
+                isGiven: true,
+                reportDeliveredTime: new Date().toISOString(),
+                deliveredBy: currentUser,
+              }
+            : e
+        )
+      );
   
       alert(`Report for ${entry.name} marked as Delivered`);
     } catch (err) {
@@ -258,40 +286,17 @@ export default function OutsourceRegister() {
       
 
   const handleStatusChange = async (entry, newStatus) => {
-
-    console.log("========== COLLECT CLICKED ==========");
-    console.log("Entry:", entry);
-    console.log("Status:", newStatus);
-
     try {
       setSaving(true);
   
       const trackingId = entry.uniqueTrackingId;
-
-      console.log("Tracking ID:", trackingId);
       const now = new Date().toISOString();
   
       const trackingRef = doc(db, "outsource_tracking", trackingId);
-
-      console.log("Tracking Ref:", trackingRef.path);
   
       const existingDoc = await getDoc(trackingRef);
 
-      console.log("Document Exists:", existingDoc.exists());
-
-      if (existingDoc.exists()) {
-        console.log("Existing Data:", existingDoc.data());
-      }
-
 if (newStatus === "Scanned" && !existingDoc.exists()) {
-  console.log("Creating outsource_tracking document...");
-console.log({
-  trackingId,
-  regNo: entry.regNo,
-  diagnosticNo: entry.accessionNo,
-  name: entry.name,
-  labName: entry.labName,
-});
   await setDoc(
     trackingRef,
        
@@ -325,12 +330,11 @@ console.log({
           outsourcedCollectedTime: serverTimestamp(),
           collectedBy: currentUser,
       
-          isCollected: false,
+          isCollected: true,
+          isReceived: false,
           isGiven: false,
         }
       );
-
-      console.log("✅ outsource_tracking document created");
 
       await setDoc(
         doc(db, "report_details", entry.id),
@@ -346,14 +350,16 @@ console.log({
       prev.map((e) =>
         e.uniqueTrackingId !== trackingId
           ? e
-          : {
-              ...e,
-              status: newStatus,
-              outsourcedCollectedTime:
-                newStatus === "Scanned" ? now : null,
-              collectedBy:
-                newStatus === "Scanned" ? currentUser : "",
-            }
+          : 
+          {
+            ...e,
+            status: newStatus,
+            isCollected: newStatus === "Scanned",
+            outsourcedCollectedTime:
+              newStatus === "Scanned" ? now : null,
+            collectedBy:
+              newStatus === "Scanned" ? currentUser : "",
+          }
       )
     );
   
@@ -363,6 +369,7 @@ console.log({
         [trackingId]: {
           ...(prev[trackingId] || {}),
           status: newStatus,
+          isCollected: newStatus === "Scanned",
           outsourcedCollectedTime:
             newStatus === "Scanned" ? now : null,
           collectedBy:
@@ -542,12 +549,22 @@ console.log({
                 tatDisplay = totalHours >= 24 ? `${Math.floor(totalHours / 24)}d ${totalHours % 24}h` : `${totalHours}h ${totalMinutes % 60}m`;
               }
 
-              const isScanned = e.status === "Scanned";
+              const isCollected = e.isCollected;
               const fieldsFilled = e.concernedPerson?.trim() && e.relation?.trim() && e.mobileNo?.trim();
              
 
               return (
-                <tr key={e.uniqueTrackingId} className={e.isGiven ? "row-orange" : e.isCollected ? "row-green" : isScanned ? "row-yellow" : ""}>
+                <tr key={e.uniqueTrackingId} 
+                className={
+                  e.isGiven
+                    ? "row-orange"
+                    : e.isReceived
+                      ? "row-green"
+                      : e.isCollected
+                        ? "row-yellow"
+                        : ""
+                }              
+                >
                   <td className="sticky-col">{e.regNo}</td>
                   <td className="sticky-col">{e.accessionNo}</td>
                   <td className="sticky-col">{e.name}</td>
@@ -557,11 +574,14 @@ console.log({
                     {(e.displayTests || []).map(t => typeof t === 'string' ? t : t.test).join(", ") || "—"}
                   </td>
                   <td><span className="lab-badge">{e.labName}</span></td>
-                  <td><input type="text" className="table-input" disabled={!isScanned || e.isGiven}
+                  <td><input type="text" className="table-input" 
+                  disabled={!isCollected || e.isGiven}
                    value={e.concernedPerson || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "concernedPerson", ev.target.value)} placeholder="Name" /></td>
-                  <td><input type="text" className="table-input" disabled={!isScanned || e.isGiven} 
+                  <td><input type="text" className="table-input" 
+                  disabled={!isCollected || e.isGiven}
                   value={e.relation || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "relation", ev.target.value)} placeholder="Relation" /></td>
-                  <td><input type="text" className="table-input" disabled={!isScanned || e.isGiven}
+                  <td><input type="text" className="table-input" 
+                  disabled={!isCollected || e.isGiven}
                   value={e.mobileNo || ""} onChange={(ev) => updateLocalEntry(e.uniqueTrackingId, "mobileNo", ev.target.value)} placeholder="Mobile" /></td>
                   <td>{e.collectedBy || "—"}</td>
                   <td>{e.receivedBy || "—"}</td>
@@ -570,22 +590,23 @@ console.log({
                   <td>
                    
                    
+                  
                   <button
-                    className={`collect-btn ${
-                      isScanned ? "collected" : ""
-                    }`}
-                    disabled={saving || isScanned}
-                    onClick={() =>
-                      handleStatusChange(
-                        e,
-                        "Scanned"
-                      )
-                    }
-                  >
-                    {isScanned
-                      ? "Collected"
-                      : "Collect"}
-                  </button>
+                      className={`collect-btn ${
+                        isCollected ? "collected" : ""
+                      }`}
+                      disabled={saving || isCollected}
+                      onClick={() =>
+                        handleStatusChange(
+                          e,
+                          "Scanned"
+                        )
+                      }
+                    >
+                      {isCollected
+                        ? "Collected"
+                        : "Collect"}
+                    </button>
 
                   </td>
                   <td>
@@ -594,25 +615,27 @@ console.log({
                     className="save-btn"
                     disabled={
                       saving ||
-                      !isScanned ||
-                      e.isCollected
+                      !e.isCollected ||
+                      e.isReceived
                     }
                     onClick={() => handleSave(e)}
                   >
-                    {e.isCollected
-                      ? "Received"
-                      : "Mark Received"}
+                    {e.isReceived
+                    ? "Received"
+                    : "Mark Received"}
                   </button>
                   </td>
                   <td>
                   <button
                     className="given-btn"
+                   
                     disabled={
                       saving ||
-                      !e.isCollected ||
+                      !e.isReceived ||
                       e.isGiven ||
                       !fieldsFilled
                     }
+
                     onClick={() => handleGiven(e)}
                   >
                     {e.isGiven
