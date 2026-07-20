@@ -167,18 +167,24 @@ const avgCollectedToSaved =
 /* ================= MERGE DEPT ROWS ====================== */
 export function mergeDeptRows(rows = [], targetDept) {
   const out = {};
+  const target = String(targetDept || "").toUpperCase();
 
   rows.forEach((r) => {
-    const regId = r.regNo || r.id;
-    const diagNo = r.diagnosticNo || r.billNo || "NA";
+    const rowDept = String(r.department || "").toUpperCase();
 
+   
+    
+    if (rowDept !== target) return;
+
+    const regId = r.regNo || r.id;
+    const diagNo = r.diagnosticNo || r.billNo || "NA"; // Track by Diagnostic No
     if (!regId) return;
 
+    // UPDATE: Composite key prevents overwriting separate visits for same patient
     const key = `${regId}_${diagNo}`;
 
     if (!out[key]) {
       const testArray = normalizeTestsField(r.selectedTests || r.tests);
-
       out[key] = {
         regNo: regId,
         diagnosticNo: diagNo,
@@ -187,20 +193,15 @@ export function mergeDeptRows(rows = [], targetDept) {
         timeCollected: toDate(r.timeCollected),
         timeSaved: toDate(r.timeSaved || r.savedTime),
         isSaved: !!(r.timeSaved || r.savedTime || r.saved === "Yes"),
-        savedBy:
-        r.savedBy ||
-        r.reportData?.[0]?.savedBy ||
-        "",
+        savedBy: r.savedBy || "",
         test: testArray.join(", ") || "—",
         testArrayRaw: testArray,
-        department: r.department || targetDept
+        department: targetDept
       };
     }
   });
-
   return Object.values(out);
 }
-    
 
 /* ================= SUBSCRIBE OVERVIEW =================== */
 export function subscribeOverview({ onData, dateRange, source, activeRegister, targetDept }) {
@@ -236,43 +237,15 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
 
     const filteredLab = lCache.filter(row => {
       const t = toDate(row.timePrinted || row.date);
-    
-      if (!t || (from && t < from) || (to && t > to)) {
-        return false;
-      }
-    
+      if (!t || (from && t < from) || (to && t > to)) return false;
       if (source && source !== "All") {
         const regId = row.regNo || row.id;
         const diagNo = row.diagnosticNo || row.billNo || "NA";
         const currentComposite = `${regId}_${diagNo}`;
-    
-        if (
-          String(masterSourceMap[currentComposite] || "").toLowerCase() !==
-          String(source).toLowerCase()
-        ) {
-          return false;
-        }
+        if (String(masterSourceMap[currentComposite] || "").toLowerCase() !== String(source).toLowerCase()) return false;
       }
-    
-      // Department filter
-      if (
-        String(row.department || "").trim().toUpperCase() !==
-        String(targetDept || "").trim().toUpperCase()
-      ) {
-        return false;
-      }
-    
-      // NEW: Register test filter
-      const tests = normalizeTestsField(row.selectedTests || row.tests);
-    
-      if (!tests.some(test => canonTests.includes(test))) {
-        return false;
-      }
-    
       return true;
     });
-    
-      
 
     const merged = mergeDeptRows(filteredLab, targetDept);
 
