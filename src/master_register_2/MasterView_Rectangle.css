@@ -9,6 +9,13 @@
   border-radius: 12px;
 }
 
+.card-scroll{
+  width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+  padding-bottom:6px;
+}
+
 .master-header{
   display:flex;
   justify-content:space-between;
@@ -146,6 +153,8 @@
   margin-bottom:0;
 
   box-shadow:none;
+
+  min-width:1480px;
 }
 
 /* ===== Card ===== */
@@ -194,6 +203,8 @@
   cursor:pointer;
 
   transition:background .15s ease;
+
+  min-width:1480px;
 }
 
 .card-top:hover{

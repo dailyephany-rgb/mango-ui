@@ -998,20 +998,23 @@ if (config.workflow !== "outsource") return;
         </div>
       </div>
 
-      {reportView === "routine" && (
-        <>
+            {reportView === "routine" && (
+        <div className="card-scroll">
           {renderCardHeader(true)}
           {filtered.map(renderRoutineCard)}
-        </>
+        </div>
       )}
+
 
       {reportView === "special" && (
         <>
          <h3 className="special-section-title">
           Inside Lab
           </h3>
+         <div className="card-scroll">
           {renderCardHeader(true, false)}
           {insideLabRows.map(renderSpecialCard)}
+        </div>
 
           <div className="special-divider" />
 
@@ -1019,8 +1022,10 @@ if (config.workflow !== "outsource") return;
           Outsource
         </h3>
 
-        {renderCardHeader(false, false)}
+         <div className="card-scroll">
+          {renderCardHeader(false, false)}
           {outsourceRows.map(renderSpecialCard)}
+        </div>
         </>
       )}
 
