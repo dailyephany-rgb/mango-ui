@@ -272,9 +272,26 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
       return true;
     });
     
+    console.log(
+      "LOOKING FOR ENTRY",
+      filteredLab.find(
+        r =>
+          r.regNo === "VHJ-172102" &&
+          r.diagnosticNo === "A260720146"
+      )
+    );
       
 
     const merged = mergeDeptRows(filteredLab, targetDept);
+
+    console.log(
+      "MERGED ENTRY",
+      merged.find(
+        r =>
+          r.regNo === "VHJ-172102" &&
+          r.diagnosticNo === "A260720146"
+      )
+    );
 
    
       const kpis = computeKPIs(filteredMaster, merged, canonTests, targetDept);
@@ -299,7 +316,19 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
   };
 
   const unsub1 = onSnapshot(masterRef, (s) => { mCache = s.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
-  const unsub2 = onSnapshot(labRef, (s) => { lCache = s.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
-
+  const unsub2 = onSnapshot(labRef, (s) => {
+    lCache = s.docs.map(d => ({ id: d.id, ...d.data() }));
+  
+    console.log(
+      "RAW ENTRY",
+      lCache.find(
+        r =>
+          r.regNo === "VHJ-172102" &&
+          r.diagnosticNo === "A260720146"
+      )
+    );
+  
+    publish();
+  });
   return () => { unsub1(); unsub2(); };
 }
