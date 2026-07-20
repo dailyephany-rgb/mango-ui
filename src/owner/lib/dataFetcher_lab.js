@@ -235,9 +235,26 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
     });
 
     const filteredLab = lCache.filter(row => {
+      if (
+        row.regNo === "VHJ-172102" &&
+        row.diagnosticNo === "A260720146"
+      ) {
+        console.log("DEBUG ENTRY", {
+          department: row.department,
+          targetDept,
+          source: row.source,
+          selectedSource: source,
+          tests: normalizeTestsField(row.selectedTests || row.tests),
+          canonTests,
+          timePrinted: row.timePrinted,
+          date: row.date
+        });
+      }
+    
       const t = toDate(row.timePrinted || row.date);
     
       if (!t || (from && t < from) || (to && t > to)) {
+        if (row.regNo === "VHJ-172102") console.log("FAILED: DATE");
         return false;
       }
     
@@ -250,22 +267,39 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
           String(masterSourceMap[currentComposite] || "").toLowerCase() !==
           String(source).toLowerCase()
         ) {
+          if (row.regNo === "VHJ-172102") {
+            console.log("FAILED: SOURCE", {
+              masterSource: masterSourceMap[currentComposite],
+              rowSource: row.source,
+              currentComposite
+            });
+          }
           return false;
         }
       }
     
-      // Department filter
       if (
         String(row.department || "").trim().toUpperCase() !==
         String(targetDept || "").trim().toUpperCase()
       ) {
+        if (row.regNo === "VHJ-172102") {
+          console.log("FAILED: DEPARTMENT", {
+            rowDepartment: row.department,
+            targetDept
+          });
+        }
         return false;
       }
     
-      // NEW: Register test filter
       const tests = normalizeTestsField(row.selectedTests || row.tests);
     
       if (!tests.some(test => canonTests.includes(test))) {
+        if (row.regNo === "VHJ-172102") {
+          console.log("FAILED: TESTS", {
+            tests,
+            canonTests
+          });
+        }
         return false;
       }
     
