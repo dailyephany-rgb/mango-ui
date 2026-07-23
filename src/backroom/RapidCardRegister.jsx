@@ -6,6 +6,7 @@ import {
   onSnapshot,
   setDoc,
   doc,
+  updateDoc,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
@@ -141,6 +142,20 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
     if (s.includes("third") || s.includes("3rd")) return "Third Floor";
     return "Unknown";
   };
+
+  const ensureFirestoreTimestamp = (val) => {
+    if (!val) return null;
+    if (val instanceof Timestamp) return val;
+    if (val instanceof Date) return Timestamp.fromDate(val);
+    if (typeof val === "object" && val.seconds) {
+      return new Timestamp(val.seconds, val.nanoseconds);
+    }
+  
+    const d = new Date(val);
+    return isNaN(d) ? null : Timestamp.fromDate(d);
+  };
+
+
 
   const parseDate = (entry) => {
     const fields = [entry.timePrinted, entry.timeCollected, entry.scannedTime, entry.savedTime, entry.createdAt];
@@ -329,20 +344,53 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
     };
 
   // UPDATE: Writes both Scan status and Time to LocalStorage using compositeKey
-  const handleScan = (compositeKey, value) => {
+ 
+  const handleScan = async (entry, value) => {
     const now = new Date().toISOString();
+    const regKey = entry.compositeKey;
+  
     setLocalScans((prev) => {
-      const updated = { ...prev, [compositeKey]: value };
-      localStorage.setItem("rapid_localScans", JSON.stringify(updated));
+      const updated = { ...prev, [regKey]: value };
+  
+      localStorage.setItem(
+        "rapid_localScans",
+        JSON.stringify(updated)
+      );
+  
       return updated;
     });
-
+  
     setLocalScanTimes((prev) => {
-      const updatedTimes = { ...prev, [compositeKey]: value === "Yes" ? now : null };
-      localStorage.setItem("rapid_localScanTimes", JSON.stringify(updatedTimes));
+      const updatedTimes = {
+        ...prev,
+        [regKey]: value === "Yes" ? now : null,
+      };
+  
+      localStorage.setItem(
+        "rapid_localScanTimes",
+        JSON.stringify(updatedTimes)
+      );
+  
       return updatedTimes;
     });
+  
+    try {
+      await updateDoc(
+        doc(db, "report_details", regKey),
+        {
+          [`routineReportsScanned.${CURRENT_DEPT}`]:
+            value === "Yes",
+        }
+      );
+    } catch (err) {
+      console.error(
+        "Failed to update scan status:",
+        err
+      );
+    }
   };
+
+
 
   const triggerCritical = (entry) => {
     const relevantKeys = mapSelectedTestsToResultKeys(entry);
@@ -438,6 +486,9 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
       
         selectedTests: rapidOnlyTests,
         results: cleanedResults,
+
+        timePrinted: ensureFirestoreTimestamp(entry.timePrinted),
+        timeCollected: ensureFirestoreTimestamp(entry.timeCollected),
       
         scanned: "Yes",
         scannedTime: scanTime
@@ -458,6 +509,13 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
      
 
       await setDoc(doc(db, "rapid_card_register", compositeKey), payload, { merge: true });
+
+      await updateDoc(
+        doc(db, "report_details", compositeKey),
+        {
+          [`routineReportsSaved.${CURRENT_DEPT}`]: true,
+        }
+      );
 
       try {
         await handleInventoryDeduction(rapidOnlyTests);
@@ -759,7 +817,7 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
 
 
                   <td>
-                    <select value={e.scanned} disabled={saved} onChange={(ev) => handleScan(e.compositeKey, ev.target.value)}>
+                    <select value={e.scanned} disabled={saved} onChange={(ev) => handleScan(e, ev.target.value)}>
                       <option value="No">No</option><option value="Yes">Yes</option>
                     </select>
                   </td>

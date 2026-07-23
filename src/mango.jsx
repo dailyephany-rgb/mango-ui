@@ -254,7 +254,7 @@ export default function Mango() {
         ...formData,
         regNo,
         diagnosticNo: diagNo,
-        receiptSavedBy: sessionStorage.getItem("loggedUser") |"Unknown",
+        receiptSavedBy: sessionStorage.getItem("loggedUser") || "Unknown",
         timePrinted: fullTimePrinted,
         timeCollected: finalTimeCollected,
         urgent: formData.urgent || false,
@@ -278,6 +278,9 @@ export default function Mango() {
           compositeId
         );
 
+        const reportSnap = await getDoc(reportDocRef);
+
+
         const reportDetailsEntry = {
           regNo,
           diagnosticNo: diagNo,
@@ -292,14 +295,102 @@ export default function Mango() {
         
           timePrinted: fullTimePrinted,
           timeCollected: finalTimeCollected,
-          receiptSavedBy: sessionStorage.getItem("loggedUser") || "Unknown",
+        
+          receiptSavedBy:
+            sessionStorage.getItem("loggedUser") || "Unknown",
         };
 
-        await setDoc(
-          reportDocRef,
-          reportDetailsEntry,
-          { merge: true }
-        );
+        const routineDepartments = [
+          "Bio-Chemistry",
+          "Hormones",
+          "Blood-Group",
+          "Coagulation",
+          "Haematology",
+          "ESR",
+          "Serology",
+          "RapidCard",
+          "Urine Examination",
+        ];
+        
+        const insideLabDepartments = [
+          "Clinical Pathology",
+          "MicroBiology",
+        ];
+        
+        const outsourceDepartments = [
+          "STERLING",
+          "NEUBERG",
+          "LIFECELL",
+          "LILAC",
+          "RELIABLE",
+        ];
+        
+        formData.selectedTests.forEach(({ dept }) => {
+        
+          // ---------- Routine ----------
+          if (routineDepartments.includes(dept)) {
+        
+            reportDetailsEntry.routineReportsScanned ??= {};
+            reportDetailsEntry.routineReportsSaved ??= {};
+            reportDetailsEntry.routineReportsValidated ??= {};
+            reportDetailsEntry.routineReportsEntered ??= {};
+        
+           
+        
+            return;
+          }
+        
+          // ---------- Inside Lab ----------
+          if (insideLabDepartments.includes(dept)) {
+        
+            reportDetailsEntry.insideLabReportsSaved ??= {};
+        
+           
+        
+            return;
+          }
+        
+          // ---------- Outsource ----------
+          if (outsourceDepartments.includes(dept)) {
+        
+            reportDetailsEntry.outsourceReportsCollected ??= {};
+            reportDetailsEntry.outsourceReportsReceived ??= {};
+            reportDetailsEntry.outsourceReportsDelivered ??= {};
+        
+            
+          }
+        });
+
+
+
+
+    if (!reportSnap.exists()) {
+      // First time creating report_details
+      await setDoc(
+        reportDocRef,
+        reportDetailsEntry,
+        { merge: true }
+      );
+    } else {
+      // Preserve workflow progress
+      const {
+        routineReportsScanned,
+        routineReportsSaved,
+        routineReportsValidated,
+        routineReportsEntered,
+        insideLabReportsSaved,
+        outsourceReportsCollected,
+        outsourceReportsReceived,
+        outsourceReportsDelivered,
+        ...editReportDetails
+      } = reportDetailsEntry;
+    
+      await setDoc(
+        reportDocRef,
+        editReportDetails,
+        { merge: true }
+      );
+    }
 
 
       alert(`✅ Entry ${isEditMode ? "Updated" : "Saved"} successfully!`);

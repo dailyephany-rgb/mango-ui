@@ -73,6 +73,20 @@ export default function ValidatorDashboard() {
     urine_analysis_register: "urineCompletedAt",
   };
 
+
+  const ROUTINE_DEPARTMENTS = {
+    biochemistry_register: "Bio-Chemistry",
+    hormones_main: "Hormones",
+    coagulation_register: "Coagulation",
+    haematology_register: "Haematology",
+    esr_register: "ESR",
+    bloodgroup_testing_register: "Blood Group",
+    bloodgroup_retesting_register: "Blood Group",
+    serology_register: "Serology",
+    rapid_card_register: "Rapid Card",
+    urine_analysis_register: "Urine Analysis",
+  };
+
   const handleValidate = async (entry, collectionName) => {
     try {
       // entry.id is the CompositeKey (e.g., "5501_A01")
@@ -87,6 +101,19 @@ export default function ValidatorDashboard() {
       
         status: "validated",
       });
+
+      const dept = ROUTINE_DEPARTMENTS[collectionName];
+
+        if (dept) {
+          await updateDoc(
+            doc(db, "report_details", entry.id),
+            {
+              [`routineReportsValidated.${dept}`]: true,
+            }
+          );
+        }
+
+      
       alert("Entry Validated Successfully!");
     } catch (err) {
       console.error("❌ Error during validation:", err);
@@ -107,6 +134,8 @@ export default function ValidatorDashboard() {
       const completionField = COMPLETION_FIELDS[collectionName];
       
       const reportRef = doc(db, "report_details", entry.id);
+
+      const dept = ROUTINE_DEPARTMENTS[collectionName];
 
       console.log("ENTRY ID:", entry.id);
       console.log("REPORT DOC:", reportRef.path);
@@ -130,6 +159,21 @@ export default function ValidatorDashboard() {
           sessionStorage.getItem("loggedUser") || "Unknown",
         enteredTime: serverTimestamp(),
       });
+
+      if (dept) {
+        const enteredMap = {
+          ...(reportSnap.data()?.routineReportsEntered || {}),
+          [dept]: true,
+        };
+      
+        batch.set(
+          reportRef,
+          {
+            routineReportsEntered: enteredMap,
+          },
+          { merge: true }
+        );
+      }
       
       // Only write CompletedAt once
       if (

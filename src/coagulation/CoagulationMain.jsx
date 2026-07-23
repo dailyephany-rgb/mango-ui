@@ -7,6 +7,7 @@ import {
   onSnapshot,
   doc,
   setDoc,
+  updateDoc,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
@@ -384,6 +385,13 @@ const logout = () => {
       };
 
       await setDoc(ref, payload, { merge: true });
+
+      await updateDoc(
+        doc(db, "report_details", regKey),
+        {
+          [`routineReportsSaved.${CURRENT_DEPT}`]: true,
+        }
+      );
 
       // --- INVENTORY DEDUCTION LOGIC ---
       if (relevant && relevant.length > 0) {
@@ -841,9 +849,11 @@ const logout = () => {
                         <select
                           value={isScanned ? "Yes" : "No"}
                           disabled={isSaved}
-                          onChange={(e) => {
+                         
+                          onChange={async (e) => {
                             const value = e.target.value;
                             const now = new Date().toISOString();
+                          
                             setLocalScans((prev) => {
                               const updated = { ...prev, [key]: value };
                               localStorage.setItem(
@@ -852,6 +862,7 @@ const logout = () => {
                               );
                               return updated;
                             });
+                          
                             setLocalScanTimes((prev) => {
                               const updatedTimes = {
                                 ...prev,
@@ -863,6 +874,21 @@ const logout = () => {
                               );
                               return updatedTimes;
                             });
+                          
+                            try {
+                              await updateDoc(
+                                doc(db, "report_details", key),
+                                {
+                                  [`routineReportsScanned.${CURRENT_DEPT}`]:
+                                    value === "Yes",
+                                }
+                              );
+                            } catch (err) {
+                              console.error(
+                                "Failed to update scan status:",
+                                err
+                              );
+                            }
                           }}
                         >
                           <option value="No">No</option>

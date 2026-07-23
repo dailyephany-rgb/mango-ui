@@ -1,14 +1,18 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { db } from "../firebaseConfig";
+
 import {
   collection,
   onSnapshot,
   setDoc,
   doc,
+  updateDoc,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
+
+
 import routing from "../backroom_routing.json";
 import "./Backroom.css";
 import { handleInventoryDeduction } from "../inventory/inventorymapping";
@@ -111,6 +115,18 @@ const testsForRegister = routing.SerologyRegister || [
     if (s.includes("ipd")) return "IPD";
     if (s.includes("third") || s.includes("3rd")) return "Third Floor";
     return "Unknown";
+  };
+
+  const ensureFirestoreTimestamp = (val) => {
+    if (!val) return null;
+    if (val instanceof Timestamp) return val;
+    if (val instanceof Date) return Timestamp.fromDate(val);
+    if (typeof val === "object" && val.seconds) {
+      return new Timestamp(val.seconds, val.nanoseconds);
+    }
+  
+    const d = new Date(val);
+    return isNaN(d) ? null : Timestamp.fromDate(d);
   };
 
   const parseDate = (entry) => {
@@ -251,20 +267,52 @@ const testsForRegister = routing.SerologyRegister || [
   };
 
   // UPDATE: Writes both Scan status and Time to LocalStorage using compositeKey
-  const handleScan = (compositeKey, value) => {
+  
+  const handleScan = async (entry, value) => {
     const now = new Date().toISOString();
+    const regKey = entry.compositeKey;
+  
     setLocalScans((prev) => {
-        const updated = { ...prev, [compositeKey]: value };
-        localStorage.setItem("serology_localScans", JSON.stringify(updated));
-        return updated;
+      const updated = { ...prev, [regKey]: value };
+  
+      localStorage.setItem(
+        "serology_localScans",
+        JSON.stringify(updated)
+      );
+  
+      return updated;
     });
-
+  
     setLocalScanTimes((prev) => {
-        const updatedTimes = { ...prev, [compositeKey]: value === "Yes" ? now : null };
-        localStorage.setItem("serology_localScanTimes", JSON.stringify(updatedTimes));
-        return updatedTimes;
+      const updatedTimes = {
+        ...prev,
+        [regKey]: value === "Yes" ? now : null,
+      };
+  
+      localStorage.setItem(
+        "serology_localScanTimes",
+        JSON.stringify(updatedTimes)
+      );
+  
+      return updatedTimes;
     });
+  
+    try {
+      await updateDoc(
+        doc(db, "report_details", regKey),
+        {
+          [`routineReportsScanned.${CURRENT_DEPT}`]:
+            value === "Yes",
+        }
+      );
+    } catch (err) {
+      console.error(
+        "Failed to update scan status:",
+        err
+      );
+    }
   };
+
 
   const triggerCritical = (entry) => {
     const relevantKeys = requiredKeys(entry);
@@ -372,6 +420,8 @@ const testsForRegister = routing.SerologyRegister || [
       
         selectedTests: simpleTests,
         results: cleanedResults,
+        timePrinted: ensureFirestoreTimestamp(entry.timePrinted),
+        timeCollected: ensureFirestoreTimestamp(entry.timeCollected),
       
         scanned: "Yes",
         scannedTime: scanTime
@@ -388,6 +438,13 @@ const testsForRegister = routing.SerologyRegister || [
 
       
       await setDoc(doc(db, "serology_register", compositeKey), payload, { merge: true });
+
+      await updateDoc(
+        doc(db, "report_details", compositeKey),
+        {
+          [`routineReportsSaved.${CURRENT_DEPT}`]: true,
+        }
+      );
 
       try {
         await handleInventoryDeduction(simpleTests);
@@ -587,7 +644,8 @@ const testsForRegister = routing.SerologyRegister || [
                     </td>
                   ))}
                   <td>
-                    <select value={scanned ? "Yes" : "No"} disabled={saved} onChange={(ev) => handleScan(compositeKey, ev.target.value)}>
+                    <select value={scanned ? "Yes" : "No"} disabled={saved} onChange={(ev) => handleScan(e, ev.target.value)}>
+                      
                       <option value="No">No</option>
                       <option value="Yes">Yes</option>
                     </select>

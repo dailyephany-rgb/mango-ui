@@ -52,8 +52,24 @@ export const ROUTINE_WORKFLOW_LOOKUP = {
   },
 };
 
+
 export const SPECIAL_WORKFLOW_LOOKUP = {
-  MicroBiology: {
+  FnacRegister: {
+    label: "Inside Lab",
+    workflow: "inside",
+  },
+
+  PathologyRegister: {
+    label: "Inside Lab",
+    workflow: "inside",
+  },
+
+  CultureRegister: {
+    label: "Inside Lab",
+    workflow: "inside",
+  },
+
+  FluidRegister: {
     label: "Inside Lab",
     workflow: "inside",
   },
@@ -83,6 +99,8 @@ export const SPECIAL_WORKFLOW_LOOKUP = {
     workflow: "outsource",
   },
 };
+
+
 export const ROUTINE_WORKFLOW_CHART_KEYS = [
   "esr",
   "haematology",
@@ -253,32 +271,26 @@ const buildWorkflowRecord = (reportDetails) => {
   const routine = buildRoutineWorkflow(selectedTests, reportDetails);
   const hasInsideLab = hasSpecialWorkflow(selectedTests, "inside");
   const hasOutsource = hasSpecialWorkflow(selectedTests, "outsource");
+  const routineCompleted = !!reportDetails.routineCompleted;
 
-  const routineStatus = !routine.hasRoutine
+  const insideLabCompleted = !!reportDetails.insideLabCompleted;
+  const outsourceCompleted = !!reportDetails.outsourceCompleted;
+  const routineStatus = !routine.hasRoutine? "Not Required" : routine.routineCompletedAt ? "Completed" : "Pending";
+
+ 
+  const insideLabStatus = !hasInsideLab
   ? "Not Required"
-  : routine.routineCompletedAt
+  : insideLabCompleted
   ? "Completed"
   : "Pending";
 
-  const insideLabCompletedAt = toDate(
-    reportDetails.insideLabCompletedAt
-  );
+const outsourceStatus = !hasOutsource
+  ? "Not Required"
+  : outsourceCompleted
+  ? "Completed"
+  : "Pending";
   
-  const outsourceCompletedAt = toDate(
-    reportDetails.outsourceCompletedAt
-  );
-  
-  const insideLabStatus = !hasInsideLab
-    ? "Not Required"
-    : insideLabCompletedAt
-    ? "Completed"
-    : "Pending";
-  
-    const outsourceStatus = !hasOutsource
-    ? "Not Required"
-    : reportDetails.outsourceReportDelivered
-    ? "Completed"
-    : "Pending";
+ 
 
     const timeCollected = toDate(reportDetails.timeCollected);
   const routineReportPrintedTime = toDate(reportDetails.routineReportPrintedTime);
@@ -295,10 +307,9 @@ const buildWorkflowRecord = (reportDetails) => {
     ? "Routine Printed"
     : routine.routineCompletedAt
     ? "Routine Completed"
-    : hasInsideLab && insideLabCompletedAt
-    ? "Inside Lab Completed"
-    : hasOutsource && outsourceCompletedAt
-    ? "Outsource Completed"
+    
+    : hasInsideLab && insideLabCompleted ? "Inside Lab Completed": hasOutsource && outsourceCompleted ? "Outsource Completed"
+
     : routine.hasRoutine
     ? "Routine Pending"
     : "No Routine";
@@ -401,6 +412,33 @@ const totalWorkflowMinutes = workflowTimeline.reduce(
   0
 );
 
+const outsourceLabs = [...new Set(
+  selectedTests
+    .map((t) => getTestDepartment(t))
+    .filter((dept) => {
+      const config = SPECIAL_WORKFLOW_LOOKUP[dept];
+      return config?.workflow === "outsource";
+    })
+)];
+
+const outsourceCollected =
+  outsourceLabs.length > 0 &&
+  outsourceLabs.every(
+    (lab) => reportDetails.outsourceReportsCollected?.[lab]
+  );
+
+const outsourceReportReceived =
+  outsourceLabs.length > 0 &&
+  outsourceLabs.every(
+    (lab) => reportDetails.outsourceReportsReceived?.[lab]
+  );
+
+const outsourceReportDelivered =
+  outsourceLabs.length > 0 &&
+  outsourceLabs.every(
+    (lab) => reportDetails.outsourceReportsDelivered?.[lab]
+  );
+
   return {
     id: reportDetails.id,
     regNo: reportDetails.regNo,
@@ -415,33 +453,27 @@ const totalWorkflowMinutes = workflowTimeline.reduce(
     hasRoutine: routine.hasRoutine,
     routineDepartments: routine.departments,
     routineCompletedAt: routine.routineCompletedAt,
+    routineCompleted,
     routineReportPrinted: Boolean(reportDetails.routineReportPrinted),
     routineReportPrintedTime,
     routineReportPrintedBy: reportDetails.routineReportPrintedBy || "",
 
     hasInsideLab,
-    insideLabCompleted: Boolean(insideLabCompletedAt),
+    insideLabCompleted,
+
     insideLabReportPrinted: Boolean (reportDetails.insideLabReportPrinted),
     insideLabReportPrintedTime,
     insideLabReportPrintedBy: reportDetails.insideLabReportPrintedBy || "",
 
     hasOutsource,
 
-    outsourceCollected: Boolean(
-      reportDetails.outsourceCollected
-    ),
+    outsourceCollected,
 
-    outsourceReportReceived: Boolean(
-      reportDetails.outsourceReportReceived
-    ),
+    outsourceReportReceived,
 
-    outsourceReportDelivered: Boolean(
-      reportDetails.outsourceReportDelivered
-    ),
+    outsourceReportDelivered,
 
-    outsourceCompleted: Boolean(
-      reportDetails.outsourceReportDelivered
-    ),
+    outsourceCompleted,
 
     whatsappRequired: Boolean(reportDetails.whatsappRequired),
     whatsappSent: Boolean(reportDetails.whatsappSent),
@@ -544,8 +576,8 @@ export const buildWorkflowSummary = (records) => {
 
   return {
     routineTotal: routineRecords.length,
-    routinePending: count(routineRecords, (record) => !record.routineCompletedAt),
-    routineCompleted: count(routineRecords, (record) => record.routineCompletedAt),
+    routinePending: count(routineRecords,(record) => !record.routineCompleted),
+    routineCompleted: count(routineRecords,(record) => record.routineCompleted),
     routinePrinted: count(routineRecords, (record) => record.routineReportPrinted),
     whatsappRequired: count(routineRecords, (record) => record.whatsappRequired),
     whatsappSent: count(routineRecords, (record) => record.whatsappSent),

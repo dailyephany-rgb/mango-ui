@@ -170,7 +170,7 @@ export default function BiochemistryMain() {
     try { await updateDoc(doc(db, "master_register", id), { [field]: value }); } catch (err) { console.error(err); }
   };
 
-  const handleScanToggle = (patient, value) => {
+  const handleScanToggle = async (patient, value) => {
     const regKey = patient.compositeKey;
     const nowIST = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }); 
 
@@ -185,6 +185,19 @@ export default function BiochemistryMain() {
       localStorage.setItem("biochem_localScanTimes", JSON.stringify(updatedTimes));
       return updatedTimes;
     });
+
+    try {
+      await updateDoc(
+        doc(db, "report_details", regKey),
+        {
+          [`routineReportsScanned.${CURRENT_DEPT}`]: value === "Yes",
+        }
+      );
+
+
+    } catch (err) {
+      console.error("Failed to update scan status:", err);
+    }
   };
 
   const triggerCritical = (entry) => {
@@ -315,6 +328,13 @@ export default function BiochemistryMain() {
       };
 
       await setDoc(docRef, payload, { merge: true });
+
+      await updateDoc(
+        doc(db, "report_details", regKey),
+        {
+          [`routineReportsSaved.${CURRENT_DEPT}`]: true,
+        }
+      );
 
       // TRIGGER INVENTORY DEDUCTION
       

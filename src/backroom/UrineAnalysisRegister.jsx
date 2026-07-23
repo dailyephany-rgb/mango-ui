@@ -6,6 +6,7 @@ import {
   onSnapshot,
   setDoc,
   doc,
+  updateDoc,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
@@ -130,6 +131,18 @@ export default function UrineAnalysisRegister() {
     if (s.includes("ipd")) return "IPD";
     if (s.includes("third") || s.includes("3rd")) return "Third Floor";
     return "Unknown";
+  };
+
+  const ensureFirestoreTimestamp = (val) => {
+    if (!val) return null;
+    if (val instanceof Timestamp) return val;
+    if (val instanceof Date) return Timestamp.fromDate(val);
+    if (typeof val === "object" && val.seconds) {
+      return new Timestamp(val.seconds, val.nanoseconds);
+    }
+  
+    const d = new Date(val);
+    return isNaN(d) ? null : Timestamp.fromDate(d);
   };
 
   const parseDate = (entry) => {
@@ -287,15 +300,44 @@ export default function UrineAnalysisRegister() {
     });
   };
 
-  const handleScan = (compositeKey, value) => {
+  const handleScan = async (entry, value) => {
+    const now = new Date().toISOString();
+    const regKey = entry.compositeKey;
+  
     setLocalScans((prev) => {
       const updated = {
         ...prev,
-        [compositeKey]: { scanned: value, scannedTime: value === "Yes" ? new Date().toISOString() : null },
+        [regKey]: {
+          scanned: value,
+          scannedTime:
+            value === "Yes"
+              ? now
+              : null,
+        },
       };
-      localStorage.setItem("urine_localScans", JSON.stringify(updated));
+  
+      localStorage.setItem(
+        "urine_localScans",
+        JSON.stringify(updated)
+      );
+  
       return updated;
     });
+  
+    try {
+      await updateDoc(
+        doc(db, "report_details", regKey),
+        {
+          [`routineReportsScanned.${CURRENT_DEPT}`]:
+            value === "Yes",
+        }
+      );
+    } catch (err) {
+      console.error(
+        "Failed to update scan status:",
+        err
+      );
+    }
   };
 
   const triggerCritical = (entry) => {
@@ -391,6 +433,9 @@ export default function UrineAnalysisRegister() {
       
         selectedTests: filteredTests,
         results: filteredResults,
+
+        timePrinted: ensureFirestoreTimestamp(entry.timePrinted),
+        timeCollected: ensureFirestoreTimestamp(entry.timeCollected),
       
         scanned: "Yes",
         scannedTime: scanTimeTs,
@@ -408,6 +453,15 @@ export default function UrineAnalysisRegister() {
         payload,
         { merge: true }
       );
+
+      await updateDoc(
+        doc(db, "report_details", compositeKey),
+        {
+          [`routineReportsSaved.${CURRENT_DEPT}`]: true,
+        }
+      );
+
+
       try {
         await handleInventoryDeduction(filteredTests);
       } catch (inventoryErr) {
@@ -593,7 +647,7 @@ export default function UrineAnalysisRegister() {
                     </td>
                   ))}
                   <td>
-                    <select value={isScanned ? "Yes" : "No"} disabled={isSaved} onChange={(ev) => handleScan(compositeKey, ev.target.value)}>
+                    <select value={isScanned ? "Yes" : "No"} disabled={isSaved} onChange={(ev) => handleScan(e, ev.target.value)}>
                       <option>No</option><option>Yes</option>
                     </select>
                   </td>

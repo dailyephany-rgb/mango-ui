@@ -18,72 +18,93 @@ import {
 import "./MasterView_Rectangle.css";
 import UserMenu from "../auth/UserMenu";
 
-
 const DEPARTMENT_LOOKUP = {
-    "Bio-Chemistry": {
-      label: "Biochemistry",
-      collection: "biochemistry_register",
-      workflow: "routine"
-    },
+  "Bio-Chemistry": {
+    label: "Biochemistry",
+    firestoreKey: "Bio-Chemistry",
+    collection: "biochemistry_register",
+    workflow: "routine",
+  },
+
+  Hormones: {
+    label: "Hormones",
+    firestoreKey: "Hormones",
+    collection: "hormones_main",
+    workflow: "routine",
+  },
+
+  "Blood-Group": {
+    label: "Blood Group",
+    firestoreKey: "Blood Group",
+    collection: "bloodgroup_testing_register",
+    workflow: "routine",
+  },
+
+  Coagulation: {
+    label: "Coagulation",
+    firestoreKey: "Coagulation",
+    collection: "coagulation_register",
+    workflow: "routine",
+  },
+
+  Haematology: {
+    label: "Haematology",
+    firestoreKey: "Haematology",
+    collection: "haematology_register",
+    workflow: "routine",
+  },
+
+  ESR: {
+    label: "ESR",
+    firestoreKey: "ESR",
+    collection: "esr_register",
+    workflow: "routine",
+  },
+
+  Serology: {
+    label: "Serology",
+    firestoreKey: "Serology",
+    collection: "serology_register",
+    workflow: "routine",
+  },
+
+  RapidCard: {
+    label: "Rapid Card",
+    firestoreKey: "Rapid Card",
+    collection: "rapid_card_register",
+    workflow: "routine",
+  },
+
+  "Urine Examination": {
+    label: "Urine Analysis",
+    firestoreKey: "Urine Analysis",
+    collection: "urine_analysis_register",
+    workflow: "routine",
+  },
+
+  FnacRegister: {
+    label: "FNAC",
+    collection: "inside_lab_results",
+    workflow: "inside",
+  },
   
-    Hormones: {
-      label: "Hormones",
-      collection: "hormones_main",
-      workflow: "routine"
-    },
+  PathologyRegister: {
+    label: "Pathology",
+    collection: "inside_lab_results",
+    workflow: "inside",
+  },
   
-    "Blood-Group": {
-      label: "Blood Group",
-      collection: "bloodgroup_testing_register",
-      workflow: "routine"
-    },
+  CultureRegister: {
+    label: "Culture",
+    collection: "inside_lab_results",
+    workflow: "inside",
+  },
   
-    Coagulation: {
-      label: "Coagulation",
-      collection: "coagulation_register",
-      workflow: "routine"
-    },
-  
-    Haematology: {
-      label: "Haematology",
-      collection: "haematology_register",
-      workflow: "routine"
-    },
-  
-    ESR: {
-      label: "ESR",
-      collection: "esr_register",
-      workflow: "routine"
-    },
-  
-    Serology: {
-      label: "Serology",
-      collection: "serology_register",
-      workflow: "routine"
-    },
-  
-    RapidCard: {
-      label: "Rapid Card",
-      collection: "rapid_card_register",
-      workflow: "routine"
-    },
-  
-    "Urine Examination": {
-      label: "Urine Analysis",
-      collection: "urine_analysis_register",
-      workflow: "routine"
-    },
-  
-    MicroBiology: {
-      label: "Inside Lab",
-      collection: "inside_lab_results",
-      workflow: "inside",
-    },
-    "Clinical Pathology": {
-      label: "Inside Lab",
-      collection: "inside_lab_results",
-      workflow: "inside",
-    },
+  FluidRegister: {
+    label: "Fluid",
+    collection: "inside_lab_results",
+    workflow: "inside",
+  },
   
     STERLING: {
       label: "STERLING",
@@ -121,7 +142,6 @@ export default function MasterViewCard() {
   
 
   const [reportRecords, setReportRecords] = useState([]);
-  const [deptData, setDeptData] = useState({});
   const [expanded, setExpanded] = useState(null);
   const [reportView, setReportView] = useState("routine");
   const [searchReg, setSearchReg] = useState("");
@@ -140,13 +160,8 @@ export default function MasterViewCard() {
   const [sourceFilter, setSourceFilter] = useState("All");
 
   // DEPARTMENT COLLECTIONS
-  const DEPTS = [
-    ...new Set(
-      Object.values(DEPARTMENT_LOOKUP).map(
-        d => d.collection
-      )
-    ),
-  ];
+  
+
 
   // Helper to normalize dates for sorting
   const parseDate = (entry) => {
@@ -215,36 +230,7 @@ useEffect(() => {
 
 }, []);
 
-
-
-  // DEPARTMENT LISTENERS
-  useEffect(() => {
-    const unsubArr = [];
-
-    DEPTS.forEach((dept) => {
-      const unsub = onSnapshot(collection(db, dept), (snap) => {
-        setDeptData((prev) => ({
-          ...prev,
-          [dept]: snap.docs.map((d) => d.data()),
-        }));
-      });
-      unsubArr.push(unsub);
-    });
-
-    return () => unsubArr.forEach((u) => u());
-  }, []);
-
  
-  // Helper
-
-
-  const findIn = (dept, reg, diagnosticNo) =>
-  (deptData[dept] || []).find(
-    (x) =>
-      x.regNo === reg &&
-      x.diagnosticNo === diagnosticNo
-  );
-
 const isRoutineDepartmentComplete = (dept) => {
   return (
     dept.scanned === "Yes" &&
@@ -261,8 +247,7 @@ const isRoutineDepartmentComplete = (dept) => {
     
      
     
-      
-      const reg = rec.regNo;
+    
       let statuses = [];
 
 
@@ -289,36 +274,33 @@ selectedTests.forEach((t) => {
 
   if (!config || config.workflow !== "routine") return;
 
-  const departmentRecord = findIn(
-    config.collection,
-    reg,
-    rec.diagnosticNo
-  );
-
-
-
-
+  
   statuses.push({
     dept: config.label,
-
-    tests:
-      departmentRecord?.selectedTests ||
-      selectedTests
-        .filter(
-          (x) =>
-            typeof x !== "string" &&
-            (x.dept || "").trim() === deptKey
-        )
-        .map((x) => x.test),
-
-    scanned: departmentRecord?.scanned || "No",
-
-    saved: departmentRecord?.saved || "No",
-
-    validated: departmentRecord?.validated || false,
-
-    entered: departmentRecord?.entered || false,
+  
+    tests: selectedTests
+      .filter(
+        (x) =>
+          typeof x !== "string" &&
+          (x.dept || "").trim() === deptKey
+      )
+      .map((x) => x.test),
+  
+      scanned: rec.routineReportsScanned?.[config.firestoreKey]
+      ? "Yes"
+      : "No",
+    
+    saved: rec.routineReportsSaved?.[config.firestoreKey]
+      ? "Yes"
+      : "No",
+    
+    validated:
+      rec.routineReportsValidated?.[config.firestoreKey] || false,
+    
+    entered:
+      rec.routineReportsEntered?.[config.firestoreKey] || false,
   });
+ 
 });
 
 const processedSpecialDepartments = new Set();
@@ -339,35 +321,24 @@ if (!config) return;
 
 if (config.workflow === "inside") {
    
-  const insideRecord =
-    (deptData[config.collection] || []).find(
-        x =>
-            x.regNo === reg &&
-            x.diagnosticNo === rec.diagnosticNo
-    );
-
-statuses.push({
-  dept: deptKey,
-
+  statuses.push({
+    dept: deptKey,
+  
     reportType: "special",
-
+  
     workflow: "inside",
-
-    // Use saved tests if available, otherwise use report_details
-    tests:
-        insideRecord?.selectedTests ||
-        selectedTests
-            .filter(
-                x =>
-                    typeof x !== "string" &&
-                    (x.dept || "").trim() === deptKey
-            )
-            .map(x => x.test),
-
-    saved: insideRecord?.isSaved || false,
-
-    savedTime: insideRecord?.timeSaved || null,
-});
+  
+    tests: selectedTests
+      .filter(
+        x =>
+          typeof x !== "string" &&
+          (x.dept || "").trim() === deptKey
+      )
+      .map(x => x.test),
+  
+    saved:
+      rec.insideLabReportsSaved?.[deptKey] || false,
+  });
 
 return;
   
@@ -378,49 +349,30 @@ return;
   // ---------- Outsource Vendors ----------
 if (config.workflow !== "outsource") return;
 
-  const departmentRecord =
-    (deptData[config.collection] || []).find(
-      (x) =>
-        x.regNo === reg &&
-        x.diagnosticNo === rec.diagnosticNo &&
-        (x.labName || "").trim() === deptKey
-    );
+statuses.push({
+  dept: config.label,
 
-    statuses.push({
-      dept: config.label,
-    
-      reportType: "special",
-    
-      workflow: "outsource",
-    
-      tests:
-        departmentRecord?.selectedTests ||
-        selectedTests
-          .filter(
-            x =>
-              typeof x !== "string" &&
-              (x.dept || "").trim() === deptKey
-          )
-          .map(x => x.test),
-    
-      sampleCollected:
-        departmentRecord?.isCollected || false,
-    
-      outsourceSampleCollectedTime:
-        departmentRecord?.outsourcedCollectedTime,
-    
-      reportReceived:
-        departmentRecord?.isReceived || false,
-    
-      reportReceivedTime:
-        departmentRecord?.reportReceivedTime,
-    
-      reportGiven:
-        departmentRecord?.isGiven || false,
-    
-      reportGivenTime:
-        departmentRecord?.reportDeliveredTime,
-    });
+  reportType: "special",
+
+  workflow: "outsource",
+
+  tests: selectedTests
+    .filter(
+      x =>
+        typeof x !== "string" &&
+        (x.dept || "").trim() === deptKey
+    )
+    .map(x => x.test),
+
+  sampleCollected:
+    rec.outsourceReportsCollected?.[deptKey] || false,
+
+  reportReceived:
+    rec.outsourceReportsReceived?.[deptKey] || false,
+
+  reportGiven:
+    rec.outsourceReportsDelivered?.[deptKey] || false,
+});
 });
 
       // OVERALL
@@ -429,9 +381,9 @@ if (config.workflow !== "outsource") return;
       const specialStatuses = statuses.filter(
         s => s.reportType === "special");
         
-        const routineReadyToPrint =
-  routineStatuses.length > 0 &&
-  routineStatuses.every(isRoutineDepartmentComplete);
+  const routineCompleted = !!rec.routineCompleted;
+
+
   const insideLabItems = specialStatuses.filter(
     s => s.workflow === "inside"
 );
@@ -440,24 +392,30 @@ if (config.workflow !== "outsource") return;
     s => s.workflow === "outsource"
   );
   
-  const insideLabCompleted =
-    insideLabItems.length === 0 ||
-    insideLabItems.every(s => s.saved);
-  
-  const outsourceCompleted =
-    outsourceItems.length === 0 ||
-    outsourceItems.every(
-      s =>
-        s.sampleCollected &&
-        s.reportReceived &&
-        s.reportGiven
-    );
-  
-  const specialCompleted =
-    insideLabCompleted &&
-    outsourceCompleted;
+  const insideLabCompleted = !!rec.insideLabCompleted;
 
-    const overall = routineReadyToPrint
+const outsourceCompleted = !!rec.outsourceCompleted;
+
+const calculatedInsideLabCompleted =
+  insideLabItems.length > 0 &&
+  insideLabItems.every((s) => s.saved);
+
+const calculatedOutsourceCompleted =
+  outsourceItems.length > 0 &&
+  outsourceItems.every(
+    (s) =>
+      s.sampleCollected &&
+      s.reportReceived &&
+      s.reportGiven
+  );
+
+const specialCompleted =
+  calculatedInsideLabCompleted &&
+  calculatedOutsourceCompleted;
+
+ 
+
+    const overall = routineCompleted
     ? "Completed"
     : routineStatuses.some(
         (s) =>
@@ -477,16 +435,16 @@ if (config.workflow !== "outsource") return;
           workflowCards.push({
             workflow: "inside",
             statuses: insideLabItems,
-            completed: insideLabCompleted,
-          });
+            completed: calculatedInsideLabCompleted,
+        });
         }
         
         if (outsourceItems.length > 0) {
           workflowCards.push({
             workflow: "outsource",
             statuses: outsourceItems,
-            completed: outsourceCompleted,
-          });
+            completed: calculatedOutsourceCompleted,
+        });
         }
         
         return {
@@ -504,20 +462,90 @@ if (config.workflow !== "outsource") return;
         
           overallStatus: overall,
         
-          routineReadyToPrint,
-        
-          insideLabCompleted,
-        
-          outsourceCompleted,
-        
-          specialCompleted,
+          routineCompleted,
+
+        insideLabCompleted,
+
+        outsourceCompleted,
+
+        calculatedInsideLabCompleted,
+
+        calculatedOutsourceCompleted,
+
+        specialCompleted,
+
         };
         
           
 
 
     });
-  }, [reportRecords, deptData]);
+  }, [reportRecords]);
+
+
+
+  useEffect(() => {
+    const syncWorkflowCompletion = async () => {
+      for (const rec of merged) {
+        const calculatedRoutineCompleted =
+          rec.routineStatuses.length > 0 &&
+          rec.routineStatuses.every(isRoutineDepartmentComplete);
+  
+          const insideLabCards = rec.workflowCards.filter(
+            (w) => w.workflow === "inside"
+          );
+          
+          const calculatedInsideLabCompleted =
+            rec.calculatedInsideLabCompleted;
+          
+          const outsourceCards = rec.workflowCards.filter(
+            (w) => w.workflow === "outsource"
+          );
+          
+          const calculatedOutsourceCompleted =
+            rec.calculatedOutsourceCompleted;
+  
+        const updateData = {};
+  
+        // Only write completion fields when complete.
+        if (
+          calculatedRoutineCompleted &&
+          !rec.routineCompleted
+        ) {
+          updateData.routineCompleted = true;
+        }
+  
+        if (
+          insideLabCards.length > 0 &&
+          calculatedInsideLabCompleted &&
+          !rec.insideLabCompleted
+        ) {
+          updateData.insideLabCompleted = true;
+        }
+  
+        if (
+          outsourceCards.length > 0 &&
+          calculatedOutsourceCompleted &&
+          !rec.outsourceCompleted
+        ) {
+          updateData.outsourceCompleted = true;
+        }
+  
+        if (Object.keys(updateData).length > 0) {
+          await setDoc(
+            doc(db, "report_details", rec.id),
+            updateData,
+            { merge: true }
+          );
+        }
+      }
+    };
+  
+    syncWorkflowCompletion();
+  }, [merged]);
+
+    
+
 
 
   // FILTER & SORT
@@ -851,7 +879,11 @@ if (config.workflow !== "outsource") return;
         <div>
           <button
             className={rec.routineReportPrinted ? "printed-btn printed" : "printed-btn"}
-            disabled={!rec.routineReadyToPrint || rec.routineReportPrinted}
+            disabled={
+              !rec.routineCompleted ||
+              rec.routineReportPrinted
+            }
+
             onClick={(e) => {
               e.stopPropagation();
               handlePrint(rec);

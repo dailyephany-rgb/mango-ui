@@ -7,9 +7,10 @@ import {
   onSnapshot,
   doc,
   setDoc,
+  updateDoc,
   serverTimestamp,
   Timestamp,
-  query, // Added for inventory query
+  query,
 } from "firebase/firestore";
 // Import Inventory Deduction Logic
 import { handleInventoryDeduction } from "../inventory/inventorymapping";
@@ -272,18 +273,45 @@ const [criticalParams, setCriticalParams] = useState(() => {
     savedSet
   ]);
       
-  const handleScan = (compositeKey, value) => {
+  const handleScan = async (patient, value) => {
     const now = new Date().toISOString();
+    const regKey = patient.compositeKey;
+  
     setLocalScans((prev) => {
-      const updated = { ...prev, [compositeKey]: value };
-      localStorage.setItem("haematology_localScans", JSON.stringify(updated));
+      const updated = { ...prev, [regKey]: value };
+      localStorage.setItem(
+        "haematology_localScans",
+        JSON.stringify(updated)
+      );
       return updated;
     });
+  
     setLocalScanTimes((prev) => {
-      const updatedTimes = { ...prev, [compositeKey]: value === "Yes" ? now : null };
-      localStorage.setItem("haematology_localScanTimes", JSON.stringify(updatedTimes));
+      const updatedTimes = {
+        ...prev,
+        [regKey]: value === "Yes" ? now : null,
+      };
+      localStorage.setItem(
+        "haematology_localScanTimes",
+        JSON.stringify(updatedTimes)
+      );
       return updatedTimes;
     });
+  
+    try {
+      await updateDoc(
+        doc(db, "report_details", regKey),
+        {
+          [`routineReportsScanned.${CURRENT_DEPT}`]:
+            value === "Yes",
+        }
+      );
+    } catch (err) {
+      console.error(
+        "Failed to update scan status:",
+        err
+      );
+    }
   };
 
 
@@ -439,6 +467,13 @@ const [criticalParams, setCriticalParams] = useState(() => {
           critical: isCritical
         },
         { merge: true }
+      );
+
+      await updateDoc(
+        doc(db, "report_details", compositeKey),
+        {
+          [`routineReportsSaved.${CURRENT_DEPT}`]: true,
+        }
       );
       
       setLocalScans((prev) => {
@@ -626,7 +661,8 @@ const [criticalParams, setCriticalParams] = useState(() => {
                           <td>{selCanon.some((t) => t.includes("hb haemoglobin")) ? "✅" : "—"}</td>
                           <td>{selCanon.some((t) => t.includes("lamellar body count")) ? "✅" : "—"}</td>
                           <td>
-                            <select value={isScanned ? "Yes" : "No"} disabled={isSaved} onChange={(e) => handleScan(p.compositeKey, e.target.value)}>
+                            <select value={isScanned ? "Yes" : "No"} disabled={isSaved} 
+                            onChange={(e) => handleScan(p, e.target.value)}>
                               <option value="No">No</option>
                               <option value="Yes">Yes</option>
                             </select>

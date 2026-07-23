@@ -6,6 +6,7 @@ import {
   onSnapshot,
   setDoc,
   doc,
+  updateDoc,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
@@ -197,21 +198,51 @@ export default function BloodGroupRegister() {
   };
 
   // UPDATE: Writes both Scan status and Time to LocalStorage using compositeKey
-  const handleScan = (tab, compositeKey, value) => {
-    const key = `${tab}_${compositeKey}`;
+ 
+  const handleScan = async (tab, entry, value) => {
+    const key = `${tab}_${entry.compositeKey}`;
     const now = new Date().toISOString();
-
-    setLocalScans(p => {
-        const updated = { ...p, [key]: value };
-        localStorage.setItem("bloodgroup_localScans", JSON.stringify(updated));
-        return updated;
+  
+    setLocalScans((p) => {
+      const updated = { ...p, [key]: value };
+      localStorage.setItem(
+        "bloodgroup_localScans",
+        JSON.stringify(updated)
+      );
+      return updated;
     });
-
-    setLocalScanTimes(p => {
-        const updatedTimes = { ...p, [key]: value === "Yes" ? now : null };
-        localStorage.setItem("bloodgroup_localScanTimes", JSON.stringify(updatedTimes));
-        return updatedTimes;
+  
+    setLocalScanTimes((p) => {
+      const updatedTimes = {
+        ...p,
+        [key]: value === "Yes" ? now : null,
+      };
+  
+      localStorage.setItem(
+        "bloodgroup_localScanTimes",
+        JSON.stringify(updatedTimes)
+      );
+  
+      return updatedTimes;
     });
+  
+    // Only Testing updates report_details
+    if (tab === "testing") {
+      try {
+        await updateDoc(
+          doc(db, "report_details", entry.compositeKey),
+          {
+            [`routineReportsScanned.Blood Group`]:
+              value === "Yes",
+          }
+        );
+      } catch (err) {
+        console.error(
+          "Failed to update scan status:",
+          err
+        );
+      }
+    }
   };
 
   const handleSave = async (tab, entry) => {
@@ -275,6 +306,15 @@ export default function BloodGroupRegister() {
 
       // Save using compositeKey
       await setDoc(doc(db, col, compositeKey), dbPayload, { merge: true });
+
+      if (tab === "testing") {
+        await updateDoc(
+          doc(db, "report_details", compositeKey),
+          {
+            [`routineReportsSaved.Blood Group`]: true,
+          }
+        );
+      }
       
       setLocalResults(prev => {
         const n = { ...prev };
@@ -417,8 +457,16 @@ export default function BloodGroupRegister() {
                   <select
                     value={e.bloodGroup}
                     disabled={e.scanned !== "Yes" || e.saved === "Yes"}
-                    onChange={(ev) => handleChange(activeTab, e.compositeKey, "bloodGroup", ev.target.value)}
+                    onChange={(ev) =>
+                      handleChange(
+                        activeTab,
+                        e.compositeKey,
+                        "bloodGroup",
+                        ev.target.value
+                      )
+                    }
                   >
+               
                     <option value="">Select</option>
                     {bloodGroups.map((bg) => <option key={bg}>{bg}</option>)}
                   </select>
@@ -438,7 +486,9 @@ export default function BloodGroupRegister() {
                   <select
                     value={e.scanned}
                     disabled={e.saved === "Yes"}
-                    onChange={(ev) => handleScan(activeTab, e.compositeKey, ev.target.value)}
+                    onChange={(ev) =>
+                      handleScan(activeTab, e, ev.target.value)
+                    }
                   >
                     <option value="No">No</option>
                     <option value="Yes">Yes</option>

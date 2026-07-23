@@ -26,6 +26,7 @@ export default function MasterAdminPanel() {
   const [activeColl, setActiveColl] = useState("master_register");
   const [entries, setEntries] = useState([]);
   const [routingMap, setRoutingMap] = useState([]); 
+  const [routingLookup, setRoutingLookup] = useState({});
   
   const getISTDateString = () => {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
@@ -89,6 +90,36 @@ export default function MasterAdminPanel() {
     return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
   };
 
+
+  const normalizeTestName = (value) => {
+    return String(value || "")
+      .toLowerCase()
+  
+      // convert & to "and" (optional but helps consistency)
+      .replace(/&/g, "and")
+  
+      // remove dots
+      .replace(/\./g, "")
+  
+      // remove common words
+      .replace(/\bcategory\b/g, "")
+      .replace(/\broutine\b/g, "")
+      .replace(/\bprofile\b/g, "")
+      .replace(/\bpanel\b/g, "")
+  
+      // remove brackets but keep text inside
+      .replace(/[()]/g, "")
+  
+      // commas become spaces
+      .replace(/,/g, " ")
+  
+      // collapse spaces
+      .replace(/\s+/g, " ")
+  
+      .trim();
+  };
+  
+
   const isTimeField = (col) => [
     "timeCollected", "timePrinted", "savedTime", "scannedTime", "validatedTime",
     "givenTime", "receivedTime", "startTime", "endTime", "timeSaved", "flaggedAt", "reportedAt"
@@ -123,17 +154,30 @@ export default function MasterAdminPanel() {
      
      
       const normalizedRouting = json.map(row => ({
-        hospitalName: String(
-          row["Hospital_Investigation_Name"] || ""
-        ).toLowerCase().trim(),
+        hospitalName: normalizeTestName(
+          row["Hospital_Investigation_Name"]
+        ),
       
-        labName: String(
-          row["Lab_System_Test_Name"] || ""
-        ).toLowerCase().trim()
+        labName: normalizeTestName(
+          row["Lab_System_Test_Name"]
+        )
       })).filter(item => item.hospitalName && item.labName);
+      
+      const lookup = {};
 
+      normalizedRouting.forEach(item => {
+        if (!lookup[item.hospitalName]) {
+          lookup[item.hospitalName] = [];
+        }
 
-      setRoutingMap(normalizedRouting);
+        if (!lookup[item.hospitalName].includes(item.labName)) {
+          lookup[item.hospitalName].push(item.labName);
+        }
+      });
+
+setRoutingMap(normalizedRouting);
+setRoutingLookup(lookup);
+      
       alert(`Routing loaded: ${normalizedRouting.length} tests mapped.`);
     };
     reader.readAsArrayBuffer(file);
@@ -170,18 +214,34 @@ export default function MasterAdminPanel() {
           };
         }
         
-        const investigation = String(row[testKey] || "").toLowerCase().trim();
-        groupedHospital[diagNo].hospitalTests.push(investigation);
-        
-        const mapping = routingMap.find(m => m.hospitalName === investigation);
-        if (mapping) {
-            if (!groupedHospital[diagNo].expectedLabTests.includes(mapping.labName)) {
-                groupedHospital[diagNo].expectedLabTests.push(mapping.labName);
-            }
-            groupedHospital[diagNo].convertedDisplay.push(mapping.labName.toUpperCase());
-        } else {
-            groupedHospital[diagNo].convertedDisplay.push(investigation.toUpperCase());
-        }
+        const investigation = normalizeTestName(row[testKey]);
+groupedHospital[diagNo].hospitalTests.push(investigation);
+
+const mappedLabNames = routingLookup[investigation];
+
+if (mappedLabNames && mappedLabNames.length > 0) {
+
+  mappedLabNames.forEach((labTest) => {
+
+    if (!groupedHospital[diagNo].expectedLabTests.includes(labTest)) {
+      groupedHospital[diagNo].expectedLabTests.push(labTest);
+    }
+
+    groupedHospital[diagNo].convertedDisplay.push(
+      labTest.toUpperCase()
+    );
+
+  });
+
+} else {
+
+  groupedHospital[diagNo].convertedDisplay.push(
+    investigation.toUpperCase()
+  );
+
+}
+
+
       });
 
       const hospitalList = Object.values(groupedHospital);
@@ -196,20 +256,39 @@ export default function MasterAdminPanel() {
         if (!labMatch) {
             missing.push({ ...hRow, testsString: hRow.convertedDisplay.join(", ") });
         } else {
-          const lTestsArray = labMatch.selectedTests?.map(t => (typeof t === 'string' ? t : t.test).toLowerCase().trim()) || [];
+         
+          const lTestsOriginal = labMatch.selectedTests?.map(
+            t => typeof t === "string" ? t : t.test
+          ) || [];
           
-          // logic 1: Missing in Lab (Hospital has it, Lab doesn't)
-          const missingTests = hRow.expectedLabTests.filter(et => !lTestsArray.includes(et));
+          const lTestsNormalized = lTestsOriginal.map(normalizeTestName);
           
-          // logic 2: Extra in Lab (Lab has it, Hospital doesn't)
-          const extraTests = lTestsArray.filter(lt => !hRow.expectedLabTests.includes(lt));
+          const expectedSet = new Set(hRow.expectedLabTests);
+          const actualSet = new Set(lTestsNormalized);
+          
+          const missingTests = [...expectedSet].filter(
+            test => !actualSet.has(test)
+          );
+          
+          const extraTests = [...actualSet].filter(
+            test => !expectedSet.has(test)
+          );
 
-          if (missingTests.length > 0) {
+          if (extraTests.length > 0) {
+            console.log("Diagnostic:", hRow.diagnosticNo);
+            console.log("Expected:", [...expectedSet]);
+            console.log("Actual:", [...actualSet]);
+            console.log("Extra:", extraTests);
+          }
+          
+
+          if 
+          (missingTests.length > 0) {
             mismatch.push({ 
               hospital: hRow, 
               lab: labMatch, 
               hTests: hRow.convertedDisplay.join(", "),
-              actual: lTestsArray.join(", "),
+              actual: lTestsOriginal.join(", "),
               missingTests: missingTests.join(", ")
             });
           }
@@ -219,7 +298,7 @@ export default function MasterAdminPanel() {
               hospital: hRow,
               lab: labMatch,
               hTests: hRow.convertedDisplay.join(", "),
-              actual: lTestsArray.join(", "),
+              actual: lTestsOriginal.join(", "),
               extraTests: extraTests.join(", ")
             });
           }
@@ -327,6 +406,7 @@ export default function MasterAdminPanel() {
       <div className="header-bar">
         <h2>📋 Lab Admin Panel — Management View</h2>
         <div style={{ display: "flex", gap: "10px" }}>
+         
            <button onClick={() => setIsCompareView(!isCompareView)} className="btn-update" style={{ backgroundColor: isCompareView ? "#dc2626" : "#4b5563" }}>
                 {isCompareView ? "✖ Close Compare" : "🔍 Compare Tab"}
             </button>
@@ -356,10 +436,25 @@ export default function MasterAdminPanel() {
                     <span><strong>Lab Total (Filtered):</strong> {reconData.stats.labTotal}</span>
                 </div>
                 <div className="source-buttons">
-                    <button className={reconTab === "missing" ? "active" : ""} onClick={() => setReconTab("missing")}>Entry exist only in hospital system ({reconData.missing.length})</button>
-                    <button className={reconTab === "mismatch" ? "active" : ""} onClick={() => setReconTab("mismatch")}>Tests missing in our system ({reconData.mismatch.length})</button>
-                    <button className={reconTab === "extraInLab" ? "active" : ""} onClick={() => setReconTab("extraInLab")}>Tests missing in hospital system ({reconData.extraInLab.length})</button>
-                    <button className={reconTab === "ghost" ? "active" : ""} onClick={() => setReconTab("ghost")}>Entry exist only in our system ({reconData.ghost.length})</button>
+                 
+
+           <button className={reconTab === "missing" ? "active" : ""} onClick={() => setReconTab("missing")}>
+            Entry exist only in hospital system ({reconData.missing.length})
+          </button>
+
+          <button className={reconTab === "ghost" ? "active" : ""} onClick={() => setReconTab("ghost")}>
+            Entry exist only in our system ({reconData.ghost.length})
+          </button>
+
+          <button className={reconTab === "mismatch" ? "active" : ""} onClick={() => setReconTab("mismatch")}>
+            Tests missing in our system ({reconData.mismatch.length})
+          </button>
+
+          <button className={reconTab === "extraInLab" ? "active" : ""} onClick={() => setReconTab("extraInLab")}>
+            Tests missing in hospital system ({reconData.extraInLab.length})
+          </button>
+
+
                 </div>
                 <div className="table-wrapper" style={{ marginTop: "15px", maxHeight: "400px" }}>
                     <table className="master-table">

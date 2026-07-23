@@ -80,11 +80,11 @@ export default function InsideLabRegister() {
   }, []);
 
   // UPDATE: Generate Department-Specific Composite Key
+  
   const getDeptUniqueKey = (entry) => {
     const regNo = String(entry.regNo || entry.id);
     const diagNo = entry.diagnosticNo || entry.accNo || "—";
-    const deptName = activeTab.replace("Register", "");
-    return `${regNo}_${diagNo}_${deptName}`;
+    return `${regNo}_${diagNo}_${activeTab}`;
   };
 
   const openEdit = (entry) => {
@@ -156,6 +156,18 @@ export default function InsideLabRegister() {
       const reportSnap = await getDoc(reportRef);
   
       const batch = writeBatch(db);
+
+      const department = activeTab;
+
+        const existingInsideLab =
+          reportSnap.exists()
+            ? reportSnap.data().insideLabReportsSaved || {}
+            : {};
+
+        const updatedInsideLab = {
+          ...existingInsideLab,
+          [department]: true,
+        };
   
       // Save Inside Lab report
       batch.set(
@@ -185,10 +197,7 @@ export default function InsideLabRegister() {
               ? t
               : t.test
           ),
-          department: activeTab.replace(
-            "Register",
-            ""
-          ),
+          department: activeTab,
           reportData: finalData,
           isFinalized: true,
           savedBy: loggedUser,
@@ -198,20 +207,13 @@ export default function InsideLabRegister() {
         { merge: true }
       );
   
-      // Only write once
-      if (
-        !reportSnap.exists() ||
-        !reportSnap.data().insideLabCompletedAt
-      ) {
-        batch.set(
-          reportRef,
-          {
-            insideLabCompletedAt:
-              serverTimestamp(),
-          },
-          { merge: true }
-        );
-      }
+      batch.set(
+        reportRef,
+        {
+          insideLabReportsSaved: updatedInsideLab,
+        },
+        { merge: true }
+      );
   
       await batch.commit();
   

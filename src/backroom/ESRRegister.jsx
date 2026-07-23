@@ -1,14 +1,17 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { db } from "../firebaseConfig";
+
 import {
   collection,
   onSnapshot,
   setDoc,
   doc,
+  updateDoc,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
+
 import routing from "../backroom_routing.json";
 import "./Backroom.css";
 
@@ -238,20 +241,48 @@ const [pendingCritical, setPendingCritical] = useState(() => {
   };
 
   // UPDATE: Writes both Scan status and Time to LocalStorage using compositeKey
-  const handleScan = (compositeKey, value) => {
+ 
+  const handleScan = async (entry, value) => {
     const now = new Date().toISOString();
-
+    const regKey = entry.compositeKey;
+  
     setLocalScans((prev) => {
-        const updated = { ...prev, [compositeKey]: value };
-        localStorage.setItem("esr_localScans", JSON.stringify(updated));
-        return updated;
+      const updated = { ...prev, [regKey]: value };
+      localStorage.setItem(
+        "esr_localScans",
+        JSON.stringify(updated)
+      );
+      return updated;
     });
-
+  
     setLocalScanTimes((prev) => {
-        const updatedTimes = { ...prev, [compositeKey]: value === "Yes" ? now : null };
-        localStorage.setItem("esr_localScanTimes", JSON.stringify(updatedTimes));
-        return updatedTimes;
+      const updatedTimes = {
+        ...prev,
+        [regKey]: value === "Yes" ? now : null,
+      };
+  
+      localStorage.setItem(
+        "esr_localScanTimes",
+        JSON.stringify(updatedTimes)
+      );
+  
+      return updatedTimes;
     });
+  
+    try {
+      await updateDoc(
+        doc(db, "report_details", regKey),
+        {
+          [`routineReportsScanned.${CURRENT_DEPT}`]:
+            value === "Yes",
+        }
+      );
+    } catch (err) {
+      console.error(
+        "Failed to update scan status:",
+        err
+      );
+    }
   };
 
   const isEntryReadyToSave = (e) => (e.scanned === "Yes") && e.startTime && e.endTime && e.result && Number(e.duration) > 0;
@@ -382,6 +413,13 @@ const [pendingCritical, setPendingCritical] = useState(() => {
       };
 
       await setDoc(doc(db, "esr_register", compositeKey), payload, { merge: true });
+
+      await updateDoc(
+        doc(db, "report_details", compositeKey),
+        {
+          [`routineReportsSaved.${CURRENT_DEPT}`]: true,
+        }
+      );
       
       setLocalResults((prev) => {
         const n = { ...prev };
@@ -508,7 +546,7 @@ const [pendingCritical, setPendingCritical] = useState(() => {
                   <td>{e.duration || "-"}</td>
                   <td><input type="number" value={e.result || ""} disabled={!scanned || saved} onChange={(ev) => handleChange(e.compositeKey, "result", ev.target.value)} /></td>
                   <td>
-                    <select value={scanned ? "Yes" : "No"} disabled={saved} onChange={(ev) => handleScan(e.compositeKey, ev.target.value)}>
+                    <select value={scanned ? "Yes" : "No"} disabled={saved} onChange={(ev) => handleScan(e, ev.target.value)}>
                       <option value="No">No</option><option value="Yes">Yes</option>
                     </select>
                   </td>

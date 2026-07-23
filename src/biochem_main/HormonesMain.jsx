@@ -7,9 +7,12 @@ import {
   onSnapshot,
   doc,
   setDoc,
+  updateDoc,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
+
+
 import hormoneRouting from "../hormone_testRouting.json";
 // NEW: Import inventory components and service
 import DeptInventoryTab from "../inventory/DeptInventoryTab.jsx";
@@ -165,20 +168,42 @@ const [criticalParams, setCriticalParams] = useState(() => {
   }, [masterEntries, deptDocs, localScans, savedSet, hormoneTests]);
 
   // UPDATE: Writes both Scan status and ISO Time string to LocalStorage using composite key
-  const handleScan = (compositeKey, value) => {
+  const handleScan = async (patient, value) => {
+    const regKey = patient.compositeKey;
     const now = new Date().toISOString();
-
+  
     setLocalScans((prev) => {
-      const updated = { ...prev, [compositeKey]: value };
+      const updated = { ...prev, [regKey]: value };
       localStorage.setItem("hormones_localScans", JSON.stringify(updated));
       return updated;
     });
-
+  
     setLocalScanTimes((prev) => {
-      const updatedTimes = { ...prev, [compositeKey]: value === "Yes" ? now : null };
-      localStorage.setItem("hormones_localScanTimes", JSON.stringify(updatedTimes));
+      const updatedTimes = {
+        ...prev,
+        [regKey]: value === "Yes" ? now : null,
+      };
+      localStorage.setItem(
+        "hormones_localScanTimes",
+        JSON.stringify(updatedTimes)
+      );
       return updatedTimes;
     });
+  
+    try {
+      await updateDoc(
+        doc(db, "report_details", regKey),
+        {
+          [`routineReportsScanned.${CURRENT_DEPT}`]:
+            value === "Yes",
+        }
+      );
+    } catch (err) {
+      console.error(
+        "Failed to update scan status:",
+        err
+      );
+    }
   };
 
   const triggerCritical = (entry) => {
@@ -290,6 +315,13 @@ const [criticalParams, setCriticalParams] = useState(() => {
       };
 
       await setDoc(ref, payload, { merge: true });
+
+      await updateDoc(
+        doc(db, "report_details", regKey),
+        {
+          [`routineReportsSaved.${CURRENT_DEPT}`]: true,
+        }
+      );
 
       // NEW: TRIGGER INVENTORY DEDUCTION
 
@@ -437,7 +469,11 @@ const [criticalParams, setCriticalParams] = useState(() => {
                       <td>{p.category || "—"}</td>
                       <td>{p.selectedTests?.filter((t) => hormoneTests.includes(getTestName(t))).map((t) => getTestName(t)).join(", ") || "—"}</td>
                       <td>
-                        <select value={isScanned ? "Yes" : "No"} onChange={(e) => handleScan(p.compositeKey, e.target.value)} disabled={isSaved}>
+                         <select
+                            value={isScanned ? "Yes" : "No"}
+                            onChange={(e) => handleScan(p, e.target.value)}
+                            disabled={isSaved}
+                          >
                           <option value="No">No</option>
                           <option value="Yes">Yes</option>
                         </select>

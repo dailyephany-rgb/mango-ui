@@ -174,10 +174,24 @@ export default function OutsourceRegister() {
         { merge: true }
       );
 
+      const reportRef = doc(db, "report_details", entry.id);
+
+      const reportSnap = await getDoc(reportRef);
+      
+      const existingReceived =
+        reportSnap.exists()
+          ? reportSnap.data().outsourceReportsReceived || {}
+          : {};
+      
+      const updatedReceived = {
+        ...existingReceived,
+        [entry.labName]: true,
+      };
+      
       await setDoc(
-        doc(db, "report_details", entry.id),
+        reportRef,
         {
-          outsourceReportReceived: true,
+          outsourceReportsReceived: updatedReceived,
         },
         { merge: true }
       );
@@ -238,27 +252,24 @@ export default function OutsourceRegister() {
   
       // Outsource tracking
       
+      const existingDelivered =reportSnap.exists()
+    ? reportSnap.data().outsourceReportsDelivered || {}
+    : {};
+
+      const updatedDelivered = {
+        ...existingDelivered,
+        [entry.labName]: true,
+      };
+
       batch.set(
         reportRef,
         {
-          outsourceReportDelivered: true,
+          outsourceReportsDelivered: updatedDelivered,
         },
         { merge: true }
       );
   
-      // Write CompletedAt only once
-      if (
-        !reportSnap.exists() ||
-        !reportSnap.data().outsourceCompletedAt
-      ) {
-        batch.set(
-          reportRef,
-          {
-            outsourceCompletedAt: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      }
+     
   
       await batch.commit();
 
@@ -336,10 +347,24 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
         }
       );
 
+      const reportRef = doc(db, "report_details", entry.id);
+
+      const reportSnap = await getDoc(reportRef);
+      
+      const existingCollected =
+        reportSnap.exists()
+          ? reportSnap.data().outsourceReportsCollected || {}
+          : {};
+      
+      const updatedCollected = {
+        ...existingCollected,
+        [entry.labName]: true,
+      };
+      
       await setDoc(
-        doc(db, "report_details", entry.id),
+        reportRef,
         {
-          outsourceCollected: true,
+          outsourceReportsCollected: updatedCollected,
         },
         { merge: true }
       );
