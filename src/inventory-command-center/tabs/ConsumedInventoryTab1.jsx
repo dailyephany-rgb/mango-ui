@@ -134,40 +134,56 @@ const ConsumedInventoryTab = ({
 
     if (fromDate) {
 
-      filtered = filtered.filter(item => {
-    
-        if (!item.consumedAt)
-          return false;
-    
-        const itemDate = item.consumedAt
-          .toDate()
-          .toLocaleDateString("en-CA", {
-            timeZone: "Asia/Kolkata"
-          });
-    
-        return itemDate >= fromDate;
-    
-      });
-    
+      const from =
+        new Date(fromDate);
+
+      filtered =
+        filtered.filter(
+          item => {
+
+            if (
+              !item.consumedAt
+            )
+              return false;
+
+            return (
+              item.consumedAt
+                .toDate() >=
+              from
+            );
+
+          }
+        );
     }
-    
+
     if (toDate) {
-    
-      filtered = filtered.filter(item => {
-    
-        if (!item.consumedAt)
-          return false;
-    
-        const itemDate = item.consumedAt
-          .toDate()
-          .toLocaleDateString("en-CA", {
-            timeZone: "Asia/Kolkata"
-          });
-    
-        return itemDate <= toDate;
-    
-      });
-    
+
+      const to =
+        new Date(toDate);
+
+      to.setHours(
+        23,
+        59,
+        59
+      );
+
+      filtered =
+        filtered.filter(
+          item => {
+
+            if (
+              !item.consumedAt
+            )
+              return false;
+
+            return (
+              item.consumedAt
+                .toDate() <=
+              to
+            );
+
+          }
+        );
     }
 
     return filtered.sort((a, b) => {

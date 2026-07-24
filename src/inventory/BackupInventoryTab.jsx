@@ -119,11 +119,14 @@ export default function DeptInventoryTab() {
         const biochemCalibrators = ["YUMIZEN CS MULTICAL"].map(n => n.toUpperCase());
 
         const hormoneNames = [
+          "Access TOTAL T3",
+          "Access TOTAL T4",
           "Access AMH",
           "Access Sensitive Estradiol",
           "Access hFSH",
           "Access Free T4",
           "Access hLH",
+          "Access Total BhCG",
           "Access Prolactin",
           "Access Progesterone", 
           "Access TSH Reagent",

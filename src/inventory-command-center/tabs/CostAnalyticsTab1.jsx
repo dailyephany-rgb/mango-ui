@@ -82,41 +82,39 @@ const filteredRows = useMemo(() => {
       }
     
       if (fromDate) {
-
+    
+        const from = new Date(fromDate);
+    
         filtered = filtered.filter(row => {
-      
+    
           if (!row.timestamp)
             return false;
-      
-          const rowDate = row.timestamp
-            .toDate()
-            .toLocaleDateString("en-CA", {
-              timeZone: "Asia/Kolkata"
-            });
-      
-          return rowDate >= fromDate;
-      
+    
+          return (
+            row.timestamp.toDate() >= from
+          );
+    
         });
-      
+    
       }
-      
+    
       if (toDate) {
-      
+    
+        const to = new Date(toDate);
+    
+        to.setHours(23,59,59);
+    
         filtered = filtered.filter(row => {
-      
+    
           if (!row.timestamp)
             return false;
-      
-          const rowDate = row.timestamp
-            .toDate()
-            .toLocaleDateString("en-CA", {
-              timeZone: "Asia/Kolkata"
-            });
-      
-          return rowDate <= toDate;
-      
+    
+          return (
+            row.timestamp.toDate() <= to
+          );
+    
         });
-      
+    
       }
     
       return filtered;

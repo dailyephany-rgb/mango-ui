@@ -83,7 +83,7 @@ export default function DeptInventoryTab() {
         
         const biochemNames = [
         "Yumizen CS ALBUMIN",
-        "Yumizen CS ALKP",
+        "Yumizen CS ALP",
         "Yumizen CS AMYLASE", 
         "Yumizen CS Bilirubin Direct 125 Ml Total",
         "Yumizen CS Bilirubin Total 125 Ml Total",
