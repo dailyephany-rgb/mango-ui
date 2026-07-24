@@ -2,11 +2,10 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../firebaseConfig";
 import { 
-  collection, addDoc, query,getDocs, 
+  collection, addDoc, query, where, getDocs, 
+  writeBatch, doc, increment
 } from "firebase/firestore";
-import {
-  handleInventoryDeduction
-} from "../inventory/inventorymapping";
+import { testToReagentMap } from "../inventory/inventorymapping"; 
 import "./BackupEntry.css";
 
 import DeptInventoryTab from "../inventory/BackupInventoryTab.jsx";
@@ -166,22 +165,59 @@ const BackupEntry = () => {
     const row = rows.find(r => r.id === rowId);
     if (!row || !row.sid) return alert("Please enter at least a Diagnostic Number.");
 
-   
+    const batch = writeBatch(db);
+    const inventoryRef = collection(db, "inventory_logs");
+
     try {
       // 1. DEDUCTION LOGIC
-   
-      const allTestsFlattened = [
-        ...row.biochemistry,
-        ...row.hormones,
-        ...row.electrolytes
-      ].filter(t => t.testName);
+      const allTestsFlattened = [...row.biochemistry, ...row.hormones, ...row.electrolytes].filter(t => t.testName);
       
-      await handleInventoryDeduction(
-        allTestsFlattened.map(t => t.testName),
-        getInventoryCategory(row.category)
-      );
-            
-               
+      for (const item of allTestsFlattened) {
+        let mapping = testToReagentMap[item.testName];
+        if (!mapping) continue;
+
+        // Check for category-specific mapping (GENERAL or RGHS/ARGH)
+        if (
+          mapping.GENERAL ||
+          mapping.RGHS ||
+          mapping.OTHER
+      ) {
+          const catKey =
+            getInventoryCategory(row.category);
+      
+          mapping =
+            mapping[catKey] ||
+            mapping["GENERAL"];
+      }
+
+        const itemsToDeduct = Array.isArray(mapping) ? mapping : [mapping];
+
+        for (const reagentInfo of itemsToDeduct) {
+            const rName = typeof reagentInfo === "string" ? reagentInfo : reagentInfo.name;
+            const deductQty = reagentInfo.qty || 1;
+
+            const q = query(
+                inventoryRef, 
+                where("reagentName", "==", rName), 
+                where("status", "==", "Activated")
+            );
+
+            const snap = await getDocs(q);
+            snap.forEach((docSnap) => {
+                const data = docSnap.data();
+                const currentTests = Number(data.totalTests) || 0;
+                const initialCapacity = Number(data.totalAvailable) || 1;
+                
+                const newTotal = Math.max(0, currentTests - deductQty);
+                const newHealth = Math.round((newTotal / initialCapacity) * 100);
+
+                batch.update(doc(db, "inventory_logs", docSnap.id), {
+                    totalTests: newTotal,
+                    health: newHealth
+                });
+            });
+        }
+      }
 
       // 2. SAVE LOG LOGIC
       const formatSection = (data) => {
@@ -206,7 +242,7 @@ const BackupEntry = () => {
       };
 
       await addDoc(collection(db, "backup_entries_logs"), finalData);
-      
+      await batch.commit();
       
       // REMOVE the row from local state instead of just marking isSaved
       setRows(prevRows => prevRows.filter(r => r.id !== rowId));
