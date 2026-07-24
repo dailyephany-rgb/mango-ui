@@ -311,12 +311,10 @@ export default function BloodGroupRegister() {
         await updateDoc(
           doc(db, "report_details", compositeKey),
           {
-            [`routineReportsScanned.Blood Group`]: true,
             [`routineReportsSaved.Blood Group`]: true,
           }
         );
       }
-
       
       setLocalResults(prev => {
         const n = { ...prev };

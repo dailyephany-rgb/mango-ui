@@ -191,17 +191,13 @@ const [criticalParams, setCriticalParams] = useState(() => {
     });
   
     try {
-      
       await updateDoc(
         doc(db, "report_details", regKey),
         {
-          // Safeguard: if Save succeeds, Scan must also have succeeded.
-          [`routineReportsScanned.${CURRENT_DEPT}`]: true,
-          [`routineReportsSaved.${CURRENT_DEPT}`]: true,
+          [`routineReportsScanned.${CURRENT_DEPT}`]:
+            value === "Yes",
         }
       );
-
-
     } catch (err) {
       console.error(
         "Failed to update scan status:",

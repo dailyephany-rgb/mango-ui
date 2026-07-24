@@ -457,7 +457,6 @@ export default function UrineAnalysisRegister() {
       await updateDoc(
         doc(db, "report_details", compositeKey),
         {
-          [`routineReportsScanned.${CURRENT_DEPT}`]: true,
           [`routineReportsSaved.${CURRENT_DEPT}`]: true,
         }
       );

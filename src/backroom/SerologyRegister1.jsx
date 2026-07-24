@@ -439,11 +439,9 @@ const testsForRegister = routing.SerologyRegister || [
       
       await setDoc(doc(db, "serology_register", compositeKey), payload, { merge: true });
 
-     
       await updateDoc(
         doc(db, "report_details", compositeKey),
         {
-          [`routineReportsScanned.${CURRENT_DEPT}`]: true,
           [`routineReportsSaved.${CURRENT_DEPT}`]: true,
         }
       );

@@ -513,8 +513,6 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
       await updateDoc(
         doc(db, "report_details", compositeKey),
         {
-          // Safeguard: if Save succeeds, Scan must also have succeeded.
-          [`routineReportsScanned.${CURRENT_DEPT}`]: true,
           [`routineReportsSaved.${CURRENT_DEPT}`]: true,
         }
       );

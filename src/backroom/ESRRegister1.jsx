@@ -417,7 +417,6 @@ const [pendingCritical, setPendingCritical] = useState(() => {
       await updateDoc(
         doc(db, "report_details", compositeKey),
         {
-          [`routineReportsScanned.${CURRENT_DEPT}`]: true,
           [`routineReportsSaved.${CURRENT_DEPT}`]: true,
         }
       );
