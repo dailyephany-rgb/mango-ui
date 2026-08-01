@@ -10,6 +10,9 @@ import {
   collection,
   onSnapshot,
   query,
+  where,
+  orderBy,
+  Timestamp,
   doc,
   setDoc,
   serverTimestamp,
@@ -17,6 +20,13 @@ import {
 
 import "./MasterView_Rectangle.css";
 import UserMenu from "../auth/UserMenu";
+import {
+  getLocalDateString,
+  localDayStart,
+  localDayEndExclusive,
+  parseDateField,
+} from "../shared/utils/dates.js";
+import { cascadeRoutineStages } from "../shared/utils/routineStageFlags.js";
 
 const DEPARTMENT_LOOKUP = {
   "Bio-Chemistry": {
@@ -145,36 +155,13 @@ export default function MasterViewCard() {
   const [expanded, setExpanded] = useState(null);
   const [reportView, setReportView] = useState("routine");
   const [searchReg, setSearchReg] = useState("");
-  
-  // FIX: Set local date to roll over at midnight local time
-  const getLocalDate = () => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  };
 
-  const [fromDate, setFromDate] = useState(getLocalDate());
-  const [toDate, setToDate] = useState(getLocalDate());
+  const today = getLocalDateString();
+  const [fromDate, setFromDate] = useState(today);
+  const [toDate, setToDate] = useState(today);
   const [sourceFilter, setSourceFilter] = useState("All");
 
-  // DEPARTMENT COLLECTIONS
-  
-
-
-  // Helper to normalize dates for sorting
-  const parseDate = (entry) => {
-    const f = entry.timePrinted;
-    if (!f) return null;
-    if (f?.toDate) return f.toDate();
-    if (typeof f === "string" || f instanceof Date) {
-      const d = new Date(f);
-      return isNaN(d) ? null : d;
-    }
-    if (f?.seconds) return new Date(f.seconds * 1000);
-    return null;
-  };
+  const parseDate = (entry) => parseDateField(entry?.timePrinted);
 
   const formatTimestamp = (ts) => {
     if (!ts) return "—";
@@ -190,45 +177,43 @@ export default function MasterViewCard() {
     });
   };
 
-
-
-  // MASTER REGISTER LISTENER
-  // MASTER REGISTER + REPORT DETAILS LISTENERS
-useEffect(() => {
-
-
-
-
-  const reportQuery = query(
-    collection(db, "report_details")
-  );
-  
-  const unsubReport = onSnapshot(
-    reportQuery,
-    (snapshot) => {
-    
-      const records = [];
-  
-      snapshot.forEach((docSnap) => {
-        const data = {
-          id: docSnap.id,
-          ...docSnap.data(),
-        };
-  
-       
-        records.push(data);
-      });
-  
-     
-      setReportRecords(records);
+  // report_details scoped by timePrinted date range
+  useEffect(() => {
+    const start = localDayStart(fromDate);
+    const endExclusive = localDayEndExclusive(toDate);
+    if (!start || !endExclusive) {
+      setReportRecords([]);
+      return undefined;
     }
-  );
 
-  return () => {
-    unsubReport();
-  };
+    const reportQuery = query(
+      collection(db, "report_details"),
+      where("timePrinted", ">=", Timestamp.fromDate(start)),
+      where("timePrinted", "<", Timestamp.fromDate(endExclusive)),
+      orderBy("timePrinted", "asc")
+    );
 
-}, []);
+    const unsubReport = onSnapshot(
+      reportQuery,
+      (snapshot) => {
+        setReportRecords(
+          snapshot.docs.map((docSnap) => ({
+            id: docSnap.id,
+            ...docSnap.data(),
+          }))
+        );
+      },
+      (err) => {
+        console.error(
+          "[MasterView_Rectangle] report_details timePrinted query failed:",
+          err
+        );
+        setReportRecords([]);
+      }
+    );
+
+    return () => unsubReport();
+  }, [fromDate, toDate]);
 
  
 const isRoutineDepartmentComplete = (dept) => {
@@ -274,10 +259,15 @@ selectedTests.forEach((t) => {
 
   if (!config || config.workflow !== "routine") return;
 
-  
+  const cascaded = cascadeRoutineStages({
+    scanned: rec.routineReportsScanned?.[config.firestoreKey],
+    saved: rec.routineReportsSaved?.[config.firestoreKey],
+    validated: rec.routineReportsValidated?.[config.firestoreKey],
+    entered: rec.routineReportsEntered?.[config.firestoreKey],
+  });
+
   statuses.push({
     dept: config.label,
-  
     tests: selectedTests
       .filter(
         (x) =>
@@ -285,20 +275,10 @@ selectedTests.forEach((t) => {
           (x.dept || "").trim() === deptKey
       )
       .map((x) => x.test),
-  
-      scanned: rec.routineReportsScanned?.[config.firestoreKey]
-      ? "Yes"
-      : "No",
-    
-    saved: rec.routineReportsSaved?.[config.firestoreKey]
-      ? "Yes"
-      : "No",
-    
-    validated:
-      rec.routineReportsValidated?.[config.firestoreKey] || false,
-    
-    entered:
-      rec.routineReportsEntered?.[config.firestoreKey] || false,
+    scanned: cascaded.scanned,
+    saved: cascaded.saved,
+    validated: cascaded.validated,
+    entered: cascaded.entered,
   });
  
 });
@@ -548,27 +528,15 @@ const specialCompleted =
 
 
 
-  // FILTER & SORT
+  // FILTER & SORT (date applied in Firestore via timePrinted)
   const filtered = merged
     .filter((rec) => {
       if (!rec.regNo) return false;
 
-      // SEARCH LOGIC
       const searchLower = searchReg.toLowerCase();
       const matchesSearch = !searchReg || 
         (rec.regNo?.toLowerCase().includes(searchLower)) || 
         (rec.diagnosticNo?.toLowerCase().includes(searchLower));
-
-      let date = parseDate(rec);
-      if (!date) return false;
-
-      // FIX: Comparison using local calendar date strings (YYYY-MM-DD)
-      const y = date.getFullYear();
-      const m = String(date.getMonth() + 1).padStart(2, '0');
-      const d = String(date.getDate()).padStart(2, '0');
-      const dateStr = `${y}-${m}-${d}`;
-      
-      const inRange = dateStr >= fromDate && dateStr <= toDate;
 
       const sourceOk =sourceFilter === "All" ||
       rec.source === sourceFilter;
@@ -580,7 +548,6 @@ const specialCompleted =
 
         return (
           matchesSearch &&
-          inRange &&
           sourceOk &&
           reportOk
         );

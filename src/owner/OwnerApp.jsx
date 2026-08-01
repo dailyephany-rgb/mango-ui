@@ -101,6 +101,7 @@ export default function OwnerApp() {
               critical: "/Critical.html",
               analytics: "/analytics.html",
               master_admin: "/master_admin.html",
+              performance: "/performance.html",
             };
 
             const url = routeMap[e.target.value];
@@ -131,6 +132,7 @@ export default function OwnerApp() {
           <option value="critical">Critical</option>
           <option value="analytics">Count Analytics</option>
           <option value="master_admin">Master Admin</option>
+          <option value="performance">Performance & Diagnostics</option>
         </select>
       </header>
 

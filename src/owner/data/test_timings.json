@@ -2,9 +2,7 @@
 
 {
   "biochem": { "scanned_to_saved": 25, "collected_to_scanned": 120,"saved_to_validated": 60,"turnaround": 120, "validated_to_entered": 10},
-  "biochem_backup": { "scanned_to_saved": 25,"collected_to_scanned": 120,"saved_to_validated": 60,"turnaround": 205,"validated_to_entered": 10},
   "hormones": { "scanned_to_saved": 60,"collected_to_scanned": 120,"saved_to_validated": 60,"turnaround": 360,"validated_to_entered": 10},
-  "hormones_backup": { "scanned_to_saved": 60,"collected_to_scanned": 120,"saved_to_validated": 60,"turnaround": 205,"validated_to_entered": 10},
   "haem": { "scanned_to_saved": 20,"collected_to_scanned": 120,"saved_to_validated": 60,"turnaround": 120,"validated_to_entered": 10},
   "coagulation": { "scanned_to_saved": 40,"collected_to_scanned": 120,"saved_to_validated": 60,"turnaround": 120,"validated_to_entered": 10},
   "esr": { "scanned_to_saved": 45,"collected_to_scanned": 120,"saved_to_validated": 60,"turnaround": 120,"validated_to_entered": 10},

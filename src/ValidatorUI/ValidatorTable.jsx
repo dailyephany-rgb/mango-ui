@@ -8,19 +8,12 @@ export default function ValidatorTable({
   onEntered,
   searchTerm,
   setSearchTerm,
+  dateFrom,
+  setDateFrom,
+  dateTo,
+  setDateTo,
   loginMode
 }) {
-
-  const getTodayDate = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const [dateFrom, setDateFrom] = useState(getTodayDate());
-  const [dateTo, setDateTo] = useState(getTodayDate());
   const [sourceFilter, setSourceFilter] = useState("All");
 
   // Include Haematology in departments with results if you want to see the "Critical" or "Haemogram" status
@@ -72,35 +65,9 @@ export default function ValidatorTable({
       .join(" | ");
   };
 
-  const parseToLocalDateStr = (entry) => {
-    // UPDATED: timePrinted is now the first priority
-    const f = entry.timePrinted || entry.savedTime || entry.scannedTime || entry.timeCollected || entry.timestamp;
-    if (!f) return null;
-    
-    let d;
-    if (f.toDate) d = f.toDate();
-    else d = new Date(f);
-
-    if (isNaN(d.getTime())) return null;
-
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
+  // Date range is applied in Firestore via timePrinted; source stays client-side.
   const finalData = data.filter((item) => {
     if (sourceFilter !== "All" && item.source !== sourceFilter) return false;
-    
-    const entryDateStr = parseToLocalDateStr(item);
-    
-    if (entryDateStr) {
-      if (dateFrom && entryDateStr < dateFrom) return false;
-      if (dateTo && entryDateStr > dateTo) return false;
-    } else if (dateFrom || dateTo) {
-        return false;
-    }
-    
     return true;
   });
 

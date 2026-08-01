@@ -9,8 +9,25 @@ import {
   updateDoc,
   serverTimestamp,
   Timestamp,
+  query,
+  where,
+  orderBy,
 } from "firebase/firestore";
 import "./Backroom.css";
+import {
+  parseEntryDate,
+  toLocalDateString,
+  getLocalDateString,
+  localDayStart,
+  localDayEndExclusive,
+} from "../shared/utils/dates.js";
+import { normalizeSource } from "../shared/utils/source.js";
+import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
+import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
+import { useScopedMasterEntries } from "../shared/hooks/useScopedMasterEntries.js";
+import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
+
+
 
 const tableFixStyles = `
 .table-scroll-container {
@@ -32,91 +49,93 @@ const tableFixStyles = `
 `;
 
 export default function BloodGroupRegister() {
-  const [masterEntries, setMasterEntries] = useState([]);
   const [testingDocs, setTestingDocs] = useState({});
   const [retestingDocs, setRetestingDocs] = useState({});
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("testing");
 
   // 🛡️ INTERNAL BUFFER: Shields dropdown selections from cloud sync wipes
-  const [localResults, setLocalResults] = useState(() => {
-    const saved = localStorage.getItem("bloodgroup_localResults");
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [localResults, setLocalResults] = usePersistedObjectState("bloodgroup_localResults", {});
 
-  const [regSearch, setRegSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("All");
+  const {
+    regSearch,
+    setRegSearch,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
+    sourceFilter,
+    setSourceFilter,
+  } = useRegisterFilters();
+
+  const { masterEntries } = useScopedMasterEntries({
+    masterDeptKey: "Blood-Group",
+    dateFrom,
+    dateTo,
+  });
 
   // UPDATE: Load localScans from LocalStorage to survive refresh
-  const [localScans, setLocalScans] = useState(() => {
-    const saved = localStorage.getItem("bloodgroup_localScans");
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [localScans, setLocalScans] = usePersistedObjectState("bloodgroup_localScans", {});
   
   // FINAL FIX: Persist localScanTimes to survive refresh
-  const [localScanTimes, setLocalScanTimes] = useState(() => {
-    const saved = localStorage.getItem("bloodgroup_localScanTimes");
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const normalizeSource = (raw) => {
-    if (!raw) return "Unknown";
-    const s = raw.trim().toLowerCase();
-    if (s.includes("opd")) return "OPD";
-    if (s.includes("ipd")) return "IPD";
-    if (s.includes("third") || s.includes("3rd")) return "Third Floor";
-    return "Unknown";
-  };
-
-  const parseDate = (entry) => {
-    const f = entry.timePrinted;
-    if (!f) return null;
-    if (f?.toDate) return f.toDate();
-    if (typeof f === "string" || f instanceof Date) {
-      const d = new Date(f);
-      return isNaN(d) ? null : d;
-    }
-    if (f?.seconds) return new Date(f.seconds * 1000);
-    return null;
-  };
+  const [localScanTimes, setLocalScanTimes] = usePersistedObjectState("bloodgroup_localScanTimes", {});
 
   useEffect(() => {
-    // FIX: Get local date instead of UTC ISO date to ensure midnight rollover
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    const today = `${y}-${m}-${d}`;
-    
-    setDateFrom(today);
-    setDateTo(today);
-  }, []);
+    const fromStr = dateFrom || getLocalDateString();
+    const toStr = dateTo || getLocalDateString();
+    const start = localDayStart(fromStr);
+    const endExclusive = localDayEndExclusive(toStr);
+    if (!start || !endExclusive) return undefined;
 
-  useEffect(() => {
-    const unsubMaster = onSnapshot(collection(db, "master_register"), (snap) => {
-      setMasterEntries(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
+    const startTs = Timestamp.fromDate(start);
+    const endTs = Timestamp.fromDate(endExclusive);
 
-    const unsubTesting = onSnapshot(collection(db, "bloodgroup_testing_register"), (snap) => {
-      const data = {};
-      snap.docs.forEach(d => { data[d.id] = d.data(); });
-      setTestingDocs(data);
-    });
+    const testingQuery = query(
+      collection(db, "bloodgroup_testing_register"),
+      where("timePrinted", ">=", startTs),
+      where("timePrinted", "<", endTs),
+      orderBy("timePrinted", "asc")
+    );
+    const retestingQuery = query(
+      collection(db, "bloodgroup_retesting_register"),
+      where("timePrinted", ">=", startTs),
+      where("timePrinted", "<", endTs),
+      orderBy("timePrinted", "asc")
+    );
 
-    const unsubRetesting = onSnapshot(collection(db, "bloodgroup_retesting_register"), (snap) => {
-      const data = {};
-      snap.docs.forEach(d => { data[d.id] = d.data(); });
-      setRetestingDocs(data);
-    });
+    const unsubTesting = onSnapshot(
+      testingQuery,
+      (snap) => {
+        const data = {};
+        snap.docs.forEach((d) => {
+          data[d.id] = d.data();
+        });
+        setTestingDocs(data);
+      },
+      (err) => {
+        console.error("[BloodGroup] testing_register timePrinted query failed:", err);
+      }
+    );
+
+    const unsubRetesting = onSnapshot(
+      retestingQuery,
+      (snap) => {
+        const data = {};
+        snap.docs.forEach((d) => {
+          data[d.id] = d.data();
+        });
+        setRetestingDocs(data);
+      },
+      (err) => {
+        console.error("[BloodGroup] retesting_register timePrinted query failed:", err);
+      }
+    );
 
     return () => {
-      unsubMaster();
       unsubTesting();
       unsubRetesting();
     };
-  }, []);
+  }, [dateFrom, dateTo]);
 
   const allMergedData = useMemo(() => {
     const bloodRows = masterEntries.filter(e =>
@@ -188,11 +207,6 @@ export default function BloodGroupRegister() {
         }
       };
   
-      localStorage.setItem(
-        "bloodgroup_localResults",
-        JSON.stringify(updated)
-      );
-  
       return updated;
     });
   };
@@ -205,10 +219,6 @@ export default function BloodGroupRegister() {
   
     setLocalScans((p) => {
       const updated = { ...p, [key]: value };
-      localStorage.setItem(
-        "bloodgroup_localScans",
-        JSON.stringify(updated)
-      );
       return updated;
     });
   
@@ -217,11 +227,6 @@ export default function BloodGroupRegister() {
         ...p,
         [key]: value === "Yes" ? now : null,
       };
-  
-      localStorage.setItem(
-        "bloodgroup_localScanTimes",
-        JSON.stringify(updatedTimes)
-      );
   
       return updatedTimes;
     });
@@ -322,26 +327,19 @@ export default function BloodGroupRegister() {
         const n = { ...prev };
         delete n[key];
       
-        localStorage.setItem(
-          "bloodgroup_localResults",
-          JSON.stringify(n)
-        );
-      
         return n;
       });
       
       // UPDATE: Cleanup LocalStorage after save
       setLocalScans(p => { 
         const n = {...p}; 
-        delete n[key]; 
-        localStorage.setItem("bloodgroup_localScans", JSON.stringify(n));
+        delete n[key];
         return n; 
       });
 
       setLocalScanTimes(p => {
         const n = {...p};
         delete n[key];
-        localStorage.setItem("bloodgroup_localScanTimes", JSON.stringify(n));
         return n;
       });
       
@@ -364,11 +362,11 @@ export default function BloodGroupRegister() {
         }
         if (sourceFilter !== "All" && p.source !== sourceFilter) return false;
         
-        const d = parseDate(p);
+        const d = parseEntryDate(p);
         if (!d) return false;
         
         // FIX: Format entry date as local YYYY-MM-DD
-        const entryDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const entryDateStr = toLocalDateString(d);
         
         if (dateFrom && entryDateStr < dateFrom) return false;
         if (dateTo && entryDateStr > dateTo) return false;
@@ -376,8 +374,8 @@ export default function BloodGroupRegister() {
       })
       .sort((a, b) => {
         if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-        const dateA = parseDate(a);
-        const dateB = parseDate(b);
+        const dateA = parseEntryDate(a);
+        const dateB = parseEntryDate(b);
         return (dateA || 0) - (dateB || 0);
       });
   }, [activeEntries, regSearch, sourceFilter, dateFrom, dateTo]);
@@ -390,31 +388,16 @@ export default function BloodGroupRegister() {
       <style>{tableFixStyles}</style>
       <h3>🩸 Blood Group & Rh Type Register</h3>
 
-      <div className="filter-bar">
-        <input
-          className="reg-search"
-          placeholder="Search Reg or Diag No..."
-          value={regSearch}
-          onChange={(e) => setRegSearch(e.target.value)}
-        />
-        <div className="date-filters">
-          <label>Date:</label>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          <span>to</span>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-        </div>
-        <div className="source-buttons">
-          {["OPD", "IPD", "Third Floor", "All"].map((src) => (
-            <button
-              key={src}
-              className={sourceFilter === src ? "source-btn active" : "source-btn"}
-              onClick={() => setSourceFilter(src)}
-            >
-              {src}
-            </button>
-          ))}
-        </div>
-      </div>
+      <RegisterFilterBar
+            regSearch={regSearch}
+            setRegSearch={setRegSearch}
+            dateFrom={dateFrom}
+            setDateFrom={setDateFrom}
+            dateTo={dateTo}
+            setDateTo={setDateTo}
+            sourceFilter={sourceFilter}
+            setSourceFilter={setSourceFilter}
+          />
 
       <div className="tab-container">
         {["testing", "retesting"].map(tab => (

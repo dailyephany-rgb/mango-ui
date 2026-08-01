@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../firebaseConfig";
+import { setStaticConfig } from "../shared/cache/staticConfigCache.js";
 
 const biochemTests = [
   "ALBUMIN,SERUM",
@@ -122,6 +123,13 @@ export default function InventoryAdjustmentTab() {
         }
         
         await batch.commit();
+
+        for (const [testName, analyzer] of updates) {
+          setStaticConfig(`inventory_adjustments:${testName}`, {
+            testName,
+            analyzer,
+          });
+        }
         
 
 

@@ -1,11 +1,17 @@
 
 import React, { useState, useEffect, useMemo } from "react";
-import { db } from "../firebaseConfig";
-import { collection, onSnapshot } from "firebase/firestore";
+import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFirestore.js";
 import { getCountByTest } from "./analyticsUtils";
 import "./css/LabAnalytics.css";
 import OUTSOURCE_MAP from "../Outsource.json";
 import INSIDE_ROOM_MAP from "../inside_room_routing.json";
+import { getISTDateString } from "../shared/utils/dates.js";
+import { scopedTimestampRangeQuery } from "../shared/firestore/scopedTimestampRangeQuery.js";
+import {
+  getCache,
+  setCache,
+  SESSION_QUERY_TTL_MS,
+} from "../shared/cache/sessionQueryCache.js";
 
 const DEPARTMENTS = [
   { id: "biochemistry_register", label: "Biochemistry" },
@@ -33,50 +39,62 @@ const COMBO_TESTS = [
 export default function LabAnalytics() {
   const [activeColl, setActiveColl] = useState("biochemistry_register");
   const [entries, setEntries] = useState([]);
-  
-  // Updated to initialize with Indian Standard Time Date
-  const getISTDate = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
-  const [dateFrom, setDateFrom] = useState(getISTDate());
-  const [dateTo, setDateTo] = useState(getISTDate());
+  const today = getISTDateString();
+  const [dateFrom, setDateFrom] = useState(today);
+  const [dateTo, setDateTo] = useState(today);
   const [sourceFilter, setSourceFilter] = useState("All");
   const [testSearch, setTestSearch] = useState(""); 
   const [labFilter, setLabFilter] = useState("All");
   const [insideDeptFilter, setInsideDeptFilter] = useState("All");
   const [comboCategory, setComboCategory] = useState("All");
 
-  const parseDateForFilter = (field) => {
-    if (!field) return null;
-    let d;
-    if (field.seconds) {
-      d = new Date(field.seconds * 1000);
-    } else {
-      d = new Date(field);
-    }
-    
-    if (isNaN(d)) return null;
-
-    // Returns YYYY-MM-DD specifically for the Asia/Kolkata timezone
-    return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }); 
-  };
-
+  // Active dept collection scoped by timePrinted (IST date range)
   useEffect(() => {
     const collectionName =
       activeColl === "biochemistry_combo"
         ? "biochemistry_register"
         : activeColl;
-  
-    const unsub = onSnapshot(collection(db, collectionName), (snap) => {
-      setEntries(
-        snap.docs.map(d => ({
+
+    const cacheKey = `labAnalytics:${dateFrom}:${dateTo}:${activeColl}`;
+    const cached = getCache(cacheKey);
+    if (Array.isArray(cached)) {
+      setEntries(cached);
+    }
+
+    const q = scopedTimestampRangeQuery(
+      collectionName,
+      "timePrinted",
+      { from: dateFrom, to: dateTo },
+      "asc"
+    );
+
+    if (!q) {
+      setEntries([]);
+      return undefined;
+    }
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const next = snap.docs.map((d) => ({
           id: d.id,
           ...d.data(),
-        }))
-      );
-    });
-  
+        }));
+        setEntries(next);
+        setCache(cacheKey, next, SESSION_QUERY_TTL_MS);
+      },
+      (err) => {
+        console.error(
+          `[LabAnalytics] ${collectionName} timePrinted query failed:`,
+          err
+        );
+        setEntries([]);
+      }
+    );
+
     return () => unsub();
-  }, [activeColl]);
+  }, [activeColl, dateFrom, dateTo]);
 
 
   const selectedOutsourceTests = useMemo(
@@ -107,17 +125,8 @@ export default function LabAnalytics() {
 
 
 
-  // Filter entries based on Date and Source
-  
+  // Date applied in Firestore via timePrinted; source/lab/combo stay client-side
   const filteredEntries = entries.filter(item => {
-    const entryDateStr = parseDateForFilter(
-      item.timePrinted || item.timeCollected || item.savedTime
-    );
-  
-    const inRange =
-      !entryDateStr ||
-      (entryDateStr >= dateFrom && entryDateStr <= dateTo);
-  
     const matchesSource =
       sourceFilter === "All" ||
       item.source?.toLowerCase() === sourceFilter.toLowerCase();
@@ -148,7 +157,6 @@ export default function LabAnalytics() {
           (item.category || "").toLowerCase() === comboCategory.toLowerCase();
   
           return (
-            inRange &&
             matchesSource &&
             matchesLab &&
             matchesInsideDept &&

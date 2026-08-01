@@ -3,8 +3,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import "./BiochemistryMain.css";
 import { db } from "../firebaseConfig.js";
 import {
-  collection,
-  onSnapshot,
   doc,
   setDoc,
   updateDoc,
@@ -20,6 +18,18 @@ import {
   handleInventoryDeduction,
   getVitrosDeductibleTests
 } from "../inventory/inventorymapping";
+import {
+  parseEntryDate,
+  toLocalDateString,
+} from "../shared/utils/dates.js";
+import { normalizeSource } from "../shared/utils/source.js";
+import { compositeId } from "../shared/utils/ids.js";
+import { getTestName } from "../shared/utils/tests.js";
+import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
+import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
+import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
+import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
+import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
 
 
 
@@ -27,14 +37,35 @@ import {
 const CURRENT_DEPT = "Hormones";
 
 export default function HormonesMain() {
-  const [masterEntries, setMasterEntries] = useState([]);
-  const [deptDocs, setDeptDocs] = useState({});
-  const [loading, setLoading] = useState(true);
+  const {
+    regSearch,
+    setRegSearch,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
+    sourceFilter,
+    setSourceFilter,
+  } = useRegisterFilters();
+
+  const {
+    masterEntries,
+    deptDocs,
+    savedSet,
+    criticalReportedSet,
+    loading,
+  } = useMasterDeptSnapshots({
+    deptCollection: "hormones_main",
+    currentDept: CURRENT_DEPT,
+    masterDeptKey: "Hormones",
+    dateFrom,
+    dateTo,
+    isSavedDoc: (data) =>
+      data.status === "saved" || data.saved === "Yes",
+  });
   
   // NEW: State to toggle between Register and Inventory view
   
-
-  const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
 
 const [criticalModalOpen, setCriticalModalOpen] = useState(false);
 const [criticalPatient, setCriticalPatient] = useState(null);
@@ -42,100 +73,23 @@ const [criticalPatient, setCriticalPatient] = useState(null);
 const [criticalParameterInput, setCriticalParameterInput] = useState("");
 const [criticalReportedByInput, setCriticalReportedByInput] = useState("");
 
-const [criticalParams, setCriticalParams] = useState(() => {
-  const saved = localStorage.getItem("hormones_pendingCritical");
-  return saved ? JSON.parse(saved) : {};
-});
+const [criticalParams, setCriticalParams] = usePersistedObjectState(
+  "hormones_pendingCritical",
+  {}
+);
 
   // UPDATE: Persistent LocalStorage for Scans and Scan Times
-  const [localScans, setLocalScans] = useState(() => {
-    const saved = localStorage.getItem("hormones_localScans");
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [localScans, setLocalScans] = usePersistedObjectState(
+    "hormones_localScans",
+    {}
+  );
 
-  const [localScanTimes, setLocalScanTimes] = useState(() => {
-    const saved = localStorage.getItem("hormones_localScanTimes");
-    return saved ? JSON.parse(saved) : {};
-  }); 
-
-  const [savedSet, setSavedSet] = useState(new Set());
-
-  // Filters
-  const [regSearch, setRegSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("All");
+  const [localScanTimes, setLocalScanTimes] = usePersistedObjectState(
+    "hormones_localScanTimes",
+    {}
+  ); 
 
   const hormoneTests = hormoneRouting.MainAnalyzer?.tests || hormoneRouting?.tests || [];
-  const getTestName = (t) => (typeof t === "string" ? t : t?.test || "");
-
-  const normalizeSource = (raw) => {
-    if (!raw) return "Unknown";
-    const s = raw.trim().toLowerCase();
-    if (s.includes("opd")) return "OPD";
-    if (s.includes("ipd")) return "IPD";
-    if (s.includes("third") || s.includes("3rd")) return "Third Floor";
-    return "Unknown";
-  };
-
-  const parseDate = (entry) => {
-    const fields = [entry.timePrinted, entry.timeCollected, entry.scannedTime, entry.savedTime, entry.createdAt];
-    for (const f of fields) {
-      if (!f) continue;
-      if (typeof f === "object" && typeof f.toDate === "function") return f.toDate();
-      if (typeof f === "string") { const d = new Date(f); if (!isNaN(d)) return d; }
-      if (typeof f === "object" && typeof f.seconds === "number") return new Date(f.seconds * 1000);
-    }
-    return null;
-  };
-
-  useEffect(() => {
-    // FIX: Set local date to roll over at midnight local time
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    const today = `${y}-${m}-${d}`;
-
-    setDateFrom(today);
-    setDateTo(today);
-  }, []);
-
-  useEffect(() => {
-    const unsubMaster = onSnapshot(collection(db, "master_register"), (snapshot) => {
-      setMasterEntries(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    });
-
-    const unsubDept = onSnapshot(collection(db, "hormones_main"), (snapshot) => {
-      const docsMap = {};
-      const sSet = new Set();
-      snapshot.docs.forEach(d => {
-        const data = d.data();
-        // FIX: Use composite key as index
-        const key = `${data.regNo}_${data.diagnosticNo}`;
-        docsMap[key] = data;
-        if (data.status === "saved" || data.saved === "Yes") sSet.add(key);
-      });
-      setDeptDocs(docsMap);
-      setSavedSet(sSet);
-    });
-
-    const unsubCritical = onSnapshot(collection(db, "critical_alerts"), (snap) => {
-      const cSet = new Set();
-      snap.docs.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data.regNo && data.dept === CURRENT_DEPT) {
-          // FIX: Critical alerts also mapped via composite key
-          const cKey = `${data.regNo}_${data.diagnosticNo}`;
-          cSet.add(cKey);
-        }
-      });
-      setCriticalReportedSet(cSet);
-    });
-
-    return () => { unsubMaster(); unsubDept(); unsubCritical(); };
-  }, []);
 
   const patients = useMemo(() => {
     const filtered = masterEntries.filter(
@@ -146,7 +100,7 @@ const [criticalParams, setCriticalParams] = useState(() => {
 
     return filtered.map((entry) => {
       // FIX: Ensure patient identifier matches the composite ID logic
-      const compositeKey = `${entry.regNo}_${entry.diagnosticNo}`;
+      const compositeKey = compositeId(entry.regNo, entry.diagnosticNo);
       const savedData = deptDocs[compositeKey] || {};
       const localScan = localScans[compositeKey];
 
@@ -172,23 +126,12 @@ const [criticalParams, setCriticalParams] = useState(() => {
     const regKey = patient.compositeKey;
     const now = new Date().toISOString();
   
-    setLocalScans((prev) => {
-      const updated = { ...prev, [regKey]: value };
-      localStorage.setItem("hormones_localScans", JSON.stringify(updated));
-      return updated;
-    });
+    setLocalScans((prev) => ({ ...prev, [regKey]: value }));
   
-    setLocalScanTimes((prev) => {
-      const updatedTimes = {
-        ...prev,
-        [regKey]: value === "Yes" ? now : null,
-      };
-      localStorage.setItem(
-        "hormones_localScanTimes",
-        JSON.stringify(updatedTimes)
-      );
-      return updatedTimes;
-    });
+    setLocalScanTimes((prev) => ({
+      ...prev,
+      [regKey]: value === "Yes" ? now : null,
+    }));
   
     try {
       
@@ -230,22 +173,13 @@ const [criticalParams, setCriticalParams] = useState(() => {
   
     const regKey = criticalPatient.compositeKey;
   
-    setCriticalParams((prev) => {
-      const updated = {
-        ...prev,
-        [regKey]: {
-          parameter: criticalParameterInput.trim(),
-          criticalReportedBy: criticalReportedByInput.trim(),
-        },
-      };
-  
-      localStorage.setItem(
-        "hormones_pendingCritical",
-        JSON.stringify(updated)
-      );
-  
-      return updated;
-    });
+    setCriticalParams((prev) => ({
+      ...prev,
+      [regKey]: {
+        parameter: criticalParameterInput.trim(),
+        criticalReportedBy: criticalReportedByInput.trim(),
+      },
+    }));
   
     setCriticalModalOpen(false);
     setCriticalPatient(null);
@@ -323,6 +257,7 @@ const [criticalParams, setCriticalParams] = useState(() => {
       await updateDoc(
         doc(db, "report_details", regKey),
         {
+          [`routineReportsScanned.${CURRENT_DEPT}`]: true,
           [`routineReportsSaved.${CURRENT_DEPT}`]: true,
         }
       );
@@ -357,14 +292,12 @@ const [criticalParams, setCriticalParams] = useState(() => {
       setLocalScans((prev) => {
         const next = { ...prev };
         delete next[regKey];
-        localStorage.setItem("hormones_localScans", JSON.stringify(next));
         return next;
       });
 
       setLocalScanTimes((prev) => {
         const next = { ...prev };
         delete next[regKey];
-        localStorage.setItem("hormones_localScanTimes", JSON.stringify(next));
         return next;
       });
 
@@ -387,9 +320,9 @@ const [criticalParams, setCriticalParams] = useState(() => {
       }
       if (sourceFilter !== "All" && p.source !== sourceFilter) return false;
       
-      const eDate = parseDate(p);
+      const eDate = parseEntryDate(p);
       if (eDate) {
-        const entryDateStr = `${eDate.getFullYear()}-${String(eDate.getMonth() + 1).padStart(2, '0')}-${String(eDate.getDate()).padStart(2, '0')}`;
+        const entryDateStr = toLocalDateString(eDate);
         if (dateFrom && entryDateStr < dateFrom) return false;
         if (dateTo && entryDateStr > dateTo) return false;
       }
@@ -397,8 +330,8 @@ const [criticalParams, setCriticalParams] = useState(() => {
     })
     .sort((a, b) => {
       if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-      const dateA = parseDate(a);
-      const dateB = parseDate(b);
+      const dateA = parseEntryDate(a);
+      const dateB = parseEntryDate(b);
       if (!dateA) return 1;
       if (!dateB) return -1;
       return dateA - dateB;
@@ -419,20 +352,16 @@ const [criticalParams, setCriticalParams] = useState(() => {
         <>
           <h2 className="dept-header">Hormones Department — Main Analyzer</h2>
 
-          <div className="filter-bar">
-            <input className="reg-search" placeholder="Search Reg or Diag No..." value={regSearch} onChange={(e) => setRegSearch(e.target.value)} />
-            <div className="date-filters">
-              <label>Date:</label>
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-              <span>to</span>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-            </div>
-            <div className="source-buttons">
-              {["OPD", "IPD", "Third Floor", "All"].map((src) => (
-                <button key={src} className={`source-btn ${sourceFilter === src ? "active" : ""}`} onClick={() => setSourceFilter(src)}>{src}</button>
-              ))}
-            </div>
-          </div>
+          <RegisterFilterBar
+            regSearch={regSearch}
+            setRegSearch={setRegSearch}
+            dateFrom={dateFrom}
+            setDateFrom={setDateFrom}
+            dateTo={dateTo}
+            setDateTo={setDateTo}
+            sourceFilter={sourceFilter}
+            setSourceFilter={setSourceFilter}
+          />
 
           <div className="table-wrapper">
             <table className="dept-table">
@@ -532,54 +461,21 @@ const [criticalParams, setCriticalParams] = useState(() => {
         </>
         
           {criticalModalOpen && (
-            <div className="critical-modal-overlay">
-              <div className="critical-modal">
-    
-                <h3>Critical Alert</h3>
-    
-                <label>Critical Parameter &amp; Value</label>
-    
-                <input
-                  type="text"
-                  value={criticalParameterInput}
-                  onChange={(e) => setCriticalParameterInput(e.target.value)}
-                  placeholder="e.g. TSH: 0.01"
-                />
-    
-                <label style={{ marginTop: "15px" }}>
-                  Critical Reported By
-                </label>
-    
-                <input
-                  type="text"
-                  value={criticalReportedByInput}
-                  onChange={(e) => setCriticalReportedByInput(e.target.value)}
-                  placeholder="Enter Name"
-                />
-    
-                <div className="modal-actions">
-                  <button
-                    className="source-btn"
-                    onClick={() => {
-                      setCriticalModalOpen(false);
-                      setCriticalPatient(null);
-                    }}
-                  >
-                    Cancel
-                  </button>
-    
-                  <button
-                    className="save-btn"
-                    style={{ width: "120px" }}
-                    onClick={saveCriticalDetails}
-                  >
-                    Save
-                  </button>
-                </div>
-    
-              </div>
-            </div>
-          )}
+      <CriticalAlertModal
+        open={criticalModalOpen}
+        parameterInput={criticalParameterInput}
+        setParameterInput={setCriticalParameterInput}
+        reportedByInput={criticalReportedByInput}
+        setReportedByInput={setCriticalReportedByInput}
+        onCancel={() => {
+          setCriticalModalOpen(false);
+          setCriticalPatient(null);
+        }}
+        onSave={saveCriticalDetails}
+        parameterPlaceholder="e.g. TSH: 0.01"
+        actionsClassName="modal-actions"
+      />
+      )}
     
         </div>
       );

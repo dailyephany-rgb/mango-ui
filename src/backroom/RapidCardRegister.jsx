@@ -1,9 +1,7 @@
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { db } from "../firebaseConfig";
 import {
-  collection,
-  onSnapshot,
   setDoc,
   doc,
   updateDoc,
@@ -12,6 +10,19 @@ import {
 } from "firebase/firestore";
 import routing from "../backroom_routing.json";
 import "./Backroom.css";
+import {
+  parseEntryDate,
+  toLocalDateString,
+} from "../shared/utils/dates.js";
+import { normalizeSource } from "../shared/utils/source.js";
+import { compositeId } from "../shared/utils/ids.js";
+import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
+import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
+import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
+import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
+import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
+
+
 import { handleInventoryDeduction } from "../inventory/inventorymapping";
 
 // 🚨 Define the unique key for this department
@@ -77,34 +88,42 @@ const overflowStyles = `
 `;
 
 export default function RapidCardRegister() {
-  const [masterEntries, setMasterEntries] = useState([]);
-  const [rapidDocs, setRapidDocs] = useState({});
+  const {
+    regSearch,
+    setRegSearch,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
+    sourceFilter,
+    setSourceFilter,
+  } = useRegisterFilters();
+
+  const {
+    masterEntries,
+    deptDocs: rapidDocs,
+    criticalReportedSet,
+  } = useMasterDeptSnapshots({
+    deptCollection: "rapid_card_register",
+    currentDept: CURRENT_DEPT,
+    masterDeptKey: "RapidCard",
+    dateFrom,
+    dateTo,
+    getDeptDocKey: (_data, docId) => docId,
+    criticalBelongsToDept: (data, dept) =>
+      String(data.dept).toLowerCase() === String(dept).toLowerCase(),
+    getCriticalKey: (data) => compositeId(data.regNo, data.diagnosticNo),
+  });
   const [saving, setSaving] = useState(false);
 
   // 🛡️ INTERNAL BUFFER: Shields results from cloud sync wipes on slow internet
-  const [localResults, setLocalResults] = useState(() => {
-    const saved = localStorage.getItem("rapid_localResults");
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const [regSearch, setRegSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("All");
+  const [localResults, setLocalResults] = usePersistedObjectState("rapid_localResults", {});
 
   // UPDATE: Load localScans from LocalStorage to survive refresh
-  const [localScans, setLocalScans] = useState(() => {
-    const saved = localStorage.getItem("rapid_localScans");
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [localScans, setLocalScans] = usePersistedObjectState("rapid_localScans", {});
 
   // FINAL FIX: Persist localScanTimes to survive refresh
-  const [localScanTimes, setLocalScanTimes] = useState(() => {
-    const saved = localStorage.getItem("rapid_localScanTimes");
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
+  const [localScanTimes, setLocalScanTimes] = usePersistedObjectState("rapid_localScanTimes", {});
 
 const [criticalModalOpen, setCriticalModalOpen] = useState(false);
 const [criticalPatient, setCriticalPatient] = useState(null);
@@ -112,10 +131,7 @@ const [criticalPatient, setCriticalPatient] = useState(null);
 const [criticalParameterInput, setCriticalParameterInput] = useState("");
 const [criticalReportedByInput, setCriticalReportedByInput] = useState("");
 
-const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
-  const saved = localStorage.getItem("rapid_pendingCritical");
-  return saved ? JSON.parse(saved) : {};
-});
+const [pendingCriticalMap, setPendingCriticalMap] = usePersistedObjectState("rapid_pendingCritical", {});
 
   const testsForRegister = routing.RapidCardRegister;
 
@@ -132,17 +148,6 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
     });
   };
 
- 
-
-  const normalizeSource = (raw) => {
-    if (!raw) return "Unknown";
-    const s = raw.toLowerCase();
-    if (s.includes("opd")) return "OPD";
-    if (s.includes("ipd")) return "IPD";
-    if (s.includes("third") || s.includes("3rd")) return "Third Floor";
-    return "Unknown";
-  };
-
   const ensureFirestoreTimestamp = (val) => {
     if (!val) return null;
     if (val instanceof Timestamp) return val;
@@ -154,61 +159,6 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
     const d = new Date(val);
     return isNaN(d) ? null : Timestamp.fromDate(d);
   };
-
-
-
-  const parseDate = (entry) => {
-    const fields = [entry.timePrinted, entry.timeCollected, entry.scannedTime, entry.savedTime, entry.createdAt];
-    for (const f of fields) {
-      if (!f) continue;
-      if (typeof f === "object" && f?.toDate) return f.toDate();
-      if (typeof f === "string" || f instanceof Date) {
-        const d = new Date(f);
-        if (!isNaN(d)) return d;
-      }
-      if (f?.seconds) return new Date(f.seconds * 1000);
-    }
-    return null;
-  };
-
-  useEffect(() => {
-    // FIX: Set local date to roll over at midnight local time
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    const today = `${y}-${m}-${d}`;
-    
-    setDateFrom(today);
-    setDateTo(today);
-  }, []);
-
-  useEffect(() => {
-    const unsubMaster = onSnapshot(collection(db, "master_register"), (snap) => {
-      setMasterEntries(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-
-    const unsubRapid = onSnapshot(collection(db, "rapid_card_register"), (snap) => {
-      const data = {};
-      snap.docs.forEach(d => { data[d.id] = d.data(); });
-      setRapidDocs(data);
-    });
-
-    const unsubCritical = onSnapshot(collection(db, "critical_alerts"), (snap) => {
-      const cSet = new Set();
-      snap.docs.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data.regNo && String(data.dept).toLowerCase() === CURRENT_DEPT.toLowerCase()) {
-          // UPDATE: Critical alerts tracked by composite key
-          const cKey = `${data.regNo}_${data.diagnosticNo}`;
-          cSet.add(cKey);
-        }
-      });
-      setCriticalReportedSet(cSet);
-    });
-
-    return () => { unsubMaster(); unsubRapid(); unsubCritical(); };
-  }, []);
 
   const mergedEntries = useMemo(() => {
     const filtered = masterEntries.filter((entry) => getRapidSelectedTests(entry.selectedTests || []).length > 0);
@@ -334,11 +284,6 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
           },
         };
     
-        localStorage.setItem(
-          "rapid_localResults",
-          JSON.stringify(updated)
-        );
-    
         return updated;
       });
     };
@@ -352,11 +297,6 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
     setLocalScans((prev) => {
       const updated = { ...prev, [regKey]: value };
   
-      localStorage.setItem(
-        "rapid_localScans",
-        JSON.stringify(updated)
-      );
-  
       return updated;
     });
   
@@ -365,11 +305,6 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
         ...prev,
         [regKey]: value === "Yes" ? now : null,
       };
-  
-      localStorage.setItem(
-        "rapid_localScanTimes",
-        JSON.stringify(updatedTimes)
-      );
   
       return updatedTimes;
     });
@@ -429,11 +364,6 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
           criticalReportedBy: criticalReportedByInput.trim(),
         },
       };
-  
-      localStorage.setItem(
-        "rapid_pendingCritical",
-        JSON.stringify(updated)
-      );
   
       return updated;
     });
@@ -544,37 +474,25 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
         const n = { ...prev };
         delete n[compositeKey];
       
-        localStorage.setItem(
-          "rapid_localResults",
-          JSON.stringify(n)
-        );
-      
         return n;
       });
       
       // UPDATE: Cleanup LocalStorage after save
       setLocalScans(prev => { 
         const n = {...prev}; 
-        delete n[compositeKey]; 
-        localStorage.setItem("rapid_localScans", JSON.stringify(n));
+        delete n[compositeKey];
         return n; 
       });
 
       setLocalScanTimes(prev => {
         const n = {...prev};
         delete n[compositeKey];
-        localStorage.setItem("rapid_localScanTimes", JSON.stringify(n));
         return n;
       });
 
       setPendingCriticalMap((prev) => {
         const n = { ...prev };
         delete n[compositeKey];
-      
-        localStorage.setItem(
-          "rapid_pendingCritical",
-          JSON.stringify(n)
-        );
       
         return n;
       });
@@ -592,9 +510,9 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
         }
         if (sourceFilter !== "All" && e.source !== sourceFilter) return false;
         
-        const d = parseDate(e);
+        const d = parseEntryDate(e);
         if (d) {
-          const entryDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          const entryDateStr = toLocalDateString(d);
           if (dateFrom && entryDateStr < dateFrom) return false;
           if (dateTo && entryDateStr > dateTo) return false;
         }
@@ -602,8 +520,8 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
       })
       .sort((a, b) => {
         if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-        const dateA = parseDate(a);
-        const dateB = parseDate(b);
+        const dateA = parseEntryDate(a);
+        const dateB = parseEntryDate(b);
         return (dateA || 0) - (dateB || 0);
       });
   }, [mergedEntries, regSearch, sourceFilter, dateFrom, dateTo]);
@@ -639,20 +557,16 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
       <div className="register-section">
       <style>{overflowStyles}</style>
       <h3>💉 Rapid Card Register</h3>
-      <div className="filter-bar">
-        <input className="reg-search" placeholder="Search Reg or Diag No..." value={regSearch} onChange={(e) => setRegSearch(e.target.value)} />
-        <div className="date-filters">
-          <label>Date:</label>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          <span>to</span>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-        </div>
-        <div className="source-buttons">
-          {["OPD", "IPD", "Third Floor", "All"].map((src) => (
-            <button key={src} className={sourceFilter === src ? "source-btn active" : "source-btn"} onClick={() => setSourceFilter(src)}>{src}</button>
-          ))}
-        </div>
-      </div>
+      <RegisterFilterBar
+            regSearch={regSearch}
+            setRegSearch={setRegSearch}
+            dateFrom={dateFrom}
+            setDateFrom={setDateFrom}
+            dateTo={dateTo}
+            setDateTo={setDateTo}
+            sourceFilter={sourceFilter}
+            setSourceFilter={setSourceFilter}
+          />
       <div className="table-scroll-container">
         <table className="backroom-table">
            <thead>
@@ -891,54 +805,24 @@ const [pendingCriticalMap, setPendingCriticalMap] = useState(() => {
       </div>
 
 {criticalModalOpen && (
-  <div className="critical-modal-overlay">
-    <div className="critical-modal">
-
-      <h3>Critical Alert</h3>
-
-      <label>Critical Parameters &amp; Values</label>
-
-      <textarea
-      value={criticalParameterInput}
-      readOnly
-      className="critical-params"
-      rows={8}
-    />
-
-      <label style={{ marginTop: "15px" }}>
-        Critical Reported By
-      </label>
-
-      <input
-        type="text"
-        value={criticalReportedByInput}
-        onChange={(e) => setCriticalReportedByInput(e.target.value)}
-        placeholder="Enter Name"
+      <CriticalAlertModal
+        open={criticalModalOpen}
+        parameterInput={criticalParameterInput}
+        setParameterInput={setCriticalParameterInput}
+        reportedByInput={criticalReportedByInput}
+        setReportedByInput={setCriticalReportedByInput}
+        onCancel={() => {
+          setCriticalModalOpen(false);
+          setCriticalPatient(null);
+        }}
+        onSave={saveCriticalDetails}
+        parameterLabel="Critical Parameters & Values"
+        parameterAsTextarea
+        parameterReadOnly
+        parameterRows={8}
+        actionsClassName="modal-actions"
       />
-
-      <div className="modal-actions">
-        <button
-          className="source-btn"
-          onClick={() => {
-            setCriticalModalOpen(false);
-            setCriticalPatient(null);
-          }}
-        >
-          Cancel
-        </button>
-
-        <button
-          className="save-btn"
-          style={{ width: "120px" }}
-          onClick={saveCriticalDetails}
-        >
-          Save
-        </button>
-      </div>
-
-    </div>
-  </div>
-)}
+      )}
 
 </>
 );

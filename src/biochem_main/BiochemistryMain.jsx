@@ -3,8 +3,6 @@ import React, { useEffect, useState, useMemo } from "react";
 import "./BiochemistryMain.css";
 import { db } from "../firebaseConfig.js";
 import {
-  collection,
-  onSnapshot,
   updateDoc,
   doc,
   setDoc,
@@ -24,112 +22,72 @@ import {
 import { requireLogin } from "../auth/Authguard.js";
 import UserMenu from "../auth/UserMenu";
 import InventoryAdjustmentTab from "../inventory/InventoryAdjustmentTab.jsx";
+import {
+  parseEntryDate,
+  toLocalDateString,
+  getISTLocaleString,
+} from "../shared/utils/dates.js";
+import { normalizeSource } from "../shared/utils/source.js";
+import { compositeId } from "../shared/utils/ids.js";
+import { getTestName } from "../shared/utils/tests.js";
+import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
+import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
+import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
+import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
+import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
 
 const CURRENT_DEPT = "Bio-Chemistry";
 
 export default function BiochemistryMain() {
-  const [masterEntries, setMasterEntries] = useState([]);
-  const [biochemDocs, setBiochemDocs] = useState({});
-  const [loading, setLoading] = useState(true);
+  const {
+    regSearch,
+    setRegSearch,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
+    sourceFilter,
+    setSourceFilter,
+  } = useRegisterFilters();
+
+  const {
+    masterEntries,
+    setMasterEntries,
+    deptDocs: biochemDocs,
+    savedSet,
+    criticalReportedSet,
+    loading,
+  } = useMasterDeptSnapshots({
+    deptCollection: "biochemistry_register",
+    currentDept: CURRENT_DEPT,
+    masterDeptKey: "Bio-Chemistry",
+    dateFrom,
+    dateTo,
+  });
+
   const [activeTab, setActiveTab] = useState("biochem");
-  const [savedSet, setSavedSet] = useState(new Set());
   
-  const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
   const [criticalModalOpen, setCriticalModalOpen] = useState(false);
   const [criticalPatient, setCriticalPatient] = useState(null);
 
   const [criticalParameterInput, setCriticalParameterInput] = useState("");
   const [criticalReportedByInput, setCriticalReportedByInput] = useState("");
-  const [criticalParams, setCriticalParams] = useState(() => {
-    const saved = localStorage.getItem(
-      "biochem_pendingCritical"
-    );
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [criticalParams, setCriticalParams] = usePersistedObjectState(
+    "biochem_pendingCritical",
+    {}
+  );
 
+  const [localScans, setLocalScans] = usePersistedObjectState(
+    "biochem_localScans",
+    {}
+  );
 
-  const [localScans, setLocalScans] = useState(() => {
-    const saved = localStorage.getItem("biochem_localScans");
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const [localScanTimes, setLocalScanTimes] = useState(() => {
-    const saved = localStorage.getItem("biochem_localScanTimes");
-    return saved ? JSON.parse(saved) : {};
-  }); 
-
-  const [regSearch, setRegSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("All");
+  const [localScanTimes, setLocalScanTimes] = usePersistedObjectState(
+    "biochem_localScanTimes",
+    {}
+  ); 
 
   const biochemTests = biochemRouting?.MainAnalyzer?.tests || [];
-  const getTestName = (t) => (typeof t === "string" ? t : t?.test || "");
-
-  const normalizeSource = (raw) => {
-    if (!raw) return "Unknown";
-    const s = raw.trim().toLowerCase();
-    if (s.includes("opd")) return "OPD";
-    if (s.includes("ipd")) return "IPD";
-    if (s.includes("third") || s.includes("3rd")) return "Third Floor";
-    return "Unknown";
-  };
-
-  const parseDate = (entry) => {
-    const fields = [entry.timePrinted, entry.timeCollected, entry.scannedTime, entry.savedTime, entry.createdAt];
-    for (const f of fields) {
-      if (!f) continue;
-      if (typeof f === "object" && typeof f.toDate === "function") return f.toDate();
-      if (typeof f === "string") { const d = new Date(f); if (!isNaN(d)) return d; }
-      if (typeof f === "object" && typeof f.seconds === "number") return new Date(f.seconds * 1000);
-    }
-    return null;
-  };
-
-  useEffect(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    const today = `${y}-${m}-${d}`;
-
-    setDateFrom(today);
-    setDateTo(today);
-  }, []);
-
-  useEffect(() => {
-    const unsubMaster = onSnapshot(collection(db, "master_register"), (snapshot) => {
-      setMasterEntries(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    });
-
-    const unsubBio = onSnapshot(collection(db, "biochemistry_register"), (snap) => {
-      const docsMap = {};
-      const sSet = new Set();
-      snap.docs.forEach((d) => {
-        const data = d.data();
-        const key = `${data.regNo}_${data.diagnosticNo}`;
-        docsMap[key] = data;
-        if (data?.saved === "Yes" || data?.status === "saved") sSet.add(key);
-      });
-      setBiochemDocs(docsMap);
-      setSavedSet(sSet);
-    });
-
-    const unsubCritical = onSnapshot(collection(db, "critical_alerts"), (snap) => {
-      const cSet = new Set();
-      snap.docs.forEach(docSnap => {
-        const data = docSnap.data();
-        if (data.regNo && data.dept === CURRENT_DEPT) {
-          const cKey = `${data.regNo}_${data.diagnosticNo}`;
-          cSet.add(cKey);
-        }
-      });
-      setCriticalReportedSet(cSet);
-    });
-
-    return () => { unsubMaster(); unsubBio(); unsubCritical(); };
-  }, []);
 
   const patients = useMemo(() => {
     const filteredMaster = masterEntries.filter((entry) =>
@@ -137,7 +95,7 @@ export default function BiochemistryMain() {
     );
 
     return filteredMaster.map((entry) => {
-      const regKey = `${entry.regNo}_${entry.diagnosticNo}`;
+      const regKey = compositeId(entry.regNo, entry.diagnosticNo);
       const saved = biochemDocs[regKey] || {};
       const localScan = localScans[regKey];
       const localScanTime =localScanTimes[regKey];
@@ -172,19 +130,14 @@ export default function BiochemistryMain() {
 
   const handleScanToggle = async (patient, value) => {
     const regKey = patient.compositeKey;
-    const nowIST = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }); 
+    const nowIST = getISTLocaleString(); 
 
-    setLocalScans((prev) => {
-      const updated = { ...prev, [regKey]: value };
-      localStorage.setItem("biochem_localScans", JSON.stringify(updated));
-      return updated;
-    });
+    setLocalScans((prev) => ({ ...prev, [regKey]: value }));
 
-    setLocalScanTimes((prev) => {
-      const updatedTimes = { ...prev, [regKey]: value === "Yes" ? nowIST : null };
-      localStorage.setItem("biochem_localScanTimes", JSON.stringify(updatedTimes));
-      return updatedTimes;
-    });
+    setLocalScanTimes((prev) => ({
+      ...prev,
+      [regKey]: value === "Yes" ? nowIST : null,
+    }));
 
     try {
       
@@ -223,22 +176,13 @@ export default function BiochemistryMain() {
   
     const regKey = criticalPatient.compositeKey;
   
-    setCriticalParams((prev) => {
-      const updated = {
-        ...prev,
-        [regKey]: {
-          parameter: criticalParameterInput.trim(),
-          criticalReportedBy: criticalReportedByInput.trim(),
+    setCriticalParams((prev) => ({
+      ...prev,
+      [regKey]: {
+        parameter: criticalParameterInput.trim(),
+        criticalReportedBy: criticalReportedByInput.trim(),
       },
-      };
-  
-      localStorage.setItem(
-        "biochem_pendingCritical",
-        JSON.stringify(updated)
-      );
-  
-      return updated;
-    });
+    }));
   
     setCriticalModalOpen(false);
     setCriticalPatient(null);
@@ -335,6 +279,7 @@ export default function BiochemistryMain() {
       await updateDoc(
         doc(db, "report_details", regKey),
         {
+          [`routineReportsScanned.${CURRENT_DEPT}`]: true,
           [`routineReportsSaved.${CURRENT_DEPT}`]: true,
         }
       );
@@ -360,23 +305,15 @@ export default function BiochemistryMain() {
       
       setLocalScans(prev => { 
         const n = {...prev}; delete n[regKey]; 
-        localStorage.setItem("biochem_localScans", JSON.stringify(n));
         return n; 
       });
       setLocalScanTimes(prev => {
         const n = {...prev}; delete n[regKey];
-        localStorage.setItem("biochem_localScanTimes", JSON.stringify(n));
         return n;
       });
       setCriticalParams((prev) => {
         const n = { ...prev };
         delete n[regKey];
-      
-        localStorage.setItem(
-          "biochem_pendingCritical",
-          JSON.stringify(n)
-        );
-      
         return n;
       });
       alert(`Saved entry for ${payload.name} ${isCritical === "Yes" ? "(Critical Alert Sent)" : ""}`);
@@ -441,26 +378,16 @@ export default function BiochemistryMain() {
               <h2 className="dept-header">
           Biochemistry Department — Main Analyzer
         </h2>
-          <div className="filter-bar">
-            <input className="reg-search" placeholder="Search Reg or Diag No..." value={regSearch} onChange={(e) => setRegSearch(e.target.value)} />
-            <div className="date-filters">
-              <label>Date:</label>
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-              <span>to</span>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-            </div>
-            <div className="source-buttons">
-              {["OPD", "IPD", "Third Floor", "All"].map((src) => (
-                <button 
-                  key={src} 
-                  className={sourceFilter === src ? "source-btn active" : "source-btn"} 
-                  onClick={() => setSourceFilter(src)}
-                >
-                  {src}
-                </button>
-              ))}
-            </div>
-          </div>
+          <RegisterFilterBar
+            regSearch={regSearch}
+            setRegSearch={setRegSearch}
+            dateFrom={dateFrom}
+            setDateFrom={setDateFrom}
+            dateTo={dateTo}
+            setDateTo={setDateTo}
+            sourceFilter={sourceFilter}
+            setSourceFilter={setSourceFilter}
+          />
 
           <div className="table-wrapper">
             <table className="dept-table">
@@ -493,9 +420,9 @@ export default function BiochemistryMain() {
                     }
                     if (sourceFilter !== "All" && p.source !== sourceFilter) return false;
                     
-                    const eDate = parseDate(p);
+                    const eDate = parseEntryDate(p);
                     if (eDate) {
-                      const entryDateStr = `${eDate.getFullYear()}-${String(eDate.getMonth() + 1).padStart(2, '0')}-${String(eDate.getDate()).padStart(2, '0')}`;
+                      const entryDateStr = toLocalDateString(eDate);
                       if (dateFrom && entryDateStr < dateFrom) return false;
                       if (dateTo && entryDateStr > dateTo) return false;
                     }
@@ -503,8 +430,8 @@ export default function BiochemistryMain() {
                 })
                 .sort((a, b) => {
                   if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-                  const dateA = parseDate(a);
-                  const dateB = parseDate(b);
+                  const dateA = parseEntryDate(a);
+                  const dateB = parseEntryDate(b);
                   if (!dateA) return 1;
                   if (!dateB) return -1;
                   return dateA - dateB;
@@ -615,60 +542,19 @@ export default function BiochemistryMain() {
 
       
       {criticalModalOpen && (
-        <div className="critical-modal-overlay">
-          <div className="critical-modal">
-
-            <h3>Critical Alert</h3>
-
-            <label>Critical Parameter &amp; Value</label>
-
-            <input
-              type="text"
-              value={criticalParameterInput}
-              onChange={(e) => setCriticalParameterInput(e.target.value)}
-              placeholder="e.g. K+: 7.2"
-            />
-
-            <label style={{ marginTop: "15px" }}>
-              Critical Reported By
-            </label>
-
-            <input
-              type="text"
-              value={criticalReportedByInput}
-              onChange={(e) => setCriticalReportedByInput(e.target.value)}
-              placeholder="Enter Name"
-            />
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: "10px",
-                marginTop: "20px",
-              }}
-            >
-              <button
-                className="source-btn"
-                onClick={() => {
-                  setCriticalModalOpen(false);
-                  setCriticalPatient(null);
-                }}
-              >
-                Cancel
-              </button>
-
-              <button
-                className="save-btn"
-                style={{ width: "120px" }}
-                onClick={saveCriticalDetails}
-              >
-                Save
-              </button>
-            </div>
-
-          </div>
-        </div>
+      <CriticalAlertModal
+        open={criticalModalOpen}
+        parameterInput={criticalParameterInput}
+        setParameterInput={setCriticalParameterInput}
+        reportedByInput={criticalReportedByInput}
+        setReportedByInput={setCriticalReportedByInput}
+        onCancel={() => {
+          setCriticalModalOpen(false);
+          setCriticalPatient(null);
+        }}
+        onSave={saveCriticalDetails}
+        parameterPlaceholder="e.g. K+: 7.2"
+      />
       )}
 
     </div>

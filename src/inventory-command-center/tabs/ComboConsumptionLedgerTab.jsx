@@ -5,7 +5,11 @@ import DateRangeFilter
 from "../components/DateRangeFilter";
 
 const ComboConsumptionLedgerTab = ({
-  ledgerEntries
+  ledgerEntries,
+  fromDate,
+  toDate,
+  setFromDate,
+  setToDate,
 }) => {
 
   const [machineFilter, setMachineFilter] =
@@ -24,23 +28,8 @@ const [expandedBatches, setExpandedBatches] =
   const [expandedProducts, setExpandedProducts] =
   useState({});
 
-;
-
   const [searchTerm, setSearchTerm] =
     useState("");
-    const today =
-    new Date().toLocaleDateString(
-      "en-CA",
-      {
-        timeZone: "Asia/Kolkata"
-      }
-    );
-  
-  const [fromDate, setFromDate] =
-    useState(today);
-  
-  const [toDate, setToDate] =
-    useState(today);
 
     const filteredRows = useMemo(() => {
 

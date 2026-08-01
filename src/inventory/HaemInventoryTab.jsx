@@ -3,8 +3,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { db } from "../firebaseConfig";
 import {
   collection,
-  onSnapshot,
-  query,
   doc,
   writeBatch,
   updateDoc,
@@ -13,7 +11,10 @@ import {
 } from "firebase/firestore";
 
 import { addConsumptionLedgerEntry } from "../inventory-command-center/utils/consumptionledger";
-
+import {
+  INVENTORY_MACHINES,
+  subscribeInventoryByMachines,
+} from "../shared/firestore/subscribeInventoryByMachines.js";
 
 import "./DeptInventory.css";
 
@@ -57,11 +58,14 @@ export default function HaemInventoryTab() {
     }
   };
 
-  // 2. DATA FETCHING
+  // 2. DATA FETCHING — scoped by 3/5 Part Machine + live statuses
   useEffect(() => {
-    const q = query(collection(db, "inventory_logs"));
-    const unsub = onSnapshot(q, (snap) => {
-      const logs = snap.docs.map(d => ({ ...d.data(), id: String(d.id) }));
+    const machines =
+      activeHaemTab === "3-part"
+        ? INVENTORY_MACHINES.haem3
+        : INVENTORY_MACHINES.haem5;
+
+    const unsub = subscribeInventoryByMachines(machines, (logs) => {
       const filtered = logs.reduce((acc, item) => {
         const name = item.reagentName?.toUpperCase().trim() || "";
         const s3 = machineSpecs["3-part"];
@@ -79,15 +83,21 @@ export default function HaemInventoryTab() {
           else if (s5.controls.some(ctrl => name.includes(ctrl))) { group = "Controls"; machine = "5-part"; }
         }
 
+        // Fallback when name lists miss a catalog match but machine listen already scoped
+        if (!group) {
+          group = "Reagents";
+          machine = activeHaemTab;
+        }
+
         if (group) {
-          acc.push({ ...item, haemGroup: group, belongsTo: machine });
+          acc.push({ ...item, haemGroup: group, belongsTo: machine || activeHaemTab });
         }
         return acc;
       }, []);
       setInventory(filtered);
     });
     return () => unsub();
-  }, []);
+  }, [activeHaemTab]);
 
   // 3. CATEGORY SEPARATION (MEMOIZED - FIXED PIC-1 TO PIC-2 DELAY)
   const activeReagents = useMemo(() => {

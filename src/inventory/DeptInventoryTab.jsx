@@ -3,8 +3,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { db } from "../firebaseConfig";
 import {
   collection,
-  onSnapshot,
-  query,
   doc,
   writeBatch,
   addDoc,
@@ -14,6 +12,10 @@ import {
 
 
 import { addConsumptionLedgerEntry } from "../inventory-command-center/utils/consumptionledger";
+import {
+  INVENTORY_MACHINES,
+  subscribeInventoryByMachines,
+} from "../shared/firestore/subscribeInventoryByMachines.js";
 
 import "./DeptInventory.css";
 
@@ -57,27 +59,11 @@ export default function DeptInventoryTab() {
   const [showWasteModal, setShowWasteModal] = useState(false);
   const [wasteReasons, setWasteReasons] = useState({});
 
-  // LOG VIEWER
+  // FETCH & CATEGORIZE INVENTORY (VITROS 6500 live stock only)
   useEffect(() => {
-    const qCal = query(collection(db, "calibration_logs"));
-    const unsubCal = onSnapshot(qCal, (snap) => {
-      console.log("CALIBRATION LOGS:", snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    const qQC = query(collection(db, "qc_logs"));
-    const unsubQC = onSnapshot(qQC, (snap) => {
-      console.log("/ CONTROL (QC) LOGS:", snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    return () => { unsubCal(); unsubQC(); };
-  }, []);
-
-  // FETCH & CATEGORIZE INVENTORY ----
-  useEffect(() => {
-    const q = query(collection(db, "inventory_logs"));
-    const unsub = onSnapshot(q, (snap) => {
-      const logs = snap.docs.map(d => ({
-        ...d.data(),
-        id: String(d.id),
-      }));
+    const unsub = subscribeInventoryByMachines(
+      INVENTORY_MACHINES.deptMain,
+      (logs) => {
       const categorized = logs.map(item => {
         const name = item.reagentName?.toUpperCase().trim();
 
@@ -204,7 +190,8 @@ export default function DeptInventoryTab() {
         return { ...item, category, isControl, isCalibrator, isConsumable};
       });
       setInventory(categorized);
-    });
+      }
+    );
     return () => unsub();
   }, []);
 

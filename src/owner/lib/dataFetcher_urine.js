@@ -5,41 +5,16 @@
 // ------------------------------------------------------
 
 import { db } from "../../firebaseConfig.js";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrintedQuery.js";
+import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPaint.js";
+import { trackedOnSnapshot as onSnapshot } from "../../shared/firestore/trackedFirestore.js";
 import testTimings from "../data/test_timings.json";
 
 /* ====================== DATE UTILS ====================== */
 
-export const toDate = (v) => {
-  if (!v) return null;
-  if (typeof v?.toDate === "function") return v.toDate();
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? null : d;
-};
-
-export const minutesDiff = (a, b) => {
-  const A = toDate(a);
-  const B = toDate(b);
-  return A && B && B > A ? Math.round((B - A) / 60000) : null;
-};
-
-/* ================= TEST NORMALIZATION =================== */
-
-export function normalizeTestsField(field) {
-  if (!field) return [];
-  if (Array.isArray(field)) {
-    return field
-      .map((v) => {
-        if (typeof v === "string") return v;
-        if (v && typeof v === "object") return v.test || v.name || v.testName || null;
-        return null;
-      })
-      .filter(Boolean)
-      .map((s) => String(s).trim());
-  }
-  if (typeof field === "string") return field.split(",").map((s) => s.trim()).filter(Boolean);
-  return [];
-}
+import { toDate, minutesDiff } from "../../shared/utils/dates.js";
+import { normalizeTestsField } from "../../shared/utils/normalizeTestsField.js";
+export { toDate, minutesDiff, normalizeTestsField };
 
 /* ================= URINE CANON TESTS =================== */
 
@@ -542,8 +517,19 @@ return {
 /* ================= SUBSCRIBE OVERVIEW =================== */
 
 export function subscribeOverview({ onData, source = "All", dateRange }) {
-  const masterRef = query(collection(db, "master_register"), orderBy("timePrinted", "asc"));
-  const urineRef = query(collection(db, "urine_analysis_register"), orderBy("timePrinted", "asc"));
+  const { paintCache, onDataLive } = createOwnerSessionPaint({
+    dept: "urine",
+    dateRange,
+    source,
+    onData,
+  });
+  paintCache();
+
+  const masterRef = scopedTimePrintedQuery("master_register", dateRange);
+  const urineRef = scopedTimePrintedQuery("urine_analysis_register", dateRange);
+  if (!masterRef || !urineRef) {
+    return () => {};
+  }
   
   let masterRows = []; let urineRows = [];
 
@@ -573,7 +559,7 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
     const unified = unifyForCharts(merged);
     const violators = computeSLAViolations(unified, testTimings);
 
-    onData({
+    onDataLive({
       masterRows: filteredMaster,
       deptRows: merged,
       unifiedRows: unified,

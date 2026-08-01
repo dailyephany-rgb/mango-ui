@@ -7,7 +7,11 @@ from "../components/DateRangeFilter";
 
 const CostAnalyticsTab = ({
   ledgerEntries,
-  inventory
+  inventory,
+  fromDate,
+  toDate,
+  setFromDate,
+  setToDate,
 }) => {
 
   const [machineFilter, setMachineFilter] =
@@ -29,20 +33,6 @@ const [showCost, setShowCost] =
 
 const [searchTerm, setSearchTerm] =
     useState("");
-
-    const today =
-    new Date().toLocaleDateString(
-      "en-CA",
-      {
-        timeZone: "Asia/Kolkata"
-      }
-    );
-  
-  const [fromDate, setFromDate] =
-    useState(today);
-  
-  const [toDate, setToDate] =
-    useState(today);
 
 const filteredRows = useMemo(() => {
 

@@ -3,8 +3,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { db } from "../firebaseConfig";
 import {
   collection,
-  onSnapshot,
-  query,
   doc,
   writeBatch,
   updateDoc,
@@ -13,7 +11,10 @@ import {
 } from "firebase/firestore";
 
 import { addConsumptionLedgerEntry } from "../inventory-command-center/utils/consumptionledger";
-
+import {
+  INVENTORY_MACHINES,
+  subscribeInventoryByMachines,
+} from "../shared/firestore/subscribeInventoryByMachines.js";
 
 import "./DeptInventory.css";
 
@@ -49,16 +50,9 @@ export default function BackroomInventoryTab() {
   // =========================
 
   useEffect(() => {
-
-    const q = query(collection(db, "inventory_logs"));
-
-    const unsub = onSnapshot(q, (snap) => {
-
-      const logs = snap.docs.map(d => ({
-        ...d.data(),
-        id: String(d.id)
-      }));
-
+    const unsub = subscribeInventoryByMachines(
+      INVENTORY_MACHINES.backroom,
+      (logs) => {
       const categorized = logs.map(item => {
 
         const name = item.reagentName?.toUpperCase().trim();
@@ -137,11 +131,10 @@ export default function BackroomInventoryTab() {
       });
 
       setInventory(categorized);
-
-    });
+      }
+    );
 
     return () => unsub();
-
   }, []);
 
   // =========================

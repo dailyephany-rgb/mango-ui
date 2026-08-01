@@ -1,26 +1,17 @@
 
 import React, { useState, useEffect } from "react";
 import { db } from "../firebaseConfig";
-import { collection, onSnapshot, doc, setDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  setDoc
+} from "firebase/firestore";
+import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFirestore.js";
 import * as XLSX from "xlsx"; // Import SheetJS
 import "./MasterAdmin.css";
+import { MASTER_ADMIN_DEPARTMENTS } from "../shared/config/collections.js";
 
-const DEPARTMENTS = [
-  { id: "master_register", label: "Master (Registration)" },
-  { id: "biochemistry_register", label: "Biochemistry" },
-  { id: "serology_register", label: "Serology" },
-  { id: "urine_analysis_register", label: "Urine Analysis" },
-  { id: "bloodgroup_testing_register", label: "Blood Group (Test)" },
-  { id: "bloodgroup_retesting_register", label: "Blood Group (Retest)" },
-  { id: "rapid_card_register", label: "Rapid Card" },
-  { id: "esr_register", label: "ESR" },
-  { id: "hormones_main", label: "Hormones" },
-  { id: "haematology_register", label: "Haematology" },
-  { id: "coagulation_register", label: "Coagulation" },
-  { id: "outsource_tracking", label: "Outside Tracking" },
-  { id: "inside_lab_results", label: "Inside Lab" },
-  { id: "critical_alerts", label: "Critical Alerts" }
-];
+const DEPARTMENTS = MASTER_ADMIN_DEPARTMENTS;
 
 export default function MasterAdminPanel() {
   const [activeColl, setActiveColl] = useState("master_register");

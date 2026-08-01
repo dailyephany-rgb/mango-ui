@@ -1,7 +1,8 @@
 
 
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
-import { db } from "../../firebaseConfig.js";
+import { trackedOnSnapshot as onSnapshot } from "../../shared/firestore/trackedFirestore.js";
+import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrintedQuery.js";
+import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPaint.js";
 import testMapping from "../../test_mapping.json";
 
 
@@ -668,6 +669,14 @@ export const subscribeToWorkflowAnalytics = ({
   source = "All",
   dateRange,
 }) => {
+  const { paintCache, onDataLive } = createOwnerSessionPaint({
+    dept: "workflow",
+    dateRange,
+    source,
+    onData,
+  });
+  paintCache();
+
   let reportRecords = [];
 
   const emit = () => {
@@ -700,7 +709,7 @@ export const subscribeToWorkflowAnalytics = ({
       }))
     );
 
-    onData({
+    onDataLive({
       records,
       stackedBarRecords,
       summary: buildWorkflowSummary(records),
@@ -708,11 +717,18 @@ export const subscribeToWorkflowAnalytics = ({
 
   };
 
+  const reportQuery = scopedTimePrintedQuery("report_details", dateRange);
+  if (!reportQuery) {
+    onDataLive({
+      records: [],
+      stackedBarRecords: [],
+      summary: buildWorkflowSummary([]),
+    });
+    return () => {};
+  }
+
   const unsubscribeReport = onSnapshot(
-    query(
-      collection(db, "report_details"),
-      orderBy("timePrinted", "asc")
-    ),
+    reportQuery,
     (snapshot) => {
       reportRecords = snapshot.docs.map((docSnap) => ({
         id: docSnap.id,

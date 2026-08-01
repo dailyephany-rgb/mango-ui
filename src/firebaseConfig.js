@@ -1,7 +1,10 @@
-
-// ✅ firebaseConfig.js — Final Version
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import {
+  initializeFirestore,
+  getFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBS-JGY1X6GLM7YVXVSJuYvti_utJXMS5I",
@@ -13,7 +16,7 @@ const firebaseConfig = {
   measurementId: "G-H8J28B9B44",
 };
 
-// ✅ Ensure only one Firebase instance exists
+// Ensure only one Firebase app instance (Vite MPA / HMR safe)
 let app;
 if (!getApps().length) {
   app = initializeApp(firebaseConfig);
@@ -23,15 +26,25 @@ if (!getApps().length) {
   console.log("♻️ Firebase already initialized — using existing app");
 }
 
-export const db = getFirestore(app);
-
-// ✅ Enable Offline Persistence to prevent "random" save errors
-if (typeof window !== "undefined") {
-  enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code === 'failed-precondition') {
-      console.warn("Persistence failed: Multiple tabs open");
-    } else if (err.code === 'unimplemented') {
-      console.warn("Persistence not supported by browser");
-    }
+/**
+ * Modern multi-tab persistent cache.
+ * Falls back to getFirestore if Firestore was already initialized (HMR / second entry).
+ */
+let db;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager(),
+    }),
   });
+  console.log("🗄 Firestore persistentLocalCache (multi-tab) enabled");
+} catch (err) {
+  db = getFirestore(app);
+  console.log("♻️ Firestore already initialized — using existing instance");
 }
+
+export { db };
+
+// Passive Performance & Diagnostics (no Firestore writes; disable with
+// localStorage.setItem("mango.perf.monitor","0"))
+import("./performance/bootstrap.js").catch(() => {});

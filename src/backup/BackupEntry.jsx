@@ -1,8 +1,15 @@
 
 import React, { useState, useEffect } from "react";
 import { db } from "../firebaseConfig";
-import { 
-  collection, addDoc, query,getDocs, 
+import {
+  collection,
+  addDoc,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  Timestamp,
+  serverTimestamp,
 } from "firebase/firestore";
 import {
   handleInventoryDeduction
@@ -10,6 +17,11 @@ import {
 import "./BackupEntry.css";
 
 import DeptInventoryTab from "../inventory/BackupInventoryTab.jsx";
+import {
+  getISTDateString,
+  istDayStart,
+  istDayEndExclusive,
+} from "../shared/utils/dates.js";
 
 const CATEGORIES = [
   "RGHS", "CGHS", "ECHS", "General", "Insurance", "AAI", "CAPF", 
@@ -76,40 +88,50 @@ const ELECTRO_TESTS = [
 ];
 
 const BackupEntry = () => {
+  const today = getISTDateString();
   const [activeTab, setActiveTab] = useState("register");
-  const [fromDate, setFromDate] = useState(new Date().toISOString().split('T')[0]);
-  const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
+  const [fromDate, setFromDate] = useState(today);
+  const [toDate, setToDate] = useState(today);
   const [savedLogs, setSavedLogs] = useState([]);
   const [rows, setRows] = useState([
     { id: Date.now(), name: "", sid: "", category: "", biochemistry: [], hormones: [], electrolytes: [], isSaved: false }
   ]);
 
-  const fetchLogs = async () => {
-    try {
-      const q = query(collection(db, "backup_entries_logs"));
-      const querySnapshot = await getDocs(q);
-      const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-      const filtered = data.filter(log => {
-        if (!log.savedTime) return false;
-        const datePart = log.savedTime.split(' at ')[0]; 
-        const logDate = new Date(datePart);
-        const logTime = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate()).getTime();
-        const startArr = fromDate.split("-");
-        const startDate = new Date(startArr[0], startArr[1] - 1, startArr[2]).getTime();
-        const endArr = toDate.split("-");
-        const endDate = new Date(endArr[0], endArr[1] - 1, endArr[2]).getTime();
-        return logTime >= startDate && logTime <= endDate;
-      });
-      setSavedLogs(filtered);
-    } catch (e) {
-      console.error("Error fetching logs:", e);
-    }
-  };
-
+  // Live listen: status == true + savedTime (Timestamp) date range
   useEffect(() => {
-    fetchLogs();
-  }, [fromDate, toDate]);
+    if (activeTab !== "register") return undefined;
+
+    const start = istDayStart(fromDate);
+    const endExclusive = istDayEndExclusive(toDate);
+    if (!start || !endExclusive) {
+      setSavedLogs([]);
+      return undefined;
+    }
+
+    const q = query(
+      collection(db, "backup_entries_logs"),
+      where("status", "==", true),
+      where("savedTime", ">=", Timestamp.fromDate(start)),
+      where("savedTime", "<", Timestamp.fromDate(endExclusive)),
+      orderBy("savedTime", "desc")
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setSavedLogs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      },
+      (err) => {
+        console.error(
+          "[BackupEntry] status+savedTime query failed — check index (status + savedTime). Old string savedTime docs will not match until re-saved:",
+          err
+        );
+        setSavedLogs([]);
+      }
+    );
+
+    return () => unsub();
+  }, [activeTab, fromDate, toDate]);
 
   const addPatientRow = () => {
     setRows([...rows, { id: Date.now(), name: "", sid: "", category: "", biochemistry: [], hormones: [], electrolytes: [], isSaved: false }]);
@@ -198,11 +220,7 @@ const BackupEntry = () => {
         hormones: formatSection(row.hormones),
         electrolytes: formatSection(row.electrolytes),
         status: true,
-        savedTime: new Date().toLocaleString('en-US', { 
-            month: 'long', day: 'numeric', year: 'numeric', 
-            hour: 'numeric', minute: '2-digit', second: '2-digit', 
-            hour12: true 
-        }) + " UTC+5:30"
+        savedTime: serverTimestamp(),
       };
 
       await addDoc(collection(db, "backup_entries_logs"), finalData);
@@ -212,7 +230,6 @@ const BackupEntry = () => {
       setRows(prevRows => prevRows.filter(r => r.id !== rowId));
       
       alert(`Patient ${row.sid} saved successfully and inventory updated!`);
-      fetchLogs();
     } catch (e) { 
       console.error(e); 
       alert("Error saving entry: " + e.message);

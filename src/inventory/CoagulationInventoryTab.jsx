@@ -4,8 +4,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { db } from "../firebaseConfig";
 import {
   collection,
-  onSnapshot,
-  query,
   doc,
   writeBatch,
   updateDoc,
@@ -15,6 +13,10 @@ import {
 
 
 import { addConsumptionLedgerEntry } from "../inventory-command-center/utils/consumptionledger";
+import {
+  INVENTORY_MACHINES,
+  subscribeInventoryByMachines,
+} from "../shared/firestore/subscribeInventoryByMachines.js";
 
 import "./DeptInventory.css";
 
@@ -49,12 +51,11 @@ export default function CoagulationInventory() {
 
 
 
-  // 1. DATA FETCHING (Enhanced with normalized mapping)
+  // 1. DATA FETCHING — Yumizen G800 live stock
   useEffect(() => {
-    const q = query(collection(db, "inventory_logs"));
-    const unsub = onSnapshot(q, (snap) => {
-      const logs = snap.docs.map(d => ({ ...d.data(), id: String(d.id) }));
-
+    const unsub = subscribeInventoryByMachines(
+      INVENTORY_MACHINES.coag,
+      (logs) => {
       const specs = {
         // Normalized to ensure mapping works during Save
         reagents: ["YUMIZEN G APTT 4", "YUMIZEN G CACL 2", "BT/CT CAPILARY 100", "YUMIZEN G PT 5"],
@@ -74,12 +75,16 @@ export default function CoagulationInventory() {
 
         if (group) { 
           acc.push({ ...item, coagGroup: group }); 
+        } else {
+          // Catalog-scoped listen may include items not in local name lists
+          acc.push({ ...item, coagGroup: "Reagents" });
         }
         return acc;
       }, []);
 
       setInventory(filtered);
-    });
+      }
+    );
     return () => unsub();
   }, []);
 

@@ -16,134 +16,162 @@ import {
   doc,
   writeBatch,
   serverTimestamp,
+  query,
+  where,
+  orderBy,
+  Timestamp,
 } from "firebase/firestore";
 
 
 import OUTSOURCE_MAP from "../Outsource.json"; 
 import "./Outsource.css";
 import UserMenu from "../auth/UserMenu";
+import {
+  parseEntryDate,
+  toLocalDateString,
+  getLocalDateString,
+  localDayStart,
+  localDayEndExclusive,
+} from "../shared/utils/dates.js";
+import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
+import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
+import { useScopedMasterEntries } from "../shared/hooks/useScopedMasterEntries.js";
 
 export default function OutsourceRegister() {
-  const [entries, setEntries] = useState([]);
+  const [trackingMap, setTrackingMap] = useState({});
   const [activeLab, setActiveLab] = useState("All");
   const [activeSource, setActiveSource] = useState("All");
   const [saving, setSaving] = useState(false);
-  const [regSearch, setRegSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
   const currentUser = sessionStorage.getItem("loggedUser") ||
   "Unknown User";
 
+  const {
+    regSearch,
+    setRegSearch,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
+  } = useRegisterFilters();
 
   // 🛡️ REFRESH PROTECTION: Load local buffered data from LocalStorage
-  const [localOutsourceData, setLocalOutsourceData] = useState(() => {
-    const saved = localStorage.getItem("outsource_localBuffer");
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [localOutsourceData, setLocalOutsourceData] = usePersistedObjectState(
+    "outsource_localBuffer",
+    {}
+  );
   const localBufferRef = useRef(localOutsourceData);
-
-  const parseDate = (entry) => {
-    const f = entry.timePrinted;
-    if (!f) return null;
-    if (f?.toDate) return f.toDate();
-    if (typeof f === "string" || f instanceof Date) {
-      const d = new Date(f);
-      return isNaN(d) ? null : d;
-    }
-    if (f?.seconds) return new Date(f.seconds * 1000);
-    return null;
-  };
 
   useEffect(() => {
     localBufferRef.current = localOutsourceData;
   }, [localOutsourceData]);
 
-  useEffect(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    const today = `${y}-${m}-${d}`;
-
-    setDateFrom(today);
-    setDateTo(today);
-  }, []);
+  // "All" → date-only master query; specific lab → departments array-contains
+  const { masterEntries } = useScopedMasterEntries({
+    masterDeptKey: activeLab === "All" ? null : activeLab,
+    dateFrom,
+    dateTo,
+  });
 
   useEffect(() => {
-    const unsubMaster = onSnapshot(collection(db, "master_register"), (masterSnap) => {
-      const unsubTracking = onSnapshot(collection(db, "outsource_tracking"), (trackSnap) => {
-        
-        const trackingMap = {};
-        trackSnap.forEach(docSnap => {
-          trackingMap[docSnap.id] = docSnap.data();
+    const fromStr = dateFrom || getLocalDateString();
+    const toStr = dateTo || getLocalDateString();
+    const start = localDayStart(fromStr);
+    const endExclusive = localDayEndExclusive(toStr);
+    if (!start || !endExclusive) return undefined;
+
+    const trackingQuery = query(
+      collection(db, "outsource_tracking"),
+      where("timePrinted", ">=", Timestamp.fromDate(start)),
+      where("timePrinted", "<", Timestamp.fromDate(endExclusive)),
+      orderBy("timePrinted", "asc")
+    );
+
+    const unsubTracking = onSnapshot(
+      trackingQuery,
+      (trackSnap) => {
+        const next = {};
+        trackSnap.forEach((docSnap) => {
+          next[docSnap.id] = docSnap.data();
+        });
+        setTrackingMap(next);
+      },
+      (err) => {
+        console.error(
+          "[Outsource] outsource_tracking timePrinted query failed:",
+          err
+        );
+      }
+    );
+    return () => unsubTracking();
+  }, [dateFrom, dateTo]);
+
+  const entries = useMemo(() => {
+    const expandedEntries = [];
+
+    masterEntries.forEach((entry) => {
+      const reg = String(entry.regNo || entry.id);
+      const diagNo = entry.diagnosticNo || entry.accNo || "—";
+      const rawTests = entry.selectedTests || [];
+
+      for (const [labName, labTests] of Object.entries(OUTSOURCE_MAP)) {
+        if (activeLab !== "All" && labName !== activeLab) continue;
+
+        const relevantTestsForThisLab = rawTests.filter((t) => {
+          const testTitle = (
+            typeof t === "string" ? t : t?.test || ""
+          )
+            .toUpperCase()
+            .trim();
+          return labTests.some(
+            (lt) => testTitle === lt.toUpperCase().trim()
+          );
         });
 
-        const allMaster = masterSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        let expandedEntries = [];
+        if (relevantTestsForThisLab.length > 0) {
+          const uniqueTrackingId = `${reg}_${diagNo}_${labName.replace(/\s+/g, "")}`;
 
-        allMaster.forEach((entry) => {
-          const reg = String(entry.regNo || entry.id);
-          const diagNo = entry.diagnosticNo || entry.accNo || "—";
-          const rawTests = entry.selectedTests || [];
+          const firebaseData = trackingMap[uniqueTrackingId] || {};
+          const bufferedData =
+            localBufferRef.current[uniqueTrackingId] || {};
 
-          for (const [labName, labTests] of Object.entries(OUTSOURCE_MAP)) {
-            const relevantTestsForThisLab = rawTests.filter(t => {
-              const testTitle = (typeof t === "string" ? t : t?.test || "").toUpperCase().trim();
-              return labTests.some(lt => testTitle === lt.toUpperCase().trim());
-            });
+          const outData = {
+            status: "Pending",
+            concernedPerson: "",
+            relation: "",
+            mobileNo: "",
 
-            if (relevantTestsForThisLab.length > 0) {
-              // UPDATE: Composite Key includes Registration, Diagnostic No, and Lab Name
-              const uniqueTrackingId = `${reg}_${diagNo}_${labName.replace(/\s+/g, '')}`;
-              
-              const firebaseData = trackingMap[uniqueTrackingId] || {};
-              const bufferedData =
-              localBufferRef.current[
-                uniqueTrackingId
-              ] || {};
+            isCollected: false,
+            isReceived: false,
+            isGiven: false,
 
-              const outData = {
-                status: "Pending",
-                concernedPerson: "",
-                relation: "",
-                mobileNo: "",
-              
-                isCollected: false,
-                isReceived: false,
-                isGiven: false,
-              
-                outsourcedCollectedTime: null,
-                reportReceivedTime: null,
-                reportDeliveredTime: null,
-              
-                collectedBy: "",
-                receivedBy: "",
-                deliveredBy: "",
-              
-                ...firebaseData,
-                ...bufferedData
-              };
+            outsourcedCollectedTime: null,
+            reportReceivedTime: null,
+            reportDeliveredTime: null,
 
-              expandedEntries.push({
-                ...entry,
-                regNo: reg,
-                uniqueTrackingId: uniqueTrackingId,
-                accessionNo: diagNo,
-                source: entry.source || "OPD",
-                labName: labName,
-                displayTests: relevantTestsForThisLab,
-                ...outData
-              });
-            }
-          }
-        });
+            collectedBy: "",
+            receivedBy: "",
+            deliveredBy: "",
 
-        setEntries(expandedEntries);
-      });
-      return () => unsubTracking();
+            ...firebaseData,
+            ...bufferedData,
+          };
+
+          expandedEntries.push({
+            ...entry,
+            regNo: reg,
+            uniqueTrackingId: uniqueTrackingId,
+            accessionNo: diagNo,
+            source: entry.source || "OPD",
+            labName: labName,
+            displayTests: relevantTestsForThisLab,
+            ...outData,
+          });
+        }
+      }
     });
-    return () => unsubMaster();
-  }, []);
+
+    return expandedEntries;
+  }, [masterEntries, trackingMap, localOutsourceData, activeLab]);
 
   const handleSave = async (entry) => {
     try {
@@ -197,23 +225,19 @@ export default function OutsourceRegister() {
       );
 
 
-      setEntries(prev =>
-        prev.map(e =>
-          e.uniqueTrackingId === trackingId
-            ? {
-                ...e,
-                isReceived: true,
-                reportReceivedTime: new Date().toISOString(),
-                receivedBy: currentUser,
-              }
-            : e
-        )
-      );
+      setTrackingMap((prev) => ({
+        ...prev,
+        [trackingId]: {
+          ...(prev[trackingId] || {}),
+          isReceived: true,
+          reportReceivedTime: new Date().toISOString(),
+          receivedBy: currentUser,
+        },
+      }));
       
       setLocalOutsourceData(prev => {
         const updated = { ...prev };
         delete updated[trackingId];
-        localStorage.setItem("outsource_localBuffer", JSON.stringify(updated));
         return updated;
       });
 
@@ -273,18 +297,15 @@ export default function OutsourceRegister() {
   
       await batch.commit();
 
-      setEntries(prev =>
-        prev.map(e =>
-          e.uniqueTrackingId === trackingId
-            ? {
-                ...e,
-                isGiven: true,
-                reportDeliveredTime: new Date().toISOString(),
-                deliveredBy: currentUser,
-              }
-            : e
-        )
-      );
+      setTrackingMap((prev) => ({
+        ...prev,
+        [trackingId]: {
+          ...(prev[trackingId] || {}),
+          isGiven: true,
+          reportDeliveredTime: new Date().toISOString(),
+          deliveredBy: currentUser,
+        },
+      }));
   
       alert(`Report for ${entry.name} marked as Delivered`);
     } catch (err) {
@@ -371,44 +392,31 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
         
     }
   
-    setEntries((prev) =>
-      prev.map((e) =>
-        e.uniqueTrackingId !== trackingId
-          ? e
-          : 
-          {
-            ...e,
-            status: newStatus,
-            isCollected: newStatus === "Scanned",
-            outsourcedCollectedTime:
-              newStatus === "Scanned" ? now : null,
-            collectedBy:
-              newStatus === "Scanned" ? currentUser : "",
-          }
-      )
-    );
+    setTrackingMap((prev) => ({
+      ...prev,
+      [trackingId]: {
+        ...(prev[trackingId] || {}),
+        status: newStatus,
+        isCollected: newStatus === "Scanned",
+        outsourcedCollectedTime:
+          newStatus === "Scanned" ? now : null,
+        collectedBy:
+          newStatus === "Scanned" ? currentUser : "",
+      },
+    }));
   
-    setLocalOutsourceData((prev) => {
-      const updated = {
-        ...prev,
-        [trackingId]: {
-          ...(prev[trackingId] || {}),
-          status: newStatus,
-          isCollected: newStatus === "Scanned",
-          outsourcedCollectedTime:
-            newStatus === "Scanned" ? now : null,
-          collectedBy:
-            newStatus === "Scanned" ? currentUser : "",
-        },
-      };
-  
-      localStorage.setItem(
-        "outsource_localBuffer",
-        JSON.stringify(updated)
-      );
-  
-      return updated;
-});
+    setLocalOutsourceData((prev) => ({
+      ...prev,
+      [trackingId]: {
+        ...(prev[trackingId] || {}),
+        status: newStatus,
+        isCollected: newStatus === "Scanned",
+        outsourcedCollectedTime:
+          newStatus === "Scanned" ? now : null,
+        collectedBy:
+          newStatus === "Scanned" ? currentUser : "",
+      },
+    }));
   } catch (err) {
     console.error(err);
     alert("Failed to collect sample.");
@@ -420,32 +428,14 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
 
 
   const updateLocalEntry = (uniqueId, field, value) => {
-    // Update the UI immediately
-    setEntries(prev =>
-      prev.map(e =>
-        e.uniqueTrackingId === uniqueId
-          ? { ...e, [field]: value }
-          : e
-      )
-    );
-  
-    // Keep the local buffer in sync
-    setLocalOutsourceData(prev => {
-      const updated = {
-        ...prev,
-        [uniqueId]: {
-          ...(prev[uniqueId] || {}),
-          [field]: value
-        }
-      };
-  
-      localStorage.setItem(
-        "outsource_localBuffer",
-        JSON.stringify(updated)
-      );
-  
-      return updated;
-    });
+    // Keep the local buffer in sync (entries recompute from buffer)
+    setLocalOutsourceData(prev => ({
+      ...prev,
+      [uniqueId]: {
+        ...(prev[uniqueId] || {}),
+        [field]: value
+      }
+    }));
   };
 
   const filteredEntries = useMemo(() => {
@@ -461,17 +451,17 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
           if (!regKey.includes(searchStr) && !accKey.includes(searchStr)) return false;
         }
         
-        const d = parseDate(e);
+        const d = parseEntryDate(e, ["timePrinted"]);
         if (d) {
-          const entryDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          const entryDateStr = toLocalDateString(d);
           if (dateFrom && entryDateStr < dateFrom) return false;
           if (dateTo && entryDateStr > dateTo) return false;
         }
         return true;
       })
       .sort((a, b) => {
-        const dateA = parseDate(a);
-        const dateB = parseDate(b);
+        const dateA = parseEntryDate(a, ["timePrinted"]);
+        const dateB = parseEntryDate(b, ["timePrinted"]);
         if (!dateA) return 1;
         if (!dateB) return -1;
         return dateA - dateB;

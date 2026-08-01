@@ -3,17 +3,26 @@ import React, { useState, useEffect } from "react";
 import { db } from "../firebaseConfig";
 import {
   collection,
-  onSnapshot,
   doc,
   updateDoc,
   serverTimestamp,
   query,
+  where,
+  orderBy,
   Timestamp
 } from "firebase/firestore";
+import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFirestore.js";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import "./CriticalDashboard.css";
 import UserMenu from "../auth/UserMenu";
+import {
+  getLocalDateString,
+  parseDateField,
+  toLocalDateString,
+  localDayStart,
+  localDayEndExclusive,
+} from "../shared/utils/dates.js";
 
 export default function CriticalAlertDashboard() {
   const [alerts, setAlerts] = useState([]);
@@ -26,53 +35,61 @@ export default function CriticalAlertDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [deptFilter, setDeptFilter] = useState("All");
   const [sourceFilter, setSourceFilter] = useState("All");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const today = getLocalDateString();
+  const [dateFrom, setDateFrom] = useState(today);
+  const [dateTo, setDateTo] = useState(today);
  
 
   useEffect(() => {
-    // FIX: Set local date to roll over at midnight local time
-    const todayNow = new Date();
-    const y = todayNow.getFullYear();
-    const m = String(todayNow.getMonth() + 1).padStart(2, '0');
-    const d = String(todayNow.getDate()).padStart(2, '0');
-    const today = `${y}-${m}-${d}`;
-
-    setDateFrom(today);
-    setDateTo(today);
-
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
-    const q = query(collection(db, "critical_alerts"));
-    const unsub = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
-      setAlerts(data);
+    const fromStr = dateFrom || getLocalDateString();
+    const toStr = dateTo || getLocalDateString();
+    const start = localDayStart(fromStr);
+    const endExclusive = localDayEndExclusive(toStr);
+    if (!start || !endExclusive) {
+      setAlerts([]);
       setLoading(false);
-    });
+      return undefined;
+    }
+
+    const q = query(
+      collection(db, "critical_alerts"),
+      where("flaggedAt", ">=", Timestamp.fromDate(start)),
+      where("flaggedAt", "<", Timestamp.fromDate(endExclusive)),
+      orderBy("flaggedAt", "asc")
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
+        setAlerts(data);
+        setLoading(false);
+      },
+      (err) => {
+        console.error(
+          "[CriticalDashboard] flaggedAt query failed — check index:",
+          err
+        );
+        setLoading(false);
+      }
+    );
     return () => unsub();
-  }, []);
+  }, [dateFrom, dateTo]);
 
   // Unique departments for dropdown
   const uniqueDepartments = ["All", ...new Set(alerts.map(a => a.dept).filter(Boolean))].sort();
 
-  const parseDate = (ts) => {
-    if (!ts) return null;
-    if (ts instanceof Timestamp) return ts.toDate();
-    if (ts.toDate) return ts.toDate(); 
-    if (ts.seconds) return new Date(ts.seconds * 1000);
-    const d = new Date(ts);
-    return isNaN(d) ? null : d;
-  };
-
   const getTimeDiff = (flaggedAt, reportedAt) => {
-    const start = parseDate(flaggedAt);
-    const end = parseDate(reportedAt);
+    const start = parseDateField(flaggedAt);
+    const end = parseDateField(reportedAt);
     if (!start || !end) return "-"; 
     const diffInMs = end - start;
     const diffInMins = Math.floor(diffInMs / (1000 * 60));
@@ -176,10 +193,10 @@ export default function CriticalAlertDashboard() {
       if (deptFilter !== "All" && a.dept !== deptFilter) return false;
       if (sourceFilter !== "All" && a.source !== sourceFilter) return false;
 
-      const pDate = parseDate(a.timePrinted || a.flaggedAt);
+      const pDate = parseDateField(a.timePrinted || a.flaggedAt);
       if (pDate) {
         // FIX: Compare using local YYYY-MM-DD for consistency
-        const entryDateStr = `${pDate.getFullYear()}-${String(pDate.getMonth() + 1).padStart(2, '0')}-${String(pDate.getDate()).padStart(2, '0')}`;
+        const entryDateStr = toLocalDateString(pDate);
         
         if (dateFrom && entryDateStr < dateFrom) return false;
         if (dateTo && entryDateStr > dateTo) return false;
@@ -187,8 +204,8 @@ export default function CriticalAlertDashboard() {
       return true;
     })
     .sort((a, b) => {
-        const dateA = parseDate(a.timePrinted || a.flaggedAt) || 0;
-        const dateB = parseDate(b.timePrinted || b.flaggedAt) || 0;
+        const dateA = parseDateField(a.timePrinted || a.flaggedAt) || 0;
+        const dateB = parseDateField(b.timePrinted || b.flaggedAt) || 0;
         return dateA - dateB;
     });
 

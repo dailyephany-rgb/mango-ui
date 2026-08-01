@@ -18,21 +18,16 @@ import StaffAvgCards from "./charts/StaffAvgCards";
 import StaffTimeline from "./charts/StaffTimeline";
 
 import {
-  subscribeOverview as subscribeMain,
+  subscribeOverview,
   toDate,
   minutesDiff,           
   fetchTestTimings,       
   computeSLAViolations,   
 } from "./lib/dataFetcher_hormones_main"; 
 
-import {
-  subscribeOverview as subscribeBackup,
-} from "./lib/dataFetcher_hormones_backup"; 
-
 export default function OwnerHormones() {
   const { dateRange, source } = useContext(OwnerContext);
 
-  const [analyzer, setAnalyzer] = useState("main");
   const [activeTab, setActiveTab] = useState("overview");
   const [staffTab,setStaffTab] = useState( "testing");
   const [rawRows, setRawRows] = useState([]);
@@ -50,9 +45,7 @@ export default function OwnerHormones() {
 
   /* ---------------- SUBSCRIBE ---------------- */
   useEffect(() => {
-    const subscribe = analyzer === "main" ? subscribeMain : subscribeBackup;
-
-    const unsub = subscribe({
+    const unsub = subscribeOverview({
       source,
       dateRange,
       onData: ({ unifiedRows,kpis,staffAnalytics,}) => {
@@ -65,7 +58,7 @@ export default function OwnerHormones() {
     fetchTestTimings().then((t) => setTestTimings(t || {}));
 
     return () => unsub && unsub();
-  }, [analyzer, source, dateRange]);
+  }, [source, dateRange]);
 
   /* ---------------- DATA ASSIGNMENT ---------------- */
   const deptRows = useMemo(() => {
@@ -198,21 +191,6 @@ export default function OwnerHormones() {
     <div className="owner-root">
       <header className="owner-header">
         <h1>Hormones — Analytics</h1>
-
-        <div className="tab-buttons">
-          <button
-            className={analyzer === "main" ? "active" : ""}
-            onClick={() => setAnalyzer("main")}
-          >
-            Main Analyzer
-          </button>
-          <button
-            className={analyzer === "backup" ? "active" : ""}
-            onClick={() => setAnalyzer("backup")}
-          >
-            Backup Analyzer
-          </button>
-        </div>
 
       <div className="tab-buttons" style={{ marginTop: 12 }}>
         {["overview", "delays", "timebricks", "staff"].map((t) => (

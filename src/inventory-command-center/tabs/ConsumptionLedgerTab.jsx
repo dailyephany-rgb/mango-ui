@@ -9,7 +9,11 @@ from "./ComboConsumptionLedgerTab";
 
 const ConsumptionLedgerTab = ({
   ledgerEntries,
-  comboLedgerEntries
+  comboLedgerEntries,
+  fromDate,
+  toDate,
+  setFromDate,
+  setToDate,
 }) => {
 
 
@@ -33,19 +37,6 @@ const [viewMode, setViewMode] =
 
   const [searchTerm, setSearchTerm] =
     useState("");
-    const today =
-    new Date().toLocaleDateString(
-      "en-CA",
-      {
-        timeZone: "Asia/Kolkata"
-      }
-    );
-  
-  const [fromDate, setFromDate] =
-    useState(today);
-  
-  const [toDate, setToDate] =
-    useState(today);
 
     const filteredRows = useMemo(() => {
 
@@ -939,6 +930,10 @@ return (
 
 <ComboConsumptionLedgerTab
   ledgerEntries={comboLedgerEntries}
+  fromDate={fromDate}
+  toDate={toDate}
+  setFromDate={setFromDate}
+  setToDate={setToDate}
 />
 
 )}

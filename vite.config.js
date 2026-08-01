@@ -19,11 +19,11 @@ export default defineConfig({
         master_admin: resolve(__dirname, "master_admin.html"),
         counts: resolve(__dirname, "analytics.html"),
         backup: resolve(__dirname, "index_backup.html"),
+        performance: resolve(__dirname, "performance.html"),
 
         // Department pages
         haem: resolve(__dirname, "index_haem.html"),
         biochem: resolve(__dirname, "index_biochem.html"),
-        biochem_backup: resolve(__dirname, "index_biochem_backup.html"),
         backroom: resolve(__dirname, "index_backroom.html"),
         coag: resolve(__dirname, "index_coag.html"),
         validator: resolve(__dirname, "index_validator.html"),

@@ -3,34 +3,76 @@ import React, { useEffect, useState, useMemo } from "react";
 import "./Haematology.css";
 import { db } from "../firebaseConfig.js";
 import {
-  collection,
-  onSnapshot,
   doc,
   setDoc,
   updateDoc,
   serverTimestamp,
   Timestamp,
-  query,
 } from "firebase/firestore";
 // Import Inventory Deduction Logic
 import { handleInventoryDeduction } from "../inventory/inventorymapping";
 // Import the Inventory Tab Component
 import HaemInventoryTab from "../inventory/HaemInventoryTab.jsx";
 import UserMenu from "../auth/UserMenu";
+import {
+  INVENTORY_MACHINES,
+  subscribeInventoryByMachines,
+} from "../shared/firestore/subscribeInventoryByMachines.js";
+import {
+  parseEntryDate,
+  toLocalDateString,
+} from "../shared/utils/dates.js";
+import { normalizeSource } from "../shared/utils/source.js";
+import { compositeId, safeKey } from "../shared/utils/ids.js";
+import {
+  extractTestName,
+  entryHasCanonicalTest,
+} from "../shared/utils/tests.js";
+import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
+import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
+import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
+import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
+import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
+
 
 // 🚨 Define the unique key for this department
 const CURRENT_DEPT = "Haematology";
 
 export default function Haematology() {
   const [activeTab, setActiveTab] = useState("register");
-  const [masterEntries, setMasterEntries] = useState([]); // Changed to hold raw master data
-  const [haemDocs, setHaemDocs] = useState({}); // Stores the haematology_register docs
-  const [loading, setLoading] = useState(true);
+
+  const {
+    regSearch,
+    setRegSearch,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
+    sourceFilter,
+    setSourceFilter,
+  } = useRegisterFilters();
+
+  const {
+    masterEntries,
+    deptDocs: haemDocs,
+    savedSet,
+    criticalReportedSet,
+    loading,
+  } = useMasterDeptSnapshots({
+    deptCollection: "haematology_register",
+    currentDept: CURRENT_DEPT,
+    masterDeptKey: "Haematology",
+    dateFrom,
+    dateTo,
+    getDeptDocKey: (_data, docId) => docId,
+    criticalBelongsToDept: (data, dept) =>
+      String(data.dept).toLowerCase() === String(dept).toLowerCase(),
+    getCriticalKey: (data) =>
+      safeKey(compositeId(data.regNo, data.diagnosticNo)),
+  });
 
   // NEW: Lifted Inventory State to eliminate flickering when switching tabs
   const [fullInventory, setFullInventory] = useState([]);
-
-  const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
 
 const [criticalModalOpen, setCriticalModalOpen] = useState(false);
 const [criticalPatient, setCriticalPatient] = useState(null);
@@ -38,58 +80,27 @@ const [criticalPatient, setCriticalPatient] = useState(null);
 const [criticalParameterInput, setCriticalParameterInput] = useState("");
 const [criticalReportedByInput, setCriticalReportedByInput] = useState("");
 
-const [criticalParams, setCriticalParams] = useState(() => {
-  const saved = localStorage.getItem(
-    "haematology_pendingCritical"
+const [criticalParams, setCriticalParams] = usePersistedObjectState(
+  "haematology_pendingCritical",
+  {}
+);
+
+  const [localScans, setLocalScans] = usePersistedObjectState(
+    "haematology_localScans",
+    {}
   );
-  return saved ? JSON.parse(saved) : {};
-});
-
-  const [regSearch, setRegSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [sourceFilter, setSourceFilter] = useState("All");
-
-  const [localScans, setLocalScans] = useState(() => {
-    const saved = localStorage.getItem("haematology_localScans");
-    return saved ? JSON.parse(saved) : {};
-  });
   
-  const [localScanTimes, setLocalScanTimes] = useState(() => {
-    const saved = localStorage.getItem("haematology_localScanTimes");
-    return saved ? JSON.parse(saved) : {};
-  });
+  const [localScanTimes, setLocalScanTimes] = usePersistedObjectState(
+    "haematology_localScanTimes",
+    {}
+  );
 
-  const [machineSelections, setMachineSelections] = useState(() => {
-    const saved = localStorage.getItem("haematology_machineSelections");
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  const [savedSet, setSavedSet] = useState(new Set());
+  const [machineSelections, setMachineSelections] = usePersistedObjectState(
+    "haematology_machineSelections",
+    {}
+  );
 
   const HAEM_TESTS_CANON = ["haemogram", "hb haemoglobin", "lamellar body count","HEMATOCRIT","RED BLOOD CELL COUNT","TOTAL LEUCOCYTIC COUNT","DIFFERENTIAL LEUCOCYTIC COUNT", "PLATELET COUNT", "RED BLOOD CELL INDICES"];
-
-  const safeKey = (val) => String(val || "").replace(/\//g, "-");
-
-  const extractTestName = (t) => {
-    if (!t) return "";
-    if (typeof t === "string") return t.toLowerCase();
-    if (typeof t === "object" && (t.test || t.name))
-      return (t.test || t.name).toLowerCase();
-    return "";
-  };
-  
-  const entryHasCanonicalTest = (entry, canonical) => {
-    const target = canonical.toLowerCase();
-    const arr = entry.selectedTests || [];
-  
-    return arr.some((x) => {
-      const raw = extractTestName(x);
-  
-      // SAME behavior as before (bidirectional match)
-      return raw.includes(target) || target.includes(raw);
-    });
-  };
 
   const getEntryCanonicalTests = (entry) => {
     if (entry._cachedCanonical) return entry._cachedCanonical;
@@ -102,38 +113,6 @@ const [criticalParams, setCriticalParams] = useState(() => {
     return result;
   };
 
-  const normalizeSource = (raw) => {
-    if (!raw) return "Unknown";
-    const s = raw.trim().toLowerCase();
-    if (s.includes("opd")) return "OPD";
-    if (s.includes("ipd")) return "IPD";
-    if (s.includes("third") || s.includes("3rd")) return "Third Floor";
-    return "Unknown";
-  };
-
-  const parseDate = (entry) => {
-    const fields = [
-      entry.timePrinted,
-      entry.timeCollected,
-      entry.scannedTime,
-      entry.savedTime,
-      entry.createdAt,
-    ];
-
-    for (const f of fields) {
-      if (!f) continue;
-      if (typeof f === "object" && typeof f.toDate === "function")
-        return f.toDate();
-      if (typeof f === "string") {
-        const d = new Date(f);
-        if (!isNaN(d)) return d;
-      }
-      if (typeof f === "object" && typeof f.seconds === "number")
-        return new Date(f.seconds * 1000);
-    }
-    return null;
-  };
-
   const is3PartRequired = (age, ageUnit) => {
     const numAge = Number(age);
     if (isNaN(numAge) || numAge <= 0) return false;
@@ -144,76 +123,13 @@ const [criticalParams, setCriticalParams] = useState(() => {
   };
 
   useEffect(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    const today = `${y}-${m}-${d}`;
-    setDateFrom(today);
-    setDateTo(today);
-  }, []);
-
-  useEffect(() => {
-    // 1. Master Register
-    const unsubMaster = onSnapshot(collection(db, "master_register"), (snap) => {
-      setMasterEntries(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    });
-  
-    // 2. Haematology Register
-    const unsubHaem = onSnapshot(collection(db, "haematology_register"), (snap) => {
-      const docsMap = {};
-      const s = new Set();
-  
-      snap.docs.forEach((d) => {
-        const data = d.data();
-        docsMap[d.id] = data;
-        if (data?.saved === "Yes" || data?.status === "saved") {
-          s.add(d.id);
-        }
-      });
-  
-      setHaemDocs(docsMap);
-      setSavedSet(s);
-    });
-  
-    // 3. Critical Alerts
-    const unsubCritical = onSnapshot(collection(db, "critical_alerts"), (snap) => {
-      const cSet = new Set();
-  
-      snap.docs.forEach((docSnap) => {
-        const data = docSnap.data();
-        if (
-          data.regNo &&
-          String(data.dept).toLowerCase() === CURRENT_DEPT.toLowerCase()
-        ) {
-          const cKey = safeKey(`${data.regNo}_${data.diagnosticNo}`);
-          cSet.add(cKey);
-        }
-      });
-  
-      setCriticalReportedSet(cSet);
-    });
-  
-    return () => {
-      unsubMaster();
-      unsubHaem();
-      unsubCritical();
-    };
-  }, []);
-
-  useEffect(() => {
     if (activeTab !== "inventory") return;
-  
-    const unsubInv = onSnapshot(
-      query(collection(db, "inventory_logs")),
-      (snap) => {
-        setFullInventory(
-          snap.docs.map((d) => ({ ...d.data(), id: String(d.id) }))
-        );
-      }
+
+    const unsubInv = subscribeInventoryByMachines(
+      [...INVENTORY_MACHINES.haem3, ...INVENTORY_MACHINES.haem5],
+      (logs) => setFullInventory(logs)
     );
-  
+
     return () => unsubInv();
   }, [activeTab]);
 
@@ -232,7 +148,7 @@ const [criticalParams, setCriticalParams] = useState(() => {
       const canonicalTests = getEntryCanonicalTests(entry);
       const regNo = entry.regNo || entry.regno || entry.id;
       const diagnosticNo = entry.diagnosticNo || "-";
-      const compositeKey = safeKey(`${regNo}_${diagnosticNo}`);
+      const compositeKey = safeKey(compositeId(regNo, diagnosticNo));
       const savedData = haemDocs[compositeKey] || {};
   
       const currentScanned =
@@ -277,26 +193,12 @@ const [criticalParams, setCriticalParams] = useState(() => {
     const now = new Date().toISOString();
     const regKey = patient.compositeKey;
   
-    setLocalScans((prev) => {
-      const updated = { ...prev, [regKey]: value };
-      localStorage.setItem(
-        "haematology_localScans",
-        JSON.stringify(updated)
-      );
-      return updated;
-    });
+    setLocalScans((prev) => ({ ...prev, [regKey]: value }));
   
-    setLocalScanTimes((prev) => {
-      const updatedTimes = {
-        ...prev,
-        [regKey]: value === "Yes" ? now : null,
-      };
-      localStorage.setItem(
-        "haematology_localScanTimes",
-        JSON.stringify(updatedTimes)
-      );
-      return updatedTimes;
-    });
+    setLocalScanTimes((prev) => ({
+      ...prev,
+      [regKey]: value === "Yes" ? now : null,
+    }));
   
     try {
       await updateDoc(
@@ -316,19 +218,10 @@ const [criticalParams, setCriticalParams] = useState(() => {
 
 
   const handleMachineSelection = (compositeKey, machine) => {
-    setMachineSelections((prev) => {
-      const updated = {
-        ...prev,
-        [compositeKey]: machine,
-      };
-  
-      localStorage.setItem(
-        "haematology_machineSelections",
-        JSON.stringify(updated)
-      );
-  
-      return updated;
-    });
+    setMachineSelections((prev) => ({
+      ...prev,
+      [compositeKey]: machine,
+    }));
   };
 
   const triggerCritical = (entry) => {
@@ -351,22 +244,13 @@ const [criticalParams, setCriticalParams] = useState(() => {
   
     const regKey = criticalPatient.compositeKey;
   
-    setCriticalParams((prev) => {
-      const updated = {
-        ...prev,
-        [regKey]: {
-          parameter: criticalParameterInput.trim(),
-          criticalReportedBy: criticalReportedByInput.trim(),
-        },
-      };
-  
-      localStorage.setItem(
-        "haematology_pendingCritical",
-        JSON.stringify(updated)
-      );
-  
-      return updated;
-    });
+    setCriticalParams((prev) => ({
+      ...prev,
+      [regKey]: {
+        parameter: criticalParameterInput.trim(),
+        criticalReportedBy: criticalReportedByInput.trim(),
+      },
+    }));
   
     setCriticalModalOpen(false);
     setCriticalPatient(null);
@@ -480,38 +364,22 @@ const [criticalParams, setCriticalParams] = useState(() => {
       
       setLocalScans((prev) => {
         const updated = { ...prev }; delete updated[compositeKey];
-        localStorage.setItem("haematology_localScans", JSON.stringify(updated));
         return updated;
       });
       setLocalScanTimes((prev) => {
         const updated = { ...prev }; delete updated[compositeKey];
-        localStorage.setItem("haematology_localScanTimes", JSON.stringify(updated));
         return updated;
       });
 
       setCriticalParams((prev) => {
         const n = { ...prev };
-      
         delete n[compositeKey];
-      
-        localStorage.setItem(
-          "haematology_pendingCritical",
-          JSON.stringify(n)
-        );
-      
         return n;
       });
       
       setMachineSelections((prev) => {
         const updated = { ...prev };
-      
         delete updated[compositeKey];
-      
-        localStorage.setItem(
-          "haematology_machineSelections",
-          JSON.stringify(updated)
-        );
-      
         return updated;
       });
       
@@ -532,18 +400,18 @@ const [criticalParams, setCriticalParams] = useState(() => {
         }
         if (sourceFilter !== "All" && p.source !== sourceFilter) return false;
         
-        const eDate = parseDate(p);
+        const eDate = parseEntryDate(p);
         if (eDate) {
-          const entryDateStr = `${eDate.getFullYear()}-${String(eDate.getMonth() + 1).padStart(2, '0')}-${String(eDate.getDate()).padStart(2, '0')}`;
+          const entryDateStr = toLocalDateString(eDate);
           if (dateFrom && entryDateStr < dateFrom) return false;
           if (dateTo && entryDateStr > dateTo) return false;
         }
         return true;
-      })
-      .sort((a, b) => {
+    })
+    .sort((a, b) => {
         if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-        const dateA = parseDate(a);
-        const dateB = parseDate(b);
+        const dateA = parseEntryDate(a);
+        const dateB = parseEntryDate(b);
         if (!dateA) return 1;
         if (!dateB) return -1;
         return dateA - dateB;
@@ -593,20 +461,16 @@ const [criticalParams, setCriticalParams] = useState(() => {
         <HaemInventoryTab preLoadedInventory={fullInventory} />
       ) : (
         <>
-          <div className="filter-bar">
-            <input className="reg-search" placeholder="Search Reg or Diag No..." value={regSearch} onChange={(e) => setRegSearch(e.target.value)} />
-            <div className="date-filters">
-              <label>Date:</label>
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-              <span>to</span>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-            </div>
-            <div className="source-buttons">
-              {["OPD", "IPD", "Third Floor", "All"].map((src) => (
-                <button key={src} className={`source-btn ${sourceFilter === src ? "active" : ""}`} onClick={() => setSourceFilter(src)}>{src}</button>
-              ))}
-            </div>
-          </div>
+          <RegisterFilterBar
+            regSearch={regSearch}
+            setRegSearch={setRegSearch}
+            dateFrom={dateFrom}
+            setDateFrom={setDateFrom}
+            dateTo={dateTo}
+            setDateTo={setDateTo}
+            sourceFilter={sourceFilter}
+            setSourceFilter={setSourceFilter}
+          />
 
           <div className="table-card">
             <div className="haem-table-wrapper">
@@ -762,54 +626,21 @@ const [criticalParams, setCriticalParams] = useState(() => {
             )}
 
             {criticalModalOpen && (
-              <div className="critical-modal-overlay">
-                <div className="critical-modal">
-      
-                  <h3>Critical Alert</h3>
-      
-                  <label>Critical Parameter &amp; Value</label>
-      
-                  <input
-                    type="text"
-                    value={criticalParameterInput}
-                    onChange={(e) => setCriticalParameterInput(e.target.value)}
-                    placeholder="e.g. HB: 4.2"
-                  />
-      
-                  <label style={{ marginTop: "15px" }}>
-                    Critical Reported By
-                  </label>
-      
-                  <input
-                    type="text"
-                    value={criticalReportedByInput}
-                    onChange={(e) => setCriticalReportedByInput(e.target.value)}
-                    placeholder="Enter Name"
-                  />
-      
-                  <div className="modal-actions">
-                    <button
-                      className="source-btn"
-                      onClick={() => {
-                        setCriticalModalOpen(false);
-                        setCriticalPatient(null);
-                      }}
-                    >
-                      Cancel
-                    </button>
-      
-                    <button
-                      className="save-btn"
-                      style={{ width: "120px" }}
-                      onClick={saveCriticalDetails}
-                    >
-                      Save
-                    </button>
-                  </div>
-      
-                </div>
-              </div>
-            )}
+      <CriticalAlertModal
+        open={criticalModalOpen}
+        parameterInput={criticalParameterInput}
+        setParameterInput={setCriticalParameterInput}
+        reportedByInput={criticalReportedByInput}
+        setReportedByInput={setCriticalReportedByInput}
+        onCancel={() => {
+          setCriticalModalOpen(false);
+          setCriticalPatient(null);
+        }}
+        onSave={saveCriticalDetails}
+        parameterPlaceholder="e.g. HB: 4.2"
+        actionsClassName="modal-actions"
+      />
+      )}
       
           </div>
         );

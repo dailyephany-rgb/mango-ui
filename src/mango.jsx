@@ -258,6 +258,15 @@ export default function Mango() {
         timePrinted: fullTimePrinted,
         timeCollected: finalTimeCollected,
         urgent: formData.urgent || false,
+        // Denormalized dept keys for Firestore queries (array-contains).
+        // Derived from selectedTests[].dept — selectedTests shape unchanged.
+        departments: [
+          ...new Set(
+            (formData.selectedTests || [])
+              .map((t) => t?.dept)
+              .filter(Boolean)
+          ),
+        ],
       };
       
       delete entryData.expandedDept; 

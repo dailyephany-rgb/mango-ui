@@ -13,6 +13,10 @@ import {
 } from "firebase/firestore";
 
 import { addConsumptionLedgerEntry } from "../inventory-command-center/utils/consumptionledger";
+import {
+  getStaticConfig,
+  setStaticConfig,
+} from "../shared/cache/staticConfigCache.js";
 
 
 export const testToReagentMap = {
@@ -443,6 +447,15 @@ export const getVitrosDeductibleTests = async (
   for (const testName of selectedTests) {
 
     try {
+      const cacheKey = `inventory_adjustments:${testName}`;
+      const cached = getStaticConfig(cacheKey);
+      if (cached != null) {
+        const analyzer = cached?.analyzer || "VITROS";
+        if (analyzer === "VITROS") {
+          deductibleTests.push(testName);
+        }
+        continue;
+      }
 
       const adjustmentRef = doc(
         db,
@@ -454,13 +467,15 @@ export const getVitrosDeductibleTests = async (
         await getDoc(adjustmentRef);
 
       if (!adjustmentSnap.exists()) {
-
+        setStaticConfig(cacheKey, { __missing: true, analyzer: "VITROS" });
         deductibleTests.push(testName);
         continue;
       }
 
       const adjustment =
         adjustmentSnap.data();
+
+      setStaticConfig(cacheKey, adjustment);
 
       const analyzer =
         adjustment?.analyzer || "VITROS";

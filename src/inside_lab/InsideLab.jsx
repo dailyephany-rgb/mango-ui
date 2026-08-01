@@ -9,10 +9,24 @@ import {
   getDoc,
   writeBatch,
   serverTimestamp,
+  query,
+  where,
+  orderBy,
+  Timestamp,
 } from "firebase/firestore";
 
 import INSIDE_ROOM_MAP from "../inside_room_routing.json"; 
 import "./InsideLab.css";
+import {
+  parseEntryDate,
+  toLocalDateString,
+  getLocalDateString,
+  localDayStart,
+  localDayEndExclusive,
+} from "../shared/utils/dates.js";
+import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
+import { useScopedMasterEntries } from "../shared/hooks/useScopedMasterEntries.js";
+import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
 
 export default function InsideLabRegister() {
   const loggedUser =
@@ -22,62 +36,69 @@ export default function InsideLabRegister() {
   sessionStorage.clear();
   window.location.href = "/login.html";
   };
-  const [entries, setEntries] = useState([]);
   const [labResults, setLabResults] = useState({}); 
   const [localDrafts, setLocalDrafts] = useState({}); 
   const [activeTab, setActiveTab] = useState("PathologyRegister");
-  const [activeSource, setActiveSource] = useState("All");
-  const [regSearch, setRegSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const {
+    regSearch,
+    setRegSearch,
+    dateFrom,
+    setDateFrom,
+    dateTo,
+    setDateTo,
+    sourceFilter: activeSource,
+    setSourceFilter: setActiveSource,
+  } = useRegisterFilters();
+
+  const { masterEntries: entries } = useScopedMasterEntries({
+    masterDeptKey: activeTab,
+    dateFrom,
+    dateTo,
+    mapMasterDoc: (d) => ({
+      id: d.id,
+      ...d.data(),
+      urgent: d.data().urgent || false,
+    }),
+  });
   
   const [showEdit, setShowEdit] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [results, setResults] = useState([{ testType: "", content: "" }]);
   const [saving, setSaving] = useState(false);
 
-  // Helper to normalize dates for sorting
-  const parseDate = (entry) => {
-    const f = entry.timePrinted;
-    if (!f) return null;
-    if (f?.toDate) return f.toDate();
-    if (typeof f === "string" || f instanceof Date) {
-      const d = new Date(f);
-      return isNaN(d) ? null : d;
-    }
-    if (f?.seconds) return new Date(f.seconds * 1000);
-    return null;
-  };
-
   useEffect(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    const today = `${y}-${m}-${d}`;
+    const fromStr = dateFrom || getLocalDateString();
+    const toStr = dateTo || getLocalDateString();
+    const start = localDayStart(fromStr);
+    const endExclusive = localDayEndExclusive(toStr);
+    if (!start || !endExclusive) return undefined;
 
-    setDateFrom(today);
-    setDateTo(today);
-  }, []);
+    const labQuery = query(
+      collection(db, "inside_lab_results"),
+      where("timePrinted", ">=", Timestamp.fromDate(start)),
+      where("timePrinted", "<", Timestamp.fromDate(endExclusive)),
+      orderBy("timePrinted", "asc")
+    );
 
-  useEffect(() => {
-    const unsubMaster = onSnapshot(collection(db, "master_register"), (snap) => {
-      const allData = snap.docs.map((d) => ({ 
-        id: d.id, 
-        ...d.data(),
-        urgent: d.data().urgent || false 
-      }));
-      setEntries(allData);
-    });
+    const unsubLab = onSnapshot(
+      labQuery,
+      (snap) => {
+        const labData = {};
+        snap.docs.forEach((d) => {
+          labData[d.id] = d.data();
+        });
+        setLabResults(labData);
+      },
+      (err) => {
+        console.error(
+          "[InsideLab] inside_lab_results timePrinted query failed:",
+          err
+        );
+      }
+    );
 
-    const unsubLab = onSnapshot(collection(db, "inside_lab_results"), (snap) => {
-      const labData = {};
-      snap.docs.forEach(d => { labData[d.id] = d.data(); });
-      setLabResults(labData);
-    });
-
-    return () => { unsubMaster(); unsubLab(); };
-  }, []);
+    return () => unsubLab();
+  }, [dateFrom, dateTo]);
 
   // UPDATE: Generate Department-Specific Composite Key
   
@@ -261,9 +282,9 @@ export default function InsideLabRegister() {
           if (!regKey.includes(searchStr) && !diagKey.includes(searchStr)) return false;
         }
 
-        const d = parseDate(e);
+        const d = parseEntryDate(e, ["timePrinted"]);
         if (d) {
-          const entryDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          const entryDateStr = toLocalDateString(d);
           if (dateFrom && entryDateStr < dateFrom) return false;
           if (dateTo && entryDateStr > dateTo) return false;
         }
@@ -271,8 +292,8 @@ export default function InsideLabRegister() {
       })
       .sort((a, b) => {
         if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-        const dateA = parseDate(a);
-        const dateB = parseDate(b);
+        const dateA = parseEntryDate(a, ["timePrinted"]);
+        const dateB = parseEntryDate(b, ["timePrinted"]);
         if (!dateA) return 1;
         if (!dateB) return -1;
         return dateA - dateB;
@@ -334,20 +355,21 @@ export default function InsideLabRegister() {
     </div>
   </details>
 </div>
-      <div className="filter-bar">
-        <input className="reg-search" placeholder="Search Reg or Diag No..." value={regSearch} onChange={(e) => setRegSearch(e.target.value)} />
-        <div className="date-filters">
-          <span className="date-label">Date:</span>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-          <span>to</span>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-        </div>
-        <div className="source-filters">
-          {["OPD", "IPD", "Third Floor", "All"].map((src) => (
-            <button key={src} className={`source-btn ${activeSource === src ? "active" : ""}`} onClick={() => setActiveSource(src)}>{src}</button>
-          ))}
-        </div>
-      </div>
+      <RegisterFilterBar
+        regSearch={regSearch}
+        setRegSearch={setRegSearch}
+        dateFrom={dateFrom}
+        setDateFrom={setDateFrom}
+        dateTo={dateTo}
+        setDateTo={setDateTo}
+        sourceFilter={activeSource}
+        setSourceFilter={setActiveSource}
+        sourceContainerClassName="source-filters"
+        useDateLabelSpan
+        sourceButtonClassName={(src, active) =>
+          `source-btn ${active === src ? "active" : ""}`
+        }
+      />
 
       <div className="tab-container">
         {Object.keys(INSIDE_ROOM_MAP).map((tab) => (

@@ -1,23 +1,17 @@
 
 import { db } from "../../firebaseConfig.js";
-import { collection, onSnapshot } from "firebase/firestore";
+import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrintedQuery.js";
+import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPaint.js";
+import { trackedOnSnapshot as onSnapshot } from "../../shared/firestore/trackedFirestore.js";
 // IMPORT the JSON file
 import testTimingsData from "../data/test_timings.json";
 import OUTSOURCE_ROUTING from "../../Outsource.json";
 
 /* ====================== DATE UTILS ====================== */
-export const toDate = (v) => {
-  if (!v) return null;
-  if (typeof v?.toDate === "function") return v.toDate();
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? null : d;
-};
 
-export const minutesDiff = (a, b) => {
-  const A = toDate(a);
-  const B = toDate(b);
-  return A && B && B > A ? Math.round((B - A) / 60000) : null;
-};
+import { toDate, minutesDiff } from "../../shared/utils/dates.js";
+import { normalizeTestsFieldUpper as normalizeTestsField } from "../../shared/utils/normalizeTestsFieldUpper.js";
+export { toDate, minutesDiff, normalizeTestsField };
 
 export const formatTAT = (totalMinutes) => {
   if (!totalMinutes || totalMinutes <= 0) return "0m";
@@ -31,20 +25,6 @@ export const formatTAT = (totalMinutes) => {
   }
   return `${hours}h ${mins}m`;
 };
-
-/* ================= TEST NORMALIZATION =================== */
-export function normalizeTestsField(field) {
-  if (!field) return [];
-  if (Array.isArray(field)) {
-    return field.map(v => {
-      if (v && typeof v === "object") return v.test || v.name || v.testName || v.selectedTest;
-      if (typeof v === "string") return v;
-      return null;
-    }).filter(Boolean).map(s => String(s).trim().toUpperCase());
-  }
-  if (typeof field === "string") return field.split(",").map(s => s.trim().toUpperCase()).filter(Boolean);
-  return [];
-}
 
 /* ================= STAFF DISTRIBUTION =================== */
 function buildStaffDistribution(rows, field) {
@@ -418,8 +398,19 @@ export function mergeOutsourceRows(rows = [], targetLab) {
 
 /* ================= SUBSCRIBE OVERVIEW =================== */
 export function subscribeOverview({ onData, dateRange, source, activeRegister, targetLab }) {
-  const masterRef = collection(db, "master_register");
-  const outsourceRef = collection(db, "outsource_tracking");
+  const { paintCache, onDataLive } = createOwnerSessionPaint({
+    dept: `outsource:${activeRegister || targetLab || ""}`,
+    dateRange,
+    source,
+    onData,
+  });
+  paintCache();
+
+  const masterRef = scopedTimePrintedQuery("master_register", dateRange);
+  const outsourceRef = scopedTimePrintedQuery("outsource_tracking", dateRange);
+  if (!masterRef || !outsourceRef) {
+    return () => {};
+  }
 
   const canonTests = OUTSOURCE_ROUTING[targetLab] || [];
 
@@ -459,7 +450,7 @@ return tests.some(test => canonSet.has(test));
 
    
     
-    onData({
+    onDataLive({
       unifiedRows: merged.map(r => ({
         ...r,
       

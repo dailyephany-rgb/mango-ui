@@ -3,8 +3,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { db } from "../firebaseConfig";
 import {
   collection,
-  onSnapshot,
-  query,
   doc,
   writeBatch,
   addDoc,
@@ -14,7 +12,10 @@ import {
 import { handleInventoryDeduction } from "../inventory/inventorymapping";
 
 import { addConsumptionLedgerEntry } from "../inventory-command-center/utils/consumptionledger";
-
+import {
+  INVENTORY_MACHINES,
+  subscribeInventoryByMachines,
+} from "../shared/firestore/subscribeInventoryByMachines.js";
 
 import "./DeptInventory.css";
 
@@ -57,27 +58,14 @@ export default function DeptInventoryTab() {
   const [showWasteModal, setShowWasteModal] = useState(false);
   const [wasteReasons, setWasteReasons] = useState({});
 
-  // LOG VIEWER
+  // FETCH & CATEGORIZE — backup machines by tab (Biochem vs Hormones)
   useEffect(() => {
-    const qCal = query(collection(db, "calibration_logs"));
-    const unsubCal = onSnapshot(qCal, (snap) => {
-      console.log("CALIBRATION LOGS:", snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    const qQC = query(collection(db, "qc_logs"));
-    const unsubQC = onSnapshot(qQC, (snap) => {
-      console.log("/ CONTROL (QC) LOGS:", snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    return () => { unsubCal(); unsubQC(); };
-  }, []);
+    const machines =
+      activeTab === "Hormones"
+        ? INVENTORY_MACHINES.backupHormones
+        : INVENTORY_MACHINES.backupBiochem;
 
-  // FETCH & CATEGORIZE INVENTORY ----
-  useEffect(() => {
-    const q = query(collection(db, "inventory_logs"));
-    const unsub = onSnapshot(q, (snap) => {
-      const logs = snap.docs.map(d => ({
-        ...d.data(),
-        id: String(d.id),
-      }));
+    const unsub = subscribeInventoryByMachines(machines, (logs) => {
       const categorized = logs.map(item => {
         const name = item.reagentName?.toUpperCase().trim();
         
@@ -208,7 +196,7 @@ export default function DeptInventoryTab() {
       setInventory(categorized);
     });
     return () => unsub();
-  }, []);
+  }, [activeTab]);
 
   const activeItems = useMemo(() =>
     inventory.filter(item => item.category === activeTab &&

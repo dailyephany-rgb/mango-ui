@@ -17,7 +17,11 @@ import {
 
 const QCMonitorTab = ({
   qcLogs,
-  calibrationLogs
+  calibrationLogs,
+  fromDate,
+  toDate,
+  setFromDate,
+  setToDate,
 }) => {
 
 
@@ -29,20 +33,6 @@ const QCMonitorTab = ({
 
   const [expandedRow, setExpandedRow] =
     useState(null);
-
-    const today =
-    new Date().toLocaleDateString(
-      "en-CA",
-      {
-        timeZone: "Asia/Kolkata"
-      }
-    );
-  
-  const [fromDate, setFromDate] =
-    useState(today);
-  
-  const [toDate, setToDate] =
-    useState(today);
   
 
   const rows = useMemo(() => {

@@ -8,25 +8,15 @@ import React, {
 import DateRangeFilter from "../components/DateRangeFilter";
 
 const ConsumedInventoryTab = ({
-  inventoryLogs
+  inventoryLogs,
+  fromDate,
+  toDate,
+  setFromDate,
+  setToDate,
 }) => {
 
   const [searchTerm, setSearchTerm] =
     useState("");
-
-    const today =
-    new Date().toLocaleDateString(
-      "en-CA",
-      {
-        timeZone: "Asia/Kolkata"
-      }
-    );
-  
-  const [fromDate, setFromDate] =
-    useState(today);
-  
-  const [toDate, setToDate] =
-    useState(today);
 
   const [machineFilter, setMachineFilter] =
     useState("All");
