@@ -11,6 +11,7 @@ import {
 } from "./networkMetrics.js";
 import { estimateSessionStorageBytes } from "./performanceStore.js";
 import { ROLLUP_CAPS } from "./rollupMerge.js";
+import { PAGE_LOAD_SLOW_MS, PAGE_LOAD_RED_MS } from "./pageLoadBands.js";
 
 function band(score) {
   if (score >= 85) return "Excellent";
@@ -32,7 +33,7 @@ export function computeHealthScores(state = getState(), fromStr = null, toStr = 
     filterByDateRange(state.cacheEvents || [], from, to)
   );
   const qStats = summarizeDurations(queries);
-  const slowPages = loads.filter((l) => (l.totalMs || 0) > 30000).length;
+  const slowPages = loads.filter((l) => (l.totalMs || 0) >= PAGE_LOAD_SLOW_MS).length;
   const avgLoad =
     loads.length > 0
       ? loads.reduce((a, b) => a + (b.totalMs || 0), 0) / loads.length
@@ -138,7 +139,7 @@ export function persistTodayHealth() {
     avgLoadMs: loads.length
       ? loads.reduce((a, b) => a + (b.totalMs || 0), 0) / loads.length
       : 0,
-    slowPages: loads.filter((l) => (l.totalMs || 0) > 30000).length,
+    slowPages: loads.filter((l) => (l.totalMs || 0) >= PAGE_LOAD_SLOW_MS).length,
     queryStats: qStats,
     cache,
     scores,
@@ -185,10 +186,16 @@ export function computeAlerts(state = getState(), fromStr = null, toStr = null) 
   const qStats = summarizeDurations(queries);
 
   for (const l of loads) {
-    if ((l.totalMs || 0) > 30000) {
+    const t = l.totalMs || 0;
+    if (t >= PAGE_LOAD_RED_MS) {
       alerts.push({
         level: "critical",
-        text: `Page load >30s: ${l.page} (${Math.round(l.totalMs)}ms)`,
+        text: `Page load ≥1min (red): ${l.page} (${Math.round(t)}ms)`,
+      });
+    } else if (t >= PAGE_LOAD_SLOW_MS) {
+      alerts.push({
+        level: "warn",
+        text: `Page load 30s–1min (orange): ${l.page} (${Math.round(t)}ms)`,
       });
     }
   }

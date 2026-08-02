@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { PerformanceProvider, usePerf } from "./PerformanceContext.jsx";
+import { loadBand, PAGE_LOAD_SLOW_MS } from "./pageLoadBands.js";
 import "./Performance.css";
 
 function ms(n) {
@@ -13,14 +14,6 @@ function bytes(n) {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(2)} MB`;
-}
-
-function loadBand(totalMs) {
-  if (totalMs == null) return { cls: "", label: "—" };
-  if (totalMs < 2000) return { cls: "band-green", label: "Green" };
-  if (totalMs < 10000) return { cls: "band-yellow", label: "Yellow" };
-  if (totalMs < 30000) return { cls: "band-orange", label: "Orange" };
-  return { cls: "band-red", label: "Red" };
 }
 
 function scoreClass(label) {
@@ -338,7 +331,9 @@ function DashboardInner() {
           <div className="label">Slow Pages</div>
           <div className="value">
             {
-              (filtered.pageLoads || []).filter((l) => (l.totalMs || 0) > 30000)
+              (filtered.pageLoads || []).filter(
+                (l) => (l.totalMs || 0) >= PAGE_LOAD_SLOW_MS
+              )
                 .length
             }
           </div>
@@ -440,8 +435,7 @@ function DashboardInner() {
         <div className="perf-panel">
           <h2>Page Load Performance</h2>
           <p className="muted">
-            Green &lt;2s · Yellow 2–10s · Orange 10–30s · Red &gt;30s (Slow Page
-            Recorder)
+            Green &lt;2s · Yellow 2–30s · Orange 30s–1min · Red ≥1min (1–2min+)
           </p>
           <table className="perf-table">
             <thead>

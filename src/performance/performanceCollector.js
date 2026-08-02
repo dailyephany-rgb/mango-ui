@@ -14,6 +14,7 @@ import {
   resolvePageIdentity,
 } from "./firestoreMetrics.js";
 import { getHeapEstimate } from "./renderMetrics.js";
+import { PAGE_LOAD_SLOW_MS, PAGE_LOAD_RED_MS } from "./pageLoadBands.js";
 
 let pageCtx = null;
 let firstSnapshotRecorded = false;
@@ -170,7 +171,7 @@ export function finalizePageLoad(timings) {
   const ctx = getPageContext();
   const state = getState();
   const prev = (state.pageLoads || [])
-    .filter((p) => p.page === ctx.page && (p.totalMs || 0) < 30000)
+    .filter((p) => p.page === ctx.page && (p.totalMs || 0) < PAGE_LOAD_SLOW_MS)
     .slice(-1)[0];
 
   const activeListeners = (state.listeners || []).filter(
@@ -208,10 +209,11 @@ export function finalizePageLoad(timings) {
   });
 
   const total = record.totalMs || 0;
-  if (total > 30000) {
+  if (total >= PAGE_LOAD_SLOW_MS) {
+    const band = total >= PAGE_LOAD_RED_MS ? "red (≥1min)" : "orange (30s–1min)";
     recordEvent({
       kind: "slow_page",
-      message: `Slow page ${ctx.page}: ${Math.round(total)}ms`,
+      message: `Slow page ${ctx.page} [${band}]: ${Math.round(total)}ms`,
       ...record,
       replay: buildReplayChain(record, timings),
     });

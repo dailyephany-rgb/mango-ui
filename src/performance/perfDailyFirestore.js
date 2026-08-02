@@ -39,6 +39,7 @@ import {
   mergeRollupRecords,
   mergeUniqueByAt,
 } from "./rollupMerge.js";
+import { PAGE_LOAD_SLOW_MS } from "./pageLoadBands.js";
 
 const CLIENT_KEY = "mango.perf.clientId";
 const MIN_FLUSH_MS = 45000;
@@ -112,7 +113,7 @@ export function buildSessionDayRollup(dateStr = todayKey()) {
     avgLoadMs: loads.length
       ? loads.reduce((a, b) => a + (b.totalMs || 0), 0) / loads.length
       : 0,
-    slowPages: loads.filter((l) => (l.totalMs || 0) > 30000).length,
+    slowPages: loads.filter((l) => (l.totalMs || 0) >= PAGE_LOAD_SLOW_MS).length,
     queryStats: summarizeDurations(queries),
     cache: summarizeCache(cacheEvents),
     scores,

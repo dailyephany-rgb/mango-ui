@@ -31,6 +31,11 @@ import {
   combineLocalAndRemoteRollups,
   fetchPerfDailyRange,
 } from "./perfDailyFirestore.js";
+import {
+  loadBandLabel,
+  PAGE_LOAD_SLOW_MS,
+  PAGE_LOAD_BAND_LEGEND,
+} from "./pageLoadBands.js";
 
 function ms(n) {
   if (n == null || Number.isNaN(n)) return "—";
@@ -43,14 +48,6 @@ function bytes(n) {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(2)} MB`;
-}
-
-function loadBand(totalMs) {
-  if (totalMs == null) return "—";
-  if (totalMs < 2000) return "Green";
-  if (totalMs < 10000) return "Yellow";
-  if (totalMs < 30000) return "Orange";
-  return "Red";
 }
 
 function groupSum(items, key, valueKey) {
@@ -170,7 +167,7 @@ export async function downloadPerformancePdf(opts = {}) {
     0
   );
   const slowPages = (view.pageLoads || []).filter(
-    (l) => (l.totalMs || 0) > 30000
+    (l) => (l.totalMs || 0) >= PAGE_LOAD_SLOW_MS
   ).length;
   const avgLoad = view.pageLoads.length
     ? view.pageLoads.reduce((a, b) => a + (b.totalMs || 0), 0) /
@@ -286,7 +283,7 @@ export async function downloadPerformancePdf(opts = {}) {
       ["Reads full session", readsSession.toLocaleString()],
       ["Cache hit %", `${cache.hitRate.toFixed(1)}%`],
       ["Cache miss %", `${cache.missRate.toFixed(1)}%`],
-      ["Slow pages (>30s)", String(slowPages)],
+      ["Slow pages (≥30s / orange+)", String(slowPages)],
       ["Avg page load", ms(avgLoad)],
       ["Worst query", ms(qStats.max)],
       ["Query avg / median / p95", `${ms(qStats.avg)} / ${ms(qStats.median)} / ${ms(qStats.p95)}`],
@@ -309,7 +306,7 @@ export async function downloadPerformancePdf(opts = {}) {
   doc.setTextColor(100);
   y = ensureSpace(doc, y, 8);
   doc.text(
-    "Bands: Green <2s · Yellow 2–10s · Orange 10–30s · Red >30s (Slow Page Recorder)",
+    PAGE_LOAD_BAND_LEGEND,
     14,
     y
   );
@@ -342,7 +339,7 @@ export async function downloadPerformancePdf(opts = {}) {
       ms(l.firstSnapshotMs),
       ms(l.interactiveMs),
       ms(l.totalMs),
-      loadBand(l.totalMs),
+      loadBandLabel(l.totalMs),
       l.cacheHit ? "Hit" : "Miss",
       l.snapshotDocCount ?? "—",
       l.queryCount ?? "—",

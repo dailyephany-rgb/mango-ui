@@ -4,6 +4,7 @@
 
 import { summarizeCache } from "./cacheMetrics.js";
 import { summarizeDurations } from "./networkMetrics.js";
+import { PAGE_LOAD_SLOW_MS } from "./pageLoadBands.js";
 
 export const ROLLUP_CAPS = {
   pageLoads: 80,
@@ -111,7 +112,8 @@ export function mergeRollupRecords(a = {}, b = {}) {
     avgLoadMs: pageLoads.length
       ? pageLoads.reduce((s, l) => s + (l.totalMs || 0), 0) / pageLoads.length
       : 0,
-    slowPages: pageLoads.filter((l) => (l.totalMs || 0) > 30000).length,
+    slowPages: pageLoads.filter((l) => (l.totalMs || 0) >= PAGE_LOAD_SLOW_MS)
+      .length,
     cache,
     queryStats,
     scores: b.scores || a.scores || null,
