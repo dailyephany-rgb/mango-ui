@@ -4,6 +4,8 @@
  * Daily health aggregates → localStorage (mango.perf.health.v1) for 30-day trends
  */
 
+import { mergeRollupRecords } from "./rollupMerge.js";
+
 const STORE_KEY = "mango.perf.v1";
 const HEALTH_KEY = "mango.perf.health.v1";
 const DAILY_KEY = "mango.perf.daily.v1";
@@ -201,12 +203,17 @@ export function saveDailyHealth(dateStr, scores) {
 /**
  * Compact daily telemetry rollup so date filter works across days
  * (sessionStorage alone is wiped when the tab closes).
+ * Merges with any existing same-day rollup (does not replace).
  * Keep 30 days.
  */
 export function saveDailyRollup(dateStr, rollup) {
   try {
+    const existing = getDailyRollups().find((d) => d.date === dateStr);
+    const merged = existing
+      ? mergeRollupRecords(existing, { ...rollup, date: dateStr })
+      : { ...rollup, date: dateStr, at: Date.now() };
     const all = getDailyRollups().filter((d) => d.date !== dateStr);
-    all.push({ date: dateStr, at: Date.now(), ...rollup });
+    all.push({ ...merged, date: dateStr, at: Date.now() });
     all.sort((a, b) => a.date.localeCompare(b.date));
     while (all.length > 30) all.shift();
     localStorage.setItem(DAILY_KEY, JSON.stringify(all));

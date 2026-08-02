@@ -45,6 +45,6 @@ try {
 
 export { db };
 
-// Passive Performance & Diagnostics (no Firestore writes; disable with
-// localStorage.setItem("mango.perf.monitor","0"))
+// Passive Performance & Diagnostics → local + Firestore collection perf_daily
+// Disable: localStorage.setItem("mango.perf.monitor","0")
 import("./performance/bootstrap.js").catch(() => {});

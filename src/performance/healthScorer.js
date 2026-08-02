@@ -10,6 +10,7 @@ import {
   filterByDateRange,
 } from "./networkMetrics.js";
 import { estimateSessionStorageBytes } from "./performanceStore.js";
+import { ROLLUP_CAPS } from "./rollupMerge.js";
 
 function band(score) {
   if (score >= 85) return "Excellent";
@@ -121,6 +122,12 @@ export function persistTodayHealth() {
   const reads = filterByDateRange(state.reads || [], date, date);
   const cacheEvents = filterByDateRange(state.cacheEvents || [], date, date);
   const events = filterByDateRange(state.events || [], date, date);
+  const longTasks = filterByDateRange(state.longTasks || [], date, date);
+  const incrementalSync = filterByDateRange(
+    state.incrementalSync || [],
+    date,
+    date
+  );
   const qStats = summarizeDurations(queries);
   const cache = summarizeCache(cacheEvents);
   const readsTotal = reads.reduce((a, r) => a + (r.docCount || 0), 0);
@@ -134,13 +141,20 @@ export function persistTodayHealth() {
     slowPages: loads.filter((l) => (l.totalMs || 0) > 30000).length,
     queryStats: qStats,
     cache,
-    // Keep compact samples for date-filtered views after session ends
-    pageLoads: loads.slice(-40),
-    queries: queries.slice(-80),
-    reads: reads.slice(-80),
-    events: events.slice(-40),
-    longTasks: filterByDateRange(state.longTasks || [], date, date).slice(-20),
+    scores,
+    pageLoads: loads.slice(-ROLLUP_CAPS.pageLoads),
+    queries: queries.slice(-ROLLUP_CAPS.queries),
+    reads: reads.slice(-ROLLUP_CAPS.reads),
+    events: events.slice(-ROLLUP_CAPS.events),
+    longTasks: longTasks.slice(-ROLLUP_CAPS.longTasks),
+    incrementalSync: incrementalSync.slice(-ROLLUP_CAPS.incrementalSync),
+    cacheEvents: cacheEvents.slice(-ROLLUP_CAPS.cacheEvents),
   });
+
+  // Persist to Firestore perf_daily (async; merge-safe)
+  import("./perfDailyFirestore.js")
+    .then((m) => m.schedulePerfDailyFlush({ delayMs: 2000 }))
+    .catch(() => {});
 
   return scores;
 }

@@ -68,3 +68,9 @@ export const VALIDATOR_DATE_FIELDS = [
   "timestamp",
   "scannedTime",
 ];
+
+/**
+ * Performance & Diagnostics daily rollups (additive; not LIMS clinical data).
+ * Doc id: `${date}__${clientId}` with field `date: YYYY-MM-DD` for range queries.
+ */
+export const PERF_DAILY_COLLECTION = "perf_daily";

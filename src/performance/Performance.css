@@ -79,6 +79,17 @@
   margin-bottom: 1rem;
 }
 
+.perf-banner .linkish {
+  margin-left: 0.5rem;
+  background: transparent;
+  border: none;
+  color: #8ec7ff;
+  cursor: pointer;
+  text-decoration: underline;
+  font: inherit;
+  padding: 0;
+}
+
 .perf-kpis {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));

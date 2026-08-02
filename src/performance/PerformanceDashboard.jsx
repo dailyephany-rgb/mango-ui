@@ -304,15 +304,23 @@ function DashboardInner() {
 
       <div className="perf-banner">
         Developers / Admins only. Date filter scopes all charts/tables below
-        ({p.dateFrom} → {p.dateTo}). Live session data merges with daily
-        rollups (last 30 days in localStorage). Disable:{" "}
+        ({p.dateFrom} → {p.dateTo}). Live session + local cache + Firestore{" "}
+        <code>perf_daily</code>
+        {p.remoteStatus === "loading"
+          ? " (loading archive…)"
+          : p.remoteStatus === "error"
+            ? ` (archive error: ${p.remoteError || "check rules"})`
+            : ` (${p.remoteCount || 0} archived docs)`}
+        . Disable:{" "}
         <code>localStorage.setItem(&quot;mango.perf.monitor&quot;,&quot;0&quot;)</code>
         .
+        <button type="button" className="linkish" onClick={p.refreshRemote}>
+          Refresh archive
+        </button>
         {p.fromRollupOnly ? (
           <span>
             {" "}
-            Showing archived daily rollups for this range (no live session
-            samples).
+            Showing archived rollups for this range (no live session samples).
           </span>
         ) : null}
       </div>

@@ -99,6 +99,34 @@ export function startPerformanceMonitoring() {
   });
   setTimeout(finishOnce, 15000);
 
+  // Flush daily rollup to Firestore when leaving the page
+  let leaveFlushAt = 0;
+  const onLeave = () => {
+    const now = Date.now();
+    if (now - leaveFlushAt < 2500) return;
+    leaveFlushAt = now;
+    try {
+      persistTodayHealth();
+    } catch {
+      /* ignore */
+    }
+    import("./perfDailyFirestore.js")
+      .then((m) => m.flushPerfDaily({ force: true }))
+      .catch(() => {});
+  };
+  window.addEventListener("pagehide", onLeave);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") onLeave();
+  });
+
+  // Long sessions: flush about every 5 minutes
+  setInterval(() => {
+    try {
+      persistTodayHealth();
+    } catch {
+      /* ignore */
+    }
+  }, 5 * 60 * 1000);
   // Poll briefly for first snapshot meta
   const poll = setInterval(() => {
     const meta = getState().pageMeta?.[identity.page];

@@ -26,6 +26,11 @@ import {
   filterByDateRange,
 } from "./networkMetrics.js";
 import { getHeapEstimate } from "./renderMetrics.js";
+import { mergeUniqueByAt, flattenRollupSamples } from "./rollupMerge.js";
+import {
+  combineLocalAndRemoteRollups,
+  fetchPerfDailyRange,
+} from "./perfDailyFirestore.js";
 
 function ms(n) {
   if (n == null || Number.isNaN(n)) return "—";
@@ -59,53 +64,36 @@ function groupSum(items, key, valueKey) {
     .sort((a, b) => b.value - a.value);
 }
 
-function mergeUniqueByAt(a, b) {
-  const map = new Map();
-  for (const item of [...(a || []), ...(b || [])]) {
-    const key = `${item.at || 0}:${item.page || ""}:${item.collection || ""}:${item.kind || item.type || ""}:${item.durationMs || ""}:${item.docCount || ""}`;
-    if (!map.has(key)) map.set(key, item);
-  }
-  return [...map.values()].sort((x, y) => (x.at || 0) - (y.at || 0));
-}
-
-function buildRangeView(state, dateFrom, dateTo) {
+function buildRangeView(state, dateFrom, dateTo, remoteRollups = []) {
   const sessionLoads = filterByDateRange(state.pageLoads || [], dateFrom, dateTo);
   const sessionQueries = filterByDateRange(state.queries || [], dateFrom, dateTo);
   const sessionReads = filterByDateRange(state.reads || [], dateFrom, dateTo);
   const sessionCache = filterByDateRange(state.cacheEvents || [], dateFrom, dateTo);
   const sessionEvents = filterByDateRange(state.events || [], dateFrom, dateTo);
   const sessionLong = filterByDateRange(state.longTasks || [], dateFrom, dateTo);
-  const incrementalSync = filterByDateRange(
+  const sessionInc = filterByDateRange(
     state.incrementalSync || [],
     dateFrom,
     dateTo
   );
 
-  const rollups = getDailyRollupsInRange(dateFrom, dateTo);
+  const rollups = combineLocalAndRemoteRollups(
+    getDailyRollupsInRange(dateFrom, dateTo),
+    remoteRollups
+  );
+  const flat = flattenRollupSamples(rollups);
+
   return {
-    pageLoads: mergeUniqueByAt(
-      sessionLoads,
-      rollups.flatMap((r) => r.pageLoads || [])
-    ),
-    queries: mergeUniqueByAt(
-      sessionQueries,
-      rollups.flatMap((r) => r.queries || [])
-    ),
-    reads: mergeUniqueByAt(
-      sessionReads,
-      rollups.flatMap((r) => r.reads || [])
-    ),
-    cacheEvents: sessionCache,
-    events: mergeUniqueByAt(
-      sessionEvents,
-      rollups.flatMap((r) => r.events || [])
-    ),
-    longTasks: mergeUniqueByAt(
-      sessionLong,
-      rollups.flatMap((r) => r.longTasks || [])
-    ),
-    incrementalSync,
+    pageLoads: mergeUniqueByAt(sessionLoads, flat.pageLoads),
+    queries: mergeUniqueByAt(sessionQueries, flat.queries),
+    reads: mergeUniqueByAt(sessionReads, flat.reads),
+    cacheEvents: mergeUniqueByAt(sessionCache, flat.cacheEvents),
+    events: mergeUniqueByAt(sessionEvents, flat.events),
+    longTasks: mergeUniqueByAt(sessionLong, flat.longTasks),
+    incrementalSync: mergeUniqueByAt(sessionInc, flat.incrementalSync),
     listeners: state.listeners || [],
+    rollupReadsTotal: flat.readsTotal,
+    rollups,
   };
 }
 
@@ -151,13 +139,16 @@ function addTable(doc, y, head, body, opts = {}) {
 }
 
 /**
- * @param {{ dateFrom?: string, dateTo?: string }} [opts]
+ * @param {{ dateFrom?: string, dateTo?: string, remoteRollups?: object[] }} [opts]
  */
 export async function downloadPerformancePdf(opts = {}) {
   const dateFrom = opts.dateFrom || todayKey();
   const dateTo = opts.dateTo || dateFrom;
   const state = getState();
-  const view = buildRangeView(state, dateFrom, dateTo);
+  const remoteRollups =
+    opts.remoteRollups ||
+    (await fetchPerfDailyRange(dateFrom, dateTo).catch(() => []));
+  const view = buildRangeView(state, dateFrom, dateTo, remoteRollups);
   const rangeState = { ...state, ...view };
 
   const health = computeHealthScores(rangeState, dateFrom, dateTo);
@@ -169,10 +160,11 @@ export async function downloadPerformancePdf(opts = {}) {
     (h) => h.date >= dateFrom && h.date <= dateTo
   );
 
-  const readsInRange = (view.reads || []).reduce(
+  const sampleReads = (view.reads || []).reduce(
     (a, r) => a + (r.docCount || 0),
     0
   );
+  const readsInRange = Math.max(sampleReads, view.rollupReadsTotal || 0);
   const readsSession = (state.reads || []).reduce(
     (a, r) => a + (r.docCount || 0),
     0

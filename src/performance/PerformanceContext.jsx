@@ -1,6 +1,6 @@
 /**
  * Dashboard-only React context — polls performance store.
- * Supports From/To date filter across session telemetry + daily rollups.
+ * Date filter merges: live session + localStorage rollups + Firestore perf_daily.
  */
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
@@ -14,6 +14,7 @@ import {
   estimateSessionStorageBytes,
   estimatePerfStoreBytes,
   estimateCachePayloadBytes,
+  getHealthHistory as getLocalHealthHistory,
 } from "./performanceStore.js";
 import {
   computeHealthScores,
@@ -21,7 +22,6 @@ import {
   persistTodayHealth,
   buildQueryLeaderboard,
   buildDepartmentRankings,
-  getHealthHistory,
 } from "./healthScorer.js";
 import { summarizeCache } from "./cacheMetrics.js";
 import {
@@ -31,41 +31,39 @@ import {
   filterByDateRange,
 } from "./networkMetrics.js";
 import { getHeapEstimate } from "./renderMetrics.js";
+import {
+  mergeUniqueByAt,
+  flattenRollupSamples,
+} from "./rollupMerge.js";
+import {
+  fetchPerfDailyRange,
+  combineLocalAndRemoteRollups,
+  schedulePerfDailyFlush,
+} from "./perfDailyFirestore.js";
 
 const PerfCtx = createContext(null);
 
-function mergeUniqueByAt(a, b) {
-  const map = new Map();
-  for (const item of [...(a || []), ...(b || [])]) {
-    const key = `${item.at || item.startedAt || 0}:${item.page || ""}:${item.collection || ""}:${item.kind || item.type || ""}:${item.durationMs || ""}:${item.docCount || ""}`;
-    if (!map.has(key)) map.set(key, item);
-  }
-  return [...map.values()].sort((x, y) => (x.at || 0) - (y.at || 0));
-}
-
-function buildFilteredView(state, dateFrom, dateTo) {
+function buildFilteredView(state, dateFrom, dateTo, remoteRollups) {
   const sessionLoads = filterByDateRange(state.pageLoads || [], dateFrom, dateTo);
   const sessionQueries = filterByDateRange(state.queries || [], dateFrom, dateTo);
   const sessionReads = filterByDateRange(state.reads || [], dateFrom, dateTo);
   const sessionCache = filterByDateRange(state.cacheEvents || [], dateFrom, dateTo);
   const sessionEvents = filterByDateRange(state.events || [], dateFrom, dateTo);
   const sessionLong = filterByDateRange(state.longTasks || [], dateFrom, dateTo);
+  const sessionInc = filterByDateRange(
+    state.incrementalSync || [],
+    dateFrom,
+    dateTo
+  );
 
-  const rollups = getDailyRollupsInRange(dateFrom, dateTo);
-  const rollLoads = rollups.flatMap((r) => r.pageLoads || []);
-  const rollQueries = rollups.flatMap((r) => r.queries || []);
-  const rollReads = rollups.flatMap((r) => r.reads || []);
-  const rollEvents = rollups.flatMap((r) => r.events || []);
-  const rollLong = rollups.flatMap((r) => r.longTasks || []);
+  const localRollups = getDailyRollupsInRange(dateFrom, dateTo);
+  const rollups = combineLocalAndRemoteRollups(localRollups, remoteRollups);
+  const flat = flattenRollupSamples(rollups);
 
-  // Prefer live session data; fill gaps from localStorage daily rollups
-  return {
-    pageLoads: mergeUniqueByAt(sessionLoads, rollLoads),
-    queries: mergeUniqueByAt(sessionQueries, rollQueries),
-    reads: mergeUniqueByAt(sessionReads, rollReads),
-    cacheEvents: sessionCache.length
-      ? sessionCache
-      : rollups.flatMap((r) => {
+  const cacheEvents = mergeUniqueByAt(sessionCache, flat.cacheEvents);
+  const cacheFromSummary =
+    !cacheEvents.length && rollups.length
+      ? rollups.flatMap((r) => {
           const c = r.cache || {};
           const out = [];
           for (let i = 0; i < (c.hits || 0); i++) {
@@ -75,21 +73,42 @@ function buildFilteredView(state, dateFrom, dateTo) {
             out.push({ at: r.at || 0, type: "miss", department: "Archived" });
           }
           return out;
-        }),
-    events: mergeUniqueByAt(sessionEvents, rollEvents),
-    longTasks: mergeUniqueByAt(sessionLong, rollLong),
-    incrementalSync: filterByDateRange(
-      state.incrementalSync || [],
-      dateFrom,
-      dateTo
-    ),
+        })
+      : cacheEvents;
+
+  return {
+    pageLoads: mergeUniqueByAt(sessionLoads, flat.pageLoads),
+    queries: mergeUniqueByAt(sessionQueries, flat.queries),
+    reads: mergeUniqueByAt(sessionReads, flat.reads),
+    cacheEvents: cacheFromSummary,
+    events: mergeUniqueByAt(sessionEvents, flat.events),
+    longTasks: mergeUniqueByAt(sessionLong, flat.longTasks),
+    incrementalSync: mergeUniqueByAt(sessionInc, flat.incrementalSync),
     listeners: state.listeners || [],
     rollups,
-    fromRollupOnly:
+    rollupReadsTotal: flat.readsTotal,
+    fromArchive:
       sessionLoads.length === 0 &&
       sessionQueries.length === 0 &&
       rollups.length > 0,
   };
+}
+
+function healthFromRollups(rollups, dateFrom, dateTo) {
+  const byDate = new Map();
+  for (const r of rollups || []) {
+    if (!r.date || r.date < dateFrom || r.date > dateTo) continue;
+    if (!r.scores) continue;
+    const prev = byDate.get(r.date);
+    if (!prev || (r.at || 0) >= (prev.at || 0)) {
+      byDate.set(r.date, { date: r.date, scores: r.scores, at: r.at || 0 });
+    }
+  }
+  for (const h of getLocalHealthHistory()) {
+    if (h.date < dateFrom || h.date > dateTo) continue;
+    if (!byDate.has(h.date)) byDate.set(h.date, h);
+  }
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export function PerformanceProvider({ children }) {
@@ -101,6 +120,9 @@ export function PerformanceProvider({ children }) {
   const [selectedEventId, setSelectedEventId] = useState(null);
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);
+  const [remoteRollups, setRemoteRollups] = useState([]);
+  const [remoteStatus, setRemoteStatus] = useState("idle");
+  const [remoteError, setRemoteError] = useState("");
 
   useEffect(() => {
     const unsub = subscribeStore((s) =>
@@ -108,15 +130,37 @@ export function PerformanceProvider({ children }) {
     );
     const id = setInterval(() => setTick((t) => t + 1), 2000);
     persistTodayHealth();
+    schedulePerfDailyFlush({ delayMs: 1500 });
     return () => {
       unsub();
       clearInterval(id);
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    setRemoteStatus("loading");
+    setRemoteError("");
+    fetchPerfDailyRange(dateFrom, dateTo)
+      .then((rows) => {
+        if (cancelled) return;
+        setRemoteRollups(rows || []);
+        setRemoteStatus("ok");
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setRemoteRollups([]);
+        setRemoteStatus("error");
+        setRemoteError(err?.message || String(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dateFrom, dateTo]);
+
   const filtered = useMemo(
-    () => buildFilteredView(state, dateFrom, dateTo),
-    [state, dateFrom, dateTo, tick]
+    () => buildFilteredView(state, dateFrom, dateTo, remoteRollups),
+    [state, dateFrom, dateTo, remoteRollups, tick]
   );
 
   const hourAgo = Date.now() - 60 * 60 * 1000;
@@ -128,11 +172,16 @@ export function PerformanceProvider({ children }) {
     cacheEvents: filtered.cacheEvents,
     events: filtered.events,
     longTasks: filtered.longTasks,
+    incrementalSync: filtered.incrementalSync,
   };
 
-  const healthHistory = getHealthHistory().filter(
-    (h) => h.date >= dateFrom && h.date <= dateTo
+  const healthHistory = healthFromRollups(filtered.rollups, dateFrom, dateTo);
+
+  const sampleReads = (filtered.reads || []).reduce(
+    (a, r) => a + (r.docCount || 0),
+    0
   );
+  const readsInRange = Math.max(sampleReads, filtered.rollupReadsTotal || 0);
 
   const derived = {
     monitorOn,
@@ -151,7 +200,18 @@ export function PerformanceProvider({ children }) {
       setDateFrom(t);
       setDateTo(t);
     },
-    fromRollupOnly: filtered.fromRollupOnly,
+    fromRollupOnly: filtered.fromArchive,
+    remoteStatus,
+    remoteError,
+    remoteCount: remoteRollups.length,
+    refreshRemote: () => {
+      setRemoteStatus("loading");
+      fetchPerfDailyRange(dateFrom, dateTo).then((rows) => {
+        setRemoteRollups(rows || []);
+        setRemoteStatus("ok");
+      });
+      schedulePerfDailyFlush({ force: true });
+    },
     leaderSort,
     setLeaderSort,
     selectedEventId,
@@ -167,10 +227,7 @@ export function PerformanceProvider({ children }) {
     ),
     leaderboard: buildQueryLeaderboard(filtered.queries || [], leaderSort),
     rankings: buildDepartmentRankings(rangeState, dateFrom, dateTo),
-    readsInRange: (filtered.reads || []).reduce(
-      (a, r) => a + (r.docCount || 0),
-      0
-    ),
+    readsInRange,
     readsHour: (filtered.reads || [])
       .filter((r) => r.at >= hourAgo)
       .reduce((a, r) => a + (r.docCount || 0), 0),
@@ -178,11 +235,7 @@ export function PerformanceProvider({ children }) {
       (a, r) => a + (r.docCount || 0),
       0
     ),
-    // aliases used by existing UI
-    readsToday: (filtered.reads || []).reduce(
-      (a, r) => a + (r.docCount || 0),
-      0
-    ),
+    readsToday: readsInRange,
     readsByBucket: groupSum(filtered.reads || [], "bucket", "docCount"),
     readsByPage: groupSum(filtered.reads || [], "page", "docCount"),
     readsByDept: groupSum(filtered.reads || [], "department", "docCount"),
@@ -207,7 +260,6 @@ export function PerformanceProvider({ children }) {
       setState(getState());
     },
     exportJson: () => {
-      // Keep JSON available for deep debugging if needed
       const blob = new Blob([exportMetricsJson()], {
         type: "application/json",
       });
@@ -220,7 +272,13 @@ export function PerformanceProvider({ children }) {
     },
     exportPdf: () => {
       import("./exportPerformancePdf.js")
-        .then((m) => m.downloadPerformancePdf({ dateFrom, dateTo }))
+        .then((m) =>
+          m.downloadPerformancePdf({
+            dateFrom,
+            dateTo,
+            remoteRollups,
+          })
+        )
         .catch((err) => {
           console.error("[perf] PDF export failed:", err);
           alert("PDF export failed. See console for details.");
