@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from "react";
 import { db } from "../firebaseConfig";
 import {
@@ -467,7 +466,7 @@ if (mappedLabNames && mappedLabNames.length > 0) {
                             {reconTab === "missing" ? (
                               <tr><th>DIAGNOSTIC NO</th><th>REG NO</th><th>NAME</th><th>HOSPITAL (CONVERTED LIST)</th></tr>
                             ) : reconTab === "mismatch" ? (
-                              <tr><th>DIAGNOSTIC NO</th><th>NAME</th><th>OUR SYSTEM (LAB)</th><th>HOSPITAL (ALL TESTS)</th><th style={{color:'red'}}>MISSING IN LAB</th></tr>
+                              <tr><th>DIAGNOSTIC NO</th><th>NAME</th><th>HOSPITAL (ALL TESTS)</th><th>OUR SYSTEM (LAB)</th><th style={{color:'red'}}>MISSING IN LAB</th></tr>
                             ) : reconTab === "extraInLab" ? (
                               <tr><th>DIAGNOSTIC NO</th><th>NAME</th><th>HOSPITAL (ALL TESTS)</th><th>OUR SYSTEM (LAB)</th><th style={{color:'orange'}}>EXTRA IN LAB</th></tr>
                             ) : (
@@ -481,8 +480,8 @@ if (mappedLabNames && mappedLabNames.length > 0) {
                                 reconData.mismatch.map((m, i) => (<tr key={i}>
                                   <td>{m.lab.diagnosticNo}</td>
                                   <td>{m.lab.name}</td>
-                                  <td>{m.actual}</td>
                                   <td>{m.hTests}</td>
+                                  <td>{m.actual}</td>
                                   <td style={{color:'red', fontWeight:'bold'}}>{m.missingTests}</td>
                                 </tr>))
                             ) : reconTab === "extraInLab" ? (

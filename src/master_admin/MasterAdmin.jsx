@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from "react";
 import { db } from "../firebaseConfig";
 import {
@@ -18,6 +19,7 @@ export default function MasterAdminPanel() {
   const [entries, setEntries] = useState([]);
   const [routingMap, setRoutingMap] = useState([]); 
   const [routingLookup, setRoutingLookup] = useState({});
+  const [routingDisplayLookup, setRoutingDisplayLookup] = useState({});
   
   const getISTDateString = () => {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
@@ -157,10 +159,13 @@ export default function MasterAdminPanel() {
       
         labName: normalizeTestName(
           row["Lab_System_Test_Name"]
-        )
+        ),
+
+        labDisplay: String(row["Lab_System_Test_Name"] || "").trim()
       })).filter(item => item.hospitalName && item.labName);
       
       const lookup = {};
+      const displayLookup = {};
 
       normalizedRouting.forEach(item => {
         if (!lookup[item.hospitalName]) {
@@ -170,10 +175,15 @@ export default function MasterAdminPanel() {
         if (!lookup[item.hospitalName].includes(item.labName)) {
           lookup[item.hospitalName].push(item.labName);
         }
+
+        if (!displayLookup[item.labName]) {
+          displayLookup[item.labName] = item.labDisplay || item.labName;
+        }
       });
 
 setRoutingMap(normalizedRouting);
 setRoutingLookup(lookup);
+setRoutingDisplayLookup(displayLookup);
       
       alert(`Routing loaded: ${normalizedRouting.length} tests mapped.`);
     };
@@ -207,6 +217,7 @@ setRoutingLookup(lookup);
             name: row[nameKey] || "Unknown",
             hospitalTests: [],
             expectedLabTests: [],
+            expectedLabTestDisplay: {},
             convertedDisplay: []
           };
         }
@@ -225,6 +236,9 @@ if (mappedLabNames && mappedLabNames.length > 0) {
       groupedHospital[diagNo].expectedLabTests.push(labTest);
     }
 
+    groupedHospital[diagNo].expectedLabTestDisplay[labTest] =
+      routingDisplayLookup[labTest] || labTest;
+
     groupedHospital[diagNo].convertedDisplay.push(
       investigationDisplay.toUpperCase()
     );
@@ -236,6 +250,9 @@ if (mappedLabNames && mappedLabNames.length > 0) {
   if (!groupedHospital[diagNo].expectedLabTests.includes(investigation)) {
     groupedHospital[diagNo].expectedLabTests.push(investigation);
   }
+
+  groupedHospital[diagNo].expectedLabTestDisplay[investigation] =
+    investigationDisplay || investigation;
 
   groupedHospital[diagNo].convertedDisplay.push(
     investigationDisplay.toUpperCase()
@@ -291,7 +308,9 @@ if (mappedLabNames && mappedLabNames.length > 0) {
               lab: labMatch, 
               hTests: hRow.convertedDisplay.join(", "),
               actual: lTestsOriginal.join(", "),
-              missingTests: missingTests.join(", ")
+              missingTests: missingTests.map(test => (
+                hRow.expectedLabTestDisplay?.[test] || test
+              )).join(", ")
             });
           }
 
