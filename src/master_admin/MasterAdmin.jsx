@@ -212,6 +212,7 @@ setRoutingLookup(lookup);
           };
         }
         
+        const investigationDisplay = String(row[testKey] || "").trim();
         const investigation = normalizeTestName(row[testKey]);
 groupedHospital[diagNo].hospitalTests.push(investigation);
 
@@ -226,7 +227,7 @@ if (mappedLabNames && mappedLabNames.length > 0) {
     }
 
     groupedHospital[diagNo].convertedDisplay.push(
-      labTest.toUpperCase()
+      investigationDisplay.toUpperCase()
     );
 
   });
@@ -238,7 +239,7 @@ if (mappedLabNames && mappedLabNames.length > 0) {
   }
 
   groupedHospital[diagNo].convertedDisplay.push(
-    investigation.toUpperCase()
+    investigationDisplay.toUpperCase()
   );
 
 }
@@ -301,7 +302,9 @@ if (mappedLabNames && mappedLabNames.length > 0) {
               lab: labMatch,
               hTests: hRow.convertedDisplay.join(", "),
               actual: lTestsOriginal.join(", "),
-              extraTests: extraTests.join(", ")
+              extraTests: extraTests.map(test => (
+                lTestsOriginal.find(original => normalizeTestName(original) === test) || test
+              )).join(", ")
             });
           }
         }
