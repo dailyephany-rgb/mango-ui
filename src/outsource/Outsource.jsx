@@ -10,9 +10,7 @@ import { db } from "../firebaseConfig";
 
 import {
   collection,
-  onSnapshot,
   setDoc,
-  getDoc,
   doc,
   writeBatch,
   serverTimestamp,
@@ -21,6 +19,10 @@ import {
   orderBy,
   Timestamp,
 } from "firebase/firestore";
+import {
+  trackedOnSnapshot as onSnapshot,
+  trackedGetDoc as getDoc,
+} from "../shared/firestore/trackedFirestore.js";
 
 
 import OUTSOURCE_MAP from "../Outsource.json"; 

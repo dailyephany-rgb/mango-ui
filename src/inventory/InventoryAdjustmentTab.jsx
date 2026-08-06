@@ -3,10 +3,10 @@ import React, { useEffect, useState } from "react";
 import {
   collection,
   doc,
-  onSnapshot,
   serverTimestamp,
   writeBatch
 } from "firebase/firestore";
+import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFirestore.js";
 
 import { db } from "../firebaseConfig";
 import { setStaticConfig } from "../shared/cache/staticConfigCache.js";

@@ -7,10 +7,10 @@ import {
   query,
   where,
   orderBy,
-  onSnapshot,
   Timestamp,
   serverTimestamp,
 } from "firebase/firestore";
+import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFirestore.js";
 import {
   handleInventoryDeduction
 } from "../inventory/inventorymapping";

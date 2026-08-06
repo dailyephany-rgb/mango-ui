@@ -110,6 +110,9 @@ export function startPerformanceMonitoring() {
     } catch {
       /* ignore */
     }
+    import("./performanceStore.js")
+      .then((m) => m.flushCountedReads())
+      .catch(() => {});
     import("./perfDailyFirestore.js")
       .then((m) => m.flushPerfDaily({ force: true }))
       .catch(() => {});

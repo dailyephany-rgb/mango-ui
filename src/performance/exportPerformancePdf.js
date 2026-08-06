@@ -12,6 +12,7 @@ import {
   estimateSessionStorageBytes,
   estimatePerfStoreBytes,
   estimateCachePayloadBytes,
+  getCountedReadsInRange,
 } from "./performanceStore.js";
 import {
   computeHealthScores,
@@ -161,7 +162,11 @@ export async function downloadPerformancePdf(opts = {}) {
     (a, r) => a + (r.docCount || 0),
     0
   );
-  const readsInRange = Math.max(sampleReads, view.rollupReadsTotal || 0);
+  const readsInRange = Math.max(
+    sampleReads,
+    view.rollupReadsTotal || 0,
+    getCountedReadsInRange(dateFrom, dateTo)
+  );
   const readsSession = (state.reads || []).reduce(
     (a, r) => a + (r.docCount || 0),
     0
@@ -279,7 +284,7 @@ export async function downloadPerformancePdf(opts = {}) {
       ["Performance", `${health.performance} (${health.labels?.performance})`],
       ["Memory score", `${health.memory} (${health.labels?.memory})`],
       ["Network score", `${health.network} (${health.labels?.network})`],
-      ["Reads in range (measured docs)", readsInRange.toLocaleString()],
+      ["Reads in range (tracked counter)", readsInRange.toLocaleString()],
       ["Reads full session", readsSession.toLocaleString()],
       ["Cache hit %", `${cache.hitRate.toFixed(1)}%`],
       ["Cache miss %", `${cache.missRate.toFixed(1)}%`],

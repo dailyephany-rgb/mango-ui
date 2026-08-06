@@ -3,10 +3,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { db } from "../firebaseConfig";
 import {
   collection,
-  onSnapshot,
   doc,
   setDoc,
-  getDoc,
   writeBatch,
   serverTimestamp,
   query,
@@ -14,6 +12,10 @@ import {
   orderBy,
   Timestamp,
 } from "firebase/firestore";
+import {
+  trackedOnSnapshot as onSnapshot,
+  trackedGetDoc as getDoc,
+} from "../shared/firestore/trackedFirestore.js";
 
 import INSIDE_ROOM_MAP from "../inside_room_routing.json"; 
 import "./InsideLab.css";

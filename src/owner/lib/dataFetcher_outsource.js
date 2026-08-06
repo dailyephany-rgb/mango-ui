@@ -3,6 +3,7 @@ import { db } from "../../firebaseConfig.js";
 import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrintedQuery.js";
 import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPaint.js";
 import { trackedOnSnapshot as onSnapshot } from "../../shared/firestore/trackedFirestore.js";
+import { withOwnerSourceControl } from "./withOwnerSourceControl.js";
 // IMPORT the JSON file
 import testTimingsData from "../data/test_timings.json";
 import OUTSOURCE_ROUTING from "../../Outsource.json";
@@ -398,7 +399,7 @@ export function mergeOutsourceRows(rows = [], targetLab) {
 
 /* ================= SUBSCRIBE OVERVIEW =================== */
 export function subscribeOverview({ onData, dateRange, source, activeRegister, targetLab }) {
-  const { paintCache, onDataLive } = createOwnerSessionPaint({
+  const { paintCache, onDataLive, setSourceKey } = createOwnerSessionPaint({
     dept: `outsource:${activeRegister || targetLab || ""}`,
     dateRange,
     source,
@@ -406,10 +407,14 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
   });
   paintCache();
 
+  let currentSource = source ?? "All";
+
   const masterRef = scopedTimePrintedQuery("master_register", dateRange);
   const outsourceRef = scopedTimePrintedQuery("outsource_tracking", dateRange);
   if (!masterRef || !outsourceRef) {
-    return () => {};
+    const empty = () => {};
+    empty.updateSource = () => {};
+    return empty;
   }
 
   const canonTests = OUTSOURCE_ROUTING[targetLab] || [];
@@ -428,7 +433,7 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
     const filteredMaster = mCache.filter(row => {
       const t = toDate(row.timePrinted);
       if (!t || (from && t < from) || (to && t > to)) return false;
-      if (source && source !== "All" && String(row.source || "").toLowerCase() !== String(source).toLowerCase()) return false;
+      if (currentSource && currentSource !== "All" && String(row.source || "").toLowerCase() !== String(currentSource).toLowerCase()) return false;
       const tests = normalizeTestsField(row.selectedTests || row.tests);
       return tests.some(test => canonSet.has(test));
     });
@@ -436,7 +441,7 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
     const filteredOutsource = oCache.filter(row => {
       const t = toDate(row.timePrinted);
       if (!t || (from && t < from) || (to && t > to)) return false;
-      if (source && source !== "All" && String(row.source || "").toLowerCase() !== String(source).toLowerCase()) return false;
+      if (currentSource && currentSource !== "All" && String(row.source || "").toLowerCase() !== String(currentSource).toLowerCase()) return false;
       const tests = normalizeTestsField(row.selectedTests || row.tests);
 return tests.some(test => canonSet.has(test));
     });
@@ -501,5 +506,13 @@ return tests.some(test => canonSet.has(test));
   const unsub1 = onSnapshot(masterRef, (s) => { mCache = s.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
   const unsub2 = onSnapshot(outsourceRef, (s) => { oCache = s.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
 
-  return () => { unsub1(); unsub2(); };
+  return withOwnerSourceControl(
+    () => { unsub1(); unsub2(); },
+    {
+      getSource: () => currentSource,
+      setSource: (next) => { currentSource = next; },
+      publish,
+      setSourceKey,
+    }
+  );
 }

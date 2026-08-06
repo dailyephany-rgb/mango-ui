@@ -18,7 +18,8 @@ import {
  * @returns {{ onDataLive: (payload: any) => void, paintCache: () => void }}
  */
 export function createOwnerSessionPaint({ dept, dateRange, source, onData }) {
-  const key = ownerCacheKey(dept, dateRange, source);
+  // Mutable so client-side source changes can re-key cache without new listeners.
+  let key = ownerCacheKey(dept, dateRange, source);
   const paintStarted = performance.now();
   let painted = false;
 
@@ -56,5 +57,9 @@ export function createOwnerSessionPaint({ dept, dateRange, source, onData }) {
     }
   };
 
-  return { key, paintCache, onDataLive };
+  const setSourceKey = (nextSource) => {
+    key = ownerCacheKey(dept, dateRange, nextSource);
+  };
+
+  return { key, paintCache, onDataLive, setSourceKey };
 }

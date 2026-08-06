@@ -3,7 +3,6 @@ import React, { useState, useEffect } from "react";
 import { db } from "../firebaseConfig";
 import { 
   collection, 
-  onSnapshot, 
   doc, 
   writeBatch, 
   serverTimestamp, 
@@ -11,6 +10,7 @@ import {
   orderBy, 
   limit 
 } from "firebase/firestore";
+import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFirestore.js";
 import reagentData from "./reagents.json";
 import "./InventoryIntake.css";
 

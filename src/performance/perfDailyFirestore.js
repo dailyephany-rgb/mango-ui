@@ -27,6 +27,8 @@ import {
   saveDailyRollup,
   saveDailyHealth,
   getHealthHistory,
+  getCountedReads,
+  flushCountedReads,
 } from "./performanceStore.js";
 import { summarizeCache } from "./cacheMetrics.js";
 import {
@@ -108,7 +110,10 @@ export function buildSessionDayRollup(dateStr = todayKey()) {
   return {
     date: dateStr,
     clientId: getPerfClientId(),
-    readsTotal: reads.reduce((a, r) => a + (r.docCount || 0), 0),
+    readsTotal: Math.max(
+      reads.reduce((a, r) => a + (r.docCount || 0), 0),
+      getCountedReads(dateStr)
+    ),
     pageLoadCount: loads.length,
     avgLoadMs: loads.length
       ? loads.reduce((a, b) => a + (b.totalMs || 0), 0) / loads.length
@@ -162,6 +167,8 @@ export async function flushPerfDaily(opts = {}) {
       saveDailyHealth(dateStr, sessionRollup.scores);
     }
 
+    flushCountedReads();
+
     const ref = doc(db, PERF_DAILY_COLLECTION, docIdFor(dateStr, clientId));
     let remoteExisting = {};
     try {
@@ -175,6 +182,12 @@ export async function flushPerfDaily(opts = {}) {
     }
 
     const merged = mergeRollupRecords(remoteExisting, sessionRollup);
+    merged.readsTotal = Math.max(
+      Number(merged.readsTotal) || 0,
+      getCountedReads(dateStr),
+      Number(remoteExisting.readsTotal) || 0,
+      Number(sessionRollup.readsTotal) || 0
+    );
     const payload = stripUndefined({
       date: dateStr,
       clientId,

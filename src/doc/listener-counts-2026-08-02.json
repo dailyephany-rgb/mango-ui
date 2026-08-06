@@ -1,0 +1,634 @@
+{
+  "measuredAt": "2026-08-02T18:51:12.884Z",
+  "measureDay": "2026-08-02",
+  "projectId": "vasundhara-4c6e5",
+  "results": [
+    {
+      "id": "day:master_register",
+      "collection": "master_register",
+      "queryKind": "timePrinted day range",
+      "matchingDocs": 59,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "day:report_details",
+      "collection": "report_details",
+      "queryKind": "timePrinted day range",
+      "matchingDocs": 59,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "day:biochemistry_register",
+      "collection": "biochemistry_register",
+      "queryKind": "timePrinted day range",
+      "matchingDocs": 30,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "day:hormones_main",
+      "collection": "hormones_main",
+      "queryKind": "timePrinted day range",
+      "matchingDocs": 24,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "day:coagulation_register",
+      "collection": "coagulation_register",
+      "queryKind": "timePrinted day range",
+      "matchingDocs": 6,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "day:haematology_register",
+      "collection": "haematology_register",
+      "queryKind": "timePrinted day range",
+      "matchingDocs": 28,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "day:esr_register",
+      "collection": "esr_register",
+      "queryKind": "timePrinted day range",
+      "matchingDocs": 15,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "day:serology_register",
+      "collection": "serology_register",
+      "queryKind": "timePrinted day range",
+      "matchingDocs": 8,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "day:rapid_card_register",
+      "collection": "rapid_card_register",
+      "queryKind": "timePrinted day range",
+      "matchingDocs": 1,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "day:urine_analysis_register",
+      "collection": "urine_analysis_register",
+      "queryKind": "timePrinted day range",
+      "matchingDocs": 9,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "day:bloodgroup_testing_register",
+      "collection": "bloodgroup_testing_register",
+      "queryKind": "timePrinted day range",
+      "matchingDocs": 9,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "day:bloodgroup_retesting_register",
+      "collection": "bloodgroup_retesting_register",
+      "queryKind": "timePrinted day range",
+      "matchingDocs": 9,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "day:inside_lab_results",
+      "collection": "inside_lab_results",
+      "queryKind": "timePrinted day range",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "day:outsource_tracking",
+      "collection": "outsource_tracking",
+      "queryKind": "timePrinted day range",
+      "matchingDocs": 1,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "day:biochem_backup",
+      "collection": "biochem_backup",
+      "queryKind": "timePrinted day range",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "day:hormones_backup",
+      "collection": "hormones_backup",
+      "queryKind": "timePrinted day range",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "master:array-contains:Bio-Chemistry",
+      "collection": "master_register",
+      "queryKind": "array-contains departments=Bio-Chemistry + timePrinted day",
+      "matchingDocs": 33,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "master:array-contains:Hormones",
+      "collection": "master_register",
+      "queryKind": "array-contains departments=Hormones + timePrinted day",
+      "matchingDocs": 26,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "master:array-contains:Coagulation",
+      "collection": "master_register",
+      "queryKind": "array-contains departments=Coagulation + timePrinted day",
+      "matchingDocs": 8,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "master:array-contains:Haematology",
+      "collection": "master_register",
+      "queryKind": "array-contains departments=Haematology + timePrinted day",
+      "matchingDocs": 31,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "master:array-contains:ESR",
+      "collection": "master_register",
+      "queryKind": "array-contains departments=ESR + timePrinted day",
+      "matchingDocs": 16,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "master:array-contains:Serology",
+      "collection": "master_register",
+      "queryKind": "array-contains departments=Serology + timePrinted day",
+      "matchingDocs": 8,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "master:array-contains:RapidCard",
+      "collection": "master_register",
+      "queryKind": "array-contains departments=RapidCard + timePrinted day",
+      "matchingDocs": 1,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "master:array-contains:Urine Examination",
+      "collection": "master_register",
+      "queryKind": "array-contains departments=Urine Examination + timePrinted day",
+      "matchingDocs": 10,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "master:array-contains:Blood-Group",
+      "collection": "master_register",
+      "queryKind": "array-contains departments=Blood-Group + timePrinted day",
+      "matchingDocs": 10,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "critical:dept:Bio-Chemistry",
+      "collection": "critical_alerts",
+      "queryKind": "dept==Bio-Chemistry + flaggedAt day",
+      "matchingDocs": 1,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "critical:dept:Hormones",
+      "collection": "critical_alerts",
+      "queryKind": "dept==Hormones + flaggedAt day",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "critical:dept:Coagulation",
+      "collection": "critical_alerts",
+      "queryKind": "dept==Coagulation + flaggedAt day",
+      "matchingDocs": 1,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "critical:dept:Haematology",
+      "collection": "critical_alerts",
+      "queryKind": "dept==Haematology + flaggedAt day",
+      "matchingDocs": 1,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "critical:dept:ESR",
+      "collection": "critical_alerts",
+      "queryKind": "dept==ESR + flaggedAt day",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "critical:dept:Serology",
+      "collection": "critical_alerts",
+      "queryKind": "dept==Serology + flaggedAt day",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "critical:dept:Rapid Card",
+      "collection": "critical_alerts",
+      "queryKind": "dept==Rapid Card + flaggedAt day",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "critical:dept:Urine Analysis",
+      "collection": "critical_alerts",
+      "queryKind": "dept==Urine Analysis + flaggedAt day",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "critical:all:day",
+      "collection": "critical_alerts",
+      "queryKind": "flaggedAt day (no dept filter)",
+      "matchingDocs": 3,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "full:master_register",
+      "collection": "master_register",
+      "queryKind": "FULL COLLECTION (no where)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 2123,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "full:biochemistry_register",
+      "collection": "biochemistry_register",
+      "queryKind": "FULL COLLECTION (no where)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 1208,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "full:serology_register",
+      "collection": "serology_register",
+      "queryKind": "FULL COLLECTION (no where)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 183,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "full:urine_analysis_register",
+      "collection": "urine_analysis_register",
+      "queryKind": "FULL COLLECTION (no where)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 431,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "full:bloodgroup_testing_register",
+      "collection": "bloodgroup_testing_register",
+      "queryKind": "FULL COLLECTION (no where)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 157,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "full:bloodgroup_retesting_register",
+      "collection": "bloodgroup_retesting_register",
+      "queryKind": "FULL COLLECTION (no where)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 532,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "full:rapid_card_register",
+      "collection": "rapid_card_register",
+      "queryKind": "FULL COLLECTION (no where)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 35,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "full:esr_register",
+      "collection": "esr_register",
+      "queryKind": "FULL COLLECTION (no where)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 523,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "full:hormones_main",
+      "collection": "hormones_main",
+      "queryKind": "FULL COLLECTION (no where)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 780,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "full:haematology_register",
+      "collection": "haematology_register",
+      "queryKind": "FULL COLLECTION (no where)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 968,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "full:coagulation_register",
+      "collection": "coagulation_register",
+      "queryKind": "FULL COLLECTION (no where)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 245,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "full:outsource_tracking",
+      "collection": "outsource_tracking",
+      "queryKind": "FULL COLLECTION (no where)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 262,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "full:inside_lab_results",
+      "collection": "inside_lab_results",
+      "queryKind": "FULL COLLECTION (no where)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 163,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "full:critical_alerts",
+      "collection": "critical_alerts",
+      "queryKind": "FULL COLLECTION (no where)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 489,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "full:inventory_adjustments",
+      "collection": "inventory_adjustments",
+      "queryKind": "FULL COLLECTION (no where)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 2,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "inv:Activated",
+      "collection": "inventory_logs",
+      "queryKind": "status==Activated (deduction getDocs)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 68,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "inv:liveStatuses",
+      "collection": "inventory_logs",
+      "queryKind": "status in [Activated,In Storage] (ICC)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 75,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "inv:machine:VITROS 6500",
+      "collection": "inventory_logs",
+      "queryKind": "machineName==VITROS 6500 + status in live",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 30,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "inv:machine:Yumizen G800",
+      "collection": "inventory_logs",
+      "queryKind": "machineName==Yumizen G800 + status in live",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 2,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "inv:machine:3 Part Machine",
+      "collection": "inventory_logs",
+      "queryKind": "machineName==3 Part Machine + status in live",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 5,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "inv:machine:5 Part Machine",
+      "collection": "inventory_logs",
+      "queryKind": "machineName==5 Part Machine + status in live",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 7,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "inv:machine:Backroom",
+      "collection": "inventory_logs",
+      "queryKind": "machineName==Backroom + status in live",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "inv:machine:Urine",
+      "collection": "inventory_logs",
+      "queryKind": "machineName==Urine + status in live",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "inv:machine:Yumizen C-150",
+      "collection": "inventory_logs",
+      "queryKind": "machineName==Yumizen C-150 + status in live",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 17,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "inv:machine:MISPA i2",
+      "collection": "inventory_logs",
+      "queryKind": "machineName==MISPA i2 + status in live",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "inv:machine:Mispa i2",
+      "collection": "inventory_logs",
+      "queryKind": "machineName==Mispa i2 + status in live",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "inv:machine:GEM 3500",
+      "collection": "inventory_logs",
+      "queryKind": "machineName==GEM 3500 + status in live",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "inv:machine:Access 2",
+      "collection": "inventory_logs",
+      "queryKind": "machineName==Access 2 + status in live",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 14,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    },
+    {
+      "id": "inv:consumed:day",
+      "collection": "inventory_logs",
+      "queryKind": "status==Consumed + consumedAt day",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "backup:day",
+      "collection": "backup_entries_logs",
+      "queryKind": "status==true + savedTime day",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "icc:qc_logs:day",
+      "collection": "qc_logs",
+      "queryKind": "timestamp day",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "icc:calibration_logs:day",
+      "collection": "calibration_logs",
+      "queryKind": "timestamp day",
+      "matchingDocs": 0,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "icc:consumption_ledger:day",
+      "collection": "consumption_ledger",
+      "queryKind": "timestamp day",
+      "matchingDocs": 181,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "icc:combo_consumption_ledger:day",
+      "collection": "combo_consumption_ledger",
+      "queryKind": "timestamp day",
+      "matchingDocs": 82,
+      "countMethod": "getCountFromServer",
+      "countError": null,
+      "measureDay": "2026-08-02"
+    },
+    {
+      "id": "intake:inventory_logs:orderBy",
+      "collection": "inventory_logs",
+      "queryKind": "orderBy timeAddedAt desc (listener uses limit 50)",
+      "measureDay": "2026-08-02",
+      "matchingDocs": 102,
+      "countMethod": "getCountFromServer",
+      "countError": null
+    }
+  ],
+  "extra": {
+    "invoices": 68,
+    "invoices_billed_limit50": 50,
+    "perf_daily": 14,
+    "measuredAtExtra": "2026-08-02T18:58:39.555Z"
+  }
+}

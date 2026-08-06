@@ -56,177 +56,187 @@ const InventoryCommandCenter = () => {
 
   const dateRange = { from: fromDate, to: toDate };
 
-  useEffect(() => {
-    const unsubs = [];
+  // Sibling-tab flags: same Firestore query stays subscribed across these tabs
+  // so Inventory↔Expiry↔Cost (live) and Ledger↔Cost (ledger) do not re-seed.
+  const needsLive =
+    activeTab === "Inventory" ||
+    activeTab === "Expiry" ||
+    activeTab === "Cost";
+  const needsConsumed = activeTab === "Consumed";
+  const needsQC = activeTab === "QC";
+  const needsLedger = activeTab === "Ledger" || activeTab === "Cost";
+  const needsCombo = activeTab === "Ledger";
 
-    // Live stock — Inventory + Expiry (+ Cost lookup). Never session-cache.
-    if (
-      activeTab === "Inventory" ||
-      activeTab === "Expiry" ||
-      activeTab === "Cost"
-    ) {
-      setInventoryLogs([]);
-      const liveQ = query(
-        collection(db, "inventory_logs"),
-        where("status", "in", INVENTORY_LIVE_STATUSES)
-      );
+  // Live stock — Inventory + Expiry + Cost packet lookup. Never session-cache.
+  useEffect(() => {
+    if (!needsLive) return undefined;
+
+    setInventoryLogs([]);
+    const liveQ = query(
+      collection(db, "inventory_logs"),
+      where("status", "in", INVENTORY_LIVE_STATUSES)
+    );
+    const unsub = onSnapshot(
+      liveQ,
+      (snap) => setInventoryLogs(mapDocs(snap)),
+      (err) => {
+        console.error("[ICC] live inventory_logs failed:", err);
+        setInventoryLogs([]);
+      }
+    );
+    return () => unsub();
+  }, [needsLive]);
+
+  // Consumed history — status + consumedAt range
+  useEffect(() => {
+    if (!needsConsumed) return undefined;
+
+    const consumedKey = `icc:consumed:${fromDate}:${toDate}`;
+    paintOrClear(setInventoryLogs, consumedKey);
+    const start = istDayStart(fromDate);
+    const endExclusive = istDayEndExclusive(toDate);
+    if (!start || !endExclusive) return undefined;
+
+    const consumedQ = query(
+      collection(db, "inventory_logs"),
+      where("status", "==", "Consumed"),
+      where("consumedAt", ">=", Timestamp.fromDate(start)),
+      where("consumedAt", "<", Timestamp.fromDate(endExclusive)),
+      orderBy("consumedAt", "desc")
+    );
+    const unsub = onSnapshot(
+      consumedQ,
+      (snap) => {
+        const next = mapDocs(snap);
+        setInventoryLogs(next);
+        setCache(consumedKey, next, SESSION_QUERY_TTL_MS);
+      },
+      (err) => {
+        console.error(
+          "[ICC] consumed inventory_logs failed — check index (status + consumedAt):",
+          err
+        );
+        setInventoryLogs([]);
+      }
+    );
+    return () => unsub();
+  }, [needsConsumed, fromDate, toDate]);
+
+  // QC & Calibration — timestamp range (history)
+  useEffect(() => {
+    if (!needsQC) return undefined;
+
+    const qcKey = `icc:qc:${fromDate}:${toDate}`;
+    const calKey = `icc:calibration:${fromDate}:${toDate}`;
+    paintOrClear(setQCLogs, qcKey);
+    paintOrClear(setCalibrationLogs, calKey);
+
+    const unsubs = [];
+    const qcQ = scopedTimestampRangeQuery("qc_logs", "timestamp", dateRange);
+    const calQ = scopedTimestampRangeQuery(
+      "calibration_logs",
+      "timestamp",
+      dateRange
+    );
+    if (qcQ) {
       unsubs.push(
         onSnapshot(
-          liveQ,
-          (snap) => setInventoryLogs(mapDocs(snap)),
+          qcQ,
+          (snap) => {
+            const next = mapDocs(snap);
+            setQCLogs(next);
+            setCache(qcKey, next, SESSION_QUERY_TTL_MS);
+          },
           (err) => {
-            console.error("[ICC] live inventory_logs failed:", err);
-            setInventoryLogs([]);
+            console.error("[ICC] qc_logs timestamp query failed:", err);
+            setQCLogs([]);
           }
         )
       );
     }
-
-    // Consumed history — status + consumedAt range
-    if (activeTab === "Consumed") {
-      const consumedKey = `icc:consumed:${fromDate}:${toDate}`;
-      paintOrClear(setInventoryLogs, consumedKey);
-      const start = istDayStart(fromDate);
-      const endExclusive = istDayEndExclusive(toDate);
-      if (start && endExclusive) {
-        const consumedQ = query(
-          collection(db, "inventory_logs"),
-          where("status", "==", "Consumed"),
-          where("consumedAt", ">=", Timestamp.fromDate(start)),
-          where("consumedAt", "<", Timestamp.fromDate(endExclusive)),
-          orderBy("consumedAt", "desc")
-        );
-        unsubs.push(
-          onSnapshot(
-            consumedQ,
-            (snap) => {
-              const next = mapDocs(snap);
-              setInventoryLogs(next);
-              setCache(consumedKey, next, SESSION_QUERY_TTL_MS);
-            },
-            (err) => {
-              console.error(
-                "[ICC] consumed inventory_logs failed — check index (status + consumedAt):",
-                err
-              );
-              setInventoryLogs([]);
-            }
-          )
-        );
-      }
-    }
-
-    // QC & Calibration — timestamp range (history)
-    if (activeTab === "QC") {
-      const qcKey = `icc:qc:${fromDate}:${toDate}`;
-      const calKey = `icc:calibration:${fromDate}:${toDate}`;
-      paintOrClear(setQCLogs, qcKey);
-      paintOrClear(setCalibrationLogs, calKey);
-
-      const qcQ = scopedTimestampRangeQuery("qc_logs", "timestamp", dateRange);
-      const calQ = scopedTimestampRangeQuery(
-        "calibration_logs",
-        "timestamp",
-        dateRange
+    if (calQ) {
+      unsubs.push(
+        onSnapshot(
+          calQ,
+          (snap) => {
+            const next = mapDocs(snap);
+            setCalibrationLogs(next);
+            setCache(calKey, next, SESSION_QUERY_TTL_MS);
+          },
+          (err) => {
+            console.error(
+              "[ICC] calibration_logs timestamp query failed:",
+              err
+            );
+            setCalibrationLogs([]);
+          }
+        )
       );
-      if (qcQ) {
-        unsubs.push(
-          onSnapshot(
-            qcQ,
-            (snap) => {
-              const next = mapDocs(snap);
-              setQCLogs(next);
-              setCache(qcKey, next, SESSION_QUERY_TTL_MS);
-            },
-            (err) => {
-              console.error("[ICC] qc_logs timestamp query failed:", err);
-              setQCLogs([]);
-            }
-          )
-        );
-      }
-      if (calQ) {
-        unsubs.push(
-          onSnapshot(
-            calQ,
-            (snap) => {
-              const next = mapDocs(snap);
-              setCalibrationLogs(next);
-              setCache(calKey, next, SESSION_QUERY_TTL_MS);
-            },
-            (err) => {
-              console.error(
-                "[ICC] calibration_logs timestamp query failed:",
-                err
-              );
-              setCalibrationLogs([]);
-            }
-          )
-        );
-      }
     }
-
-    // Consumption ledgers — timestamp range (history)
-    if (activeTab === "Ledger" || activeTab === "Cost") {
-      const ledgerKey = `icc:ledger:${fromDate}:${toDate}`;
-      paintOrClear(setLedgerEntries, ledgerKey);
-      const ledgerQ = scopedTimestampRangeQuery(
-        "consumption_ledger",
-        "timestamp",
-        dateRange
-      );
-      if (ledgerQ) {
-        unsubs.push(
-          onSnapshot(
-            ledgerQ,
-            (snap) => {
-              const next = mapDocs(snap);
-              setLedgerEntries(next);
-              setCache(ledgerKey, next, SESSION_QUERY_TTL_MS);
-            },
-            (err) => {
-              console.error(
-                "[ICC] consumption_ledger timestamp query failed:",
-                err
-              );
-              setLedgerEntries([]);
-            }
-          )
-        );
-      }
-    }
-
-    if (activeTab === "Ledger") {
-      const comboKey = `icc:comboLedger:${fromDate}:${toDate}`;
-      paintOrClear(setComboLedgerEntries, comboKey);
-      const comboQ = scopedTimestampRangeQuery(
-        "combo_consumption_ledger",
-        "timestamp",
-        dateRange
-      );
-      if (comboQ) {
-        unsubs.push(
-          onSnapshot(
-            comboQ,
-            (snap) => {
-              const next = mapDocs(snap);
-              setComboLedgerEntries(next);
-              setCache(comboKey, next, SESSION_QUERY_TTL_MS);
-            },
-            (err) => {
-              console.error(
-                "[ICC] combo_consumption_ledger timestamp query failed:",
-                err
-              );
-              setComboLedgerEntries([]);
-            }
-          )
-        );
-      }
-    }
-
     return () => unsubs.forEach((u) => u());
-  }, [activeTab, fromDate, toDate]);
+  }, [needsQC, fromDate, toDate]);
+
+  // Consumption ledger — Ledger + Cost. Persists across Ledger↔Cost.
+  useEffect(() => {
+    if (!needsLedger) return undefined;
+
+    const ledgerKey = `icc:ledger:${fromDate}:${toDate}`;
+    paintOrClear(setLedgerEntries, ledgerKey);
+    const ledgerQ = scopedTimestampRangeQuery(
+      "consumption_ledger",
+      "timestamp",
+      dateRange
+    );
+    if (!ledgerQ) return undefined;
+
+    const unsub = onSnapshot(
+      ledgerQ,
+      (snap) => {
+        const next = mapDocs(snap);
+        setLedgerEntries(next);
+        setCache(ledgerKey, next, SESSION_QUERY_TTL_MS);
+      },
+      (err) => {
+        console.error(
+          "[ICC] consumption_ledger timestamp query failed:",
+          err
+        );
+        setLedgerEntries([]);
+      }
+    );
+    return () => unsub();
+  }, [needsLedger, fromDate, toDate]);
+
+  // Combo ledger — Ledger tab only
+  useEffect(() => {
+    if (!needsCombo) return undefined;
+
+    const comboKey = `icc:comboLedger:${fromDate}:${toDate}`;
+    paintOrClear(setComboLedgerEntries, comboKey);
+    const comboQ = scopedTimestampRangeQuery(
+      "combo_consumption_ledger",
+      "timestamp",
+      dateRange
+    );
+    if (!comboQ) return undefined;
+
+    const unsub = onSnapshot(
+      comboQ,
+      (snap) => {
+        const next = mapDocs(snap);
+        setComboLedgerEntries(next);
+        setCache(comboKey, next, SESSION_QUERY_TTL_MS);
+      },
+      (err) => {
+        console.error(
+          "[ICC] combo_consumption_ledger timestamp query failed:",
+          err
+        );
+        setComboLedgerEntries([]);
+      }
+    );
+    return () => unsub();
+  }, [needsCombo, fromDate, toDate]);
 
   const dateProps = { fromDate, toDate, setFromDate, setToDate };
 

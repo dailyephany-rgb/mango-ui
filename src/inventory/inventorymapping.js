@@ -4,13 +4,15 @@ import {
   collection,
   query,
   where,
-  getDocs,
   writeBatch,
-  getDoc,
   doc,
   addDoc,
   serverTimestamp
 } from "firebase/firestore";
+import {
+  trackedGetDocs as getDocs,
+  trackedGetDoc as getDoc,
+} from "../shared/firestore/trackedFirestore.js";
 
 import { addConsumptionLedgerEntry } from "../inventory-command-center/utils/consumptionledger";
 import {
@@ -593,38 +595,86 @@ let mapping = testToReagentMap[mappingKey];
     });
   });
 
+  // No mapped reagents → nothing to deduct (same end state as empty loop + empty batch).
+  if (targetDeductions.length === 0) {
+    console.timeEnd("TOTAL INVENTORY DEDUCTION");
+    return;
+  }
 
+  const buildInventoryMap = (docs) => {
+    const inventoryMap = new Map();
+    docs.forEach((docSnap) => {
+      const data = docSnap.data();
+      const normalizedName = (data.reagentName || "")
+        .toUpperCase()
+        .replace(/[\s,._()-]+/g, "")
+        .trim();
+      inventoryMap.set(normalizedName, {
+        docSnap,
+        data,
+      });
+    });
+    return inventoryMap;
+  };
 
-  const q = query(
-    inventoryRef,
-    where("status", "==", "Activated")
-  );
-  
-  const querySnapshot = await getDocs(q);
-  const inventoryMap = new Map();
+  const fetchAllActivated = async () => {
+    const q = query(inventoryRef, where("status", "==", "Activated"));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs;
+  };
 
-querySnapshot.docs.forEach(docSnap => {
-  const data = docSnap.data();
+  // Scoped read: only Activated docs whose reagentName is in the target list.
+  // Firestore `in` supports ≤30 values — chunk if needed.
+  const fetchActivatedByReagentNames = async (names) => {
+    const docs = [];
+    for (let i = 0; i < names.length; i += 30) {
+      const chunk = names.slice(i, i + 30);
+      const q = query(
+        inventoryRef,
+        where("status", "==", "Activated"),
+        where("reagentName", "in", chunk)
+      );
+      const snap = await getDocs(q);
+      docs.push(...snap.docs);
+    }
+    return docs;
+  };
 
-  const normalizedName =
-    (data.reagentName || "")
-      .toUpperCase()
-      .replace(/[\s,._()-]+/g, "")
-      .trim();
+  const uniqueReagentNames = [
+    ...new Set(targetDeductions.map((t) => t.name).filter(Boolean)),
+  ];
 
-  inventoryMap.set(normalizedName, {
-    docSnap,
-    data
-  });
-});
+  let activatedDocs = [];
+  let inventoryMap = new Map();
 
+  try {
+    activatedDocs = await fetchActivatedByReagentNames(uniqueReagentNames);
+    inventoryMap = buildInventoryMap(activatedDocs);
 
+    // If any target is unresolved after the scoped query, fall back to the
+    // historical full Activated scan so normalize-only matches still work.
+    const anyUnresolved = targetDeductions.some(
+      (item) => !inventoryMap.has(normalize(item.name))
+    );
+    if (anyUnresolved) {
+      activatedDocs = await fetchAllActivated();
+      inventoryMap = buildInventoryMap(activatedDocs);
+    }
+  } catch (scopedErr) {
+    // Missing composite index or transient failure → identical full-scan path.
+    console.warn(
+      "[Inventory] Scoped Activated query failed; falling back to full scan:",
+      scopedErr
+    );
+    activatedDocs = await fetchAllActivated();
+    inventoryMap = buildInventoryMap(activatedDocs);
+  }
 
   for (const item of targetDeductions) {
  
     try {
       
-      if (querySnapshot.empty) {
+      if (activatedDocs.length === 0) {
         console.warn(`[Inventory] No active record for: ${item.name}`);
         continue;
       }

@@ -3,7 +3,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { db } from "../firebaseConfig";
 import {
   collection,
-  onSnapshot,
   setDoc,
   doc,
   updateDoc,
@@ -13,6 +12,7 @@ import {
   where,
   orderBy,
 } from "firebase/firestore";
+import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFirestore.js";
 import "./Backroom.css";
 import {
   parseEntryDate,

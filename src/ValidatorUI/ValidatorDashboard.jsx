@@ -4,7 +4,6 @@ import {
   collection,
   doc,
   updateDoc,
-  getDoc,
   writeBatch,
   serverTimestamp,
   query,
@@ -12,7 +11,10 @@ import {
   orderBy,
   Timestamp
 } from "firebase/firestore";
-import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFirestore.js";
+import {
+  trackedOnSnapshot as onSnapshot,
+  trackedGetDoc as getDoc,
+} from "../shared/firestore/trackedFirestore.js";
 
 import { db } from "../firebaseConfig.js";
 import ValidatorTable from "./ValidatorTable.jsx";

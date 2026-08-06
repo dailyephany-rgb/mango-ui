@@ -2,7 +2,7 @@
  * Daily engineering health scores + alert rules.
  */
 
-import { getState, saveDailyHealth, getHealthHistory, saveDailyRollup } from "./performanceStore.js";
+import { getState, saveDailyHealth, getHealthHistory, saveDailyRollup, getCountedReads } from "./performanceStore.js";
 import { summarizeCache } from "./cacheMetrics.js";
 import {
   summarizeDurations,
@@ -131,7 +131,8 @@ export function persistTodayHealth() {
   );
   const qStats = summarizeDurations(queries);
   const cache = summarizeCache(cacheEvents);
-  const readsTotal = reads.reduce((a, r) => a + (r.docCount || 0), 0);
+  const readsFromSamples = reads.reduce((a, r) => a + (r.docCount || 0), 0);
+  const readsTotal = Math.max(readsFromSamples, getCountedReads(date));
 
   saveDailyRollup(date, {
     readsTotal,

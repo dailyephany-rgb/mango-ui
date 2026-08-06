@@ -10,6 +10,8 @@ const STORE_KEY = "mango.perf.v1";
 const HEALTH_KEY = "mango.perf.health.v1";
 const DAILY_KEY = "mango.perf.daily.v1";
 const MONITOR_KEY = "mango.perf.monitor";
+/** Running (non-truncated) doc-read counters by YYYY-MM-DD — localStorage */
+const READS_COUNTED_KEY = "mango.perf.readsCounted.v1";
 
 const LIMITS = {
   pageLoads: 100,
@@ -21,6 +23,88 @@ const LIMITS = {
   longTasks: 50,
   incrementalSync: 200,
 };
+
+function localTodayKey() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function loadReadsCountedMap() {
+  try {
+    if (typeof localStorage === "undefined") return {};
+    const raw = localStorage.getItem(READS_COUNTED_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+let readsCountedByDate = loadReadsCountedMap();
+let readsCountedPersistTimer = null;
+
+function persistReadsCounted() {
+  try {
+    if (typeof localStorage === "undefined") return;
+    const entries = Object.entries(readsCountedByDate).sort((a, b) =>
+      a[0].localeCompare(b[0])
+    );
+    while (entries.length > 45) entries.shift();
+    readsCountedByDate = Object.fromEntries(entries);
+    localStorage.setItem(READS_COUNTED_KEY, JSON.stringify(readsCountedByDate));
+  } catch {
+    /* ignore */
+  }
+}
+
+function scheduleReadsCountedPersist() {
+  if (readsCountedPersistTimer != null) return;
+  readsCountedPersistTimer = setTimeout(() => {
+    readsCountedPersistTimer = null;
+    persistReadsCounted();
+  }, 800);
+}
+
+/**
+ * Increment the non-truncated daily doc-read counter (survives ring-buffer trim).
+ * @param {number} docCount
+ * @param {string} [dateStr]
+ */
+export function addCountedReads(docCount, dateStr) {
+  const n = Number(docCount) || 0;
+  if (n <= 0) return;
+  const d = dateStr || localTodayKey();
+  readsCountedByDate[d] = (Number(readsCountedByDate[d]) || 0) + n;
+  scheduleReadsCountedPersist();
+}
+
+/** @returns {number} */
+export function getCountedReads(dateStr) {
+  const d = dateStr || localTodayKey();
+  return Number(readsCountedByDate[d]) || 0;
+}
+
+/** Sum of running counters for inclusive date range (this browser only). */
+export function getCountedReadsInRange(fromStr, toStr) {
+  let sum = 0;
+  for (const [d, n] of Object.entries(readsCountedByDate)) {
+    if (d >= fromStr && d <= toStr) sum += Number(n) || 0;
+  }
+  return sum;
+}
+
+/** Force-flush counter to localStorage (pagehide). */
+export function flushCountedReads() {
+  if (readsCountedPersistTimer != null) {
+    clearTimeout(readsCountedPersistTimer);
+    readsCountedPersistTimer = null;
+  }
+  persistReadsCounted();
+}
 
 function emptyState() {
   return {
@@ -169,6 +253,7 @@ export function exportMetricsJson() {
       state,
       healthHistory: getHealthHistory(),
       dailyRollups: getDailyRollups(),
+      readsCountedByDate: { ...readsCountedByDate },
     },
     null,
     2
@@ -208,10 +293,25 @@ export function saveDailyHealth(dateStr, scores) {
  */
 export function saveDailyRollup(dateStr, rollup) {
   try {
+    const counted = getCountedReads(dateStr);
+    const withCounted = {
+      ...rollup,
+      date: dateStr,
+      readsTotal: Math.max(
+        Number(rollup.readsTotal) || 0,
+        counted
+      ),
+    };
     const existing = getDailyRollups().find((d) => d.date === dateStr);
     const merged = existing
-      ? mergeRollupRecords(existing, { ...rollup, date: dateStr })
-      : { ...rollup, date: dateStr, at: Date.now() };
+      ? mergeRollupRecords(existing, withCounted)
+      : { ...withCounted, at: Date.now() };
+    // Prefer running counter over truncated sample sums
+    merged.readsTotal = Math.max(
+      Number(merged.readsTotal) || 0,
+      counted,
+      Number(existing?.readsTotal) || 0
+    );
     const all = getDailyRollups().filter((d) => d.date !== dateStr);
     all.push({ ...merged, date: dateStr, at: Date.now() });
     all.sort((a, b) => a.date.localeCompare(b.date));

@@ -7,6 +7,7 @@ import { db } from "../../firebaseConfig.js";
 import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrintedQuery.js";
 import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPaint.js";
 import { trackedOnSnapshot as onSnapshot } from "../../shared/firestore/trackedFirestore.js";
+import { withOwnerSourceControl } from "./withOwnerSourceControl.js";
 import testTimings from "../data/test_timings.json";
 import biochemRouting from "../../biochem_testRouting.json";
 
@@ -504,7 +505,7 @@ return {
 /* ================= SUBSCRIBE OVERVIEW =================== */
 
 export function subscribeOverview({ onData, source = "All", dateRange }) {
-  const { paintCache, onDataLive } = createOwnerSessionPaint({
+  const { paintCache, onDataLive, setSourceKey } = createOwnerSessionPaint({
     dept: "biochem",
     dateRange,
     source,
@@ -512,10 +513,14 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
   });
   paintCache();
 
+  let currentSource = source ?? "All";
+
   const masterRef = scopedTimePrintedQuery("master_register", dateRange);
   const biochemRef = scopedTimePrintedQuery("biochemistry_register", dateRange);
   if (!masterRef || !biochemRef) {
-    return () => {};
+    const empty = () => {};
+    empty.updateSource = () => {};
+    return empty;
   }
   
   let masterRows = []; let biochemRows = [];
@@ -530,7 +535,7 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
       if (!t) return false;
       if (from && t < from) return false;
       if (to && t > to) return false;
-      const normSource = source && source !== "All" ? source.trim().toUpperCase() : null;
+      const normSource = currentSource && currentSource !== "All" ? source.trim().toUpperCase() : null;
       if (normSource) {
         const rowSource = (row.source || "").trim().toUpperCase();
         if (rowSource !== normSource) return false;
@@ -557,7 +562,15 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
   const unsubMaster = onSnapshot(masterRef, (snap) => { masterRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
   const unsubBiochem = onSnapshot(biochemRef, (snap) => { biochemRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
 
-  return () => { unsubMaster?.(); unsubBiochem?.(); };
+  return withOwnerSourceControl(
+    () => { unsubMaster?.(); unsubBiochem?.(); },
+    {
+      getSource: () => currentSource,
+      setSource: (next) => { currentSource = next; },
+      publish,
+      setSourceKey,
+    }
+  );
 }
 
 export function unifyForCharts(rows = []) {

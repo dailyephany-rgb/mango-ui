@@ -1,57 +1,62 @@
-
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import "./MasterView_Table.css";
 import { db } from "../firebaseConfig.js";
 import {
+  collection,
+  orderBy,
+  query,
+  where,
+  Timestamp,
   doc,
   deleteDoc,
   setDoc,
 } from "firebase/firestore";
-import { useMasterRegisterSnapshots } from "../shared/hooks/useMasterRegisterSnapshots.js";
+import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFirestore.js";
+import {
+  getLocalDateString,
+  localDayStart,
+  localDayEndExclusive,
+  parseDateField,
+} from "../shared/utils/dates.js";
 
 export default function MasterView_Table() {
-  
-  
-  const [dateFrom, setDateFrom] = useState(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  });
-
-  const [dateTo, setDateTo] = useState(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-  });
-
+  const today = getLocalDateString();
+  const [entries, setEntries] = useState([]);
+  const [dateFrom, setDateFrom] = useState(today);
+  const [dateTo, setDateTo] = useState(today);
   const [sourceFilter, setSourceFilter] = useState("All");
   const [searchReg, setSearchReg] = useState("");
 
-  const {
-    masterEntries,
-    loading,
-  } = useMasterRegisterSnapshots({
-    dateFrom,
-    dateTo,
-  });
+  const parseDate = (entry) => parseDateField(entry?.timePrinted);
 
-  const parseDate = (entry) => {
-    const f = entry.timePrinted;
-    if (!f) return null;
-    if (f?.toDate) return f.toDate();
-    if (typeof f === "string" || f instanceof Date) {
-      const d = new Date(f);
-      return isNaN(d) ? null : d;
+  // master_register scoped by timePrinted date range
+  useEffect(() => {
+    const start = localDayStart(dateFrom);
+    const endExclusive = localDayEndExclusive(dateTo);
+    if (!start || !endExclusive) {
+      setEntries([]);
+      return undefined;
     }
-    if (f?.seconds) return new Date(f.seconds * 1000);
-    return null;
-  };
 
-  
+    const q = query(
+      collection(db, "master_register"),
+      where("timePrinted", ">=", Timestamp.fromDate(start)),
+      where("timePrinted", "<", Timestamp.fromDate(endExclusive)),
+      orderBy("timePrinted", "asc")
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setEntries(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      },
+      (err) => {
+        console.error("[MasterView_Table] timePrinted query failed:", err);
+        setEntries([]);
+      }
+    );
+    return () => unsub();
+  }, [dateFrom, dateTo]);
 
   // FIX: Use e.id instead of regNo to target the composite ID in Firestore
   const toggleUrgent = async (docId, currentUrgent) => {
@@ -82,11 +87,9 @@ export default function MasterView_Table() {
     }
   };
 
-  const filteredEntries = masterEntries
+  // Date applied in Firestore; source + search stay client-side; urgent floats to top
+  const filteredEntries = entries
     .filter((entry) => {
-      
-
-
       const matchesSource = sourceFilter === "All" || entry.source?.toLowerCase() === sourceFilter.toLowerCase();
       
       const searchLower = searchReg.toLowerCase();
@@ -94,7 +97,7 @@ export default function MasterView_Table() {
         (entry.regNo?.toLowerCase().includes(searchLower)) || 
         (entry.diagnosticNo?.toLowerCase().includes(searchLower));
 
-        return matchesSource && matchesSearch;
+      return matchesSource && matchesSearch;
     })
     .sort((a, b) => {
       if (a.urgent !== b.urgent) {

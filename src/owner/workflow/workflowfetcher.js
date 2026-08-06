@@ -3,6 +3,7 @@
 import { trackedOnSnapshot as onSnapshot } from "../../shared/firestore/trackedFirestore.js";
 import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrintedQuery.js";
 import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPaint.js";
+import { withOwnerSourceControl } from "../lib/withOwnerSourceControl.js";
 import testMapping from "../../test_mapping.json";
 
 

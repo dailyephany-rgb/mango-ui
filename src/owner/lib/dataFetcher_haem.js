@@ -7,6 +7,7 @@ import { db } from "../../firebaseConfig.js";
 import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrintedQuery.js";
 import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPaint.js";
 import { trackedOnSnapshot as onSnapshot } from "../../shared/firestore/trackedFirestore.js";
+import { withOwnerSourceControl } from "./withOwnerSourceControl.js";
 import testTimings from "../data/test_timings.json";
 
 /* ====================== DATE UTILS ====================== */
@@ -606,7 +607,7 @@ const enteredAverages =
 /* ================= SUBSCRIBE OVERVIEW =================== */
 
 export function subscribeOverview({ onData, source = "All", dateRange }) {
-  const { paintCache, onDataLive } = createOwnerSessionPaint({
+  const { paintCache, onDataLive, setSourceKey } = createOwnerSessionPaint({
     dept: "haem",
     dateRange,
     source,
@@ -614,10 +615,14 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
   });
   paintCache();
 
+  let currentSource = source ?? "All";
+
   const masterRef = scopedTimePrintedQuery("master_register", dateRange);
   const haemRef = scopedTimePrintedQuery("haematology_register", dateRange);
   if (!masterRef || !haemRef) {
-    return () => {};
+    const empty = () => {};
+    empty.updateSource = () => {};
+    return empty;
   }
   
   let masterRows = []; let haemRows = [];
@@ -633,7 +638,7 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
       if (from && t < from) return false;
       if (to && t > to) return false;
 
-      const normSource = source && source !== "All" ? source.trim().toUpperCase() : null;
+      const normSource = currentSource && currentSource !== "All" ? source.trim().toUpperCase() : null;
       if (normSource) {
         const rowSource = (row.source || "").trim().toUpperCase();
         if (rowSource !== normSource) return false;
@@ -669,7 +674,15 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
   const unsubMaster = onSnapshot(masterRef, (snap) => { masterRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
   const unsubHaem = onSnapshot(haemRef, (snap) => { haemRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
 
-  return () => { unsubMaster?.(); unsubHaem?.(); };
+  return withOwnerSourceControl(
+    () => { unsubMaster?.(); unsubHaem?.(); },
+    {
+      getSource: () => currentSource,
+      setSource: (next) => { currentSource = next; },
+      publish,
+      setSourceKey,
+    }
+  );
 }
 
 export function unifyForCharts(rows = []) {

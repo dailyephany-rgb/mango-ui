@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from "react";
 import { db } from "../firebaseConfig";
 import {
@@ -87,29 +86,23 @@ export default function MasterAdminPanel() {
     return String(value || "")
       .toLowerCase()
   
-      // convert & to "and" for consistency
-      .replace(/&/g, " and ")
+      // convert & to "and" (optional but helps consistency)
+      .replace(/&/g, "and")
   
-      // remove punctuation/brackets but keep the words inside
-      .replace(/[().,;:/\\\-+]/g, " ")
-
-      // normalize common lab abbreviations / roman numerals
-      .replace(/\bp\s*b\s*f\b/g, "pbf")
-      .replace(/\bhiv\s*i\s*and\s*ii\b/g, "hiv 1 and 2")
-      .replace(/\bhiv\s*1\s*and\s*2\b/g, "hiv 1 and 2")
-      .replace(/\bhiv\s*i\s*&\s*ii\b/g, "hiv 1 and 2")
-      .replace(/\bi\b/g, "1")
-      .replace(/\bii\b/g, "2")
+      // remove dots
+      .replace(/\./g, "")
   
       // remove common words
       .replace(/\bcategory\b/g, "")
       .replace(/\broutine\b/g, "")
       .replace(/\bprofile\b/g, "")
       .replace(/\bpanel\b/g, "")
-      .replace(/\btest\b/g, "")
-      .replace(/\bexam\b/g, "")
-      .replace(/\bserum\b/g, "")
-      .replace(/\bplasma\b/g, "")
+  
+      // remove brackets but keep text inside
+      .replace(/[()]/g, "")
+  
+      // commas become spaces
+      .replace(/,/g, " ")
   
       // collapse spaces
       .replace(/\s+/g, " ")
@@ -232,10 +225,6 @@ if (mappedLabNames && mappedLabNames.length > 0) {
   });
 
 } else {
-
-  if (!groupedHospital[diagNo].expectedLabTests.includes(investigation)) {
-    groupedHospital[diagNo].expectedLabTests.push(investigation);
-  }
 
   groupedHospital[diagNo].convertedDisplay.push(
     investigation.toUpperCase()

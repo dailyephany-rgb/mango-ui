@@ -8,7 +8,6 @@ import React, {
 import { db } from "../firebaseConfig.js";
 import {
   collection,
-  onSnapshot,
   query,
   where,
   orderBy,
@@ -17,6 +16,7 @@ import {
   setDoc,
   serverTimestamp,
 } from "firebase/firestore";
+import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFirestore.js";
 
 import "./MasterView_Rectangle.css";
 import UserMenu from "../auth/UserMenu";

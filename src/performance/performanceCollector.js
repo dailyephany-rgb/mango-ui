@@ -7,6 +7,7 @@ import {
   recordToRing,
   isMonitorEnabled,
   getState,
+  addCountedReads,
 } from "./performanceStore.js";
 import {
   classifyCollection,
@@ -75,13 +76,15 @@ export function recordRead({ collection, docCount, source }) {
   const bucket = classifyCollection(collection);
   const dept =
     departmentForCollection(collection) || ctx.department || "Unknown";
+  const n = docCount || 0;
+  addCountedReads(n);
   recordToRing("reads", {
     at: Date.now(),
     page: ctx.page,
     department: dept,
     collection: collection || "unknown",
     bucket,
-    docCount: docCount || 0,
+    docCount: n,
     source: source || "snapshot",
   });
 }

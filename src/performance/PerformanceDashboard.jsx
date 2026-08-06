@@ -322,6 +322,9 @@ function DashboardInner() {
         <div className="perf-kpi">
           <div className="label">Reads (range)</div>
           <div className="value">{p.readsInRange.toLocaleString()}</div>
+          <div className="muted" style={{ fontSize: "0.65rem", marginTop: 4 }}>
+            tracked counter · not Firebase bill
+          </div>
         </div>
         <div className="perf-kpi">
           <div className="label">Cache Hit %</div>
@@ -397,7 +400,7 @@ function DashboardInner() {
           <table className="perf-table">
             <tbody>
               <tr>
-                <td>Reads in range (measured)</td>
+                <td>Reads in range (tracked counter)</td>
                 <td>{p.readsInRange.toLocaleString()}</td>
               </tr>
               <tr>

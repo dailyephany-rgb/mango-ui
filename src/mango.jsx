@@ -3,7 +3,8 @@ import React, { useState, useRef, useEffect } from "react";
 import "./mango.css";
 import { db } from "./firebaseConfig.js";
 import testMapping from "./test_mapping.json";
-import { collection, serverTimestamp, setDoc, doc, getDoc } from "firebase/firestore";
+import { collection, serverTimestamp, setDoc, doc } from "firebase/firestore";
+import { trackedGetDoc as getDoc } from "./shared/firestore/trackedFirestore.js";
 import UserMenu from "./auth/UserMenu";
 
 

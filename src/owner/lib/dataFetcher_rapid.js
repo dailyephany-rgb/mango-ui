@@ -7,6 +7,7 @@ import { db } from "../../firebaseConfig.js";
 import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrintedQuery.js";
 import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPaint.js";
 import { trackedOnSnapshot as onSnapshot } from "../../shared/firestore/trackedFirestore.js";
+import { withOwnerSourceControl } from "./withOwnerSourceControl.js";
 
 import testTimings from "../data/test_timings.json";
 import backroomRouting from "../../backroom_routing.json";
@@ -236,7 +237,7 @@ export function computeKPIs(masterRows = [], rapidRows = []) {
 /* ================= SUBSCRIBE OVERVIEW =================== */
 
 export function subscribeOverview({ onData, source = "All", dateRange }) {
-  const { paintCache, onDataLive } = createOwnerSessionPaint({
+  const { paintCache, onDataLive, setSourceKey } = createOwnerSessionPaint({
     dept: "rapid",
     dateRange,
     source,
@@ -244,10 +245,12 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
   });
   paintCache();
 
+  let currentSource = source ?? "All";
+
   const applyFilters = (mRows, rRows) => {
     const from = dateRange?.from ? new Date(dateRange.from + "T00:00:00") : null;
     const to = dateRange?.to ? new Date(dateRange.to + "T23:59:59") : null;
-    const normSource = source && source !== "All" ? source.trim().toUpperCase() : null;
+    const normSource = currentSource && currentSource !== "All" ? currentSource.trim().toUpperCase() : null;
 
     const filterFn = (row) => {
       const t = toDate(row.timePrinted);
@@ -271,7 +274,9 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
   const masterRef = scopedTimePrintedQuery("master_register", dateRange);
   const rapidRef = scopedTimePrintedQuery("rapid_card_register", dateRange);
   if (!masterRef || !rapidRef) {
-    return () => {};
+    const empty = () => {};
+    empty.updateSource = () => {};
+    return empty;
   }
   
   let masterRows = []; 
@@ -307,10 +312,18 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
     publish(); 
   });
 
-  return () => { 
-    unsubMaster?.(); 
-    unsubRapid?.(); 
-  };
+  return withOwnerSourceControl(
+    () => {
+      unsubMaster?.();
+      unsubRapid?.();
+    },
+    {
+      getSource: () => currentSource,
+      setSource: (next) => { currentSource = next; },
+      publish,
+      setSourceKey,
+    }
+  );
 }
 /* ================= UNIFY FOR CHARTS ===================== */
 

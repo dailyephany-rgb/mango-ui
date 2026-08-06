@@ -15,6 +15,8 @@ import {
   estimatePerfStoreBytes,
   estimateCachePayloadBytes,
   getHealthHistory as getLocalHealthHistory,
+  getCountedReadsInRange,
+  flushCountedReads,
 } from "./performanceStore.js";
 import {
   computeHealthScores,
@@ -181,7 +183,12 @@ export function PerformanceProvider({ children }) {
     (a, r) => a + (r.docCount || 0),
     0
   );
-  const readsInRange = Math.max(sampleReads, filtered.rollupReadsTotal || 0);
+  const countedLocal = getCountedReadsInRange(dateFrom, dateTo);
+  const readsInRange = Math.max(
+    sampleReads,
+    filtered.rollupReadsTotal || 0,
+    countedLocal
+  );
 
   const derived = {
     monitorOn,
@@ -228,6 +235,7 @@ export function PerformanceProvider({ children }) {
     leaderboard: buildQueryLeaderboard(filtered.queries || [], leaderSort),
     rankings: buildDepartmentRankings(rangeState, dateFrom, dateTo),
     readsInRange,
+    readsCountedLocal: countedLocal,
     readsHour: (filtered.reads || [])
       .filter((r) => r.at >= hourAgo)
       .reduce((a, r) => a + (r.docCount || 0), 0),
