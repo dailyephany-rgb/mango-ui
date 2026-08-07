@@ -4,7 +4,15 @@
 
 export { EngTelemetry } from "./EngTelemetry.js";
 export { isEngTelemetryEnabled, setEngTelemetryEnabled } from "./killSwitch.js";
-export { getDeviceId, getDeviceLabel, setDeviceLabel } from "./deviceId.js";
+export {
+  getDeviceId,
+  getDeviceLabel,
+  setDeviceLabel,
+  ensureFriendlyDeviceLabel,
+  detectDeviceKind,
+  DEVICE_LABEL_PRESETS,
+  normalizeDeviceLabel,
+} from "./deviceId.js";
 export { startEngineeringTelemetry } from "./bootstrap.js";
 export { scheduleFlush, flushNow, flushViaBeacon } from "./flush.js";
 export { resetEngineeringTelemetry } from "./bootstrap.js";

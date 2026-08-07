@@ -177,6 +177,14 @@ export function startEngineeringTelemetry() {
 
     void refreshRuntimeSettings();
 
+    // Friendly workstation names (ipad-1, mac-2…) — cookie + localStorage backed
+    void import("./deviceId.js")
+      .then((m) => m.ensureFriendlyDeviceLabel())
+      .then(() => {
+        EngTelemetry.heartbeat();
+      })
+      .catch(() => {});
+
     installErrorHooks();
     if (identity.page !== "Engineering" && identity.page !== "Performance") {
       installLongTaskHook();

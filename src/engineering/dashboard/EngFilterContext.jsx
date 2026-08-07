@@ -107,7 +107,9 @@ export function EngFilterProvider({ children }) {
     (deviceId) => {
       if (!deviceId) return "—";
       const label = deviceLabelById.get(deviceId);
-      if (label && label !== deviceId) return label;
+      if (label && label !== deviceId && !/^[0-9a-f]{8}-/i.test(label)) {
+        return label;
+      }
       return `${String(deviceId).slice(0, 8)}…`;
     },
     [deviceLabelById]

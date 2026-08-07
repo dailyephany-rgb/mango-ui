@@ -15,7 +15,7 @@ import {
 import { useEngFilters } from "./EngFilterContext.jsx";
 import { departmentMatches } from "./engFilters.js";
 import { devicePresence, computeHealthScore } from "../health/scores.js";
-import { getDeviceId, setDeviceLabel, getDeviceLabel } from "../telemetry/deviceId.js";
+import { getDeviceId, setDeviceLabel, getDeviceLabel, DEVICE_LABEL_PRESETS, detectDeviceKind, ensureFriendlyDeviceLabel, normalizeDeviceLabel } from "../telemetry/deviceId.js";
 import { EngTelemetry } from "../telemetry/EngTelemetry.js";
 import { scheduleFlush } from "../telemetry/flush.js";
 import { getEngProjectId } from "../firebaseEngConfig.js";
@@ -1750,6 +1750,8 @@ export function SettingsPage() {
   } = useEngSettings();
   const local = useLocalEngBuffer();
   const [label, setLabel] = useState(getDeviceLabel());
+  const [assigning, setAssigning] = useState(false);
+  const kind = detectDeviceKind();
   const [heartbeatSec, setHeartbeatSec] = useState(
     settings?.heartbeatSec ?? 30
   );
@@ -1774,7 +1776,11 @@ export function SettingsPage() {
     <>
       <div className="eng-header">
         <h1>Settings</h1>
-        <div className="meta">this device: {getDeviceId().slice(0, 8)}…</div>
+        <div className="meta">
+          this workstation: <strong>{label || `${kind}-?`}</strong>
+          {" · "}
+          id {getDeviceId().slice(0, 8)}…
+        </div>
       </div>
       <div className={configured ? "eng-banner ok" : "eng-banner"}>
         {configured
@@ -1841,13 +1847,59 @@ export function SettingsPage() {
           buffer: {local.size}
         </p>
         <label>
-          Device label
+          Device label (shows as ipad-1, mac-2, … across the fleet)
           <input
             value={label}
+            placeholder={`${kind}-1`}
             onChange={(e) => setLabel(e.target.value)}
-            onBlur={() => setDeviceLabel(label)}
+            onBlur={() => {
+              const n = normalizeDeviceLabel(label) || label;
+              setLabel(n);
+              setDeviceLabel(n);
+              EngTelemetry.heartbeat();
+            }}
           />
         </label>
+        <p className="eng-muted">
+          Detected as <strong>{kind}</strong>. Set this once on each physical
+          iPad/Mac. Labels are stored in localStorage + cookie so they survive
+          most Safari refreshes; avoid “Clear Website Data” on that device.
+        </p>
+        <div className="eng-actions" style={{ flexWrap: "wrap", gap: 8 }}>
+          {DEVICE_LABEL_PRESETS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              className="eng-btn"
+              onClick={() => {
+                setLabel(p);
+                setDeviceLabel(p);
+                EngTelemetry.heartbeat();
+              }}
+            >
+              {p}
+            </button>
+          ))}
+          <button
+            type="button"
+            className="eng-btn"
+            disabled={assigning}
+            onClick={async () => {
+              setAssigning(true);
+              try {
+                // Clear so ensure assigns a fresh sequential name
+                setDeviceLabel("");
+                const next = await ensureFriendlyDeviceLabel();
+                setLabel(next || "");
+                EngTelemetry.heartbeat();
+              } finally {
+                setAssigning(false);
+              }
+            }}
+          >
+            {assigning ? "Assigning…" : "Auto-assign next"}
+          </button>
+        </div>
       </div>
       <div className="eng-panel eng-form">
         <h2>Fleet settings (settings/global)</h2>
