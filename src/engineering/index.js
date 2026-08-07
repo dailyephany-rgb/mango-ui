@@ -9,6 +9,8 @@ export {
   getDeviceLabel,
   setDeviceLabel,
   ensureFriendlyDeviceLabel,
+  assignNextFleetLabel,
+  publishDeviceLabel,
   detectDeviceKind,
   DEVICE_LABEL_PRESETS,
   normalizeDeviceLabel,

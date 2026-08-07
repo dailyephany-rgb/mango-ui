@@ -3,6 +3,10 @@
  *
  * Dual-persist localStorage + cookie so Safari/Wi‑Fi profile churn is less likely
  * to mint a new anonymous UUID every time.
+ *
+ * IMPORTANT: fleet sequential names (mac-1, mac-2…) are ONLY claimed when the user
+ * clicks Auto-assign. Silent page-load must never burn counter slots (that caused
+ * mac-2 / mac-3 ghosts while Settings showed a different name).
  */
 
 import { ENG_DEVICE_ID_KEY, ENG_DEVICE_LABEL_KEY } from "../constants.js";
@@ -131,6 +135,19 @@ export function normalizeDeviceLabel(label) {
 }
 
 /**
+ * Stable local fallback that does NOT touch the fleet counter.
+ * Same deviceId always yields the same placeholder until the user picks a name.
+ * @param {string} [deviceId]
+ * @returns {string}
+ */
+export function stableLocalLabel(deviceId) {
+  const prefix = detectDeviceKind();
+  const id = String(deviceId || getDeviceId()).replace(/[^a-z0-9]/gi, "");
+  const short = id.slice(0, 4) || "1";
+  return `${prefix}-local-${short}`;
+}
+
+/**
  * @returns {string}
  */
 export function getDeviceId() {
@@ -155,13 +172,49 @@ export function getDeviceLabel() {
 }
 
 /**
+ * Persist label locally and push to eng device docs (best-effort).
  * @param {string} label
  */
 export function setDeviceLabel(label) {
   safeCall(() => {
-    const normalized = normalizeDeviceLabel(label) || String(label || "").trim();
+    const normalized =
+      normalizeDeviceLabel(label) || String(label || "").trim();
     persistPair(ENG_DEVICE_LABEL_KEY, ENG_DEVICE_LABEL_KEY, normalized);
+    void publishDeviceLabel(normalized);
   }, undefined);
+}
+
+/**
+ * Write label onto eng_device_status + eng_devices for THIS deviceId immediately.
+ * @param {string} label
+ */
+export async function publishDeviceLabel(label) {
+  try {
+    const { getEngDb } = await import("../firebaseEngConfig.js");
+    const { ENG_COLLECTIONS } = await import("../constants.js");
+    const { doc, setDoc, serverTimestamp } = await import("firebase/firestore");
+    const db = getEngDb();
+    if (!db) return;
+    const deviceId = getDeviceId();
+    const normalized =
+      normalizeDeviceLabel(label) || String(label || "").trim() || null;
+    const payload = {
+      deviceId,
+      label: normalized,
+      updatedAt: serverTimestamp(),
+      clientTs: Date.now(),
+    };
+    await Promise.all([
+      setDoc(doc(db, ENG_COLLECTIONS.deviceStatus, deviceId), payload, {
+        merge: true,
+      }),
+      setDoc(doc(db, ENG_COLLECTIONS.devices, deviceId), payload, {
+        merge: true,
+      }),
+    ]);
+  } catch {
+    /* ignore — eng optional */
+  }
 }
 
 /** Preset chips for Settings (physical workstations). */
@@ -177,37 +230,41 @@ export const DEVICE_LABEL_PRESETS = [
 ];
 
 /**
- * If this browser has no friendly label yet, claim the next prefix-N from eng
- * Firestore (or a local fallback). Idempotent once a label is stored.
+ * Ensure a label exists for this browser.
+ * Does NOT claim fleet counters (mac-1, mac-2…) — that only happens via
+ * assignNextFleetLabel() when the user clicks Auto-assign.
  * @returns {Promise<string>}
  */
 export async function ensureFriendlyDeviceLabel() {
   try {
     const existing = getDeviceLabel();
     if (existing && !looksLikeRawDeviceId(existing)) {
-      // Re-persist so cookie backup stays warm
-      setDeviceLabel(existing);
+      persistPair(ENG_DEVICE_LABEL_KEY, ENG_DEVICE_LABEL_KEY, existing);
       return existing;
     }
-
-    const prefix = detectDeviceKind();
-    let next = null;
-    try {
-      const { claimNextDeviceLabel } = await import("./claimDeviceLabel.js");
-      next = await claimNextDeviceLabel(prefix);
-    } catch {
-      next = null;
-    }
-
-    if (!next) {
-      // Offline / eng not configured: stable-enough local name
-      const id = getDeviceId();
-      next = `${prefix}-${String(id).replace(/[^a-z0-9]/gi, "").slice(0, 4) || "1"}`;
-    }
-
-    setDeviceLabel(next);
-    return next;
+    const local = stableLocalLabel();
+    persistPair(ENG_DEVICE_LABEL_KEY, ENG_DEVICE_LABEL_KEY, local);
+    void publishDeviceLabel(local);
+    return local;
   } catch {
     return getDeviceLabel();
   }
+}
+
+/**
+ * Explicit user action: claim next fleet name (ipad-1, mac-2, …).
+ * @returns {Promise<string>}
+ */
+export async function assignNextFleetLabel() {
+  const prefix = detectDeviceKind();
+  let next = null;
+  try {
+    const { claimNextDeviceLabel } = await import("./claimDeviceLabel.js");
+    next = await claimNextDeviceLabel(prefix);
+  } catch {
+    next = null;
+  }
+  if (!next) next = stableLocalLabel();
+  setDeviceLabel(next);
+  return next;
 }

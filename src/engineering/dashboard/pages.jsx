@@ -15,7 +15,7 @@ import {
 import { useEngFilters } from "./EngFilterContext.jsx";
 import { departmentMatches } from "./engFilters.js";
 import { devicePresence, computeHealthScore } from "../health/scores.js";
-import { getDeviceId, setDeviceLabel, getDeviceLabel, DEVICE_LABEL_PRESETS, detectDeviceKind, ensureFriendlyDeviceLabel, normalizeDeviceLabel } from "../telemetry/deviceId.js";
+import { getDeviceId, setDeviceLabel, getDeviceLabel, DEVICE_LABEL_PRESETS, detectDeviceKind, assignNextFleetLabel, normalizeDeviceLabel, publishDeviceLabel } from "../telemetry/deviceId.js";
 import { EngTelemetry } from "../telemetry/EngTelemetry.js";
 import { scheduleFlush } from "../telemetry/flush.js";
 import { getEngProjectId } from "../firebaseEngConfig.js";
@@ -1812,10 +1812,11 @@ export function SettingsPage() {
           <button
             type="button"
             className="eng-btn"
-            onClick={() => {
+            onClick={async () => {
               const n = normalizeDeviceLabel(label) || label;
               setLabel(n);
               setDeviceLabel(n);
+              await publishDeviceLabel(n);
               scheduleFlush({ force: true });
               EngTelemetry.heartbeat();
               refresh();
@@ -1849,6 +1850,12 @@ export function SettingsPage() {
           <strong>{localEnabled ? "enabled" : "disabled"}</strong> · pending
           buffer: {local.size}
         </p>
+        <p className="eng-muted">
+          Workstation id: <code>{getDeviceId()}</code>
+          <br />
+          Hover a Timeline device name to compare this id — if they differ, that
+          row is a different browser profile / ghost device.
+        </p>
         <label>
           Device label (shows as ipad-1, mac-2, … across the fleet)
           <input
@@ -1858,11 +1865,13 @@ export function SettingsPage() {
               const v = e.target.value;
               setLabel(v);
             }}
-            onBlur={() => {
+            onBlur={async () => {
               const n = normalizeDeviceLabel(label) || label;
               setLabel(n);
               setDeviceLabel(n);
+              await publishDeviceLabel(n);
               EngTelemetry.heartbeat();
+              refresh();
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -1872,9 +1881,9 @@ export function SettingsPage() {
           />
         </label>
         <p className="eng-muted">
-          Detected as <strong>{kind}</strong>. Set this once on each physical
-          iPad/Mac. Labels are stored in localStorage + cookie so they survive
-          most Safari refreshes; avoid “Clear Website Data” on that device.
+          Detected as <strong>{kind}</strong>. Click a preset below (recommended).
+          Do <strong>not</strong> use Auto-assign unless you want the next free
+          fleet number — that is what created mac-2 / mac-3 earlier.
         </p>
         <div className="eng-actions" style={{ flexWrap: "wrap", gap: 8 }}>
           {DEVICE_LABEL_PRESETS.map((p) => (
@@ -1882,10 +1891,17 @@ export function SettingsPage() {
               key={p}
               type="button"
               className="eng-btn"
-              onClick={() => {
+              style={
+                label === p
+                  ? { outline: "2px solid #2563eb", fontWeight: 700 }
+                  : undefined
+              }
+              onClick={async () => {
                 setLabel(p);
                 setDeviceLabel(p);
+                await publishDeviceLabel(p);
                 EngTelemetry.heartbeat();
+                refresh();
               }}
             >
               {p}
@@ -1898,11 +1914,10 @@ export function SettingsPage() {
             onClick={async () => {
               setAssigning(true);
               try {
-                // Clear so ensure assigns a fresh sequential name
-                setDeviceLabel("");
-                const next = await ensureFriendlyDeviceLabel();
+                const next = await assignNextFleetLabel();
                 setLabel(next || "");
                 EngTelemetry.heartbeat();
+                refresh();
               } finally {
                 setAssigning(false);
               }
