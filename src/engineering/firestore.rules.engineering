@@ -1,0 +1,37 @@
+/**
+ * Example Engineering Firebase security rules (deploy to mango-engineering project only).
+ *
+ * Rules goals:
+ * - Allow authenticated or open-write for telemetry clients in Phase 1 lab LAN (tighten later)
+ * - Deny any path that looks like clinical collection names
+ * - Dashboard reads eng collections only
+ *
+ * Deploy: firebase use mango-engineering && firebase deploy --only firestore:rules
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isClinicalName(name) {
+      return name in [
+        'master_register', 'report_details', 'biochemistry_register',
+        'hormones_main', 'haematology_register', 'inventory_logs',
+        'consumption_ledger', 'users', 'critical_alerts'
+      ];
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /{col}/{docId} {
+      allow read, write: if !isClinicalName(col)
+        && col in [
+          'devices', 'device_status', 'heartbeat_hourly', 'departments',
+          'firestore_metrics', 'pages', 'network', 'memory', 'react_metrics',
+          'errors', 'audit', 'health', 'settings', 'builds', 'alerts',
+          'listener_daily'
+        ];
+    }
+  }
+}

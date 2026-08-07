@@ -48,3 +48,8 @@ export { db };
 // Passive Performance & Diagnostics → local + Firestore collection perf_daily
 // Disable: localStorage.setItem("mango.perf.monitor","0")
 import("./performance/bootstrap.js").catch(() => {});
+
+// Engineering Operations telemetry → separate Engineering Firebase only
+// Disable: localStorage.setItem("mango.eng.telemetry","0")
+// Failure here must never affect clinical Firebase.
+import("./engineering/telemetry/bootstrap.js").catch(() => {});

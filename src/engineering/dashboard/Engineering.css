@@ -1,0 +1,342 @@
+/* Engineering Operations Dashboard — isolated visual language */
+
+:root {
+  --eng-bg: #0f1419;
+  --eng-panel: #1a222c;
+  --eng-panel-2: #232d3a;
+  --eng-border: #2e3a4a;
+  --eng-text: #e8eef5;
+  --eng-muted: #8b9bb0;
+  --eng-accent: #3d9cf0;
+  --eng-good: #3ecf8e;
+  --eng-warn: #e6b84d;
+  --eng-bad: #e85d5d;
+  --eng-font: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --eng-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  background: var(--eng-bg);
+  color: var(--eng-text);
+  font-family: var(--eng-font);
+}
+
+.eng-app {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+.eng-nav {
+  background: var(--eng-panel);
+  border-right: 1px solid var(--eng-border);
+  padding: 1rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.eng-brand {
+  font-size: 0.95rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  padding: 0.5rem 0.75rem 1rem;
+  border-bottom: 1px solid var(--eng-border);
+  margin-bottom: 0.75rem;
+}
+
+.eng-brand span {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--eng-muted);
+  margin-top: 0.25rem;
+}
+
+.eng-nav button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--eng-muted);
+  text-align: left;
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.eng-nav button:hover {
+  background: var(--eng-panel-2);
+  color: var(--eng-text);
+}
+
+.eng-nav button.active {
+  background: var(--eng-panel-2);
+  color: var(--eng-accent);
+  font-weight: 600;
+}
+
+.eng-main {
+  padding: 1.25rem 1.5rem 2rem;
+  overflow: auto;
+}
+
+.eng-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.eng-header h1 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 650;
+}
+
+.eng-header .meta {
+  color: var(--eng-muted);
+  font-size: 0.8rem;
+  font-family: var(--eng-mono);
+}
+
+.eng-banner {
+  background: #2a2418;
+  border: 1px solid #5a4a28;
+  color: #f0d78c;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.eng-banner.ok {
+  background: #15261e;
+  border-color: #2a5a40;
+  color: #9ee0bc;
+}
+
+.eng-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.eng-card {
+  background: var(--eng-panel);
+  border: 1px solid var(--eng-border);
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+}
+
+.eng-card .label {
+  color: var(--eng-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.eng-card .value {
+  font-size: 1.6rem;
+  font-weight: 650;
+  margin-top: 0.35rem;
+  font-family: var(--eng-mono);
+}
+
+.eng-card .sub {
+  color: var(--eng-muted);
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.eng-panel {
+  background: var(--eng-panel);
+  border: 1px solid var(--eng-border);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.eng-panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.eng-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.eng-table th,
+.eng-table td {
+  text-align: left;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--eng-border);
+  vertical-align: top;
+}
+
+.eng-table th {
+  color: var(--eng-muted);
+  font-weight: 550;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.eng-table tr:hover td {
+  background: var(--eng-panel-2);
+}
+
+.pill {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.pill.online {
+  background: #1a3d2e;
+  color: var(--eng-good);
+}
+.pill.stale {
+  background: #3d3420;
+  color: var(--eng-warn);
+}
+.pill.offline {
+  background: #3d2222;
+  color: var(--eng-bad);
+}
+
+.eng-muted {
+  color: var(--eng-muted);
+}
+
+.eng-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.eng-actions button,
+.eng-btn {
+  appearance: none;
+  border: 1px solid var(--eng-border);
+  background: var(--eng-panel-2);
+  color: var(--eng-text);
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.eng-actions button:hover,
+.eng-btn:hover {
+  border-color: var(--eng-accent);
+}
+
+.eng-form label {
+  display: block;
+  margin: 0.5rem 0;
+  font-size: 0.85rem;
+  color: var(--eng-muted);
+}
+
+.eng-form input,
+.eng-form select,
+.eng-form textarea {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  margin-top: 0.25rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--eng-border);
+  background: var(--eng-bg);
+  color: var(--eng-text);
+  font: inherit;
+}
+
+.score-ring {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-family: var(--eng-mono);
+  border: 6px solid var(--eng-border);
+  margin: 0.5rem 0 1rem;
+}
+
+.score-ring.A {
+  border-color: var(--eng-good);
+  color: var(--eng-good);
+}
+.score-ring.B {
+  border-color: #6bcf9a;
+  color: #6bcf9a;
+}
+.score-ring.C {
+  border-color: var(--eng-warn);
+  color: var(--eng-warn);
+}
+.score-ring.D,
+.score-ring.F {
+  border-color: var(--eng-bad);
+  color: var(--eng-bad);
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 140px 1fr 64px;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.35rem 0;
+  font-size: 0.8rem;
+}
+
+.bar-track {
+  height: 8px;
+  background: var(--eng-bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: var(--eng-accent);
+}
+
+@media (max-width: 800px) {
+  .eng-app {
+    grid-template-columns: 1fr;
+  }
+  .eng-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: 0;
+    border-bottom: 1px solid var(--eng-border);
+  }
+  .eng-brand {
+    width: 100%;
+  }
+}

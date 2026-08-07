@@ -74,6 +74,7 @@ export function resolvePageIdentity() {
     [/index_outsource|outsource/, { page: "Outsource", department: "Outsource", bucket: "Department Register" }],
     [/index_backup|backup/, { page: "Backup", department: "Backup", bucket: "Department Register" }],
     [/performance/, { page: "Performance", department: "Engineering", bucket: "Other" }],
+    [/engineering/, { page: "Engineering", department: "Engineering", bucket: "Other" }],
     [/^index\.html$|^\/$|mango/, { page: "Mango", department: "Registration", bucket: "Other" }],
   ];
 

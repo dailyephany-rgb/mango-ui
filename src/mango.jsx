@@ -87,15 +87,15 @@ export default function Mango() {
   }, [focusedIndex]);
 
   useEffect(() => {
+    qrInputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
     const editDataRaw = localStorage.getItem("editPatientData");
     if (editDataRaw) {
       const editData = JSON.parse(editDataRaw);
       let timeStr = "";
       let dateStr = getTodayDateStr();
-
-      useEffect(() => {
-        qrInputRef.current?.focus();
-    }, []);
 
       if (editData.timePrinted) {
         const d = editData.timePrinted.seconds 
@@ -506,12 +506,7 @@ const selectedTests = qrTests
   return (
         <div className="mango-container">
         <header className="mango-header">
-        <div className="mango-header-left">
-      <img
-        src="https://upload.wikimedia.org/wikipedia/commons/6/6b/Letter_V.svg"
-        alt="Logo"
-        className="mango-logo"
-      />
+        <div className="mango-header-left">  
       <h1>Vasundhara Hospital Limited</h1>
     </div>
     <UserMenu />

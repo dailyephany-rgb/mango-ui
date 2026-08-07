@@ -20,6 +20,7 @@ export default defineConfig({
         counts: resolve(__dirname, "analytics.html"),
         backup: resolve(__dirname, "index_backup.html"),
         performance: resolve(__dirname, "performance.html"),
+        engineering: resolve(__dirname, "engineering.html"),
 
         // Department pages
         haem: resolve(__dirname, "index_haem.html"),
