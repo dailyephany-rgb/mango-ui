@@ -1813,6 +1813,9 @@ export function SettingsPage() {
             type="button"
             className="eng-btn"
             onClick={() => {
+              const n = normalizeDeviceLabel(label) || label;
+              setLabel(n);
+              setDeviceLabel(n);
               scheduleFlush({ force: true });
               EngTelemetry.heartbeat();
               refresh();
@@ -1851,12 +1854,20 @@ export function SettingsPage() {
           <input
             value={label}
             placeholder={`${kind}-1`}
-            onChange={(e) => setLabel(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              setLabel(v);
+            }}
             onBlur={() => {
               const n = normalizeDeviceLabel(label) || label;
               setLabel(n);
               setDeviceLabel(n);
               EngTelemetry.heartbeat();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.currentTarget.blur();
+              }
             }}
           />
         </label>

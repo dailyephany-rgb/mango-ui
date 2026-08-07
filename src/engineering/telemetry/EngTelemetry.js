@@ -15,7 +15,7 @@ import {
   sendHeartbeat,
   rearmHeartbeat,
 } from "./heartbeat.js";
-import { getDeviceId } from "./deviceId.js";
+import { getDeviceId, getDeviceLabel } from "./deviceId.js";
 import { sanitizeErrorPayload, measureMangoStorageKB } from "./redaction.js";
 import {
   getRuntimeSettings,
@@ -44,6 +44,7 @@ let prevHeap = null;
 let prevHeapAt = null;
 
 function base() {
+  const label = getDeviceLabel() || undefined;
   return {
     ts: Date.now(),
     deviceId: context.deviceId || getDeviceId(),
@@ -51,6 +52,7 @@ function base() {
     page: context.page,
     department: context.department,
     user: context.user,
+    label: label || undefined,
     reactStrictDev: context.reactStrictDev || undefined,
   };
 }

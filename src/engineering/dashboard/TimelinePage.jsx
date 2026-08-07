@@ -20,10 +20,15 @@ import {
 } from "./perfViews.js";
 import { WaterfallPanel } from "./WaterfallPanel.jsx";
 
-function DeviceName({ id }) {
-  const { formatDeviceName } = useEngFilters();
-  if (!id) return "—";
-  return <span title={id}>{formatDeviceName(id)}</span>;
+function DeviceName({ id, label }) {
+  const { formatDeviceName, deviceLabelById } = useEngFilters();
+  if (!id && !label) return "—";
+  // Prefer live fleet label (device_status) so rename updates all history rows
+  const live = id ? deviceLabelById?.get(id) : null;
+  const pick = (v) =>
+    v && v !== id && !/^[0-9a-f]{8}-/i.test(String(v)) ? v : null;
+  const name = pick(live) || pick(label) || formatDeviceName(id);
+  return <span title={id || label}>{name}</span>;
 }
 
 function Empty({ configured, loading, label }) {
@@ -248,7 +253,7 @@ export function TimelinePage() {
                     >
                       <td>{fmtTs(r.ts)}</td>
                       <td>
-                        <DeviceName id={r.deviceId} />
+                        <DeviceName id={r.deviceId} label={r.label} />
                       </td>
                       <td>{r.department || "—"}</td>
                       <td>{r.page || "—"}</td>
@@ -307,7 +312,7 @@ export function TimelinePage() {
                 <td>{fmtTs(e._ts)}</td>
                 <td>{e._kind}</td>
                 <td>
-                  <DeviceName id={e.deviceId} />
+                  <DeviceName id={e.deviceId} label={e.label} />
                 </td>
                 <td>{e.department || "—"}</td>
                 <td>{e._label}</td>

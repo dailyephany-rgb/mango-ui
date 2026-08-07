@@ -13,7 +13,7 @@ import {
 import { getEngDb, isEngFirebaseConfigured } from "../firebaseEngConfig.js";
 import { ENG_COLLECTIONS } from "../constants.js";
 import { drainEvents, loadSpill, clearSpill, pushEvent, spillToSession, peekEvents, bufferSize } from "./buffer.js";
-import { getDeviceId } from "./deviceId.js";
+import { getDeviceId, getDeviceLabel } from "./deviceId.js";
 import { isEngTelemetryEnabled } from "./killSwitch.js";
 import { safeRun } from "./safeRun.js";
 import { getRuntimeSettings } from "./runtimeSettings.js";
@@ -158,13 +158,14 @@ async function deliverEvents(events) {
   const db = getEngDb();
   if (!db) throw new Error("eng-db-missing");
   const deviceId = getDeviceId();
+  const deviceLabel = getDeviceLabel() || null;
   const byDomain = groupBy(events, (e) => e.domain || "misc");
   const settings = getRuntimeSettings();
 
   const results = await Promise.allSettled([
     flushQueries(db, byDomain.firestore || [], deviceId, settings),
     flushListeners(db, byDomain.listeners || [], deviceId),
-    flushPages(db, byDomain.pages || [], deviceId),
+    flushPages(db, byDomain.pages || [], deviceId, deviceLabel),
     flushMemory(db, byDomain.memory || [], deviceId),
     flushNetwork(db, byDomain.network || [], deviceId),
     flushReact(db, byDomain.react || [], deviceId),
@@ -415,7 +416,7 @@ async function flushListeners(db, events, deviceId) {
   await Promise.all(writes);
 }
 
-async function flushPages(db, events, deviceId) {
+async function flushPages(db, events, deviceId, deviceLabel = null) {
   if (!events.length) return;
   const aggWrites = events.map((e) => {
     const day = dayKey(e.ts);
@@ -426,6 +427,7 @@ async function flushPages(db, events, deviceId) {
       {
         day,
         deviceId,
+        label: e.label || deviceLabel || null,
         page,
         department: e.department || null,
         buildId: e.buildId || null,
@@ -456,6 +458,7 @@ async function flushPages(db, events, deviceId) {
         ts,
         day: dayKey(ts),
         deviceId,
+        label: e.label || deviceLabel || null,
         page: e.page || "unknown",
         department: e.department || null,
         buildId: e.buildId || null,
