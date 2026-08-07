@@ -1,17 +1,17 @@
 
-import React, { useState } from "react";
+import React, { useState, Suspense, lazy } from "react";
 import "./Backroom.css";
 
-// Individual register components
 import UserMenu from "../auth/UserMenu";
-import ESRRegister from "./ESRRegister.jsx";
-import BloodGroupRegister from "./BloodGroupRegister.jsx";
-import SerologyRegister from "./SerologyRegister.jsx";
-import RapidCardRegister from "./RapidCardRegister.jsx";
-import UrineAnalysisRegister from "./UrineAnalysisRegister.jsx";
 
-// 🔥 NEW IMPORT
-import BackroomInventoryTab from "../inventory/BackroomInventoryTab.jsx";
+const ESRRegister = lazy(() => import("./ESRRegister.jsx"));
+const BloodGroupRegister = lazy(() => import("./BloodGroupRegister.jsx"));
+const SerologyRegister = lazy(() => import("./SerologyRegister.jsx"));
+const RapidCardRegister = lazy(() => import("./RapidCardRegister.jsx"));
+const UrineAnalysisRegister = lazy(() => import("./UrineAnalysisRegister.jsx"));
+const BackroomInventoryTab = lazy(() =>
+  import("../inventory/BackroomInventoryTab.jsx")
+);
 
 export default function BackroomMain() {
 
@@ -36,7 +36,6 @@ export default function BackroomMain() {
       case "urine":
         return <UrineAnalysisRegister />;
 
-      // 🔥 NEW INVENTORY TAB
       case "inventory":
         return <BackroomInventoryTab />;
 
@@ -101,7 +100,6 @@ export default function BackroomMain() {
           Urine Analysis Register
         </button>
 
-        {/* 🔥 NEW INVENTORY BUTTON */}
         <button
           className={`tab-btn ${activeTab === "inventory" ? "active" : ""}`}
           onClick={() => setActiveTab("inventory")}
@@ -113,7 +111,9 @@ export default function BackroomMain() {
 
       {/* Register Content */}
       <div className="register-content">
-        {renderActiveTab()}
+        <Suspense fallback={<p>Loading…</p>}>
+          {renderActiveTab()}
+        </Suspense>
       </div>
 
     </div>

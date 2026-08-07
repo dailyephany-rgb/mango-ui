@@ -6,7 +6,7 @@
 // ----------------------------------------------------------
 
 import React from "react";
-import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
+import { mountEngApp } from "./shared/mountEngApp.jsx";
 
 import { OwnerProvider } from "./owner/OwnerContext.jsx";
 import OwnerHaemPage from "./owner/OwnerHaemPage.jsx";
@@ -16,10 +16,8 @@ import "./mango.css";
 
 console.log("OWNER HAEM ENTRY LOADED!");
 
-createEngRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <OwnerProvider>
+mountEngApp(document.getElementById("root"),
+  <OwnerProvider>
       <OwnerHaemPage />
     </OwnerProvider>
-  </React.StrictMode>
 );

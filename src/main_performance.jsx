@@ -1,9 +1,8 @@
 import React from "react";
-import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
+import { mountEngApp } from "./shared/mountEngApp.jsx";
 import PerformanceDashboard from "./performance/PerformanceDashboard.jsx";
 
-createEngRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <PerformanceDashboard />
-  </React.StrictMode>
+mountEngApp(document.getElementById("root"),
+  <PerformanceDashboard />
 );
+

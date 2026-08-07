@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import "./BiochemistryMain.css";
 import { db } from "../firebaseConfig.js";
 import {
@@ -18,10 +18,6 @@ import {
   handleInventoryDeduction,
   getVitrosDeductibleTests
 } from "../inventory/inventorymapping";
-import {
-  parseEntryDate,
-  toLocalDateString,
-} from "../shared/utils/dates.js";
 import { normalizeSource } from "../shared/utils/source.js";
 import { compositeId } from "../shared/utils/ids.js";
 import { getTestName } from "../shared/utils/tests.js";
@@ -30,6 +26,8 @@ import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
+import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
+import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
 
 
 
@@ -310,32 +308,17 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
     }
   };
 
-  const filteredPatients = patients
-    .filter((p) => {
-      if (regSearch.trim()) {
-        const searchStr = regSearch.trim().toLowerCase();
-        const key = String(p.regNo || "").toLowerCase();
-        const diag = String(p.diagnosticNo || "").toLowerCase();
-        if (!key.includes(searchStr) && !diag.includes(searchStr)) return false;
-      }
-      if (sourceFilter !== "All" && p.source !== sourceFilter) return false;
-      
-      const eDate = parseEntryDate(p);
-      if (eDate) {
-        const entryDateStr = toLocalDateString(eDate);
-        if (dateFrom && entryDateStr < dateFrom) return false;
-        if (dateTo && entryDateStr > dateTo) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-      const dateA = parseEntryDate(a);
-      const dateB = parseEntryDate(b);
-      if (!dateA) return 1;
-      if (!dateB) return -1;
-      return dateA - dateB;
-    });
+  const filteredPatients = useMemo(
+    () =>
+      filterAndSortRegisterPatients(patients, {
+        regSearch,
+        sourceFilter,
+        dateFrom,
+        dateTo,
+        getDiag: (p) => p.diagnosticNo || "",
+      }),
+    [patients, regSearch, sourceFilter, dateFrom, dateTo]
+  );
 
   if (loading) return <div>Loading...</div>;
 
@@ -376,8 +359,10 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
                   <th>Action</th>
                 </tr>
               </thead>
-              <tbody>
-                {filteredPatients.map((p) => {
+              <VirtualizedTableBody
+                items={filteredPatients}
+                columnCount={13}
+                renderRow={(p) => {
                   const isSaved = p.status === "saved";
                   const isScanned = p.scanned === "Yes";
                   const regKey = p.compositeKey;
@@ -454,8 +439,8 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
                       </td>
                     </tr>
                   );
-                })}
-              </tbody>
+                }}
+              />
             </table>
           </div>
         </>

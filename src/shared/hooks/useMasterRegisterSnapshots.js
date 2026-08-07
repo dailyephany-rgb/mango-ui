@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, startTransition } from "react";
 import {
   collection,
   query,
@@ -22,6 +22,7 @@ import {
   localDayStart,
   localDayEndExclusive,
 } from "../utils/dates.js";
+import { annotateListenReason } from "../../engineering/telemetry/listenerWatch.js";
 
 const defaultMapMasterDoc = (d) => ({
   id: d.id,
@@ -35,6 +36,7 @@ export function useMasterRegisterSnapshots({
 }) {
   const [masterEntries, setMasterEntries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const listenGenRef = useRef(0);
 
 
   useEffect(() => {
@@ -51,6 +53,10 @@ if (!start || !endExclusive) {
   setLoading(false);
   return undefined;
 }
+
+listenGenRef.current += 1;
+const listenReason =
+  listenGenRef.current === 1 ? "page_load" : "date_change";
 
 const startTs = Timestamp.fromDate(start);
 const endTs = Timestamp.fromDate(endExclusive);
@@ -75,6 +81,7 @@ try {
 } catch {
   /* ignore */
 }
+annotateListenReason(masterQuery, listenReason);
 
 const unsubMaster = onSnapshot(
   masterQuery,
@@ -82,7 +89,9 @@ const unsubMaster = onSnapshot(
     const result = masterStore.apply(snapshot);
 
     if (result.changed) {
-      setMasterEntries(result.values);
+      startTransition(() => {
+        setMasterEntries(result.values);
+      });
     }
 
     setLoading(false);

@@ -28,6 +28,7 @@ import {
   summarizeLoads,
   trendByDay,
   avg,
+  percentile,
 } from "./perfViews.js";
 import { WaterfallPanel } from "./WaterfallPanel.jsx";
 
@@ -75,6 +76,51 @@ function EmptyHint({ configured, loading, label = "No data yet" }) {
     );
   }
   return <p className="eng-muted">{label}</p>;
+}
+
+function sumFleet(devices, key) {
+  return (devices || []).reduce((a, d) => a + (Number(d[key]) || 0), 0);
+}
+
+function formatListenerReasons(r) {
+  const parts = [];
+  const add = (label, n) => {
+    if ((n || 0) > 0) parts.push(`${label}:${n}`);
+  };
+  add("load", r.reasonPageLoad);
+  add("refresh", r.reasonRefresh);
+  add("date", r.reasonDateChange);
+  add("dept", r.reasonDepartmentChange);
+  add("recon", r.reasonReconnect);
+  add("retry", r.reasonRetry);
+  add("deps", r.reasonDepsChange);
+  add("?", r.reasonUnknown);
+  return parts.length ? parts.join(" ") : "—";
+}
+
+function summarizeFirstSnapshotMs(loads) {
+  const vals = (loads || [])
+    .map((r) => r.firstSnapshotMs)
+    .filter((n) => typeof n === "number");
+  return {
+    count: vals.length,
+    avg: avg(vals),
+    p95: percentile(vals, 0.95),
+    slowest: vals.length ? Math.max(...vals) : null,
+  };
+}
+
+function listenerDailyAvgFirstSnap(rows) {
+  const sum = (rows || []).reduce((a, r) => a + (r.firstSnapshotSumMs || 0), 0);
+  const count = (rows || []).reduce((a, r) => a + (r.firstSnapshotCount || 0), 0);
+  return count > 0 ? sum / count : null;
+}
+
+function rowAvgFirstSnap(r) {
+  if ((r.firstSnapshotCount || 0) > 0 && r.firstSnapshotSumMs != null) {
+    return r.firstSnapshotSumMs / r.firstSnapshotCount;
+  }
+  return r.avgSnapshotMs ?? null;
 }
 
 function BarList({ items }) {
@@ -126,6 +172,10 @@ export function HealthPage() {
     timeMode: "day",
   });
   const { rows: healthDocs } = useEngCollection(ENG_COLLECTIONS.health);
+  const { rows: pageLoads } = useFilteredEngCollection(
+    ENG_COLLECTIONS.pageLoads,
+    { limitN: 400, timeMode: "ts" }
+  );
   const local = useLocalEngBuffer();
 
   const now = Date.now();
@@ -149,6 +199,32 @@ export function HealthPage() {
           )
         ]
       : null;
+
+  const snapFromLoads = useMemo(() => summarizeFirstSnapshotMs(pageLoads), [pageLoads]);
+  const snapFromPages = useMemo(() => {
+    let sum = 0;
+    let count = 0;
+    for (const p of pages) {
+      if (p.firstSnapshotMsSum != null && (p.loadCount || 0) > 0) {
+        sum += p.firstSnapshotMsSum;
+        count += p.loadCount;
+      }
+    }
+    return count > 0 ? sum / count : null;
+  }, [pages]);
+  const avgFirstSnapshot = snapFromLoads.avg ?? snapFromPages;
+  const waitingListeners = sumFleet(devices, "waitingListeners");
+  const hungLoads = sumFleet(devices, "hungLoads");
+  const retryCountFleet = sumFleet(devices, "retryCount");
+  const devicesLoading = useMemo(
+    () =>
+      devices.filter((d) => {
+        const waiting = (d.waitingListeners || 0) > 0;
+        const pages = Array.isArray(d.loadingPages) && d.loadingPages.length > 0;
+        return waiting || pages;
+      }),
+    [devices]
+  );
 
   const health = computeHealthScore({
     errorCount: errorsInRange,
@@ -208,7 +284,63 @@ export function HealthPage() {
           <div className="value">{slow}</div>
           <div className="sub">of {qCount} observed in period</div>
         </div>
+        <div className="eng-card">
+          <div className="label">Waiting listeners</div>
+          <div className="value">{waitingListeners}</div>
+          <div className="sub">fleet · live device_status</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Hung loads</div>
+          <div className="value">{hungLoads}</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Avg first snapshot</div>
+          <div className="value">{fmtMs(avgFirstSnapshot)}</div>
+          <div className="sub">
+            {snapFromLoads.count
+              ? `${snapFromLoads.count} page-load samples`
+              : pages.length
+                ? "from eng_pages aggregates"
+                : "—"}
+          </div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Listener retries</div>
+          <div className="value">{retryCountFleet}</div>
+          <div className="sub">retryCount sum (devices)</div>
+        </div>
       </div>
+      {devicesLoading.length > 0 && (
+        <div className="eng-panel">
+          <h2>Devices waiting on listeners</h2>
+          <table className="eng-table">
+            <thead>
+              <tr>
+                <th>Device</th>
+                <th>Page</th>
+                <th>Waiting</th>
+                <th>Hung</th>
+                <th>Loading pages</th>
+              </tr>
+            </thead>
+            <tbody>
+              {devicesLoading.map((d) => (
+                <tr key={d.id}>
+                  <td>{d.label || d.deviceId || d.id}</td>
+                  <td>{d.page || "—"}</td>
+                  <td>{d.waitingListeners ?? 0}</td>
+                  <td>{d.hungLoads ?? 0}</td>
+                  <td className="eng-muted" style={{ fontSize: "0.8rem" }}>
+                    {Array.isArray(d.loadingPages) && d.loadingPages.length
+                      ? d.loadingPages.join(", ")
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
       <div className="eng-panel">
         <h2>Score factors</h2>
         <pre className="eng-muted" style={{ margin: 0, fontSize: "0.8rem" }}>
@@ -323,6 +455,8 @@ export function DevicesPage() {
                 <th>Page</th>
                 <th>Dept</th>
                 <th>Listeners</th>
+                <th>Wait</th>
+                <th>Hung</th>
                 <th>Heap MB</th>
                 <th>Build</th>
                 <th>Last seen</th>
@@ -350,6 +484,8 @@ export function DevicesPage() {
                   <td>{r.page || "—"}</td>
                   <td>{r.department || "—"}</td>
                   <td>{r.activeListeners ?? "—"}</td>
+                  <td>{r.waitingListeners ?? "—"}</td>
+                  <td>{r.hungLoads ?? "—"}</td>
                   <td>{r.memoryMB ?? "—"}</td>
                   <td>{r.buildId || "—"}</td>
                   <td>{fmtTs(r.clientTs || r.lastSeenAt)}</td>
@@ -364,6 +500,20 @@ export function DevicesPage() {
           <h2>
             Device load history — {selected.label || selected.deviceId || selected.id}
           </h2>
+          <div className="eng-muted" style={{ marginBottom: "0.75rem", fontSize: "0.85rem" }}>
+            Listeners: {selected.activeListeners ?? "—"} active · waiting{" "}
+            {selected.waitingListeners ?? 0} · hung {selected.hungLoads ?? 0}
+            {selected.retryCount != null ? ` · retries ${selected.retryCount}` : ""}
+            {Array.isArray(selected.loadingPages) && selected.loadingPages.length ? (
+              <>
+                {" "}
+                · loading: {selected.loadingPages.join(", ")}
+              </>
+            ) : null}
+            {selected.lastFirstSnapshotMs != null ? (
+              <> · last 1st snap {fmtMs(selected.lastFirstSnapshotMs)}</>
+            ) : null}
+          </div>
           <div className="eng-grid" style={{ marginBottom: "1rem" }}>
             <div className="eng-card">
               <div className="label">Average load</div>
@@ -684,6 +834,35 @@ export function ListenersPage() {
     ENG_COLLECTIONS.deviceStatus,
     { timeMode: "none", live: true, skipTime: true }
   );
+  const { rows: pageLoads } = useFilteredEngCollection(
+    ENG_COLLECTIONS.pageLoads,
+    { limitN: 400, timeMode: "ts" }
+  );
+
+  const fleetStats = useMemo(() => {
+    const snapLoads = summarizeFirstSnapshotMs(pageLoads);
+    const dailyAvg = listenerDailyAvgFirstSnap(rows);
+    const dailyMax = rows.reduce(
+      (m, r) => Math.max(m, r.firstSnapshotMaxMs || 0),
+      0
+    );
+    const p95Snap =
+      snapLoads.count > 0 ? snapLoads.p95 : dailyMax > 0 ? dailyMax : null;
+    return {
+      waiting: sumFleet(devices, "waitingListeners"),
+      active: sumFleet(devices, "activeListeners"),
+      timeouts10: rows.reduce((a, r) => a + (r.timeouts10 || 0), 0),
+      timeouts30: rows.reduce((a, r) => a + (r.timeouts30 || 0), 0),
+      recreates: rows.reduce((a, r) => a + (r.recreates || 0), 0),
+      retries: rows.reduce((a, r) => a + (r.retries || 0), 0),
+      retrySuccess: rows.reduce((a, r) => a + (r.retrySuccess || 0), 0),
+      retryFailed: rows.reduce((a, r) => a + (r.retryFailed || 0), 0),
+      avgFirstSnap: dailyAvg,
+      p95FirstSnap: p95Snap,
+      slowestFirstSnap: dailyMax > 0 ? dailyMax : snapLoads.slowest,
+    };
+  }, [rows, devices, pageLoads]);
+
   return (
     <>
       <div className="eng-header">
@@ -692,10 +871,47 @@ export function ListenersPage() {
       </div>
       <div className="eng-grid">
         <div className="eng-card">
-          <div className="label">Reported open (fleet)</div>
+          <div className="label">Active (fleet)</div>
+          <div className="value">{fleetStats.active}</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Waiting (fleet)</div>
+          <div className="value">{fleetStats.waiting}</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Timeouts 10s / 30s</div>
           <div className="value">
-            {devices.reduce((a, d) => a + (d.activeListeners || 0), 0)}
+            {fleetStats.timeouts10} / {fleetStats.timeouts30}
           </div>
+          <div className="sub">period · listener_daily</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Recreates</div>
+          <div className="value">{fleetStats.recreates}</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Retries</div>
+          <div className="value">{fleetStats.retries}</div>
+          <div className="sub">
+            ok {fleetStats.retrySuccess} · fail {fleetStats.retryFailed}
+          </div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Avg first snapshot</div>
+          <div className="value">{fmtMs(fleetStats.avgFirstSnap)}</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">P95 first snapshot</div>
+          <div className="value">{fmtMs(fleetStats.p95FirstSnap)}</div>
+          <div className="sub">
+            {summarizeFirstSnapshotMs(pageLoads).count
+              ? "from page_loads"
+              : "max daily fallback"}
+          </div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Slowest first snapshot</div>
+          <div className="value">{fmtMs(fleetStats.slowestFirstSnap)}</div>
         </div>
       </div>
       <div className="eng-panel">
@@ -714,6 +930,14 @@ export function ListenersPage() {
                 <th>Snapshots</th>
                 <th>Reconnects</th>
                 <th>Errors</th>
+                <th>T10</th>
+                <th>T30</th>
+                <th>Recr</th>
+                <th>Retry</th>
+                <th>Avg1st</th>
+                <th>Max1st</th>
+                <th>MaxDocs</th>
+                <th>Reasons</th>
                 <th>Last docs</th>
               </tr>
             </thead>
@@ -730,6 +954,20 @@ export function ListenersPage() {
                   <td>{r.snapshots || 0}</td>
                   <td>{r.reconnects || 0}</td>
                   <td>{r.errors || 0}</td>
+                  <td>{r.timeouts10 || 0}</td>
+                  <td>{r.timeouts30 || 0}</td>
+                  <td>{r.recreates || 0}</td>
+                  <td>{r.retries || 0}</td>
+                  <td>{fmtMs(rowAvgFirstSnap(r))}</td>
+                  <td>{fmtMs(r.firstSnapshotMaxMs)}</td>
+                  <td>{r.firstSnapshotMaxDocs ?? "—"}</td>
+                  <td
+                    className="eng-muted"
+                    style={{ fontSize: "0.72rem", maxWidth: 140 }}
+                    title={formatListenerReasons(r)}
+                  >
+                    {formatListenerReasons(r)}
+                  </td>
                   <td>{r.lastDocCount ?? "—"}</td>
                 </tr>
               ))}
@@ -962,6 +1200,10 @@ export function PerformancePage() {
   }, [reactDaily, days, range.endMs]);
 
   const overall = useMemo(() => summarizeLoads(filteredLoads), [filteredLoads]);
+  const snapStats = useMemo(
+    () => summarizeFirstSnapshotMs(filteredLoads),
+    [filteredLoads]
+  );
   const p95Series = useMemo(
     () =>
       loadTrend.map((d) => ({
@@ -1003,6 +1245,22 @@ export function PerformancePage() {
           >
             Export performance CSV
           </button>
+        </div>
+      </div>
+
+      <div className="eng-grid" style={{ marginBottom: "0.5rem" }}>
+        <div className="eng-card">
+          <div className="label">Avg first snapshot</div>
+          <div className="value">{fmtMs(snapStats.avg)}</div>
+          <div className="sub">{snapStats.count} samples · page_loads</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">P95 first snapshot</div>
+          <div className="value">{fmtMs(snapStats.p95)}</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Slowest first snapshot</div>
+          <div className="value">{fmtMs(snapStats.slowest)}</div>
         </div>
       </div>
 
@@ -1107,11 +1365,65 @@ export function NetworkPage() {
   const { rows, loading } = useFilteredEngCollection(ENG_COLLECTIONS.network, {
     timeMode: "day",
   });
+  const { rows: listenerDaily } = useFilteredEngCollection(
+    ENG_COLLECTIONS.listenerDaily,
+    { timeMode: "day" }
+  );
+  const { rows: devices } = useFilteredEngCollection(
+    ENG_COLLECTIONS.deviceStatus,
+    { timeMode: "none", live: true, skipTime: true }
+  );
+
+  const observerDiag = useMemo(() => {
+    const hungLive = sumFleet(devices, "hungLoads");
+    const waitingLive = sumFleet(devices, "waitingListeners");
+    const retriesLive = sumFleet(devices, "retryCount");
+    return {
+      hungLive,
+      waitingLive,
+      retriesLive,
+      retriesDaily: listenerDaily.reduce((a, r) => a + (r.retries || 0), 0),
+      retryFailed: listenerDaily.reduce((a, r) => a + (r.retryFailed || 0), 0),
+      retrySuccess: listenerDaily.reduce((a, r) => a + (r.retrySuccess || 0), 0),
+      timeouts10: listenerDaily.reduce((a, r) => a + (r.timeouts10 || 0), 0),
+      timeouts30: listenerDaily.reduce((a, r) => a + (r.timeouts30 || 0), 0),
+    };
+  }, [devices, listenerDaily]);
+
   return (
     <>
       <div className="eng-header">
         <h1>Network</h1>
         <div className="meta">{range.label}</div>
+      </div>
+      <div className="eng-grid">
+        <div className="eng-card">
+          <div className="label">Hung loads (live)</div>
+          <div className="value">{observerDiag.hungLive}</div>
+          <div className="sub">device_status</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Waiting listeners (live)</div>
+          <div className="value">{observerDiag.waitingLive}</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Retries (period)</div>
+          <div className="value">{observerDiag.retriesDaily}</div>
+          <div className="sub">
+            ok {observerDiag.retrySuccess} · fail {observerDiag.retryFailed}
+          </div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Device retryCount (live)</div>
+          <div className="value">{observerDiag.retriesLive}</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Listener timeouts</div>
+          <div className="value">
+            {observerDiag.timeouts10} / {observerDiag.timeouts30}
+          </div>
+          <div className="sub">10s / 30s · period</div>
+        </div>
       </div>
       <div className="eng-panel">
         {!rows.length ? (

@@ -13,11 +13,9 @@ import {
 
 import routing from "../backroom_routing.json";
 import "./Backroom.css";
-import {
-  parseEntryDate,
-  toLocalDateString,
-} from "../shared/utils/dates.js";
 import { normalizeSource } from "../shared/utils/source.js";
+import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
+import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
 import { compositeId } from "../shared/utils/ids.js";
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
@@ -442,30 +440,17 @@ const testsForRegister = routing.SerologyRegister || [
     }
   };
 
-  const filteredEntries = mergedEntries
-    .filter((e) => {
-      if (regSearch) {
-        const search = regSearch.toLowerCase();
-        if (!String(e.regNo).toLowerCase().includes(search) && 
-            !String(e.diagnosticNo).toLowerCase().includes(search))
-          return false;
-      }
-      if (sourceFilter !== "All" && e.source !== sourceFilter) return false;
-      
-      const d = parseEntryDate(e);
-      if (d) {
-        const entryDateStr = toLocalDateString(d);
-        if (dateFrom && entryDateStr < dateFrom) return false;
-        if (dateTo && entryDateStr > dateTo) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-      const dateA = parseEntryDate(a);
-      const dateB = parseEntryDate(b);
-      return (dateA || 0) - (dateB || 0);
-    });
+  const filteredEntries = useMemo(
+    () =>
+      filterAndSortRegisterPatients(mergedEntries, {
+        regSearch,
+        sourceFilter,
+        dateFrom,
+        dateTo,
+        getDiag: (p) => p.diagnosticNo || p.accessionNo || "",
+      }),
+    [mergedEntries, regSearch, sourceFilter, dateFrom, dateTo]
+  );
 
   const hasTest = (entry, searchKey) => {
     const selected = getSerologySelectedTests(entry.selectedTests || []);
@@ -513,8 +498,10 @@ const testsForRegister = routing.SerologyRegister || [
               <th>Action</th>
             </tr>
           </thead>
-          <tbody>
-            {filteredEntries.map((e) => {
+          <VirtualizedTableBody
+            items={filteredEntries}
+            columnCount={16}
+            renderRow={(e) => {
               const compositeKey = e.compositeKey;
               const saved = e.status === "saved";
               const scanned = e.scanned === "Yes";
@@ -612,8 +599,8 @@ const testsForRegister = routing.SerologyRegister || [
                   </td>
                 </tr>
               );
-            })}
-          </tbody>
+            }}
+          />
         </table>
       </div>
       {criticalModalOpen && (

@@ -106,6 +106,20 @@ export function TimelinePage() {
         });
       }
     }
+    if (kind === "all" || kind === "timeouts") {
+      for (const r of listeners) {
+        const t10 = r.timeouts10 || 0;
+        const t30 = r.timeouts30 || 0;
+        if (t10 <= 0 && t30 <= 0) continue;
+        events.push({
+          ...r,
+          _kind: "timeout",
+          _ts: Date.parse(r.day || "") || 0,
+          _label: `${r.collection} timeouts 10s×${t10} 30s×${t30}`,
+          totalMs: null,
+        });
+      }
+    }
     return events.sort((a, b) => b._ts - a._ts).slice(0, 300);
   }, [filteredLoads, errors, listeners, kind]);
 
@@ -147,8 +161,13 @@ export function TimelinePage() {
               <option value="loads">Page loads</option>
               <option value="errors">Errors</option>
               <option value="reconnects">Reconnects</option>
+              <option value="timeouts">Listener timeouts</option>
             </select>
           </label>
+          <p className="eng-muted" style={{ margin: 0, fontSize: "0.75rem" }}>
+            Reconnects and timeouts are daily aggregates from eng_listener_daily (day
+            timestamp).
+          </p>
           <button
             type="button"
             className="eng-btn"

@@ -47,7 +47,7 @@
   cursor: pointer;
   font-weight: 600;
   color: #1e3a8a;
-  transition: all 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out;
 }
 
 .tab-btn:hover {
@@ -131,7 +131,7 @@
   padding: 6px 12px;
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out;
 }
 
 .source-btn:hover {
@@ -259,7 +259,7 @@
   border-radius: 6px;
   padding: 8px 12px;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out;
   width: 100%;
 }
 

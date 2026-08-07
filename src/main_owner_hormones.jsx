@@ -3,7 +3,7 @@
 // src/main_owner_hormones.jsx
 
 import React from "react";
-import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
+import { mountEngApp } from "./shared/mountEngApp.jsx";
 
 import { OwnerProvider } from "./owner/OwnerContext.jsx";
 import OwnerHormonesPage from "./owner/OwnerHormones.jsx";
@@ -13,10 +13,8 @@ import "./mango.css";
 
 console.log("OWNER HORMONES ENTRY LOADED!");
 
-createEngRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <OwnerProvider>
+mountEngApp(document.getElementById("root"),
+  <OwnerProvider>
       <OwnerHormonesPage />
     </OwnerProvider>
-  </React.StrictMode>
 );

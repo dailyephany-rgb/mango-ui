@@ -41,7 +41,7 @@ h2 {
   color: #007bff;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .tab-btn:hover {
@@ -127,7 +127,7 @@ h2 {
   color: white;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .validate-btn:hover {
@@ -149,7 +149,7 @@ h2 {
   color: white;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .entered-btn:hover {
@@ -236,7 +236,7 @@ h2 {
   font-weight: 600;
   color: #1e3a8a;
   font-size: 13px;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   min-width: 80px;
 }
 

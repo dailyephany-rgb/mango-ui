@@ -4,15 +4,19 @@ import React, {
   useEffect,
   useState,
   useContext,
+  lazy,
 } from "react";
-;
 
 import DateSourceFilter from "./components/DateSourceFilter";
 import { OwnerContext } from "./OwnerContext.jsx";
 
 import WorkflowKPIBlocks from "./workflow/WorkflowKPIBlocks";
-import WorkflowStackedBars from "./workflow/WorkflowStackedBars";
-import WorkflowStaffDistribution from "./workflow/WorkflowStaffDistribution";
+import { OwnerChartsSection } from "./charts/lazyOwnerCharts";
+
+const WorkflowStackedBars = lazy(() => import("./workflow/WorkflowStackedBars"));
+const WorkflowStaffDistribution = lazy(
+  () => import("./workflow/WorkflowStaffDistribution")
+);
 
 import { subscribeToWorkflowAnalytics } from "./workflow/workflowfetcher";
 
@@ -166,15 +170,15 @@ export default function OwnerApp() {
 
       {/* ================= OVERVIEW TAB ================= */}
       {activeTab === "overview" ? (
-       <section className="owner-charts">
+       <OwnerChartsSection>
        <div className="chart-card full-width">
          <h3>Routine Workflow Duration</h3>
          <WorkflowStackedBars records={stackedBarRecords} />
        </div>
-     </section>
+     </OwnerChartsSection>
       ) : (
         /* ================= STAFF ANALYTICS TAB ================= */
-        <section className="owner-charts">
+        <OwnerChartsSection>
         <div className="chart-card full-width">
           <WorkflowStaffDistribution
             data={
@@ -186,7 +190,7 @@ export default function OwnerApp() {
             }
           />
         </div>
-      </section>
+      </OwnerChartsSection>
       )}
     </div>
   );

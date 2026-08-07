@@ -18,7 +18,7 @@ import { hourKey, dayKey } from "./flush.js";
 import { getRuntimeSettings } from "./runtimeSettings.js";
 /** @type {ReturnType<typeof setInterval> | null} */
 let timer = null;
-/** @type {{ page?: string, department?: string, activeListeners?: number, memoryMB?: number, user?: string | null, lastPageLoadMs?: number | null, lastFirstSnapshotMs?: number | null, networkRttMs?: number | null }} */
+/** @type {{ page?: string, department?: string, activeListeners?: number, waitingListeners?: number, hungLoads?: number, loadingPages?: string[] | null, retryCount?: number | null, memoryMB?: number, user?: string | null, lastPageLoadMs?: number | null, lastFirstSnapshotMs?: number | null, networkRttMs?: number | null }} */
 let ctx = {};
 
 /**
@@ -62,6 +62,12 @@ export function sendHeartbeat() {
       user: ctx.user || null,
       activeListeners: ctx.activeListeners ?? null,
       listenerCount: ctx.activeListeners ?? null,
+      waitingListeners: ctx.waitingListeners ?? null,
+      hungLoads: ctx.hungLoads ?? null,
+      loadingPages: Array.isArray(ctx.loadingPages)
+        ? ctx.loadingPages.slice(0, 8)
+        : null,
+      retryCount: ctx.retryCount ?? null,
       memoryMB: ctx.memoryMB ?? null,
       heapUsedMB: ctx.memoryMB ?? null,
       lastPageLoadMs: ctx.lastPageLoadMs ?? null,

@@ -16,12 +16,13 @@ import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFire
 import "./Backroom.css";
 import {
   parseEntryDate,
-  toLocalDateString,
   getLocalDateString,
   localDayStart,
   localDayEndExclusive,
 } from "../shared/utils/dates.js";
 import { normalizeSource } from "../shared/utils/source.js";
+import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
+import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useScopedMasterEntries } from "../shared/hooks/useScopedMasterEntries.js";
@@ -353,31 +354,14 @@ export default function BloodGroupRegister() {
   };
 
   const filteredEntries = useMemo(() => {
-    return activeEntries
-      .filter((p) => {
-        if (regSearch.trim()) {
-          const searchStr = regSearch.trim().toLowerCase();
-          if (!String(p.regNo).toLowerCase().includes(searchStr) && 
-              !String(p.diagnosticNo).toLowerCase().includes(searchStr)) return false;
-        }
-        if (sourceFilter !== "All" && p.source !== sourceFilter) return false;
-        
-        const d = parseEntryDate(p);
-        if (!d) return false;
-        
-        // FIX: Format entry date as local YYYY-MM-DD
-        const entryDateStr = toLocalDateString(d);
-        
-        if (dateFrom && entryDateStr < dateFrom) return false;
-        if (dateTo && entryDateStr > dateTo) return false;
-        return true;
-      })
-      .sort((a, b) => {
-        if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-        const dateA = parseEntryDate(a);
-        const dateB = parseEntryDate(b);
-        return (dateA || 0) - (dateB || 0);
-      });
+    const entriesWithDate = activeEntries.filter((p) => parseEntryDate(p));
+    return filterAndSortRegisterPatients(entriesWithDate, {
+      regSearch,
+      sourceFilter,
+      dateFrom,
+      dateTo,
+      getDiag: (p) => p.diagnosticNo || p.accessionNo || "",
+    });
   }, [activeEntries, regSearch, sourceFilter, dateFrom, dateTo]);
 
   const bloodGroups = ["A", "B", "AB", "O"];
@@ -429,8 +413,10 @@ export default function BloodGroupRegister() {
               <th>Action</th>
             </tr>
           </thead>
-          <tbody>
-            {filteredEntries.map((e) => (
+          <VirtualizedTableBody
+            items={filteredEntries}
+            columnCount={12}
+            renderRow={(e) => (
               <tr key={`${e.compositeKey}_${activeTab}`} className={e.saved === "Yes" ? "row-green" : e.scanned === "Yes" ? "row-yellow" : ""}>
                 <td className="sticky-col" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
                 <td className="sticky-col" style={{ color: "#475569" }}>{e.diagnosticNo}</td>
@@ -495,8 +481,8 @@ export default function BloodGroupRegister() {
                   </button>
                 </td>
               </tr>
-            ))}
-          </tbody>
+            )}
+          />
         </table>
       </div>
     </div>

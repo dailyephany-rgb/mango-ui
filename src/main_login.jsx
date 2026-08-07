@@ -1,10 +1,8 @@
 
 import React from "react";
-import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
+import { mountEngApp } from "./shared/mountEngApp.jsx";
 import LoginPage from "./auth/LoginPage";
 
-createEngRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <LoginPage />
-  </React.StrictMode>
+mountEngApp(document.getElementById("root"),
+  <LoginPage />
 );

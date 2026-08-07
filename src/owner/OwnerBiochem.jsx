@@ -1,6 +1,6 @@
 
 
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState, Suspense } from "react";
 import { OwnerContext } from "./OwnerContext.jsx";
 
 import DateSourceFilter from "./components/DateSourceFilter";
@@ -8,14 +8,17 @@ import KPIBlocks from "./components/KPIBlocks";
 import DelayTable from "./components/DelayTable";
 import PatientListModal from "./components/PatientListModal";
 
-import CountsBar from "./charts/CountsBar";
-import StackedStageLines from "./charts/StackedStageLines";
-import TimeBricks from "./charts/TimeBricks";
-import DelayHistogram from "./charts/DelayHistogram";
-import SLAScoreDonut from "./charts/SLAScoreDonut";
-import StaffDistribution from "./charts/StaffDistribution";
-import StaffAvgCards from "./charts/StaffAvgCards";
-import StaffTimeline from "./charts/StaffTimeline";
+import {
+  CountsBar,
+  StackedStageLines,
+  TimeBricks,
+  DelayHistogram,
+  SLAScoreDonut,
+  StaffDistribution,
+  StaffAvgCards,
+  StaffTimeline,
+  OwnerChartsSection,
+} from "./charts/lazyOwnerCharts";
 
 
 import {
@@ -62,10 +65,27 @@ export default function OwnerBiochem() {
       },
     });
 
-    fetchTestTimings().then((t) => setTestTimings(t || {}));
-
     return () => unsub && unsub();
   }, [source, dateRange]);
+  useEffect(() => {
+    let cancelled = false;
+    const run = () => {
+      fetchTestTimings().then((t) => {
+        if (!cancelled) setTestTimings(t || {});
+      });
+    };
+    const idle =
+      typeof requestIdleCallback === "function"
+        ? requestIdleCallback(run, { timeout: 2000 })
+        : setTimeout(run, 0);
+    return () => {
+      cancelled = true;
+      if (typeof cancelIdleCallback === "function" && typeof idle === "number")
+        cancelIdleCallback(idle);
+      else clearTimeout(idle);
+    };
+  }, []);
+
 
   /* ---------------- DATA ASSIGNMENT ---------------- */
   const deptRows = useMemo(() => {
@@ -259,7 +279,7 @@ export default function OwnerBiochem() {
       )}
 
       {activeTab === "overview" && (
-        <section className="owner-charts">
+        <OwnerChartsSection>
           <div className="chart-card">
             <h3>Counts Bar</h3>
             <CountsBar counts={countsForBar} />
@@ -378,7 +398,7 @@ export default function OwnerBiochem() {
               slaLimit={stackedChartSLA}
             />
         </div>
-        </section>
+        </OwnerChartsSection>
       )}
 
 {activeTab === "delays" && (
@@ -419,7 +439,7 @@ export default function OwnerBiochem() {
       </select>
     </div>
 
-    <section className="owner-charts">
+    <OwnerChartsSection>
       <div className="chart-card">
         <h3>Delay Histogram</h3>
         <DelayHistogram violators={violators} />
@@ -436,7 +456,7 @@ export default function OwnerBiochem() {
       <div className="chart-card full-width">
       <DelayTable violators={violators} stage={delayStage}/>
       </div>
-    </section>
+    </OwnerChartsSection>
   </>
 )}
         {activeTab === "timebricks" && (
@@ -468,7 +488,7 @@ export default function OwnerBiochem() {
             />
           </div>
 
-          <section className="owner-charts">
+          <OwnerChartsSection>
             <div className="chart-card full-width">
               <h3>Time Bricks Chart</h3>
 
@@ -484,14 +504,14 @@ export default function OwnerBiochem() {
                 }}
               />
             </div>
-          </section>
+          </OwnerChartsSection>
         </>
       )}
       
 
         
         {activeTab === "staff" && (
-          <section className="owner-charts">
+          <OwnerChartsSection>
 
             {staffTab === "testing" && (
               <>
@@ -597,7 +617,7 @@ export default function OwnerBiochem() {
           </>
         )}
 
-            </section>
+            </OwnerChartsSection>
           )}
 
               
@@ -608,6 +628,7 @@ export default function OwnerBiochem() {
           />
 
     {chartExpanded && (
+      <Suspense fallback={null}>
       <div
         onClick={() => setChartExpanded(false)}
         style={{
@@ -756,6 +777,7 @@ export default function OwnerBiochem() {
 
     </div>
   </div>
+      </Suspense>
       )}
 
     </div>

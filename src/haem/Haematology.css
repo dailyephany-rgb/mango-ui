@@ -42,7 +42,7 @@
   border-radius: 9999px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease-in-out;
+  transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out, border-color 0.15s ease-in-out;
 }
 .tabs button:hover {
   filter: brightness(0.97);

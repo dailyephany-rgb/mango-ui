@@ -276,25 +276,93 @@ async function flushListeners(db, events, deviceId) {
         snapshots: 0,
         errors: 0,
         reconnects: 0,
+        recreates: 0,
+        timeouts10: 0,
+        timeouts30: 0,
+        retries: 0,
+        retrySuccess: 0,
+        retryFailed: 0,
         durationSum: 0,
         durationCount: 0,
+        firstSnapSumMs: 0,
+        firstSnapCount: 0,
+        firstSnapMaxMs: 0,
+        firstSnapDocSum: 0,
+        firstSnapMaxDocs: 0,
+        payloadBytesSum: 0,
+        payloadBytesMax: 0,
         lastDocCount: 0,
+        reasonPageLoad: 0,
+        reasonRefresh: 0,
+        reasonDateChange: 0,
+        reasonDepartmentChange: 0,
+        reasonReconnect: 0,
+        reasonRetry: 0,
+        reasonDepsChange: 0,
+        reasonUnknown: 0,
         page: e.page,
         department: e.department,
       };
     }
     const b = byCol[col];
-    if (e.action === "open") b.opens += 1;
-    else if (e.action === "close") b.closes += 1;
-    else if (e.action === "snapshot") {
+    const action = e.action;
+    const event = e.event || "";
+    if (action === "open") {
+      b.opens += 1;
+      const reason = e.reason || "unknown";
+      if (reason === "page_load") b.reasonPageLoad += 1;
+      else if (reason === "refresh") b.reasonRefresh += 1;
+      else if (reason === "date_change") b.reasonDateChange += 1;
+      else if (reason === "department_change") b.reasonDepartmentChange += 1;
+      else if (reason === "reconnect") b.reasonReconnect += 1;
+      else if (reason === "retry") b.reasonRetry += 1;
+      else if (reason === "deps_change") b.reasonDepsChange += 1;
+      else b.reasonUnknown += 1;
+    } else if (action === "close") b.closes += 1;
+    else if (action === "snapshot") {
       b.snapshots += 1;
       b.lastDocCount = e.docCount || b.lastDocCount;
       if (e.durationMs != null) {
         b.durationSum += e.durationMs;
         b.durationCount += 1;
       }
-    } else if (e.action === "error") b.errors += 1;
-    else if (e.action === "reconnect") b.reconnects += 1;
+      if (
+        event === "first_snapshot_received" ||
+        e.event === "first_snapshot_received"
+      ) {
+        if (e.durationMs != null) {
+          b.firstSnapSumMs += e.durationMs;
+          b.firstSnapCount += 1;
+          if (e.durationMs > b.firstSnapMaxMs) b.firstSnapMaxMs = e.durationMs;
+        }
+        if (e.docCount != null) {
+          b.firstSnapDocSum += e.docCount;
+          if (e.docCount > b.firstSnapMaxDocs) b.firstSnapMaxDocs = e.docCount;
+        }
+        if (e.payloadBytes != null) {
+          b.payloadBytesSum += e.payloadBytes;
+          if (e.payloadBytes > b.payloadBytesMax)
+            b.payloadBytesMax = e.payloadBytes;
+        }
+      }
+    } else if (action === "error") b.errors += 1;
+    else if (action === "reconnect") b.reconnects += 1;
+    else if (action === "recreated") b.recreates += 1;
+    else if (
+      action === "timeout_10" ||
+      event === "first_snapshot_timeout_10"
+    )
+      b.timeouts10 += 1;
+    else if (
+      action === "timeout_30" ||
+      event === "first_snapshot_timeout_30"
+    )
+      b.timeouts30 += 1;
+    else if (action === "retry" || event === "retry_clicked") b.retries += 1;
+    else if (action === "retry_success" || event === "retry_success")
+      b.retrySuccess += 1;
+    else if (action === "retry_failed" || event === "retry_failed")
+      b.retryFailed += 1;
   }
 
   const writes = Object.entries(byCol).map(([collectionName, b]) => {
@@ -315,9 +383,30 @@ async function flushListeners(db, events, deviceId) {
         snapshots: increment(b.snapshots),
         errors: increment(b.errors),
         reconnects: increment(b.reconnects),
+        recreates: increment(b.recreates),
+        timeouts10: increment(b.timeouts10),
+        timeouts30: increment(b.timeouts30),
+        retries: increment(b.retries),
+        retrySuccess: increment(b.retrySuccess),
+        retryFailed: increment(b.retryFailed),
+        reasonPageLoad: increment(b.reasonPageLoad),
+        reasonRefresh: increment(b.reasonRefresh),
+        reasonDateChange: increment(b.reasonDateChange),
+        reasonDepartmentChange: increment(b.reasonDepartmentChange),
+        reasonReconnect: increment(b.reasonReconnect),
+        reasonRetry: increment(b.reasonRetry),
+        reasonDepsChange: increment(b.reasonDepsChange),
+        reasonUnknown: increment(b.reasonUnknown),
         lastDocCount: b.lastDocCount,
         avgSnapshotMs:
           b.durationCount > 0 ? b.durationSum / b.durationCount : null,
+        firstSnapshotSumMs: increment(b.firstSnapSumMs),
+        firstSnapshotCount: increment(b.firstSnapCount),
+        firstSnapshotMaxMs: b.firstSnapMaxMs || null,
+        firstSnapshotDocSum: increment(b.firstSnapDocSum),
+        firstSnapshotMaxDocs: b.firstSnapMaxDocs || null,
+        payloadBytesSum: increment(b.payloadBytesSum),
+        payloadBytesMax: b.payloadBytesMax || null,
         updatedAt: serverTimestamp(),
       },
       { merge: true }

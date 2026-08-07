@@ -10,11 +10,9 @@ import {
 } from "firebase/firestore";
 import routing from "../backroom_routing.json";
 import "./Backroom.css";
-import {
-  parseEntryDate,
-  toLocalDateString,
-} from "../shared/utils/dates.js";
 import { normalizeSource } from "../shared/utils/source.js";
+import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
+import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
 import { compositeId } from "../shared/utils/ids.js";
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
@@ -453,31 +451,20 @@ export default function UrineAnalysisRegister() {
     }
   };
 
-  const filteredEntries = mergedEntries
-    .filter((e) => {
-      if (regSearch) {
-        const search = regSearch.toLowerCase();
-        if (!String(e.regNo).toLowerCase().includes(search) && !String(e.diagnosticNo).toLowerCase().includes(search)) return false;
-      }
-      if (sourceFilter !== "All" && e.source !== sourceFilter) return false;
-      
-      const d = parseEntryDate(e);
-      if (!d) return true;
+  const filteredEntries = useMemo(
+    () =>
+      filterAndSortRegisterPatients(mergedEntries, {
+        regSearch,
+        sourceFilter,
+        dateFrom,
+        dateTo,
+        getDiag: (p) => p.diagnosticNo || p.accessionNo || "",
+      }),
+    [mergedEntries, regSearch, sourceFilter, dateFrom, dateTo]
+  );
 
-      const entryDateStr = toLocalDateString(d);
-      
-      if (dateFrom && entryDateStr < dateFrom) return false;
-      if (dateTo && entryDateStr > dateTo) return false;
-      return true;
-    })
-    .sort((a, b) => {
-      if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-      const dateA = parseEntryDate(a);
-      const dateB = parseEntryDate(b);
-      if (!dateA) return 1;
-      if (!dateB) return -1;
-      return dateA - dateB;
-    });
+  const urineTableColumnCount =
+    7 + parameterFields.length + routineExtraFields.length + 5;
 
   return (
     <div className="register-section">
@@ -511,8 +498,10 @@ export default function UrineAnalysisRegister() {
               <th>Save</th>
             </tr>
           </thead>
-          <tbody>
-            {filteredEntries.map((e) => {
+          <VirtualizedTableBody
+            items={filteredEntries}
+            columnCount={urineTableColumnCount}
+            renderRow={(e) => {
               const compositeKey = e.compositeKey;
               const isSaved = savedSet.has(compositeKey);
               const isScanned = e.scanned === "Yes";
@@ -630,8 +619,8 @@ export default function UrineAnalysisRegister() {
                   </td>
                 </tr>
               );
-            })}
-          </tbody>
+            }}
+          />
         </table>
       </div>
       {criticalModalOpen && (

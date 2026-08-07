@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useMemo, Suspense, lazy } from "react";
 import "./BiochemistryMain.css";
 import { db } from "../firebaseConfig.js";
 import {
@@ -10,9 +10,6 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import biochemRouting from "../biochem_testRouting.json";
-import HormonesMain from "./HormonesMain.jsx";
-// NEW IMPORTS FOR INVENTORY
-import DeptInventoryTab from "../inventory/DeptInventoryTab.jsx";
 
 import {
   handleInventoryDeduction,
@@ -21,10 +18,7 @@ import {
 
 import { requireLogin } from "../auth/Authguard.js";
 import UserMenu from "../auth/UserMenu";
-import InventoryAdjustmentTab from "../inventory/InventoryAdjustmentTab.jsx";
 import {
-  parseEntryDate,
-  toLocalDateString,
   getISTLocaleString,
 } from "../shared/utils/dates.js";
 import { normalizeSource } from "../shared/utils/source.js";
@@ -35,6 +29,16 @@ import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
+import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
+import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
+
+const HormonesMain = lazy(() => import("./HormonesMain.jsx"));
+const DeptInventoryTab = lazy(() =>
+  import("../inventory/DeptInventoryTab.jsx")
+);
+const InventoryAdjustmentTab = lazy(() =>
+  import("../inventory/InventoryAdjustmentTab.jsx")
+);
 
 const CURRENT_DEPT = "Bio-Chemistry";
 
@@ -323,6 +327,18 @@ export default function BiochemistryMain() {
     }
   };
 
+  const filteredPatients = useMemo(
+    () =>
+      filterAndSortRegisterPatients(patients, {
+        regSearch,
+        sourceFilter,
+        dateFrom,
+        dateTo,
+        getDiag: (p) => p.diagnosticNo || "",
+      }),
+    [patients, regSearch, sourceFilter, dateFrom, dateTo]
+  );
+
   if (loading) return <p>Loading Biochemistry data...</p>;
 
   return (
@@ -374,7 +390,8 @@ export default function BiochemistryMain() {
   <UserMenu />
 </div>
 
-      <div style={{ display: activeTab === "biochem" ? "block" : "none" }}>        
+      {activeTab === "biochem" && (
+      <div>        
               <h2 className="dept-header">
           Biochemistry Department — Main Analyzer
         </h2>
@@ -409,34 +426,10 @@ export default function BiochemistryMain() {
                     <th>Action</th>
                 </tr>
               </thead>
-              <tbody>
-                {patients
-                .filter(p => {
-                    if (regSearch.trim()) {
-                      const searchStr = regSearch.trim().toLowerCase();
-                      const key = String(p.regNo || "").toLowerCase();
-                      const diag = String(p.diagnosticNo || "").toLowerCase();
-                      if (!key.includes(searchStr) && !diag.includes(searchStr)) return false;
-                    }
-                    if (sourceFilter !== "All" && p.source !== sourceFilter) return false;
-                    
-                    const eDate = parseEntryDate(p);
-                    if (eDate) {
-                      const entryDateStr = toLocalDateString(eDate);
-                      if (dateFrom && entryDateStr < dateFrom) return false;
-                      if (dateTo && entryDateStr > dateTo) return false;
-                    }
-                    return true;
-                })
-                .sort((a, b) => {
-                  if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-                  const dateA = parseEntryDate(a);
-                  const dateB = parseEntryDate(b);
-                  if (!dateA) return 1;
-                  if (!dateB) return -1;
-                  return dateA - dateB;
-                })
-                .map((p) => {
+              <VirtualizedTableBody
+                items={filteredPatients}
+                columnCount={14}
+                renderRow={(p) => {
                   const regKey = p.compositeKey;
                   const isSaved = p.status === "saved";
                   const isScanned = p.scanned === "Yes";
@@ -522,23 +515,30 @@ export default function BiochemistryMain() {
                       </td>
                     </tr>
                   );
-                })}
-              </tbody>
+                }}
+              />
             </table>
           </div>
       </div>
+      )}
 
-      <div style={{ display: activeTab === "hormones" ? "block" : "none" }}>
-        <HormonesMain />
-      </div>
+      {activeTab === "hormones" && (
+        <Suspense fallback={<p>Loading Hormones…</p>}>
+          <HormonesMain />
+        </Suspense>
+      )}
 
-      <div style={{ display: activeTab === "inventory" ? "block" : "none" }}>
-        <DeptInventoryTab department="Biochemistry" machineType="Main" />
-      </div>
+      {activeTab === "inventory" && (
+        <Suspense fallback={<p>Loading Inventory…</p>}>
+          <DeptInventoryTab department="Biochemistry" machineType="Main" />
+        </Suspense>
+      )}
 
-      <div style={{ display: activeTab === "adjustment" ? "block" : "none" }}>
-        <InventoryAdjustmentTab />
-      </div>
+      {activeTab === "adjustment" && (
+        <Suspense fallback={<p>Loading Adjustment…</p>}>
+          <InventoryAdjustmentTab />
+        </Suspense>
+      )}
 
       
       {criticalModalOpen && (

@@ -9,12 +9,15 @@ import KPIBlocks from "../owner/components/KPIBlocksInside";
 import DelayTable from "../owner/components/DelayTable";
 import PatientListModal from "../owner/components/PatientListModalInside";
 
-import CountsBar from "../owner/charts/CountsBarInside";
-import StackedStageLines from "../owner/charts/StackedStageLinesInside";
-import TimeBricks from "../owner/charts/TimeBricks";
-import SLAScoreDonut from "../owner/charts/SLAScoreDonut";
-import DelayHistogram from "../owner/charts/DelayHistogram";
-import StaffDistribution from "../owner/charts/StaffDistribution";
+import {
+  CountsBarInside as CountsBar,
+  StackedStageLinesInside as StackedStageLines,
+  TimeBricks,
+  SLAScoreDonut,
+  DelayHistogram,
+  StaffDistribution,
+  OwnerChartsSection,
+} from "../owner/charts/lazyOwnerCharts";
 
 import * as LabFetcher from "../owner/lib/dataFetcher_lab.js";
 import testTimingsJson from "../owner/data/test_timings.json";
@@ -94,7 +97,7 @@ export default function OwnerLabPage() {
       <KPIBlocks kpis={data.kpis} />
 
       {activeSubTab === "overview" && (
-        <section className="owner-charts">
+        <OwnerChartsSection>
           <div className="chart-card">
             <h3>Counts Bar</h3>
             <div style={{ height: "250px" }}>
@@ -107,11 +110,11 @@ export default function OwnerLabPage() {
               <StackedStageLines unifiedRows={data.unifiedRows} />
             </div>
           </div>
-        </section>
+        </OwnerChartsSection>
       )}
 
       {activeSubTab === "delays" && (
-        <section className="owner-charts">
+        <OwnerChartsSection>
           <div className="chart-card">
             <h3>Delay Histogram</h3>
             <div style={{ height: "220px" }}>
@@ -130,11 +133,11 @@ export default function OwnerLabPage() {
           <div className="chart-card full-width">
             <DelayTable violators={violators} />
           </div>
-        </section>
+        </OwnerChartsSection>
       )}
 
       {activeSubTab === "timebricks" && (
-        <section className="owner-charts">
+        <OwnerChartsSection>
           <div className="chart-card full-width">
             <h3>Time Bricks Chart</h3>
             <div style={{ height: '600px', width: '100%', background: '#fff', borderRadius: '8px' }}>
@@ -149,13 +152,13 @@ export default function OwnerLabPage() {
               />
             </div>
           </div>
-        </section>
+        </OwnerChartsSection>
       )}
 
 
             {/* STAFF ANALYTICS TAB */}
       {activeSubTab === "staff" && (
-        <section className="owner-charts">
+        <OwnerChartsSection>
           <div
             className="chart-card full-width"
             style={{ minHeight: "480px" }}
@@ -166,7 +169,7 @@ export default function OwnerLabPage() {
               data={data.savedByDistribution}
             />
           </div>
-        </section>
+        </OwnerChartsSection>
       )}
 
       <PatientListModal 

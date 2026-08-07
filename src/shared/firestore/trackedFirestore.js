@@ -4,6 +4,10 @@
  *
  * Passthrough when BOTH mango.perf.monitor=0 AND mango.eng.telemetry=0.
  * Eng calls are fire-and-forget inside safeRun — never await on clinical path.
+ *
+ * Observability additions (N1/N2/N6): first-snapshot timing/docCount/payload
+ * estimate, listen reason / recreation, 10s/30s wait timeouts, user retry recreate
+ * of the SAME query (no schema or query-shape changes).
  */
 
 import {
@@ -28,9 +32,24 @@ import { isEngTelemetryEnabled } from "../../engineering/telemetry/killSwitch.js
 import { EngTelemetry } from "../../engineering/telemetry/EngTelemetry.js";
 import { safeRun } from "../../engineering/telemetry/safeRun.js";
 import { getRuntimeSettings } from "../../engineering/telemetry/runtimeSettings.js";
+import {
+  registerListenerWatch,
+  setListenerRecreate,
+  markListenerFirstSnapshot,
+  markListenerTimeout,
+  unregisterListenerWatch,
+  resolveOpenReason,
+  readListenReasonAnnotation,
+  getWaitingCount,
+  getHungCount,
+  getLoadingPages,
+} from "../../engineering/telemetry/listenerWatch.js";
 
 let listenerSeq = 0;
 let snapshotSample = 0;
+
+const TIMEOUT_10_MS = 10_000;
+const TIMEOUT_30_MS = 30_000;
 
 function now() {
   return performance.now();
@@ -56,6 +75,32 @@ function snapshotEvery() {
   }
 }
 
+function syncWaitHeartbeat() {
+  safeRun(() => {
+    EngTelemetry.setListenerWaitState({
+      waitingListeners: getWaitingCount(),
+      hungLoads: getHungCount(),
+      loadingPages: getLoadingPages(),
+    });
+  }, "eng.wait.hb");
+}
+
+/** Cheap first-snapshot payload estimate (sample up to 3 docs). */
+function estimatePayloadBytes(snap) {
+  try {
+    const docs = snap?.docs;
+    if (!docs?.length) return 0;
+    const sampleN = Math.min(3, docs.length);
+    let bytes = 0;
+    for (let i = 0; i < sampleN; i++) {
+      bytes += JSON.stringify(docs[i].data()).length;
+    }
+    return Math.round((bytes / sampleN) * docs.length);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * @param {any} refOrQuery
  * @param {any} onNext
@@ -71,11 +116,82 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
   const eng = engOn();
   const collection = extractCollectionName(refOrQuery);
   const ctx = getPageContext();
+  const annotated = readListenReasonAnnotation(refOrQuery);
+  const { reason, recreated } = resolveOpenReason(
+    ctx.page,
+    collection,
+    annotated
+  );
   const id = `L${++listenerSeq}-${collection}-${Date.now()}`;
   const startedAt = Date.now();
   const t0 = now();
   let first = true;
   let hadError = false;
+  let closed = false;
+  let unsubInner = () => {};
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let t10 = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let t30 = null;
+  let pendingRetry = reason === "retry";
+
+  const clearTimers = () => {
+    if (t10) {
+      clearTimeout(t10);
+      t10 = null;
+    }
+    if (t30) {
+      clearTimeout(t30);
+      t30 = null;
+    }
+  };
+
+  const armTimers = () => {
+    clearTimers();
+    if (!eng) return;
+    t10 = setTimeout(() => {
+      if (!first || closed) return;
+      if (markListenerTimeout(id, 10)) {
+        safeRun(() => {
+          EngTelemetry.trackListenerTimeout({
+            action: "timeout_10",
+            event: "first_snapshot_timeout_10",
+            collection,
+            listenerId: id,
+            reason,
+            durationMs: TIMEOUT_10_MS,
+          });
+        }, "eng.snap.t10");
+        syncWaitHeartbeat();
+      }
+    }, TIMEOUT_10_MS);
+    t30 = setTimeout(() => {
+      if (!first || closed) return;
+      if (markListenerTimeout(id, 30)) {
+        safeRun(() => {
+          EngTelemetry.trackListenerTimeout({
+            action: "timeout_30",
+            event: "first_snapshot_timeout_30",
+            collection,
+            listenerId: id,
+            reason,
+            durationMs: TIMEOUT_30_MS,
+          });
+          if (pendingRetry) {
+            EngTelemetry.trackListenerRetry({
+              action: "retry_failed",
+              event: "retry_failed",
+              collection,
+              listenerId: id,
+              reason: "retry",
+            });
+            pendingRetry = false;
+          }
+        }, "eng.snap.t30");
+        syncWaitHeartbeat();
+      }
+    }, TIMEOUT_30_MS);
+  };
 
   if (perf) {
     upsertListener({
@@ -86,18 +202,42 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
       startedAt,
       state: "Active",
       durationMs: 0,
+      reason,
     });
   }
+
+  registerListenerWatch({
+    id,
+    collection,
+    page: ctx.page,
+    department: departmentForCollection(collection) || ctx.department,
+    reason,
+    startedAt,
+    waiting: true,
+  });
 
   if (eng) {
     safeRun(() => {
       EngTelemetry.trackListenerUpsert({
         action: "open",
+        event: "listener_start",
         collection,
         listenerId: id,
+        reason,
+        recreated,
       });
+      if (recreated) {
+        EngTelemetry.trackListenerRecreated({
+          collection,
+          listenerId: id,
+          reason,
+          recreated: true,
+        });
+      }
     }, "eng.snap.open");
   }
+  armTimers();
+  syncWaitHeartbeat();
 
   const reportListenerError = (err) => {
     hadError = true;
@@ -111,6 +251,7 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
           collection,
           listenerId: id,
           error: err?.message || err,
+          reason,
         });
         EngTelemetry.trackQuery({
           collection,
@@ -133,7 +274,8 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
   const wrapNext = (snap) => {
     const durationMs = now() - t0;
     const docCount = snap?.docs?.length ?? (snap?.exists?.() ? 1 : 0);
-    const changes = typeof snap?.docChanges === "function" ? snap.docChanges() : [];
+    const changes =
+      typeof snap?.docChanges === "function" ? snap.docChanges() : [];
     let added = 0;
     let modified = 0;
     let removed = 0;
@@ -149,6 +291,7 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
           collection,
           listenerId: id,
           docCount,
+          reason: "reconnect",
         });
         EngTelemetry.trackQuery({
           collection,
@@ -164,6 +307,11 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
 
     if (first) {
       first = false;
+      clearTimers();
+      const payloadBytes = eng ? estimatePayloadBytes(snap) : null;
+      markListenerFirstSnapshot(id, { docCount, payloadBytes, durationMs });
+      syncWaitHeartbeat();
+
       if (perf) {
         recordQuery({
           collection,
@@ -190,18 +338,54 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
             queryKey: `${ctx.page}:${collection}:listen`,
           });
           EngTelemetry.trackListenerSnapshot({
+            event: "first_snapshot_received",
             collection,
             listenerId: id,
             docCount,
             durationMs,
+            payloadBytes,
+            reason,
           });
+          EngTelemetry.trackListener({
+            action: "snapshot",
+            event: "first_snapshot_duration",
+            collection,
+            listenerId: id,
+            durationMs,
+            docCount,
+            reason,
+          });
+          EngTelemetry.trackListener({
+            action: "snapshot",
+            event: "first_snapshot_doccount",
+            collection,
+            listenerId: id,
+            docCount,
+            durationMs,
+            reason,
+          });
+          if (pendingRetry) {
+            EngTelemetry.trackListenerRetry({
+              action: "retry_success",
+              event: "retry_success",
+              collection,
+              listenerId: id,
+              reason: "retry",
+              durationMs,
+              docCount,
+            });
+            pendingRetry = false;
+          }
         }, "eng.snap.first");
       }
     } else {
       if (perf) {
         recordRead({
           collection,
-          docCount: added + modified + removed > 0 ? added + modified + removed : docCount,
+          docCount:
+            added + modified + removed > 0
+              ? added + modified + removed
+              : docCount,
           source: "snapshot_update",
         });
         recordQuery({
@@ -225,6 +409,7 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
               queryKey: `${ctx.page}:${collection}:listen`,
             });
             EngTelemetry.trackListenerSnapshot({
+              event: "snapshot_incremental",
               collection,
               listenerId: id,
               docCount,
@@ -255,37 +440,90 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
     if (typeof onError === "function") return onError(err);
   };
 
-  let unsub;
-  if (typeof onNext === "object" && onNext !== null && !onError) {
-    const observer = onNext;
-    unsub = fbOnSnapshot(refOrQuery, {
-      ...observer,
-      next: (snap) => wrapNext(snap),
-      error: (err) => {
-        reportListenerError(err);
-        if (observer.error) return observer.error(err);
-      },
+  const attach = () => {
+    if (typeof onNext === "object" && onNext !== null && !onError) {
+      const observer = onNext;
+      unsubInner = fbOnSnapshot(refOrQuery, {
+        ...observer,
+        next: (snap) => wrapNext(snap),
+        error: (err) => {
+          reportListenerError(err);
+          if (observer.error) return observer.error(err);
+        },
+      });
+    } else if (options !== undefined) {
+      unsubInner = fbOnSnapshot(refOrQuery, wrapNext, wrapError, options);
+    } else if (onError !== undefined) {
+      unsubInner = fbOnSnapshot(refOrQuery, wrapNext, wrapError);
+    } else {
+      unsubInner = fbOnSnapshot(refOrQuery, wrapNext, wrapError);
+    }
+  };
+
+  attach();
+
+  /** User retry: drop and re-attach the SAME query/callbacks (no browser reload). */
+  const recreate = () => {
+    if (closed) return;
+    try {
+      unsubInner();
+    } catch {
+      /* ignore */
+    }
+    first = true;
+    hadError = false;
+    pendingRetry = true;
+    registerListenerWatch({
+      id,
+      collection,
+      page: ctx.page,
+      department: departmentForCollection(collection) || ctx.department,
+      reason: "retry",
+      startedAt: Date.now(),
+      waiting: true,
     });
-  } else if (options !== undefined) {
-    unsub = fbOnSnapshot(refOrQuery, wrapNext, wrapError, options);
-  } else if (onError !== undefined) {
-    unsub = fbOnSnapshot(refOrQuery, wrapNext, wrapError);
-  } else {
-    unsub = fbOnSnapshot(refOrQuery, wrapNext, wrapError);
-  }
+    setListenerRecreate(id, recreate);
+    armTimers();
+    syncWaitHeartbeat();
+    if (eng) {
+      safeRun(() => {
+        EngTelemetry.trackListenerUpsert({
+          action: "open",
+          event: "listener_start",
+          collection,
+          listenerId: id,
+          reason: "retry",
+          recreated: true,
+        });
+        EngTelemetry.trackListenerRecreated({
+          collection,
+          listenerId: id,
+          reason: "retry",
+          recreated: true,
+        });
+      }, "eng.snap.retry.attach");
+    }
+    attach();
+  };
+  setListenerRecreate(id, recreate);
 
   return () => {
+    closed = true;
+    clearTimers();
+    unregisterListenerWatch(id, reason);
+    syncWaitHeartbeat();
     if (perf) closeListener(id);
     if (eng) {
       safeRun(() => {
         EngTelemetry.trackListenerClose({
           collection,
           listenerId: id,
+          reason,
         });
       }, "eng.snap.close");
     }
     try {
-      unsub();
+      unsubInner();
     } catch {
       /* ignore */
     }

@@ -1,7 +1,7 @@
 
 
 // src/owner/OwnerSerology.jsx
-import React, { useEffect, useMemo, useState, useContext } from "react";
+import React, { useEffect, useMemo, useState, useContext, Suspense } from "react";
 import { OwnerContext } from "./OwnerContext.jsx";
 
 import DateSourceFilter from "./components/DateSourceFilter";
@@ -9,14 +9,17 @@ import KPIBlocks from "./components/KPIBlocks";
 import PatientListModal from "./components/PatientListModal";
 import DelayTable from "./components/DelayTable";
 
-import CountsBar from "./charts/CountsBar";
-import StackedStageLines from "./charts/StackedStageLines";
-import TimeBricks from "./charts/TimeBricks";
-import DelayHistogram from "./charts/DelayHistogram";
-import SLAScoreDonut from "./charts/SLAScoreDonut";
-import StaffDistribution from "./charts/StaffDistribution";
-import StaffAvgCards from "./charts/StaffAvgCards";
-import StaffTimeline from "./charts/StaffTimeline";
+import {
+  CountsBar,
+  StackedStageLines,
+  TimeBricks,
+  DelayHistogram,
+  SLAScoreDonut,
+  StaffDistribution,
+  StaffAvgCards,
+  StaffTimeline,
+  OwnerChartsSection,
+} from "./charts/lazyOwnerCharts";
 
 
 import {
@@ -69,10 +72,27 @@ export default function OwnerSerologyPage() {
         );
       },
     });
-
-    fetchTestTimings().then((t) => setTestTimings(t || {}));
     return () => unsub && unsub();
   }, [source, dateRange]);
+  useEffect(() => {
+    let cancelled = false;
+    const run = () => {
+      fetchTestTimings().then((t) => {
+        if (!cancelled) setTestTimings(t || {});
+      });
+    };
+    const idle =
+      typeof requestIdleCallback === "function"
+        ? requestIdleCallback(run, { timeout: 2000 })
+        : setTimeout(run, 0);
+    return () => {
+      cancelled = true;
+      if (typeof cancelIdleCallback === "function" && typeof idle === "number")
+        cancelIdleCallback(idle);
+      else clearTimeout(idle);
+    };
+  }, []);
+
 
   // SLA VIOLATORS (Calculated from filtered deptRows)
   const violators = useMemo(
@@ -321,7 +341,7 @@ export default function OwnerSerologyPage() {
           />
         )}
       {activeTab === "overview" && (
-        <section className="owner-charts">
+        <OwnerChartsSection>
           <div className="chart-card">
             <h3>Counts Bar</h3>
             <CountsBar counts={countsForBar} />
@@ -447,11 +467,11 @@ export default function OwnerSerologyPage() {
       }
     />
   </div>
-        </section>
+        </OwnerChartsSection>
       )}
 
 {activeTab === "delays" && (
-  <section className="owner-charts">
+  <OwnerChartsSection>
     <div className="chart-card">
 
       <div
@@ -517,11 +537,11 @@ export default function OwnerSerologyPage() {
           <div className="chart-card full-width">
           <DelayTable violators={violators} stage={delayStage}/>
           </div>
-        </section>
+        </OwnerChartsSection>
       )}
 
 {activeTab === "timebricks" && (
-  <section className="owner-charts">
+  <OwnerChartsSection>
     <div className="chart-card full-width">
       <div
         style={{
@@ -577,12 +597,12 @@ export default function OwnerSerologyPage() {
         />
       </div>
     </div>
-  </section>
+  </OwnerChartsSection>
 )}
            
 
 {activeTab === "staff" && (
-  <section className="owner-charts">
+  <OwnerChartsSection>
 
     {staffTab === "testing" && (
       <>
@@ -711,7 +731,7 @@ export default function OwnerSerologyPage() {
       </>
     )}
 
-  </section>
+  </OwnerChartsSection>
 )}
 
       <PatientListModal 
@@ -721,6 +741,7 @@ export default function OwnerSerologyPage() {
       />
 
 {chartExpanded && (
+      <Suspense fallback={null}>
   <div
     onClick={() => setChartExpanded(false)}
     style={{
@@ -854,6 +875,7 @@ export default function OwnerSerologyPage() {
       </div>
     </div>
   </div>
+</Suspense>
 )}
 
     </div>

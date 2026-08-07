@@ -12,11 +12,9 @@ import {
 
 import routing from "../backroom_routing.json";
 import "./Backroom.css";
-import {
-  parseEntryDate,
-  toLocalDateString,
-} from "../shared/utils/dates.js";
 import { normalizeSource } from "../shared/utils/source.js";
+import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
+import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
 import { compositeId } from "../shared/utils/ids.js";
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
@@ -390,28 +388,17 @@ const [pendingCritical, setPendingCritical] = usePersistedObjectState("esr_pendi
     } catch (err) { alert("Error saving."); } finally { setSaving(false); }
   };
 
-  const filteredEntries = mergedEntries
-    .filter((p) => {
-      if (regSearch.trim()) {
-        const searchStr = regSearch.trim().toLowerCase();
-        if (!String(p.regNo).toLowerCase().includes(searchStr) && !String(p.diagnosticNo).toLowerCase().includes(searchStr)) return false;
-      }
-      if (sourceFilter !== "All" && p.source !== sourceFilter) return false;
-      
-      const eDate = parseEntryDate(p);
-      if (eDate) {
-        const entryDateStr = toLocalDateString(eDate);
-        if (dateFrom && entryDateStr < dateFrom) return false;
-        if (dateTo && entryDateStr > dateTo) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-      const dateA = parseEntryDate(a);
-      const dateB = parseEntryDate(b);
-      return (dateA || 0) - (dateB || 0);
-    });
+  const filteredEntries = useMemo(
+    () =>
+      filterAndSortRegisterPatients(mergedEntries, {
+        regSearch,
+        sourceFilter,
+        dateFrom,
+        dateTo,
+        getDiag: (p) => p.diagnosticNo || p.accessionNo || "",
+      }),
+    [mergedEntries, regSearch, sourceFilter, dateFrom, dateTo]
+  );
 
   return (
     <div className="register-section">
@@ -444,8 +431,10 @@ const [pendingCritical, setPendingCritical] = usePersistedObjectState("esr_pendi
               <th>Action</th>
             </tr>
           </thead>
-          <tbody>
-            {filteredEntries.map((e) => {
+          <VirtualizedTableBody
+            items={filteredEntries}
+            columnCount={15}
+            renderRow={(e) => {
              const saved = e.status === "saved";
              const scanned = e.scanned === "Yes";
              
@@ -526,8 +515,8 @@ const [pendingCritical, setPendingCritical] = usePersistedObjectState("esr_pendi
                   <td><button className="save-btn" disabled={saving || saved || !ready} onClick={() => handleSave(e)}>Save</button></td>
                 </tr>
               );
-            })}
-          </tbody>
+            }}
+          />
         </table>
       </div>
       {criticalModalOpen && (

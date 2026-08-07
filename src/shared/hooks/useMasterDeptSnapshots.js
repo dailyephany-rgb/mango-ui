@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, startTransition } from "react";
 import {
   collection,
   query,
@@ -18,6 +18,7 @@ import {
   localDayStart,
   localDayEndExclusive,
 } from "../utils/dates.js";
+import { annotateListenReason } from "../../engineering/telemetry/listenerWatch.js";
 
 /**
  * Shared master + department + critical_alerts subscriptions.
@@ -43,6 +44,7 @@ export function useMasterDeptSnapshots({
   const [savedSet, setSavedSet] = useState(new Set());
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
   const [loading, setLoading] = useState(true);
+  const listenGenRef = useRef(0);
 
   useEffect(() => {
     const fromStr = dateFrom || getLocalDateString();
@@ -58,6 +60,10 @@ export function useMasterDeptSnapshots({
       setLoading(false);
       return undefined;
     }
+
+    listenGenRef.current += 1;
+    const listenReason =
+      listenGenRef.current === 1 ? "page_load" : "date_change";
 
     const startTs = Timestamp.fromDate(start);
     const endTs = Timestamp.fromDate(endExclusive);
@@ -88,13 +94,16 @@ export function useMasterDeptSnapshots({
     } catch {
       /* ignore */
     }
+    annotateListenReason(masterQuery, listenReason);
 
     const unsubMaster = onSnapshot(
       masterQuery,
       (snapshot) => {
         const result = masterStore.apply(snapshot);
         if (result.changed) {
-          setMasterEntries(result.values);
+          startTransition(() => {
+            setMasterEntries(result.values);
+          });
         }
         setLoading(false);
       },
@@ -118,6 +127,7 @@ export function useMasterDeptSnapshots({
     } catch {
       /* ignore */
     }
+    annotateListenReason(deptQuery, listenReason);
 
     const publishDeptState = () => {
       const docsMap = {};
@@ -126,8 +136,10 @@ export function useMasterDeptSnapshots({
         docsMap[key] = data;
         if (isSavedDoc(data)) sSet.add(key);
       }
-      setDeptDocs(docsMap);
-      setSavedSet(sSet);
+      startTransition(() => {
+        setDeptDocs(docsMap);
+        setSavedSet(sSet);
+      });
     };
 
     const unsubDept = onSnapshot(
@@ -205,13 +217,16 @@ export function useMasterDeptSnapshots({
     } catch {
       /* ignore */
     }
+    annotateListenReason(criticalQuery, listenReason);
 
     const publishCriticalState = () => {
       const cSet = new Set();
       for (const key of criticalById.values()) {
         if (key) cSet.add(key);
       }
-      setCriticalReportedSet(cSet);
+      startTransition(() => {
+        setCriticalReportedSet(cSet);
+      });
     };
 
     const unsubCritical = onSnapshot(

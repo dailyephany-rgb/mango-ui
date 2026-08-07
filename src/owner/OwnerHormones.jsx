@@ -1,6 +1,6 @@
 
 
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState, Suspense } from "react";
 import { OwnerContext } from "./OwnerContext.jsx";
 
 import DateSourceFilter from "./components/DateSourceFilter";
@@ -8,14 +8,17 @@ import KPIBlocks from "./components/KPIBlocks";
 import DelayTable from "./components/DelayTable";
 import PatientListModal from "./components/PatientListModal";
 
-import CountsBar from "./charts/CountsBar";
-import StackedStageLines from "./charts/StackedStageLines";
-import TimeBricks from "./charts/TimeBricks";
-import DelayHistogram from "./charts/DelayHistogram";
-import SLAScoreDonut from "./charts/SLAScoreDonut";
-import StaffDistribution from "./charts/StaffDistribution";
-import StaffAvgCards from "./charts/StaffAvgCards";
-import StaffTimeline from "./charts/StaffTimeline";
+import {
+  CountsBar,
+  StackedStageLines,
+  TimeBricks,
+  DelayHistogram,
+  SLAScoreDonut,
+  StaffDistribution,
+  StaffAvgCards,
+  StaffTimeline,
+  OwnerChartsSection,
+} from "./charts/lazyOwnerCharts";
 
 import {
   subscribeOverview,
@@ -55,10 +58,27 @@ export default function OwnerHormones() {
       },
     });
 
-    fetchTestTimings().then((t) => setTestTimings(t || {}));
-
     return () => unsub && unsub();
   }, [source, dateRange]);
+  useEffect(() => {
+    let cancelled = false;
+    const run = () => {
+      fetchTestTimings().then((t) => {
+        if (!cancelled) setTestTimings(t || {});
+      });
+    };
+    const idle =
+      typeof requestIdleCallback === "function"
+        ? requestIdleCallback(run, { timeout: 2000 })
+        : setTimeout(run, 0);
+    return () => {
+      cancelled = true;
+      if (typeof cancelIdleCallback === "function" && typeof idle === "number")
+        cancelIdleCallback(idle);
+      else clearTimeout(idle);
+    };
+  }, []);
+
 
   /* ---------------- DATA ASSIGNMENT ---------------- */
   const deptRows = useMemo(() => {
@@ -226,7 +246,7 @@ export default function OwnerHormones() {
       {activeTab !== "staff" && (<KPIBlocks overview={overviewForKPI}
           kpis={kpis || {}} /> )}
       {activeTab === "overview" && (
-        <section className="owner-charts">
+        <OwnerChartsSection>
           <div className="chart-card">
             <h3>Counts Bar</h3>
             <CountsBar counts={countsForBar} />
@@ -347,11 +367,11 @@ export default function OwnerHormones() {
               />
               </div>
 
-        </section>
+        </OwnerChartsSection>
       )}
 
 {activeTab === "delays" && (
-  <section className="owner-charts">
+  <OwnerChartsSection>
     <div className="chart-card">
       <div
         style={{
@@ -416,7 +436,7 @@ export default function OwnerHormones() {
           <div className="chart-card full-width">
                       <DelayTable violators={violators}stage={delayStage} />
           </div>
-        </section>
+        </OwnerChartsSection>
       )}
 
 {activeTab === "timebricks" && (
@@ -448,7 +468,7 @@ export default function OwnerHormones() {
       />
     </div>
 
-    <section className="owner-charts">
+    <OwnerChartsSection>
       <div className="chart-card full-width">
         <h3>Time Bricks Chart</h3>
 
@@ -464,16 +484,14 @@ export default function OwnerHormones() {
           />
           
       </div>
-    </section>
+    </OwnerChartsSection>
   </>
 )}
 
    
 {activeTab ===
   "staff" && (
-  <section
-    className="owner-charts"
-  >
+  <OwnerChartsSection>
     {staffTab ===
       "testing" && (
       <>
@@ -632,7 +650,7 @@ export default function OwnerHormones() {
         </div>
       </>
     )}
-  </section>
+  </OwnerChartsSection>
 )}
 
       <PatientListModal
@@ -642,6 +660,7 @@ export default function OwnerHormones() {
       />
 
 {chartExpanded && (
+      <Suspense fallback={null}>
   <div
     onClick={() =>
       setChartExpanded(false)
@@ -790,6 +809,7 @@ export default function OwnerHormones() {
       </div>
     </div>
   </div>
+</Suspense>
 )}
       
 

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, lazy, Suspense } from "react";
 import "./CoagulationMain.css";
 import { db } from "../firebaseConfig.js";
 import {
@@ -10,14 +10,11 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import coagRouting from "../coag_testRouting.json";
-import CoagulationInventory from "../inventory/CoagulationInventoryTab";
 
 // --- IMPORT FOR DEDUCTION ---
 import { handleInventoryDeduction } from "../inventory/inventorymapping";
-import {
-  parseEntryDate,
-  toLocalDateString,
-} from "../shared/utils/dates.js";
+import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
+import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
 import { normalizeSource } from "../shared/utils/source.js";
 import { compositeId } from "../shared/utils/ids.js";
 import { getTestName } from "../shared/utils/tests.js";
@@ -26,6 +23,10 @@ import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
+
+const CoagulationInventory = lazy(() =>
+  import("../inventory/CoagulationInventoryTab")
+);
 
 const CURRENT_DEPT = "Coagulation";
 
@@ -477,34 +478,17 @@ const logout = () => {
       e.target.setSelectionRange(0, 0);
   };
 
-  const filteredPatients = patients
-    .filter((p) => {
-      if (regSearch.trim()) {
-        const key = String(p.regNo).toLowerCase();
-        const acc = String(p.diagnosticNo || "").toLowerCase();
-        if (
-          !key.includes(regSearch.trim().toLowerCase()) &&
-          !acc.includes(regSearch.trim().toLowerCase())
-        )
-          return false;
-      }
-      if (sourceFilter !== "All" && p.source !== sourceFilter) return false;
-      const eDate = parseEntryDate(p);
-      if (eDate) {
-        const entryDateStr = toLocalDateString(eDate);
-        if (dateFrom && entryDateStr < dateFrom) return false;
-        if (dateTo && entryDateStr > dateTo) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-      const dateA = parseEntryDate(a);
-      const dateB = parseEntryDate(b);
-      if (!dateA) return 1;
-      if (!dateB) return -1;
-      return dateA - dateB;
-    });
+  const filteredPatients = useMemo(
+    () =>
+      filterAndSortRegisterPatients(patients, {
+        regSearch,
+        sourceFilter,
+        dateFrom,
+        dateTo,
+        getDiag: (p) => p.diagnosticNo || "",
+      }),
+    [patients, regSearch, sourceFilter, dateFrom, dateTo]
+  );
 
   const tabBtnStyle = (isActive) => ({
     padding: "8px 25px",
@@ -632,8 +616,10 @@ const logout = () => {
                   <th>Action</th>
                 </tr>
               </thead>
-              <tbody>
-                {filteredPatients.map((p) => {
+              <VirtualizedTableBody
+                items={filteredPatients}
+                columnCount={17}
+                renderRow={(p) => {
                   const relevant = getRelevantCoagTests(p);
                   const key = p.compositeKey;
                   const isSaved = p.status === "saved";
@@ -824,13 +810,15 @@ const logout = () => {
                       </td>
                     </tr>
                   );
-                })}
-              </tbody>
+                }}
+              />
             </table>
           </div>
         </>
             ) : (
-              <CoagulationInventory />
+              <Suspense fallback={<p>Loading Inventory…</p>}>
+                <CoagulationInventory />
+              </Suspense>
             )}
       
             {criticalModalOpen && (

@@ -1,10 +1,9 @@
 
 import React from "react";
-import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
+import { mountEngApp } from "./shared/mountEngApp.jsx";
 import BiochemistryMain from "./biochem_main/BiochemistryMain.jsx";
 
-createEngRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <BiochemistryMain />
-  </React.StrictMode>
+mountEngApp(document.getElementById("root"),
+  <BiochemistryMain />
 );
+

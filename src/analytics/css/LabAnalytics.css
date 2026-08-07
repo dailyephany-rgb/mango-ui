@@ -61,7 +61,7 @@
   cursor: pointer;
   font-weight: 600;
   font-size: 15px;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .source-toggle button:hover {

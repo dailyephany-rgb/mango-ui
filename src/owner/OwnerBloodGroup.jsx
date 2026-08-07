@@ -1,6 +1,6 @@
 
 // src/owner/OwnerBloodGroupPage.jsx
-import React, { useEffect, useMemo, useState, useContext } from "react";
+import React, { useEffect, useMemo, useState, useContext, Suspense } from "react";
 import { OwnerContext } from "./OwnerContext.jsx";
 import DateSourceFilter from "./components/DateSourceFilter";
 
@@ -9,14 +9,17 @@ import KPIBlocks_BloodGroup from "./components/KPIBlocks_BloodGroup";
 
 import PatientListModal from "./components/PatientListModal";
 import DelayTable from "./components/DelayTable";
-import CountsBar from "./charts/CountsBar";
-import StackedStageLines from "./charts/StackedStageLines";
-import TimeBricks from "./charts/TimeBricks";
-import DelayHistogram from "./charts/DelayHistogram";
-import SLAScoreDonut from "./charts/SLAScoreDonut";
-import StaffDistribution from "./charts/StaffDistribution";
-import StaffAvgCards from "./charts/StaffAvgCards";
-import StaffTimeline from "./charts/StaffTimeline";
+import {
+  CountsBar,
+  StackedStageLines,
+  TimeBricks,
+  DelayHistogram,
+  SLAScoreDonut,
+  StaffDistribution,
+  StaffAvgCards,
+  StaffTimeline,
+  OwnerChartsSection,
+} from "./charts/lazyOwnerCharts";
 
 // --- DATA FETCHERS ---
 import * as TestingFetcher from "./lib/dataFetcher_bloodgroup_testing.js";
@@ -79,11 +82,31 @@ export default function OwnerBloodGroupPage() {
         setStaffAnalytics(payload.staffAnalytics ||null);
       },
     });
-
-
-    Fetcher.fetchTestTimings().then((t) => setTestTimings(t || {}));
     return () => unsub && unsub();
   }, [source, dateRange, mode]);
+  useEffect(() => {
+    let cancelled = false;
+    const run = () => {
+      const fetchTimings =
+        mode === "testing"
+          ? TestingFetcher.fetchTestTimings
+          : RetestingFetcher.fetchTestTimings;
+      fetchTimings().then((t) => {
+        if (!cancelled) setTestTimings(t || {});
+      });
+    };
+    const idle =
+      typeof requestIdleCallback === "function"
+        ? requestIdleCallback(run, { timeout: 2000 })
+        : setTimeout(run, 0);
+    return () => {
+      cancelled = true;
+      if (typeof cancelIdleCallback === "function" && typeof idle === "number")
+        cancelIdleCallback(idle);
+      else clearTimeout(idle);
+    };
+  }, [mode]);
+
 
   // 4. Process Rows for Charts
   const deptRows = useMemo(() => {
@@ -267,7 +290,7 @@ export default function OwnerBloodGroupPage() {
       {activeTab !== "staff" && (<KPIBlocks_BloodGroup kpis={fetchedKpis || {}} /> )}
 
       {activeTab === "overview" && (
-        <section className="owner-charts">
+        <OwnerChartsSection>
          
          <div className="chart-card">
   <h3>Counts Bar</h3>
@@ -400,7 +423,7 @@ export default function OwnerBloodGroupPage() {
     }
   />
 </div>
-        </section>
+        </OwnerChartsSection>
       )}
 
 
@@ -451,7 +474,7 @@ export default function OwnerBloodGroupPage() {
       </select>
     </div>
 
-    <section className="owner-charts">
+    <OwnerChartsSection>
       <div className="chart-card">
         <h3>Delay Histogram</h3>
 
@@ -478,12 +501,12 @@ export default function OwnerBloodGroupPage() {
           stage={delayStage}
         />
       </div>
-    </section>
+    </OwnerChartsSection>
   </>
 )}
 
 {activeTab === "timebricks" && (
-  <section className="owner-charts">
+  <OwnerChartsSection>
     <div className="chart-card full-width">
 
       <div
@@ -544,11 +567,11 @@ export default function OwnerBloodGroupPage() {
       </div>
 
     </div>
-  </section>
+  </OwnerChartsSection>
 )}
 
 {activeTab === "staff" && (
-  <section className="owner-charts">
+  <OwnerChartsSection>
 
     {staffTab === "testing" && (
       <>
@@ -680,11 +703,12 @@ export default function OwnerBloodGroupPage() {
             </>
           )}
 
-      </section>
+      </OwnerChartsSection>
     )}
 
       <PatientListModal open={openModal} onClose={() => setOpenModal(false)} patients={modalData} />
       {chartExpanded && (
+      <Suspense fallback={null}>
       <div
         onClick={() => setChartExpanded(false)}
         style={{
@@ -829,6 +853,7 @@ export default function OwnerBloodGroupPage() {
           </div>
         </div>
       </div>
+      </Suspense>
     )}
     </div>
   );

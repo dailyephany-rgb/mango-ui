@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, startTransition } from "react";
 import {
   collection,
   query,
@@ -17,6 +17,7 @@ import {
   localDayStart,
   localDayEndExclusive,
 } from "../utils/dates.js";
+import { annotateListenReason } from "../../engineering/telemetry/listenerWatch.js";
 
 /**
  * Scoped master_register subscription only.
@@ -30,6 +31,8 @@ export function useScopedMasterEntries({
 }) {
   const [masterEntries, setMasterEntries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const listenGenRef = useRef(0);
+  const prevDeptRef = useRef(masterDeptKey);
 
   useEffect(() => {
     const fromStr = dateFrom || getLocalDateString();
@@ -42,6 +45,16 @@ export function useScopedMasterEntries({
       setLoading(false);
       return undefined;
     }
+
+    listenGenRef.current += 1;
+    let listenReason = "page_load";
+    if (listenGenRef.current > 1) {
+      listenReason =
+        prevDeptRef.current !== masterDeptKey
+          ? "department_change"
+          : "date_change";
+    }
+    prevDeptRef.current = masterDeptKey;
 
     const startTs = Timestamp.fromDate(start);
     const endTs = Timestamp.fromDate(endExclusive);
@@ -71,13 +84,16 @@ export function useScopedMasterEntries({
     } catch {
       /* ignore */
     }
+    annotateListenReason(masterQuery, listenReason);
 
     const unsub = onSnapshot(
       masterQuery,
       (snapshot) => {
         const result = store.apply(snapshot);
         if (result.changed) {
-          setMasterEntries(result.values);
+          startTransition(() => {
+            setMasterEntries(result.values);
+          });
         }
         setLoading(false);
       },

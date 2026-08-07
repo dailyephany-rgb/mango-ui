@@ -1,7 +1,7 @@
 
 // src/main_master_admin.jsx
 import React from "react";
-import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
+import { mountEngApp } from "./shared/mountEngApp.jsx";
 
 import { OwnerProvider } from "./owner/OwnerContext.jsx";
 import MasterAdmin from "./master_admin/MasterAdmin.jsx"; // The UI component we created
@@ -11,10 +11,8 @@ import "./mango.css";
 
 console.log("MASTER ADMIN INTERFACE LOADED!");
 
-createEngRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <OwnerProvider>
+mountEngApp(document.getElementById("root"),
+  <OwnerProvider>
       <MasterAdmin />
     </OwnerProvider>
-  </React.StrictMode>
 );

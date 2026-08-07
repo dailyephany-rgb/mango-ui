@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import {
   collection,
@@ -22,6 +22,7 @@ import {
   setCache,
   SESSION_QUERY_TTL_MS,
 } from "../shared/cache/sessionQueryCache.js";
+import { annotateListenReason } from "../engineering/telemetry/listenerWatch.js";
 
 import LiveInventoryTab from "./tabs/LiveInventoryTab";
 import ExpirySurveillanceTab from "./tabs/ExpirySurveillanceTab";
@@ -37,9 +38,10 @@ const paintOrClear = (setter, cacheKey) => {
   const cached = getCache(cacheKey);
   if (Array.isArray(cached)) {
     setter(cached);
-  } else {
-    setter([]);
+    return true;
   }
+  setter([]);
+  return false;
 };
 
 const InventoryCommandCenter = () => {
@@ -54,6 +56,15 @@ const InventoryCommandCenter = () => {
   const [ledgerEntries, setLedgerEntries] = useState([]);
   const [comboLedgerEntries, setComboLedgerEntries] = useState([]);
 
+  const [loadingLive, setLoadingLive] = useState(false);
+  const [loadingConsumed, setLoadingConsumed] = useState(false);
+  const [loadingQC, setLoadingQC] = useState(false);
+  const [loadingLedger, setLoadingLedger] = useState(false);
+  const [loadingCombo, setLoadingCombo] = useState(false);
+
+  const liveGen = useRef(0);
+  const dateGen = useRef(0);
+
   const dateRange = { from: fromDate, to: toDate };
 
   // Sibling-tab flags: same Firestore query stays subscribed across these tabs
@@ -67,21 +78,41 @@ const InventoryCommandCenter = () => {
   const needsLedger = activeTab === "Ledger" || activeTab === "Cost";
   const needsCombo = activeTab === "Ledger";
 
-  // Live stock — Inventory + Expiry + Cost packet lookup. Never session-cache.
-  useEffect(() => {
-    if (!needsLive) return undefined;
+  const tabLoading =
+    (needsLive && loadingLive) ||
+    (needsConsumed && loadingConsumed) ||
+    (needsQC && loadingQC) ||
+    (needsLedger && loadingLedger) ||
+    (needsCombo && loadingCombo);
 
+  // Live stock — Inventory + Expiry + Cost packet lookup. Never session-cache.
+  // Query shape unchanged — loading UX + listen-reason annotation only.
+  useEffect(() => {
+    if (!needsLive) {
+      setLoadingLive(false);
+      return undefined;
+    }
+
+    liveGen.current += 1;
+    const reason = liveGen.current === 1 ? "page_load" : "deps_change";
+    setLoadingLive(true);
     setInventoryLogs([]);
+
     const liveQ = query(
       collection(db, "inventory_logs"),
       where("status", "in", INVENTORY_LIVE_STATUSES)
     );
+    annotateListenReason(liveQ, reason);
     const unsub = onSnapshot(
       liveQ,
-      (snap) => setInventoryLogs(mapDocs(snap)),
+      (snap) => {
+        setInventoryLogs(mapDocs(snap));
+        setLoadingLive(false);
+      },
       (err) => {
         console.error("[ICC] live inventory_logs failed:", err);
         setInventoryLogs([]);
+        setLoadingLive(false);
       }
     );
     return () => unsub();
@@ -89,13 +120,22 @@ const InventoryCommandCenter = () => {
 
   // Consumed history — status + consumedAt range
   useEffect(() => {
-    if (!needsConsumed) return undefined;
+    if (!needsConsumed) {
+      setLoadingConsumed(false);
+      return undefined;
+    }
 
+    dateGen.current += 1;
+    const reason = dateGen.current === 1 ? "page_load" : "date_change";
     const consumedKey = `icc:consumed:${fromDate}:${toDate}`;
-    paintOrClear(setInventoryLogs, consumedKey);
+    const hadCache = paintOrClear(setInventoryLogs, consumedKey);
+    setLoadingConsumed(!hadCache);
     const start = istDayStart(fromDate);
     const endExclusive = istDayEndExclusive(toDate);
-    if (!start || !endExclusive) return undefined;
+    if (!start || !endExclusive) {
+      setLoadingConsumed(false);
+      return undefined;
+    }
 
     const consumedQ = query(
       collection(db, "inventory_logs"),
@@ -104,12 +144,14 @@ const InventoryCommandCenter = () => {
       where("consumedAt", "<", Timestamp.fromDate(endExclusive)),
       orderBy("consumedAt", "desc")
     );
+    annotateListenReason(consumedQ, reason);
     const unsub = onSnapshot(
       consumedQ,
       (snap) => {
         const next = mapDocs(snap);
         setInventoryLogs(next);
         setCache(consumedKey, next, SESSION_QUERY_TTL_MS);
+        setLoadingConsumed(false);
       },
       (err) => {
         console.error(
@@ -117,6 +159,7 @@ const InventoryCommandCenter = () => {
           err
         );
         setInventoryLogs([]);
+        setLoadingConsumed(false);
       }
     );
     return () => unsub();
@@ -124,12 +167,17 @@ const InventoryCommandCenter = () => {
 
   // QC & Calibration — timestamp range (history)
   useEffect(() => {
-    if (!needsQC) return undefined;
+    if (!needsQC) {
+      setLoadingQC(false);
+      return undefined;
+    }
 
+    const reason = "date_change";
     const qcKey = `icc:qc:${fromDate}:${toDate}`;
     const calKey = `icc:calibration:${fromDate}:${toDate}`;
-    paintOrClear(setQCLogs, qcKey);
-    paintOrClear(setCalibrationLogs, calKey);
+    const hadQc = paintOrClear(setQCLogs, qcKey);
+    const hadCal = paintOrClear(setCalibrationLogs, calKey);
+    setLoadingQC(!(hadQc && hadCal));
 
     const unsubs = [];
     const qcQ = scopedTimestampRangeQuery("qc_logs", "timestamp", dateRange);
@@ -139,6 +187,7 @@ const InventoryCommandCenter = () => {
       dateRange
     );
     if (qcQ) {
+      annotateListenReason(qcQ, reason);
       unsubs.push(
         onSnapshot(
           qcQ,
@@ -146,15 +195,18 @@ const InventoryCommandCenter = () => {
             const next = mapDocs(snap);
             setQCLogs(next);
             setCache(qcKey, next, SESSION_QUERY_TTL_MS);
+            setLoadingQC(false);
           },
           (err) => {
             console.error("[ICC] qc_logs timestamp query failed:", err);
             setQCLogs([]);
+            setLoadingQC(false);
           }
         )
       );
     }
     if (calQ) {
+      annotateListenReason(calQ, reason);
       unsubs.push(
         onSnapshot(
           calQ,
@@ -162,6 +214,7 @@ const InventoryCommandCenter = () => {
             const next = mapDocs(snap);
             setCalibrationLogs(next);
             setCache(calKey, next, SESSION_QUERY_TTL_MS);
+            setLoadingQC(false);
           },
           (err) => {
             console.error(
@@ -169,25 +222,36 @@ const InventoryCommandCenter = () => {
               err
             );
             setCalibrationLogs([]);
+            setLoadingQC(false);
           }
         )
       );
     }
+    if (!qcQ && !calQ) setLoadingQC(false);
     return () => unsubs.forEach((u) => u());
   }, [needsQC, fromDate, toDate]);
 
   // Consumption ledger — Ledger + Cost. Persists across Ledger↔Cost.
   useEffect(() => {
-    if (!needsLedger) return undefined;
+    if (!needsLedger) {
+      setLoadingLedger(false);
+      return undefined;
+    }
 
+    const reason = "date_change";
     const ledgerKey = `icc:ledger:${fromDate}:${toDate}`;
-    paintOrClear(setLedgerEntries, ledgerKey);
+    const hadCache = paintOrClear(setLedgerEntries, ledgerKey);
+    setLoadingLedger(!hadCache);
     const ledgerQ = scopedTimestampRangeQuery(
       "consumption_ledger",
       "timestamp",
       dateRange
     );
-    if (!ledgerQ) return undefined;
+    if (!ledgerQ) {
+      setLoadingLedger(false);
+      return undefined;
+    }
+    annotateListenReason(ledgerQ, reason);
 
     const unsub = onSnapshot(
       ledgerQ,
@@ -195,6 +259,7 @@ const InventoryCommandCenter = () => {
         const next = mapDocs(snap);
         setLedgerEntries(next);
         setCache(ledgerKey, next, SESSION_QUERY_TTL_MS);
+        setLoadingLedger(false);
       },
       (err) => {
         console.error(
@@ -202,6 +267,7 @@ const InventoryCommandCenter = () => {
           err
         );
         setLedgerEntries([]);
+        setLoadingLedger(false);
       }
     );
     return () => unsub();
@@ -209,16 +275,25 @@ const InventoryCommandCenter = () => {
 
   // Combo ledger — Ledger tab only
   useEffect(() => {
-    if (!needsCombo) return undefined;
+    if (!needsCombo) {
+      setLoadingCombo(false);
+      return undefined;
+    }
 
+    const reason = "date_change";
     const comboKey = `icc:comboLedger:${fromDate}:${toDate}`;
-    paintOrClear(setComboLedgerEntries, comboKey);
+    const hadCache = paintOrClear(setComboLedgerEntries, comboKey);
+    setLoadingCombo(!hadCache);
     const comboQ = scopedTimestampRangeQuery(
       "combo_consumption_ledger",
       "timestamp",
       dateRange
     );
-    if (!comboQ) return undefined;
+    if (!comboQ) {
+      setLoadingCombo(false);
+      return undefined;
+    }
+    annotateListenReason(comboQ, reason);
 
     const unsub = onSnapshot(
       comboQ,
@@ -226,6 +301,7 @@ const InventoryCommandCenter = () => {
         const next = mapDocs(snap);
         setComboLedgerEntries(next);
         setCache(comboKey, next, SESSION_QUERY_TTL_MS);
+        setLoadingCombo(false);
       },
       (err) => {
         console.error(
@@ -233,6 +309,7 @@ const InventoryCommandCenter = () => {
           err
         );
         setComboLedgerEntries([]);
+        setLoadingCombo(false);
       }
     );
     return () => unsub();
@@ -289,6 +366,25 @@ const InventoryCommandCenter = () => {
           </button>
         </div>
       </div>
+
+      {tabLoading && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            margin: "8px 16px",
+            padding: "10px 14px",
+            borderRadius: 8,
+            border: "1px solid #cbd5e1",
+            background: "#f8fafc",
+            color: "#334155",
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          Loading inventory data…
+        </div>
+      )}
 
       {activeTab === "Inventory" && (
         <LiveInventoryTab inventoryLogs={inventoryLogs} />

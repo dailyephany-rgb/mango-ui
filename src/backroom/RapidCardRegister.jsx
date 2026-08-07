@@ -10,11 +10,9 @@ import {
 } from "firebase/firestore";
 import routing from "../backroom_routing.json";
 import "./Backroom.css";
-import {
-  parseEntryDate,
-  toLocalDateString,
-} from "../shared/utils/dates.js";
 import { normalizeSource } from "../shared/utils/source.js";
+import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
+import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
 import { compositeId } from "../shared/utils/ids.js";
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
@@ -501,30 +499,17 @@ const [pendingCriticalMap, setPendingCriticalMap] = usePersistedObjectState("rap
     } catch (err) { alert("Error saving."); } finally { setSaving(false); }
   };
 
-  const filteredEntries = useMemo(() => {
-    return mergedEntries
-      .filter((e) => {
-        if (regSearch) {
-          const search = regSearch.toLowerCase();
-          if (!String(e.regNo).toLowerCase().includes(search) && !String(e.diagnosticNo).toLowerCase().includes(search)) return false;
-        }
-        if (sourceFilter !== "All" && e.source !== sourceFilter) return false;
-        
-        const d = parseEntryDate(e);
-        if (d) {
-          const entryDateStr = toLocalDateString(d);
-          if (dateFrom && entryDateStr < dateFrom) return false;
-          if (dateTo && entryDateStr > dateTo) return false;
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-        const dateA = parseEntryDate(a);
-        const dateB = parseEntryDate(b);
-        return (dateA || 0) - (dateB || 0);
-      });
-  }, [mergedEntries, regSearch, sourceFilter, dateFrom, dateTo]);
+  const filteredEntries = useMemo(
+    () =>
+      filterAndSortRegisterPatients(mergedEntries, {
+        regSearch,
+        sourceFilter,
+        dateFrom,
+        dateTo,
+        getDiag: (p) => p.diagnosticNo || p.accessionNo || "",
+      }),
+    [mergedEntries, regSearch, sourceFilter, dateFrom, dateTo]
+  );
 
 
 
@@ -610,8 +595,10 @@ const [pendingCriticalMap, setPendingCriticalMap] = usePersistedObjectState("rap
               <th>NS1</th>
             </tr>
           </thead>
-          <tbody>
-            {filteredEntries.map((e) => {
+          <VirtualizedTableBody
+            items={filteredEntries}
+            columnCount={25}
+            renderRow={(e) => {
              const scanned = e.scanned === "Yes";
              const saved = e.status === "saved";
              
@@ -798,8 +785,8 @@ const [pendingCriticalMap, setPendingCriticalMap] = usePersistedObjectState("rap
           </td>                  
              </tr>
               );
-            })}
-          </tbody>
+            }}
+          />
         </table>
       </div>
       </div>

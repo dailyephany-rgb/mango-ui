@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useMemo, lazy, Suspense } from "react";
 import "./Haematology.css";
 import { db } from "../firebaseConfig.js";
 import {
@@ -11,17 +11,9 @@ import {
 } from "firebase/firestore";
 // Import Inventory Deduction Logic
 import { handleInventoryDeduction } from "../inventory/inventorymapping";
-// Import the Inventory Tab Component
-import HaemInventoryTab from "../inventory/HaemInventoryTab.jsx";
 import UserMenu from "../auth/UserMenu";
-import {
-  INVENTORY_MACHINES,
-  subscribeInventoryByMachines,
-} from "../shared/firestore/subscribeInventoryByMachines.js";
-import {
-  parseEntryDate,
-  toLocalDateString,
-} from "../shared/utils/dates.js";
+import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
+import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
 import { normalizeSource } from "../shared/utils/source.js";
 import { compositeId, safeKey } from "../shared/utils/ids.js";
 import {
@@ -34,6 +26,7 @@ import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.j
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
 
+const HaemInventoryTab = lazy(() => import("../inventory/HaemInventoryTab.jsx"));
 
 // 🚨 Define the unique key for this department
 const CURRENT_DEPT = "Haematology";
@@ -70,9 +63,6 @@ export default function Haematology() {
     getCriticalKey: (data) =>
       safeKey(compositeId(data.regNo, data.diagnosticNo)),
   });
-
-  // NEW: Lifted Inventory State to eliminate flickering when switching tabs
-  const [fullInventory, setFullInventory] = useState([]);
 
 const [criticalModalOpen, setCriticalModalOpen] = useState(false);
 const [criticalPatient, setCriticalPatient] = useState(null);
@@ -121,17 +111,6 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
     if (unit.includes("years") && numAge < 1) return true;
     return false;
   };
-
-  useEffect(() => {
-    if (activeTab !== "inventory") return;
-
-    const unsubInv = subscribeInventoryByMachines(
-      [...INVENTORY_MACHINES.haem3, ...INVENTORY_MACHINES.haem5],
-      (logs) => setFullInventory(logs)
-    );
-
-    return () => unsubInv();
-  }, [activeTab]);
 
   // useMemo combines master and haem register data instantly without async loops
   const patients = useMemo(() => {
@@ -391,31 +370,17 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
       }  
   };
 
-  const filteredPatients = patients
-    .filter((p) => {
-        if (regSearch.trim()) {
-          const key = String(p.regNo || "").toLowerCase();
-          const acc = String(p.diagnosticNo || p.accessionNo || "").toLowerCase();
-          if (!key.includes(regSearch.trim().toLowerCase()) && !acc.includes(regSearch.trim().toLowerCase())) return false;
-        }
-        if (sourceFilter !== "All" && p.source !== sourceFilter) return false;
-        
-        const eDate = parseEntryDate(p);
-        if (eDate) {
-          const entryDateStr = toLocalDateString(eDate);
-          if (dateFrom && entryDateStr < dateFrom) return false;
-          if (dateTo && entryDateStr > dateTo) return false;
-        }
-        return true;
-    })
-    .sort((a, b) => {
-        if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-        const dateA = parseEntryDate(a);
-        const dateB = parseEntryDate(b);
-        if (!dateA) return 1;
-        if (!dateB) return -1;
-        return dateA - dateB;
-      });
+  const filteredPatients = useMemo(
+    () =>
+      filterAndSortRegisterPatients(patients, {
+        regSearch,
+        sourceFilter,
+        dateFrom,
+        dateTo,
+        getDiag: (p) => p.diagnosticNo || p.accessionNo || "",
+      }),
+    [patients, regSearch, sourceFilter, dateFrom, dateTo]
+  );
 
   if (loading) return <p>Loading Haematology data...</p>;
 
@@ -457,8 +422,9 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
 </div>
 
       {activeTab === "inventory" ? (
-        /* Pass the pre-loaded background inventory data to the tab */
-        <HaemInventoryTab preLoadedInventory={fullInventory} />
+        <Suspense fallback={<p>Loading Inventory…</p>}>
+          <HaemInventoryTab />
+        </Suspense>
       ) : (
         <>
           <RegisterFilterBar
@@ -495,9 +461,22 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
                     <th>Action</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {filteredPatients.length > 0 ? (
-                    filteredPatients.map((p) => {
+                {filteredPatients.length === 0 ? (
+                  <tbody>
+                    <tr>
+                      <td
+                        colSpan="15"
+                        style={{ textAlign: "center", padding: 20 }}
+                      >
+                        No Haematology entries found.
+                      </td>
+                    </tr>
+                  </tbody>
+                ) : (
+                <VirtualizedTableBody
+                  items={filteredPatients}
+                  columnCount={16}
+                  renderRow={(p) => {
                       const regKey = p.compositeKey;
                       const selCanon = p.canonicalTests;
                      
@@ -612,13 +591,9 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
                           </td>
                         </tr>
                       );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan="15" style={{ textAlign: "center", padding: 20 }}>No Haematology entries found.</td>
-                    </tr>
-                  )}
-                </tbody>
+                  }}
+                />
+                )}
               </table>
             </div>
           </div>

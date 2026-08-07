@@ -4,7 +4,7 @@
 // Re-created to match the clean Hormones/Haem structure
 // ------------------------------------------------------
 
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState, Suspense } from "react";
 import { OwnerContext } from "../owner/OwnerContext.jsx";
 
 import DateSourceFilter from "../owner/components/DateSourceFilter";
@@ -12,14 +12,17 @@ import KPIBlocks from "../owner/components/KPIBlocks";
 import DelayTable from "../owner/components/DelayTable";
 import PatientListModal from "../owner/components/PatientListModal";
 
-import CountsBar from "../owner/charts/CountsBar";
-import StackedStageLines from "../owner/charts/StackedStageLines";
-import TimeBricks from "../owner/charts/TimeBricks";
-import DelayHistogram from "../owner/charts/DelayHistogram";
-import SLAScoreDonut from "../owner/charts/SLAScoreDonut";
-import StaffDistribution from "../owner/charts/StaffDistribution";
-import StaffAvgCards from "../owner/charts/StaffAvgCards";
-import StaffTimeline from "../owner/charts/StaffTimeline";
+import {
+  CountsBar,
+  StackedStageLines,
+  TimeBricks,
+  DelayHistogram,
+  SLAScoreDonut,
+  StaffDistribution,
+  StaffAvgCards,
+  StaffTimeline,
+  OwnerChartsSection,
+} from "./charts/lazyOwnerCharts";
 
 import {
   subscribeOverview,
@@ -66,10 +69,27 @@ export default function OwnerESRPage() {
       },
     });
 
-    fetchTestTimings().then((t) => setTestTimings(t || {}));
-
     return () => unsub && unsub();
   }, [source, dateRange]);
+  useEffect(() => {
+    let cancelled = false;
+    const run = () => {
+      fetchTestTimings().then((t) => {
+        if (!cancelled) setTestTimings(t || {});
+      });
+    };
+    const idle =
+      typeof requestIdleCallback === "function"
+        ? requestIdleCallback(run, { timeout: 2000 })
+        : setTimeout(run, 0);
+    return () => {
+      cancelled = true;
+      if (typeof cancelIdleCallback === "function" && typeof idle === "number")
+        cancelIdleCallback(idle);
+      else clearTimeout(idle);
+    };
+  }, []);
+
 
   /* ---------------- DATA ASSIGNMENT ---------------- */
   const deptRows = useMemo(() => {
@@ -276,7 +296,7 @@ export default function OwnerESRPage() {
                 )}
 
                 {activeTab === "overview" && (
-                  <section className="owner-charts">
+                  <OwnerChartsSection>
                     <div className="chart-card">
                       <h3>Counts Bar</h3>
                       <CountsBar counts={countsForBar} />
@@ -405,11 +425,11 @@ export default function OwnerESRPage() {
           </div>
 
 
-        </section>
+        </OwnerChartsSection>
       )}
 
 {activeTab === "delays" && (
-  <section className="owner-charts">
+  <OwnerChartsSection>
     <div className="chart-card">
 
       <div
@@ -476,7 +496,7 @@ export default function OwnerESRPage() {
           <div className="chart-card full-width">
           <DelayTable violators={violators} stage={delayStage}/>
           </div>
-        </section>
+        </OwnerChartsSection>
       )}
 
 {activeTab === "timebricks" && (
@@ -507,7 +527,7 @@ export default function OwnerESRPage() {
       />
     </div>
 
-    <section className="owner-charts">
+    <OwnerChartsSection>
       <div className="chart-card full-width">
         <h3>Time Bricks Chart</h3>
 
@@ -531,12 +551,12 @@ export default function OwnerESRPage() {
           />
         </div>
       </div>
-    </section>
+    </OwnerChartsSection>
   </>
 )}
 
 {activeTab === "staff" && (
-  <section className="owner-charts">
+  <OwnerChartsSection>
 
     {staffTab === "testing" && (
       <>
@@ -667,7 +687,7 @@ export default function OwnerESRPage() {
             </>
           )}
 
-        </section>
+        </OwnerChartsSection>
       )}
 
       <PatientListModal
@@ -677,6 +697,7 @@ export default function OwnerESRPage() {
       />
 
 {chartExpanded && (
+      <Suspense fallback={null}>
   <div
     onClick={() => setChartExpanded(false)}
     style={{
@@ -813,7 +834,8 @@ export default function OwnerESRPage() {
       </div>
         </div>
           </div>
-             )}
+             </Suspense>
+      )}
     </div>
   );
 }

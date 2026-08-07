@@ -5,12 +5,15 @@ import DateSourceFilter from "../owner/components/DateSourceFilter";
 import KPIBlocks from "../owner/components/KPIBlocksOutsource";
 import DelayTable from "../owner/components/DelayTable";
 import PatientListModal from "../owner/components/PatientListModalOutsource";
-import CountsBar from "../owner/charts/CountsBarOutsource";
-import StackedStageLines from "../owner/charts/StackedStageLinesOutsource";
-import TimeBricks from "../owner/charts/TimeBricksOutsource";
-import SLAScoreDonut from "../owner/charts/SLAScoreDonut";
-import DelayHistogram from "../owner/charts/DelayHistogram";
-import StaffDistribution from "../owner/charts/StaffDistribution";
+import {
+  CountsBarOutsource as CountsBar,
+  StackedStageLinesOutsource as StackedStageLines,
+  TimeBricksOutsource as TimeBricks,
+  SLAScoreDonut,
+  DelayHistogram,
+  StaffDistribution,
+  OwnerChartsSection,
+} from "../owner/charts/lazyOwnerCharts";
 
 import * as OutsourceFetcher from "../owner/lib/dataFetcher_outsource.js";
 import testTimingsJson from "../owner/data/test_timings.json";
@@ -356,7 +359,7 @@ export default function OwnerOutsourcePage() {
       {activeSubTab === "overview" && (
   <>
 
-    <section className="owner-charts">
+    <OwnerChartsSection>
       <div className="chart-card">
         <h3>Counts Bar</h3>
 
@@ -433,7 +436,7 @@ export default function OwnerOutsourcePage() {
   </div>
 </div>
 
-    </section>
+    </OwnerChartsSection>
   </>
 )}
 
@@ -481,7 +484,7 @@ export default function OwnerOutsourcePage() {
       </select>
     </div>
 
-    <section className="owner-charts">
+    <OwnerChartsSection>
 
       <div className="chart-card">
               
@@ -527,14 +530,14 @@ export default function OwnerOutsourcePage() {
               }
             />
           </div>
-          </section></>
+          </OwnerChartsSection></>
           )}
 
     
 
       {/* TIME BRICKS TAB */}
       {activeSubTab === "timebricks" && (
-        <section className="owner-charts" style={{ display: 'block' }}>
+        <OwnerChartsSection style={{ display: 'block' }}>
           <div className="chart-card full-width" style={{ padding: '20px', minHeight: 'unset' }}>
             <h3 style={{ marginBottom: '15px' }}>Time Bricks Chart</h3>
             <TimeBricks 
@@ -548,7 +551,7 @@ export default function OwnerOutsourcePage() {
               }}
             />
           </div>
-        </section>
+        </OwnerChartsSection>
       )}
 
     {/* STAFF TAB */}
@@ -587,7 +590,7 @@ export default function OwnerOutsourcePage() {
       </select>
     </div>
 
-    <section className="owner-charts">
+    <OwnerChartsSection>
       <div
         className="chart-card full-width"
         style={{ minHeight: "480px" }}
@@ -602,7 +605,7 @@ export default function OwnerOutsourcePage() {
           }
         />
       </div>
-    </section>
+    </OwnerChartsSection>
   </>
 )}
 

@@ -2,7 +2,7 @@
 
 // src/main_owner_serology.jsx
 import React from "react";
-import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
+import { mountEngApp } from "./shared/mountEngApp.jsx";
 
 import { OwnerProvider } from "./owner/OwnerContext.jsx";
 import OwnerSerologyPage from "./owner/OwnerSerology.jsx";
@@ -12,10 +12,8 @@ import "./mango.css";
 
 console.log("OWNER SEROLOGY ENTRY LOADED!");
 
-createEngRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <OwnerProvider>
+mountEngApp(document.getElementById("root"),
+  <OwnerProvider>
       <OwnerSerologyPage />
     </OwnerProvider>
-  </React.StrictMode>
 );

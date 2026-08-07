@@ -184,29 +184,70 @@ function trackListener(payload = {}) {
       ...base(),
       domain: "listeners",
       action: payload.action || "snapshot",
+      event: payload.event || payload.action || null,
       collection: payload.collection || "unknown",
       listenerId: payload.listenerId || null,
       docCount: payload.docCount ?? null,
       durationMs: payload.durationMs ?? null,
+      payloadBytes: payload.payloadBytes ?? null,
+      reason: payload.reason || null,
+      recreated: payload.recreated || false,
       error: payload.error ? String(payload.error).slice(0, 200) : null,
     });
   }, "eng.listener");
 }
 
 function trackListenerUpsert(payload) {
-  trackListener({ ...payload, action: payload?.action || "open" });
+  trackListener({
+    ...payload,
+    action: payload?.action || "open",
+    event: payload?.event || "listener_start",
+  });
 }
 
 function trackListenerClose(payload) {
-  trackListener({ ...payload, action: "close" });
+  trackListener({ ...payload, action: "close", event: "listener_close" });
 }
 
 function trackListenerSnapshot(payload) {
-  trackListener({ ...payload, action: "snapshot" });
+  trackListener({
+    ...payload,
+    action: "snapshot",
+    event: payload?.event || "first_snapshot_received",
+  });
 }
 
 function trackListenerReconnect(payload) {
-  trackListener({ ...payload, action: "reconnect" });
+  trackListener({
+    ...payload,
+    action: "reconnect",
+    event: "listener_reconnect",
+    reason: payload?.reason || "reconnect",
+  });
+}
+
+function trackListenerRecreated(payload) {
+  trackListener({
+    ...payload,
+    action: "recreated",
+    event: "listener_recreated",
+  });
+}
+
+function trackListenerTimeout(payload) {
+  trackListener({
+    ...payload,
+    action: payload?.action || "timeout",
+    event: payload?.event || "first_snapshot_timeout",
+  });
+}
+
+function trackListenerRetry(payload) {
+  trackListener({
+    ...payload,
+    action: payload?.action || "retry",
+    event: payload?.event || "retry_clicked",
+  });
 }
 
 function trackRender(payload = {}) {
@@ -417,6 +458,21 @@ function setActiveListeners(n) {
   }, "eng.listeners.count");
 }
 
+/**
+ * Observer-only wait-state for heartbeat / fleet Health.
+ * @param {{ waitingListeners?: number, hungLoads?: number, loadingPages?: string[], retries?: number }} partial
+ */
+function setListenerWaitState(partial = {}) {
+  safeRun(() => {
+    setHeartbeatContext({
+      waitingListeners: partial.waitingListeners ?? null,
+      hungLoads: partial.hungLoads ?? null,
+      loadingPages: partial.loadingPages ?? null,
+      retryCount: partial.retries ?? null,
+    });
+  }, "eng.listeners.wait");
+}
+
 export const EngTelemetry = {
   init,
   setContext,
@@ -428,6 +484,9 @@ export const EngTelemetry = {
   trackListenerClose,
   trackListenerSnapshot,
   trackListenerReconnect,
+  trackListenerRecreated,
+  trackListenerTimeout,
+  trackListenerRetry,
   trackListener,
   trackRender,
   trackLongTask,
@@ -438,6 +497,7 @@ export const EngTelemetry = {
   flush,
   shutdown,
   setActiveListeners,
+  setListenerWaitState,
   isInitialized: () => initialized,
   pendingCount: () => bufferSize(),
   flushNow: () => flushNow({ force: true }).catch(() => {}),

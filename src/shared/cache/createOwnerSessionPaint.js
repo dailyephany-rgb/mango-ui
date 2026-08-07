@@ -1,7 +1,11 @@
 /**
  * Behaviour-preserving session paint for read-heavy subscribeOverview streams.
  * Paints cache immediately (if any), then live snapshot replaces UI + cache.
+ *
+ * N5: onData delivery scheduled via startTransition — KPI payload identical,
+ * React paint may defer under load (no Firestore / aggregation changes).
  */
+import { startTransition } from "react";
 import {
   getCache,
   setCache,
@@ -23,11 +27,18 @@ export function createOwnerSessionPaint({ dept, dateRange, source, onData }) {
   const paintStarted = performance.now();
   let painted = false;
 
+  const deliver = (payload) => {
+    if (typeof onData !== "function") return;
+    startTransition(() => {
+      onData(payload);
+    });
+  };
+
   const paintCache = () => {
     const cached = getCache(key);
     if (cached != null && typeof onData === "function") {
       painted = true;
-      onData(cached);
+      deliver(cached);
       try {
         import("../../performance/performanceCollector.js").then((m) => {
           m.recordOwnerPaint?.(performance.now() - paintStarted, key);
@@ -43,9 +54,7 @@ export function createOwnerSessionPaint({ dept, dateRange, source, onData }) {
     if (payload != null) {
       setCache(key, payload, SESSION_QUERY_TTL_MS);
     }
-    if (typeof onData === "function") {
-      onData(payload);
-    }
+    deliver(payload);
     if (painted) {
       try {
         import("../../performance/performanceCollector.js").then((m) => {

@@ -1,11 +1,9 @@
 
 import React from "react";
-import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
+import { mountEngApp } from "./shared/mountEngApp.jsx";
 import BackroomMain from "./backroom/BackroomMain.jsx";
 import "./backroom/Backroom.css";
 
-createEngRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <BackroomMain />
-  </React.StrictMode>
+mountEngApp(document.getElementById("root"),
+  <BackroomMain />
 );

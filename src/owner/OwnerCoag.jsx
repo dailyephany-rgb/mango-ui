@@ -5,7 +5,7 @@
 // Coagulation Analytics Page - Optimized with Slowest Entry Restore
 // ------------------------------------------------------
 
-import React, { useEffect, useMemo, useState, useContext } from "react";
+import React, { useEffect, useMemo, useState, useContext, Suspense } from "react";
 import { OwnerContext } from "./OwnerContext.jsx";
 
 import DateSourceFilter from "./components/DateSourceFilter";
@@ -13,14 +13,17 @@ import KPIBlocks from "./components/KPIBlocks";
 import PatientListModal from "./components/PatientListModal";
 import DelayTable from "./components/DelayTable";
 
-import CountsBar from "./charts/CountsBar";
-import StackedStageLines from "./charts/StackedStageLines";
-import TimeBricks from "./charts/TimeBricks"; // Now powered by react-calendar-timeline
-import DelayHistogram from "./charts/DelayHistogram";
-import SLAScoreDonut from "./charts/SLAScoreDonut";
-import StaffDistribution from "./charts/StaffDistribution";
-import StaffAvgCards from "./charts/StaffAvgCards";
-import StaffTimeline from "./charts/StaffTimeline";
+import {
+  CountsBar,
+  StackedStageLines,
+  TimeBricks,
+  DelayHistogram,
+  SLAScoreDonut,
+  StaffDistribution,
+  StaffAvgCards,
+  StaffTimeline,
+  OwnerChartsSection,
+} from "./charts/lazyOwnerCharts";
 
 import {
   subscribeOverview,
@@ -67,10 +70,27 @@ export default function OwnerCoagPage() {
         if (payload.staffAnalytics) setStaffAnalytics( payload.staffAnalytics ||null);
       }
     });
-
-    fetchTestTimings().then((t) => setTestTimings(t || {}));
     return () => unsub && unsub();
   }, [source, dateRange]);
+  useEffect(() => {
+    let cancelled = false;
+    const run = () => {
+      fetchTestTimings().then((t) => {
+        if (!cancelled) setTestTimings(t || {});
+      });
+    };
+    const idle =
+      typeof requestIdleCallback === "function"
+        ? requestIdleCallback(run, { timeout: 2000 })
+        : setTimeout(run, 0);
+    return () => {
+      cancelled = true;
+      if (typeof cancelIdleCallback === "function" && typeof idle === "number")
+        cancelIdleCallback(idle);
+      else clearTimeout(idle);
+    };
+  }, []);
+
 
   // 1. Restore Slowest Entry Logic based on current deptRows
   const slowestEntry = useMemo(() => {
@@ -283,7 +303,7 @@ export default function OwnerCoagPage() {
       )}
 
       {activeTab === "overview" && (
-        <section className="owner-charts">
+        <OwnerChartsSection>
           <div className="chart-card">
             <h3>Counts Bar</h3>
             <CountsBar counts={countsForBar} />
@@ -409,11 +429,11 @@ export default function OwnerCoagPage() {
               }
             />
           </div>
-        </section>
+        </OwnerChartsSection>
       )}
 
 {activeTab === "delays" && (
-  <section className="owner-charts">
+  <OwnerChartsSection>
     <div className="chart-card">
 
       <div
@@ -475,7 +495,7 @@ export default function OwnerCoagPage() {
           <div className="chart-card full-width">
             <DelayTable violators={violators} />
           </div>
-        </section>
+        </OwnerChartsSection>
       )}
 
       
@@ -508,7 +528,7 @@ export default function OwnerCoagPage() {
       />
     </div>
 
-    <section className="owner-charts">
+    <OwnerChartsSection>
       <div className="chart-card full-width">
         <h3>Time Bricks Chart</h3>
 
@@ -531,12 +551,12 @@ export default function OwnerCoagPage() {
           />
         </div>
       </div>
-    </section>
+    </OwnerChartsSection>
   </>
 )}
 
 {activeTab === "staff" && (
-  <section className="owner-charts">
+  <OwnerChartsSection>
 
     {staffTab === "testing" && (
       <>
@@ -667,12 +687,13 @@ export default function OwnerCoagPage() {
             </>
           )}
 
-        </section>
+        </OwnerChartsSection>
       )}
 
       <PatientListModal open={openModal} onClose={() => setOpenModal(false)} patients={modalData} />
 
       {chartExpanded && (
+      <Suspense fallback={null}>
   <div
     onClick={() =>
       setChartExpanded(false)
@@ -829,6 +850,7 @@ export default function OwnerCoagPage() {
             </div>
           </div>
         </div>
+      </Suspense>
       )}
     </div>
   );

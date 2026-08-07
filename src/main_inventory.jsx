@@ -1,6 +1,6 @@
 
 import React from "react";
-import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
+import { mountEngApp } from "./shared/mountEngApp.jsx";
 // Added the missing import for OwnerProvider
 import { OwnerProvider } from "./owner/OwnerContext.jsx"; 
 // Updated to match your folder structure
@@ -10,10 +10,8 @@ import "./mango.css";
 
 console.log("LAB INVENTORY MODULE LOADED");
 
-createEngRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <OwnerProvider>
+mountEngApp(document.getElementById("root"),
+  <OwnerProvider>
       <InventoryIntake />
     </OwnerProvider>
-  </React.StrictMode>
 );
