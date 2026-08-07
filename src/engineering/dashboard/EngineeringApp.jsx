@@ -5,6 +5,7 @@
 
 import React, { useState } from "react";
 import { EngErrorBoundary } from "./EngErrorBoundary.jsx";
+import EngOpsGate from "./EngOpsGate.jsx";
 import {
   HealthPage,
   DevicesPage,
@@ -45,27 +46,29 @@ export default function EngineeringApp() {
 
   return (
     <EngErrorBoundary>
-      <div className="eng-app">
-        <nav className="eng-nav" aria-label="Engineering sections">
-          <div className="eng-brand">
-            Mango Engineering
-            <span>Operations · observer only</span>
-          </div>
-          {NAV.map((n) => (
-            <button
-              key={n.id}
-              type="button"
-              className={tab === n.id ? "active" : ""}
-              onClick={() => setTab(n.id)}
-            >
-              {n.label}
-            </button>
-          ))}
-        </nav>
-        <main className="eng-main">
-          <Page />
-        </main>
-      </div>
+      <EngOpsGate>
+        <div className="eng-app">
+          <nav className="eng-nav" aria-label="Engineering sections">
+            <div className="eng-brand">
+              Mango Engineering
+              <span>Operations · observer only</span>
+            </div>
+            {NAV.map((n) => (
+              <button
+                key={n.id}
+                type="button"
+                className={tab === n.id ? "active" : ""}
+                onClick={() => setTab(n.id)}
+              >
+                {n.label}
+              </button>
+            ))}
+          </nav>
+          <main className="eng-main">
+            <Page />
+          </main>
+        </div>
+      </EngOpsGate>
     </EngErrorBoundary>
   );
 }

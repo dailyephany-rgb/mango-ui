@@ -1,11 +1,11 @@
 
 
 import React from "react";
-import ReactDOM from "react-dom/client";
+import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
 import ValidatorDashboard from "./ValidatorUI/ValidatorDashboard.jsx";
 import "./ValidatorUI/ValidatorDashboard.css";
 
-ReactDOM.createRoot(document.getElementById("root")).render(
+createEngRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ValidatorDashboard />
   </React.StrictMode>

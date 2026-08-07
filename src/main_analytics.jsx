@@ -1,6 +1,6 @@
 
 import React from "react";
-import ReactDOM from "react-dom/client";
+import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
 import { OwnerProvider } from "./owner/OwnerContext.jsx";
 import LabAnalytics from "./analytics/LabAnalytics.jsx";
 import "./owner/OwnerUI.css";
@@ -8,7 +8,7 @@ import "./mango.css";
 
 console.log("LAB ANALYTICS MODULE LOADED");
 
-ReactDOM.createRoot(document.getElementById("root")).render(
+createEngRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <OwnerProvider>
       <LabAnalytics />

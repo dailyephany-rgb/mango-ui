@@ -1,6 +1,6 @@
 // src/main.jsx
 import React, { useState } from "react";
-import ReactDOM from "react-dom/client";
+import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
 import Mango from "./mango.jsx";
 import MasterView_Table from "./master/MasterView_Table.jsx";
 import MasterView_Rectangle from "./master_register_2/MasterView_Rectangle.jsx";
@@ -74,7 +74,7 @@ function App() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(
+createEngRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>

@@ -6,6 +6,7 @@
 import React from "react";
 import { EngTelemetry } from "../telemetry/EngTelemetry.js";
 import { safeRun } from "../telemetry/safeRun.js";
+import { sanitizeErrorPayload } from "../telemetry/redaction.js";
 
 export class EngErrorBoundary extends React.Component {
   constructor(props) {
@@ -22,14 +23,13 @@ export class EngErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     safeRun(() => {
-      EngTelemetry.trackError({
+      const clean = sanitizeErrorPayload({
         source: "react",
         message: error?.message || String(error),
-        stack: `${error?.stack || ""}\n${info?.componentStack || ""}`.slice(
-          0,
-          2000
-        ),
+        stack: `${error?.stack || ""}\n${info?.componentStack || ""}`,
+        name: error?.name,
       });
+      EngTelemetry.trackError(clean);
     }, "eng.boundary");
   }
 

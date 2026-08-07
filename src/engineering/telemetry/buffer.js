@@ -4,9 +4,18 @@
 
 import { BUFFER_CAPACITY, ENG_BUFFER_KEY } from "../constants.js";
 import { safeRun, safeCall } from "./safeRun.js";
+import { getRuntimeSettings } from "./runtimeSettings.js";
 
 /** @type {object[]} */
 let ring = [];
+
+function capacity() {
+  try {
+    return getRuntimeSettings().bufferCapacity || BUFFER_CAPACITY;
+  } catch {
+    return BUFFER_CAPACITY;
+  }
+}
 
 /**
  * @param {object} event
@@ -14,8 +23,8 @@ let ring = [];
 export function pushEvent(event) {
   safeRun(() => {
     ring.push(event);
-    if (ring.length > BUFFER_CAPACITY) {
-      // Drop oldest non-error first
+    const cap = capacity();
+    while (ring.length > cap) {
       let dropIdx = ring.findIndex((e) => e?.domain !== "errors");
       if (dropIdx < 0) dropIdx = 0;
       ring.splice(dropIdx, 1);
@@ -56,7 +65,7 @@ export function spillToSession() {
       return raw ? JSON.parse(raw) : [];
     }, []);
     const merged = [...(Array.isArray(existing) ? existing : []), ...ring].slice(
-      -BUFFER_CAPACITY
+      -capacity()
     );
     sessionStorage.setItem(ENG_BUFFER_KEY, JSON.stringify(merged));
   }, "eng.spill");

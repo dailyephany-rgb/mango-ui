@@ -1,7 +1,7 @@
 
 import React from "react";
 
-import ReactDOM from "react-dom/client";
+import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
 
 import {
   OwnerProvider

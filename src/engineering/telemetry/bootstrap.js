@@ -6,16 +6,30 @@
 import { EngTelemetry } from "./EngTelemetry.js";
 import { isEngTelemetryEnabled } from "./killSwitch.js";
 import { resolvePageIdentity } from "../../performance/firestoreMetrics.js";
-import { scheduleFlush } from "./flush.js";
+import { scheduleFlush, flushViaBeacon } from "./flush.js";
 import { spillToSession } from "./buffer.js";
 import { safeRun } from "./safeRun.js";
 import { ENG_BUILD_ID } from "../constants.js";
+import { refreshRuntimeSettings } from "./runtimeSettings.js";
 
 let started = false;
 
 /**
- * Install window error hooks (once).
+ * Allow kill-switch re-enable to start again in the same page session.
  */
+export function resetEngineeringTelemetry() {
+  started = false;
+}
+
+function detectStrictModeDev() {
+  // Heuristic: Vite/React StrictMode double-invokes effects in DEV
+  try {
+    return !!(import.meta.env && import.meta.env.DEV);
+  } catch {
+    return false;
+  }
+}
+
 function installErrorHooks() {
   safeRun(() => {
     if (typeof window === "undefined") return;
@@ -24,6 +38,7 @@ function installErrorHooks() {
         source: "window.onerror",
         message: ev?.message || String(ev?.error || "error"),
         stack: ev?.error?.stack || "",
+        name: ev?.error?.name,
       });
     });
     window.addEventListener("unhandledrejection", (ev) => {
@@ -32,14 +47,12 @@ function installErrorHooks() {
         source: "unhandledrejection",
         message: reason?.message || String(reason || "rejection"),
         stack: reason?.stack || "",
+        name: reason?.name,
       });
     });
   }, "eng.errors");
 }
 
-/**
- * Forward long tasks from PerformanceObserver when available.
- */
 function installLongTaskHook() {
   safeRun(() => {
     if (typeof PerformanceObserver === "undefined") return;
@@ -55,18 +68,35 @@ function installLongTaskHook() {
   }, "eng.longtask");
 }
 
+function getNavigationTiming() {
+  try {
+    const entries = performance.getEntriesByType("navigation");
+    if (entries && entries[0]) {
+      const n = entries[0];
+      return {
+        domCompleteMs: n.domComplete,
+        loadEventEndMs: n.loadEventEnd,
+      };
+    }
+  } catch {
+    /* ignore */
+  }
+  return { domCompleteMs: null, loadEventEndMs: null };
+}
+
 /**
- * Capture page-load timings into EngTelemetry (parallel to clinical perf layer).
+ * Capture page-load timings into EngTelemetry (aligned with EDS §6 as far as available).
  */
 function capturePageLoad() {
   safeRun(() => {
-    const identity = resolvePageIdentity();
     const timings = {
       firstPaintMs: null,
       firstRenderMs: null,
+      firstSnapshotMs: null,
       interactiveMs: null,
       totalMs: null,
     };
+    const nav = getNavigationTiming();
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -92,14 +122,33 @@ function capturePageLoad() {
       /* ignore */
     }
 
+    let finalized = false;
     const finish = () => {
-      timings.totalMs = performance.now();
-      timings.interactiveMs = timings.totalMs;
+      if (finalized) return;
+      finalized = true;
+      timings.firstSnapshotMs = EngTelemetry.getFirstSnapshotMs();
+      const domComplete = nav.domCompleteMs ?? performance.now();
+      const snap = timings.firstSnapshotMs;
+      timings.interactiveMs =
+        snap != null ? Math.max(domComplete, snap) : domComplete;
+      timings.totalMs = Math.max(
+        timings.interactiveMs || 0,
+        performance.now(),
+        nav.loadEventEndMs || 0
+      );
       EngTelemetry.trackPageLoad(timings);
     };
 
     window.addEventListener("load", () => setTimeout(finish, 800));
     setTimeout(finish, 15000);
+
+    const poll = setInterval(() => {
+      if (EngTelemetry.getFirstSnapshotMs() != null) {
+        clearInterval(poll);
+        setTimeout(finish, 200);
+      }
+    }, 100);
+    setTimeout(() => clearInterval(poll), 16000);
   }, "eng.pageLoadCapture");
 }
 
@@ -110,8 +159,6 @@ export function startEngineeringTelemetry() {
   safeRun(() => {
     if (!isEngTelemetryEnabled()) return;
 
-    // Skip heavy eng flush noise on Engineering Dashboard itself for page scoring —
-    // still init for device presence when viewing eng UI.
     const identity = resolvePageIdentity();
     let user = null;
     try {
@@ -125,7 +172,10 @@ export function startEngineeringTelemetry() {
       department: identity.department,
       buildId: ENG_BUILD_ID,
       user,
+      reactStrictDev: detectStrictModeDev(),
     });
+
+    void refreshRuntimeSettings();
 
     installErrorHooks();
     if (identity.page !== "Engineering" && identity.page !== "Performance") {
@@ -136,6 +186,7 @@ export function startEngineeringTelemetry() {
     const onLeave = () => {
       safeRun(() => {
         spillToSession();
+        flushViaBeacon();
         scheduleFlush({ force: true });
         EngTelemetry.heartbeat();
       }, "eng.leave");
@@ -145,7 +196,6 @@ export function startEngineeringTelemetry() {
       if (document.visibilityState === "hidden") onLeave();
     });
 
-    // Sync open listener count from clinical perf store when available (metadata only)
     const syncListeners = () => {
       safeRun(() => {
         import("../../performance/performanceStore.js")

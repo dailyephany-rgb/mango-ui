@@ -88,6 +88,8 @@ export function HealthPage() {
   const { rows: pages } = useEngCollection(ENG_COLLECTIONS.pages);
   const { rows: firestore } = useEngCollection(ENG_COLLECTIONS.firestoreMetrics);
   const { rows: alerts } = useEngCollection(ENG_COLLECTIONS.alerts);
+  const { rows: network } = useEngCollection(ENG_COLLECTIONS.network);
+  const { rows: healthDocs } = useEngCollection(ENG_COLLECTIONS.health);
   const local = useLocalEngBuffer();
 
   const now = Date.now();
@@ -98,6 +100,8 @@ export function HealthPage() {
   const errors1h = errors.filter((e) => (e.ts || 0) >= hourAgo).length;
   const slow = firestore.reduce((a, r) => a + (r.slowCount || 0), 0);
   const qCount = firestore.reduce((a, r) => a + (r.queryCount || 0), 0);
+  const offlineEvents = network.reduce((a, r) => a + (r.offlineEvents || 0), 0);
+  const fleetLatest = healthDocs.find((h) => h.id === "fleet_latest");
   const loadSamples = pages
     .map((p) => p.lastTotalMs)
     .filter((n) => typeof n === "number");
@@ -115,6 +119,7 @@ export function HealthPage() {
     errorCount: errors1h,
     slowQueryCount: slow,
     queryCount: qCount,
+    offlineEvents,
     devicesOnline: online,
     devicesTotal: devices.length || 1,
     memoryPressure: false,
@@ -170,7 +175,21 @@ export function HealthPage() {
       <div className="eng-panel">
         <h2>Score factors</h2>
         <pre className="eng-muted" style={{ margin: 0, fontSize: "0.8rem" }}>
-          {JSON.stringify(health.factors, null, 2)}
+          {JSON.stringify(
+            {
+              live: health.factors,
+              fleet_latest: fleetLatest
+                ? {
+                    score: fleetLatest.score,
+                    grade: fleetLatest.grade,
+                    errorCount: fleetLatest.errorCount,
+                  }
+                : null,
+              offlineEvents,
+            },
+            null,
+            2
+          )}
         </pre>
       </div>
       {loading && <EmptyHint configured={configured} loading />}
@@ -181,6 +200,7 @@ export function HealthPage() {
 export function DevicesPage() {
   const configured = useEngConfigured();
   const { rows, loading } = useEngCollection(ENG_COLLECTIONS.deviceStatus);
+  const { rows: hourly } = useEngCollection(ENG_COLLECTIONS.heartbeatHourly);
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState(null);
 
@@ -269,6 +289,28 @@ export function DevicesPage() {
               2
             )}
           </pre>
+          <h2>Recent hourly heartbeats</h2>
+          <table className="eng-table">
+            <thead>
+              <tr>
+                <th>Hour</th>
+                <th>Beats</th>
+                <th>Last page</th>
+              </tr>
+            </thead>
+            <tbody>
+              {hourly
+                .filter((h) => h.deviceId === (selected.deviceId || selected.id))
+                .slice(0, 24)
+                .map((h) => (
+                  <tr key={h.id}>
+                    <td>{h.hour}</td>
+                    <td>{h.beats || 0}</td>
+                    <td>{h.lastPage || "—"}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
           <button type="button" className="eng-btn" onClick={() => setSelected(null)}>
             Close
           </button>
@@ -405,6 +447,7 @@ export function ListenersPage() {
                 <th>Opens</th>
                 <th>Closes</th>
                 <th>Snapshots</th>
+                <th>Reconnects</th>
                 <th>Errors</th>
                 <th>Last docs</th>
               </tr>
@@ -418,6 +461,7 @@ export function ListenersPage() {
                   <td>{r.opens || 0}</td>
                   <td>{r.closes || 0}</td>
                   <td>{r.snapshots || 0}</td>
+                  <td>{r.reconnects || 0}</td>
                   <td>{r.errors || 0}</td>
                   <td>{r.lastDocCount ?? "—"}</td>
                 </tr>
@@ -454,6 +498,7 @@ export function MemoryPage() {
                 <th>Used</th>
                 <th>Total</th>
                 <th>Limit</th>
+                <th>SQC entries</th>
                 <th>Samples</th>
                 <th>Page</th>
               </tr>
@@ -478,6 +523,7 @@ export function MemoryPage() {
                       ? `${(r.jsHeapSizeLimit / 1048576).toFixed(0)} MB`
                       : "—"}
                   </td>
+                  <td>{r.sqcCacheEntries ?? "—"}</td>
                   <td>{r.sampleCount || 0}</td>
                   <td>{r.page || "—"}</td>
                 </tr>
@@ -784,6 +830,19 @@ export function SettingsPage() {
   const [slowMs, setSlowMs] = useState(
     settings?.alertThresholds?.slowQueryMs ?? 2000
   );
+  const [retentionDays, setRetentionDays] = useState(
+    settings?.retentionDays ?? 90
+  );
+  const [debugSampling, setDebugSampling] = useState(
+    !!settings?.debugSampling
+  );
+  const [opsPin, setOpsPin] = useState(settings?.opsPin || "eng-ops");
+  const [opsAllowlist, setOpsAllowlist] = useState(
+    Array.isArray(settings?.opsAllowlist)
+      ? settings.opsAllowlist.join(",")
+      : ""
+  );
+  const [retentionResult, setRetentionResult] = useState(null);
 
   return (
     <>
@@ -829,7 +888,27 @@ export function SettingsPage() {
           >
             Flush now
           </button>
+          <button
+            type="button"
+            className="eng-btn"
+            onClick={async () => {
+              const { runEngRetention } = await import(
+                "../telemetry/retention.js"
+              );
+              const r = await runEngRetention({ maxDeletes: 200 });
+              setRetentionResult(r);
+            }}
+            disabled={!configured}
+          >
+            Run retention cleanup
+          </button>
         </div>
+        {retentionResult && (
+          <p className="eng-muted">
+            Retention: deleted {retentionResult.deleted} / scanned{" "}
+            {retentionResult.scanned}
+          </p>
+        )}
         <p>
           Status:{" "}
           <strong>{localEnabled ? "enabled" : "disabled"}</strong> · pending
@@ -847,7 +926,7 @@ export function SettingsPage() {
       <div className="eng-panel eng-form">
         <h2>Fleet settings (settings/global)</h2>
         <label>
-          Heartbeat seconds (documented target)
+          Heartbeat seconds
           <input
             type="number"
             value={heartbeatSec}
@@ -862,17 +941,72 @@ export function SettingsPage() {
             onChange={(e) => setSlowMs(Number(e.target.value))}
           />
         </label>
+        <label>
+          Retention days (daily aggregates)
+          <input
+            type="number"
+            value={retentionDays}
+            onChange={(e) => setRetentionDays(Number(e.target.value))}
+          />
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={debugSampling}
+            onChange={(e) => setDebugSampling(e.target.checked)}
+          />{" "}
+          Debug minute heartbeat history
+        </label>
+        <label>
+          Ops PIN (dashboard gate)
+          <input
+            type="password"
+            value={opsPin}
+            onChange={(e) => setOpsPin(e.target.value)}
+            autoComplete="off"
+          />
+        </label>
+        <label>
+          Ops allowlist (comma-separated loggedUser names)
+          <input
+            value={opsAllowlist}
+            onChange={(e) => setOpsAllowlist(e.target.value)}
+            placeholder="admin,eng"
+          />
+        </label>
         <div className="eng-actions">
           <button
             type="button"
             className="eng-btn"
-            onClick={() =>
-              saveSettings({
+            onClick={async () => {
+              const partial = {
                 heartbeatSec,
-                alertThresholds: { slowQueryMs: slowMs },
+                retentionDays,
+                debugSampling,
+                opsPin,
+                opsAllowlist: opsAllowlist
+                  .split(",")
+                  .map((s) => s.trim())
+                  .filter(Boolean),
+                alertThresholds: {
+                  slowQueryMs: slowMs,
+                  errorCount1h: 10,
+                  p95LoadMs: 30000,
+                },
                 telemetryEnabled: true,
-              })
-            }
+              };
+              await saveSettings(partial);
+              const { applyRuntimeSettings } = await import(
+                "../telemetry/runtimeSettings.js"
+              );
+              applyRuntimeSettings({
+                heartbeatVisibleMs: heartbeatSec * 1000,
+                retentionDays,
+                debugSampling,
+                slowQueryMs: slowMs,
+                alertThresholds: partial.alertThresholds,
+              });
+            }}
             disabled={!configured}
           >
             Save to Engineering Firebase

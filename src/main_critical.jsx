@@ -1,9 +1,9 @@
 
 import React from "react";
-import ReactDOM from "react-dom/client";
+import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
 import CriticalAlertDashboard from "./critical/CriticalAlertDashboard.jsx";
 
-ReactDOM.createRoot(document.getElementById("root")).render(
+createEngRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <CriticalAlertDashboard />
   </React.StrictMode>

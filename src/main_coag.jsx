@@ -1,10 +1,10 @@
 
 
 import React from "react";
-import ReactDOM from "react-dom/client";
+import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
 import CoagulationMain from "./coagulation/CoagulationMain.jsx";
 
-ReactDOM.createRoot(document.getElementById("root")).render(
+createEngRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <CoagulationMain />
   </React.StrictMode>

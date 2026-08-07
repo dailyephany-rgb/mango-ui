@@ -1,9 +1,9 @@
 
 import React from "react";
-import ReactDOM from "react-dom/client";
+import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
 import BiochemistryMain from "./biochem_main/BiochemistryMain.jsx";
 
-ReactDOM.createRoot(document.getElementById("root")).render(
+createEngRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <BiochemistryMain />
   </React.StrictMode>

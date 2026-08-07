@@ -1,0 +1,56 @@
+/**
+ * Production-oriented Engineering Firestore rules (Auth allowlist).
+ *
+ * Deploy ONLY after Firebase Auth is enabled on the eng project and ops
+ * accounts exist. Until then, use firestore.rules.engineering (Phase-1 LAN).
+ *
+ * Replace OPS_UID_ALLOWLIST with real Auth UIDs.
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOps() {
+      return request.auth != null
+        && request.auth.uid in [
+          // 'REPLACE_WITH_OPS_UID_1',
+          // 'REPLACE_WITH_OPS_UID_2'
+        ];
+    }
+
+    function isClinicalName(name) {
+      return name in [
+        'master_register', 'report_details', 'biochemistry_register',
+        'hormones_main', 'haematology_register', 'inventory_logs',
+        'consumption_ledger', 'users', 'critical_alerts'
+      ];
+    }
+
+    function isEngCol(col) {
+      return col in [
+        'devices', 'device_status', 'heartbeat_hourly', 'departments',
+        'firestore_metrics', 'pages', 'network', 'memory', 'react_metrics',
+        'errors', 'audit', 'health', 'settings', 'builds', 'alerts',
+        'listener_daily', 'heartbeats'
+      ];
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Device agents may write telemetry without Auth in lab Phase-1 hybrids:
+    // Prefer Auth custom tokens for production fleets.
+    match /{col}/{docId} {
+      allow read: if isEngCol(col) && !isClinicalName(col) && isOps();
+      allow write: if isEngCol(col) && !isClinicalName(col)
+        && (isOps() || col in [
+          'devices', 'device_status', 'heartbeat_hourly', 'departments',
+          'firestore_metrics', 'pages', 'network', 'memory', 'react_metrics',
+          'errors', 'builds', 'alerts', 'listener_daily', 'heartbeats', 'health'
+        ]);
+      // settings + audit: ops only
+      allow write: if col in ['settings', 'audit'] && isOps();
+    }
+  }
+}

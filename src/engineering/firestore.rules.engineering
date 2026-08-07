@@ -30,7 +30,7 @@ service cloud.firestore {
           'devices', 'device_status', 'heartbeat_hourly', 'departments',
           'firestore_metrics', 'pages', 'network', 'memory', 'react_metrics',
           'errors', 'audit', 'health', 'settings', 'builds', 'alerts',
-          'listener_daily'
+          'listener_daily', 'heartbeats'
         ];
     }
   }

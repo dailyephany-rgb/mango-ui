@@ -1,11 +1,11 @@
 
 
 import React from "react";
-import ReactDOM from "react-dom/client";
+import { createEngRoot } from "./engineering/telemetry/createEngRoot.js";
 import OutsourceRegister from "./outsource/Outsource.jsx";
 import "./outsource/Outsource.css"; // Using the new separate CSS
 
-ReactDOM.createRoot(document.getElementById("root")).render(
+createEngRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <div className="backroom-container">
        <OutsourceRegister />

@@ -99,6 +99,7 @@ export default function OwnerApp() {
               insideLab: "/owner_lab.html",
               outsource: "/owner_outsource.html",
               critical: "/Critical.html",
+              engineering: "/engineering.html",
               analytics: "/analytics.html",
               master_admin: "/master_admin.html",
               performance: "/performance.html",
@@ -130,6 +131,7 @@ export default function OwnerApp() {
             ──────────
           </option>
           <option value="critical">Critical</option>
+          <option value="engineering">Engineering Operations</option>
           <option value="analytics">Count Analytics</option>
           <option value="master_admin">Master Admin</option>
           <option value="performance">Performance & Diagnostics</option>

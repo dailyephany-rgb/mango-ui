@@ -1,9 +1,9 @@
 # Mango LIMS — Engineering Telemetry Platform  
 ## Engineering Design Specification (EDS)
 
-**Document type:** Design only — no implementation  
-**Status:** Draft for review before any code  
-**Audience:** Engineering team implementing the Engineering Operations Platform  
+**Document type:** Engineering Design Specification (SoT for ops platform)  
+**Status:** Implemented under `src/engineering/**` — design remains authoritative for behaviour/isolation  
+**Audience:** Engineers maintaining the Engineering Operations Platform  
 **Prerequisite reading:** `src/doc/architecture/` (Parts 1–5 + Appendix A)  
 **Clinical SoT:** Firebase project `vasundhara-4c6e5` (unchanged)  
 **Date:** 2026-08-07  
@@ -775,8 +775,9 @@ With aggressive batching (1 flush/min): metric writes drop ~10× → **5 devices
 | Item | Value |
 |------|-------|
 | Author role | Lead Software Architect (design) |
-| Implementation | Not started |
+| Status | Design source of truth for the Engineering Operations Platform |
+| Implementation | Shipped under `src/engineering/**` (observe-only; separate eng Firebase) |
 | Depends on | Architecture docs Parts 1–5 + Appendix A |
-| Next step | Human review & approval of Sections 3, 4, 16, 18 |
+| Ops config | `src/engineering/eng.env.example`, `firestore.rules.engineering*` |
 
 **End of Engineering Design Specification**

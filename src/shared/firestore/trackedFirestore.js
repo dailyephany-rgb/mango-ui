@@ -27,6 +27,7 @@ import {
 import { isEngTelemetryEnabled } from "../../engineering/telemetry/killSwitch.js";
 import { EngTelemetry } from "../../engineering/telemetry/EngTelemetry.js";
 import { safeRun } from "../../engineering/telemetry/safeRun.js";
+import { getRuntimeSettings } from "../../engineering/telemetry/runtimeSettings.js";
 
 let listenerSeq = 0;
 let snapshotSample = 0;
@@ -45,6 +46,14 @@ function engOn() {
 
 function monitoring() {
   return isMonitorEnabled() || engOn();
+}
+
+function snapshotEvery() {
+  try {
+    return getRuntimeSettings().sampleRates?.snapshotEvery ?? 10;
+  } catch {
+    return 10;
+  }
 }
 
 /**
@@ -66,6 +75,7 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
   const startedAt = Date.now();
   const t0 = now();
   let first = true;
+  let hadError = false;
 
   if (perf) {
     upsertListener({
@@ -89,6 +99,37 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
     }, "eng.snap.open");
   }
 
+  const reportListenerError = (err) => {
+    hadError = true;
+    if (perf) {
+      upsertListener({ id, state: "Error", error: String(err?.message || err) });
+    }
+    if (eng) {
+      safeRun(() => {
+        EngTelemetry.trackListener({
+          action: "error",
+          collection,
+          listenerId: id,
+          error: err?.message || err,
+        });
+        EngTelemetry.trackQuery({
+          collection,
+          durationMs: 0,
+          docCount: 0,
+          kind: "snapshot_error",
+          failure: true,
+          queryKey: `${ctx.page}:${collection}:listen`,
+        });
+        EngTelemetry.trackError({
+          source: "firestore",
+          message: err?.message || String(err),
+          stack: err?.stack || "",
+          name: err?.name,
+        });
+      }, "eng.snap.err");
+    }
+  };
+
   const wrapNext = (snap) => {
     const durationMs = now() - t0;
     const docCount = snap?.docs?.length ?? (snap?.exists?.() ? 1 : 0);
@@ -100,6 +141,25 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
       if (c.type === "added") added += 1;
       else if (c.type === "modified") modified += 1;
       else if (c.type === "removed") removed += 1;
+    }
+
+    if (eng && hadError) {
+      safeRun(() => {
+        EngTelemetry.trackListenerReconnect({
+          collection,
+          listenerId: id,
+          docCount,
+        });
+        EngTelemetry.trackQuery({
+          collection,
+          durationMs,
+          docCount,
+          kind: "snapshot_reconnect",
+          reconnect: true,
+          queryKey: `${ctx.page}:${collection}:listen`,
+        });
+      }, "eng.snap.reconnect");
+      hadError = false;
     }
 
     if (first) {
@@ -121,6 +181,7 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
       }
       if (eng) {
         safeRun(() => {
+          EngTelemetry.noteFirstSnapshot(durationMs);
           EngTelemetry.trackQuery({
             collection,
             durationMs,
@@ -153,7 +214,8 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
       }
       if (eng) {
         snapshotSample += 1;
-        if (snapshotSample % 10 === 0) {
+        const every = snapshotEvery();
+        if (snapshotSample % every === 0) {
           safeRun(() => {
             EngTelemetry.trackQuery({
               collection,
@@ -182,34 +244,16 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
         lastAdded: added,
         lastModified: modified,
         lastRemoved: removed,
+        state: "Active",
       });
     }
     return onNext(snap);
   };
 
-  const wrapError = onError
-    ? (err) => {
-        if (perf) {
-          upsertListener({ id, state: "Error", error: String(err?.message || err) });
-        }
-        if (eng) {
-          safeRun(() => {
-            EngTelemetry.trackListener({
-              action: "error",
-              collection,
-              listenerId: id,
-              error: err?.message || err,
-            });
-            EngTelemetry.trackError({
-              source: "firestore",
-              message: err?.message || String(err),
-              stack: err?.stack || "",
-            });
-          }, "eng.snap.err");
-        }
-        return onError(err);
-      }
-    : undefined;
+  const wrapError = (err) => {
+    reportListenerError(err);
+    if (typeof onError === "function") return onError(err);
+  };
 
   let unsub;
   if (typeof onNext === "object" && onNext !== null && !onError) {
@@ -217,40 +261,17 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
     unsub = fbOnSnapshot(refOrQuery, {
       ...observer,
       next: (snap) => wrapNext(snap),
-      error: observer.error
-        ? (err) => {
-            if (perf) {
-              upsertListener({
-                id,
-                state: "Error",
-                error: String(err?.message || err),
-              });
-            }
-            if (eng) {
-              safeRun(() => {
-                EngTelemetry.trackListener({
-                  action: "error",
-                  collection,
-                  listenerId: id,
-                  error: err?.message || err,
-                });
-                EngTelemetry.trackError({
-                  source: "firestore",
-                  message: err?.message || String(err),
-                  stack: err?.stack || "",
-                });
-              }, "eng.snap.err2");
-            }
-            return observer.error(err);
-          }
-        : undefined,
+      error: (err) => {
+        reportListenerError(err);
+        if (observer.error) return observer.error(err);
+      },
     });
   } else if (options !== undefined) {
     unsub = fbOnSnapshot(refOrQuery, wrapNext, wrapError, options);
   } else if (onError !== undefined) {
     unsub = fbOnSnapshot(refOrQuery, wrapNext, wrapError);
   } else {
-    unsub = fbOnSnapshot(refOrQuery, wrapNext);
+    unsub = fbOnSnapshot(refOrQuery, wrapNext, wrapError);
   }
 
   return () => {

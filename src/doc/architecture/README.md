@@ -24,7 +24,7 @@ This documentation set exists so another engineering team can operate and mainta
 | **4** | [Architecture_Part_4_Flows_Firebase_Listeners.md](./Architecture_Part_4_Flows_Firebase_Listeners.md) | Page flows, Firebase collections, listener audit |
 | **5** | [Architecture_Part_5_State_Effects_Performance_CSS.md](./Architecture_Part_5_State_Effects_Performance_CSS.md) | Filters, state, useEffect audit, performance map, CSS, engineering notes |
 | **A** | [Architecture_Appendix_A_Deep_Module_Notes.md](./Architecture_Appendix_A_Deep_Module_Notes.md) | Dense module wiring: save patterns, localStorage keys, Owner/ICC accuracy notes |
-| **EDS** | [Engineering_Telemetry_Platform_EDS.md](./Engineering_Telemetry_Platform_EDS.md) | Engineering Telemetry Platform design (observe-only; no clinical dependency) |
+| **EDS** | [Engineering_Telemetry_Platform_EDS.md](./Engineering_Telemetry_Platform_EDS.md) | Engineering Operations Platform design SoT (observe-only; `src/engineering/**`) |
 
 ### Machine-readable companions
 

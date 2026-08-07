@@ -149,6 +149,23 @@ export async function flushPerfDaily(opts = {}) {
   if (!isMonitorEnabled()) return null;
   if (flushInFlight) return null;
 
+  // EDS: freeze durable clinical perf_daily writes once Engineering backend is live.
+  // Local rollups still update so Performance dashboard session views keep working.
+  let skipRemote = false;
+  try {
+    const { isEngFirebaseConfigured } = await import(
+      "../engineering/firebaseEngConfig.js"
+    );
+    const { isEngTelemetryEnabled } = await import(
+      "../engineering/telemetry/killSwitch.js"
+    );
+    if (isEngFirebaseConfigured() && isEngTelemetryEnabled()) {
+      skipRemote = true;
+    }
+  } catch {
+    skipRemote = false;
+  }
+
   const now = Date.now();
   if (!opts.force && now - lastFlushAt < MIN_FLUSH_MS) return null;
 
@@ -168,6 +185,11 @@ export async function flushPerfDaily(opts = {}) {
     }
 
     flushCountedReads();
+
+    if (skipRemote) {
+      lastFlushAt = Date.now();
+      return localMerged;
+    }
 
     const ref = doc(db, PERF_DAILY_COLLECTION, docIdFor(dateStr, clientId));
     let remoteExisting = {};

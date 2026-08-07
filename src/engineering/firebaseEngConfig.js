@@ -5,6 +5,9 @@
  * 1. Vite env: VITE_ENG_API_KEY, VITE_ENG_PROJECT_ID, …
  * 2. engFirebase.options.js export
  *
+ * Named-database fallback (EDS option B):
+ *   VITE_ENG_DATABASE_ID=engineering (with eng project OR same-project eng options)
+ *
  * If unset, telemetry buffers locally; dashboard runs in local-only mode.
  */
 
@@ -45,6 +48,15 @@ function readEngOptions() {
   return null;
 }
 
+function readDatabaseId() {
+  try {
+    const env = typeof import.meta !== "undefined" ? import.meta.env : {};
+    return env?.VITE_ENG_DATABASE_ID || engFirebaseOptions?.databaseId || null;
+  } catch {
+    return null;
+  }
+}
+
 let engDb = null;
 let initAttempted = false;
 
@@ -68,7 +80,10 @@ export function getEngDb() {
 
     const existing = getApps().find((a) => a.name === ENG_APP_NAME);
     const engApp = existing || initializeApp(options, ENG_APP_NAME);
-    engDb = getFirestore(engApp);
+    const databaseId = readDatabaseId();
+    engDb = databaseId
+      ? getFirestore(engApp, databaseId)
+      : getFirestore(engApp);
     return engDb;
   } catch (err) {
     try {
@@ -84,4 +99,9 @@ export function getEngDb() {
 /** @returns {string | null} */
 export function getEngProjectId() {
   return readEngOptions()?.projectId || null;
+}
+
+/** @returns {string | null} */
+export function getEngDatabaseId() {
+  return readDatabaseId();
 }

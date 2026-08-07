@@ -3,12 +3,7 @@
  * All methods: void, sync return, never throw to caller.
  */
 
-import {
-  ENG_BUILD_ID,
-  FLUSH_INTERVAL_MS,
-  MEMORY_SAMPLE_MS,
-  NETWORK_PROBE_MS,
-} from "../constants.js";
+import { ENG_BUILD_ID } from "../constants.js";
 import { isEngTelemetryEnabled } from "./killSwitch.js";
 import { safeRun } from "./safeRun.js";
 import { pushEvent, spillToSession, bufferSize } from "./buffer.js";
@@ -18,16 +13,25 @@ import {
   stopHeartbeat,
   setHeartbeatContext,
   sendHeartbeat,
+  rearmHeartbeat,
 } from "./heartbeat.js";
 import { getDeviceId } from "./deviceId.js";
+import { sanitizeErrorPayload, measureMangoStorageKB } from "./redaction.js";
+import {
+  getRuntimeSettings,
+  refreshRuntimeSettings,
+} from "./runtimeSettings.js";
 
-/** @type {{ deviceId: string, buildId: string, page: string, department: string, user: string | null }} */
+/** @type {{ deviceId: string, buildId: string, page: string, department: string, user: string | null, reactStrictDev: boolean, lastFirstSnapshotMs: number | null, lastPageLoadMs: number | null }} */
 let context = {
   deviceId: "",
   buildId: ENG_BUILD_ID,
   page: "unknown",
   department: "Unknown",
   user: null,
+  reactStrictDev: false,
+  lastFirstSnapshotMs: null,
+  lastPageLoadMs: null,
 };
 
 let initialized = false;
@@ -35,6 +39,9 @@ let flushTimer = null;
 let memoryTimer = null;
 let networkTimer = null;
 let renderSampleCounter = 0;
+let wasOffline = false;
+let prevHeap = null;
+let prevHeapAt = null;
 
 function base() {
   return {
@@ -44,6 +51,7 @@ function base() {
     page: context.page,
     department: context.department,
     user: context.user,
+    reactStrictDev: context.reactStrictDev || undefined,
   };
 }
 
@@ -51,9 +59,6 @@ function enabled() {
   return isEngTelemetryEnabled();
 }
 
-/**
- * @param {object} [opts]
- */
 function init(opts = {}) {
   safeRun(() => {
     if (initialized) {
@@ -63,20 +68,29 @@ function init(opts = {}) {
     if (!enabled()) return;
     initialized = true;
     context = {
+      ...context,
       deviceId: opts.deviceId || getDeviceId(),
       buildId: opts.buildId || ENG_BUILD_ID,
       page: opts.page || "unknown",
       department: opts.department || "Unknown",
       user: opts.user ?? null,
+      reactStrictDev: !!opts.reactStrictDev,
     };
     setHeartbeatContext({
       page: context.page,
       department: context.department,
+      user: context.user,
     });
     startHeartbeat();
     armFlush();
     armMemory();
     armNetwork();
+    void refreshRuntimeSettings().then(() => {
+      rearmFlush();
+      rearmHeartbeat();
+      armMemory();
+      armNetwork();
+    });
     pushEvent({
       ...base(),
       domain: "builds",
@@ -89,38 +103,63 @@ function init(opts = {}) {
   }, "eng.init");
 }
 
-/**
- * @param {object} partial
- */
 function setContext(partial = {}) {
   safeRun(() => {
+    const pageChanged =
+      (partial.page && partial.page !== context.page) ||
+      (partial.department && partial.department !== context.department);
     context = { ...context, ...partial };
-    if (partial.page || partial.department) {
+    if (partial.page || partial.department || partial.user !== undefined) {
       setHeartbeatContext({
         page: context.page,
         department: context.department,
+        user: context.user,
       });
+    }
+    if (pageChanged && initialized && enabled()) {
+      sendHeartbeat();
     }
   }, "eng.setContext");
 }
 
 /**
- * @param {object} timings
+ * Record first tracked snapshot timing for page-load finalize.
+ * @param {number} arrivalMs
  */
+function noteFirstSnapshot(arrivalMs) {
+  safeRun(() => {
+    if (!enabled() || !initialized) return;
+    if (context.lastFirstSnapshotMs == null && typeof arrivalMs === "number") {
+      context.lastFirstSnapshotMs = arrivalMs;
+      setHeartbeatContext({ lastFirstSnapshotMs: arrivalMs });
+    }
+  }, "eng.noteSnap");
+}
+
+function getFirstSnapshotMs() {
+  return context.lastFirstSnapshotMs;
+}
+
 function trackPageLoad(timings = {}) {
   safeRun(() => {
     if (!enabled() || !initialized) return;
+    const merged = {
+      ...timings,
+      firstSnapshotMs:
+        timings.firstSnapshotMs ?? context.lastFirstSnapshotMs ?? null,
+    };
+    if (merged.totalMs != null) {
+      context.lastPageLoadMs = merged.totalMs;
+      setHeartbeatContext({ lastPageLoadMs: merged.totalMs });
+    }
     pushEvent({
       ...base(),
       domain: "pages",
-      ...timings,
+      ...merged,
     });
   }, "eng.pageLoad");
 }
 
-/**
- * @param {object} payload
- */
 function trackQuery(payload = {}) {
   safeRun(() => {
     if (!enabled() || !initialized) return;
@@ -132,13 +171,12 @@ function trackQuery(payload = {}) {
       durationMs: payload.durationMs ?? null,
       docCount: payload.docCount ?? 0,
       queryKey: payload.queryKey || null,
+      failure: payload.failure || false,
+      reconnect: payload.reconnect || false,
     });
   }, "eng.query");
 }
 
-/**
- * @param {object} payload
- */
 function trackListener(payload = {}) {
   safeRun(() => {
     if (!enabled() || !initialized) return;
@@ -167,15 +205,16 @@ function trackListenerSnapshot(payload) {
   trackListener({ ...payload, action: "snapshot" });
 }
 
-/**
- * @param {object} payload
- */
+function trackListenerReconnect(payload) {
+  trackListener({ ...payload, action: "reconnect" });
+}
+
 function trackRender(payload = {}) {
   safeRun(() => {
     if (!enabled() || !initialized) return;
-    // Sample ~5%
+    const every = getRuntimeSettings().sampleRates?.renderEvery ?? 20;
     renderSampleCounter += 1;
-    if (renderSampleCounter % 20 !== 0 && payload.kind !== "longtask") return;
+    if (renderSampleCounter % every !== 0 && payload.kind !== "longtask") return;
     pushEvent({
       ...base(),
       domain: "react",
@@ -186,59 +225,87 @@ function trackRender(payload = {}) {
   }, "eng.render");
 }
 
-/**
- * @param {object} payload
- */
 function trackLongTask(payload = {}) {
   trackRender({ ...payload, kind: "longtask" });
 }
 
-/**
- * @param {object} payload
- */
 function trackMemorySample(payload = {}) {
   safeRun(() => {
     if (!enabled() || !initialized) return;
+    const storage = measureMangoStorageKB();
+    let sqcCacheEntries = 0;
+    try {
+      if (typeof sessionStorage !== "undefined") {
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const k = sessionStorage.key(i);
+          if (k && k.startsWith("mango.sqc.v1:")) sqcCacheEntries += 1;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    const used = payload.usedJSHeapSize;
+    let growth = null;
+    if (prevHeap != null && used != null && prevHeapAt != null) {
+      const hours = (Date.now() - prevHeapAt) / 3_600_000;
+      if (hours > 0) {
+        growth = (used - prevHeap) / (1024 * 1024) / hours;
+      }
+    }
+    if (used != null) {
+      prevHeap = used;
+      prevHeapAt = Date.now();
+    }
     pushEvent({
       ...base(),
       domain: "memory",
       ...payload,
+      ...storage,
+      heapGrowthMBPerHour: growth,
+      engBufferSize: bufferSize(),
+      listenerCount: payload.listenerCount ?? null,
+      sqcCacheEntries,
     });
     const mb =
-      payload.usedJSHeapSize != null
-        ? Math.round(payload.usedJSHeapSize / (1024 * 1024))
-        : null;
+      used != null ? Math.round(used / (1024 * 1024)) : null;
     if (mb != null) setHeartbeatContext({ memoryMB: mb });
   }, "eng.memory");
 }
 
-/**
- * @param {object} payload
- */
 function trackError(payload = {}) {
   safeRun(() => {
     if (!enabled() || !initialized) return;
+    const clean = sanitizeErrorPayload(payload);
     pushEvent({
       ...base(),
       domain: "errors",
-      source: payload.source || "unknown",
-      message: String(payload.message || "").slice(0, 500),
-      stack: String(payload.stack || "").slice(0, 2000),
+      ...clean,
     });
+    // Prefer faster flush for errors
+    scheduleFlush({ force: true });
   }, "eng.error");
 }
 
-/**
- * @param {object} payload
- */
 function trackNetwork(payload = {}) {
   safeRun(() => {
     if (!enabled() || !initialized) return;
+    const online = payload.online;
+    let reconnect = !!payload.reconnect;
+    if (online === false) wasOffline = true;
+    if (online === true && wasOffline) {
+      reconnect = true;
+      wasOffline = false;
+    }
+    if (payload.latencyMs != null) {
+      setHeartbeatContext({ networkRttMs: payload.latencyMs });
+    }
     pushEvent({
       ...base(),
       domain: "network",
-      online: payload.online ?? null,
+      online: online ?? null,
       latencyMs: payload.latencyMs ?? null,
+      reconnect,
+      flushRetry: payload.flushRetry || false,
     });
   }, "eng.network");
 }
@@ -265,8 +332,13 @@ function shutdown() {
 }
 
 function armFlush() {
+  rearmFlush();
+}
+
+function rearmFlush() {
   if (flushTimer) clearInterval(flushTimer);
-  flushTimer = setInterval(() => scheduleFlush(), FLUSH_INTERVAL_MS);
+  const ms = getRuntimeSettings().flushIntervalMs || 60_000;
+  flushTimer = setInterval(() => scheduleFlush(), ms);
 }
 
 function armMemory() {
@@ -274,7 +346,14 @@ function armMemory() {
   const sample = () => {
     safeRun(() => {
       const mem = performance?.memory;
-      if (!mem) return;
+      if (!mem) {
+        trackMemorySample({
+          usedJSHeapSize: null,
+          totalJSHeapSize: null,
+          jsHeapSizeLimit: null,
+        });
+        return;
+      }
       trackMemorySample({
         usedJSHeapSize: mem.usedJSHeapSize,
         totalJSHeapSize: mem.totalJSHeapSize,
@@ -283,7 +362,10 @@ function armMemory() {
     }, "eng.mem.tick");
   };
   sample();
-  memoryTimer = setInterval(sample, MEMORY_SAMPLE_MS);
+  memoryTimer = setInterval(
+    sample,
+    getRuntimeSettings().memorySampleMs || 30_000
+  );
 }
 
 function armNetwork() {
@@ -297,7 +379,6 @@ function armNetwork() {
   const probe = () => {
     safeRun(() => {
       const t0 = performance.now();
-      // Probe Engineering origin only — never clinical APIs for RTT
       const url =
         (typeof import.meta !== "undefined" &&
           import.meta.env?.VITE_ENG_PROBE_URL) ||
@@ -324,13 +405,12 @@ function armNetwork() {
         });
     }, "eng.net.probe");
   };
-  networkTimer = setInterval(probe, NETWORK_PROBE_MS);
+  networkTimer = setInterval(
+    probe,
+    getRuntimeSettings().networkProbeMs || 60_000
+  );
 }
 
-/**
- * Update active listener count for heartbeat payload (from perf store if available).
- * @param {number} n
- */
 function setActiveListeners(n) {
   safeRun(() => {
     setHeartbeatContext({ activeListeners: n });
@@ -340,11 +420,14 @@ function setActiveListeners(n) {
 export const EngTelemetry = {
   init,
   setContext,
+  noteFirstSnapshot,
+  getFirstSnapshotMs,
   trackPageLoad,
   trackQuery,
   trackListenerUpsert,
   trackListenerClose,
   trackListenerSnapshot,
+  trackListenerReconnect,
   trackListener,
   trackRender,
   trackLongTask,
@@ -355,11 +438,8 @@ export const EngTelemetry = {
   flush,
   shutdown,
   setActiveListeners,
-  /** @returns {boolean} */
   isInitialized: () => initialized,
-  /** @returns {number} */
   pendingCount: () => bufferSize(),
-  /** Force awaitable flush for tests — still swallows errors */
   flushNow: () => flushNow({ force: true }).catch(() => {}),
 };
 
