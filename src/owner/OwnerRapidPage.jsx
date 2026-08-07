@@ -2,6 +2,7 @@
 
 // src/owner_ui/OwnerRapidPage.jsx
 import React, { useEffect, useMemo, useState, useContext, Suspense } from "react";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 import { OwnerContext } from "../owner/OwnerContext.jsx";
 
 import DateSourceFilter from "../owner/components/DateSourceFilter";
@@ -224,6 +225,7 @@ export default function OwnerRapidPage() {
   );
 
   return (
+    <EngComponent name="OwnerRapid" type="Page" parent={null} moduleId="OwnerRapid">
     <div className="owner-root">
       <header className="owner-header">
         <h1>Rapid Card — Analytics</h1>
@@ -832,5 +834,6 @@ export default function OwnerRapidPage() {
   </Suspense>
   )}
     </div>
+    </EngComponent>
   );
 }

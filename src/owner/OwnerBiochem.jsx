@@ -1,6 +1,7 @@
 
 
 import React, { useContext, useEffect, useMemo, useState, Suspense } from "react";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 import { OwnerContext } from "./OwnerContext.jsx";
 
 import DateSourceFilter from "./components/DateSourceFilter";
@@ -234,6 +235,7 @@ export default function OwnerBiochem() {
   
 
   return (
+    <EngComponent name="OwnerBiochem" type="Page" parent={null} moduleId="OwnerBiochem">
     <div className="owner-root">
       <header className="owner-header">
         <h1>Biochemistry — Analytics</h1>
@@ -781,6 +783,8 @@ export default function OwnerBiochem() {
       )}
 
     </div>
+
+    </EngComponent>
   );
 }
 

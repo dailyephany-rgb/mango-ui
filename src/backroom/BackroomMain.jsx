@@ -3,6 +3,7 @@ import React, { useState, Suspense, lazy } from "react";
 import "./Backroom.css";
 
 import UserMenu from "../auth/UserMenu";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 const ESRRegister = lazy(() => import("./ESRRegister.jsx"));
 const BloodGroupRegister = lazy(() => import("./BloodGroupRegister.jsx"));
@@ -22,33 +23,62 @@ export default function BackroomMain() {
     switch (activeTab) {
 
       case "esr":
-        return <ESRRegister />;
+        return (
+          <EngComponent name="ESR" type="Tables" parent="Backroom.jsx">
+            <ESRRegister />
+          </EngComponent>
+        );
 
       case "blood":
-        return <BloodGroupRegister />;
+        return (
+          <EngComponent name="Blood Group" type="Tables" parent="Backroom.jsx">
+            <BloodGroupRegister />
+          </EngComponent>
+        );
 
       case "serology":
-        return <SerologyRegister />;
+        return (
+          <EngComponent name="Serology" type="Tables" parent="Backroom.jsx">
+            <SerologyRegister />
+          </EngComponent>
+        );
 
       case "rapid":
-        return <RapidCardRegister />;
+        return (
+          <EngComponent name="Rapid Card" type="Tables" parent="Backroom.jsx">
+            <RapidCardRegister />
+          </EngComponent>
+        );
 
       case "urine":
-        return <UrineAnalysisRegister />;
+        return (
+          <EngComponent name="Urine" type="Tables" parent="Backroom.jsx">
+            <UrineAnalysisRegister />
+          </EngComponent>
+        );
 
       case "inventory":
-        return <BackroomInventoryTab />;
+        return (
+          <EngComponent name="Inventory Tab" type="Tables" parent="Backroom.jsx">
+            <BackroomInventoryTab />
+          </EngComponent>
+        );
 
       default:
-        return <ESRRegister />;
+        return (
+          <EngComponent name="ESR" type="Tables" parent="Backroom.jsx">
+            <ESRRegister />
+          </EngComponent>
+        );
     }
   };
 
   return (
-
+    <EngComponent name="Backroom.jsx" type="Page" parent={null}>
     <div className="backroom-container">
 
       {/* Header */}
+      <EngComponent name="Toolbar" type="Layout" parent="Backroom.jsx">
           <div
           className="header-bar"
           style={{
@@ -61,6 +91,7 @@ export default function BackroomMain() {
 
           <UserMenu />
         </div>
+      </EngComponent>
 
       {/* Tabs */}
       <div className="tab-container">
@@ -117,5 +148,6 @@ export default function BackroomMain() {
       </div>
 
     </div>
+    </EngComponent>
   );
 }

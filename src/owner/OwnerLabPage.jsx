@@ -2,6 +2,7 @@
 
 
 import React, { useEffect, useState, useContext } from "react";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 import { OwnerContext } from "../owner/OwnerContext.jsx";
 
 import DateSourceFilter from "../owner/components/DateSourceFilter";
@@ -65,6 +66,7 @@ export default function OwnerLabPage() {
   const violators = data.violators || [];
 
   return (
+    <EngComponent name="OwnerLab" type="Page" parent={null} moduleId="OwnerLab">
     <div className="owner-root">
       <header className="owner-header">
         <h1>Inside Lab Analytics</h1>
@@ -182,5 +184,6 @@ export default function OwnerLabPage() {
         }))} 
       />
     </div>
+    </EngComponent>
   );
 }

@@ -31,6 +31,7 @@ import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
 import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
 import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 const HormonesMain = lazy(() => import("./HormonesMain.jsx"));
 const DeptInventoryTab = lazy(() =>
@@ -342,7 +343,9 @@ export default function BiochemistryMain() {
   if (loading) return <p>Loading Biochemistry data...</p>;
 
   return (
+    <EngComponent name="Biochemistry.jsx" type="Page" parent={null}>
     <div className="biochem-register-container">
+      <EngComponent name="Toolbar" type="Layout" parent="Biochemistry.jsx">
       <div
   style={{
     display: "flex",
@@ -389,12 +392,14 @@ export default function BiochemistryMain() {
 
   <UserMenu />
 </div>
+      </EngComponent>
 
       {activeTab === "biochem" && (
       <div>        
               <h2 className="dept-header">
           Biochemistry Department — Main Analyzer
         </h2>
+          <EngComponent name="Filter Bar" type="Layout" parent="Biochemistry.jsx">
           <RegisterFilterBar
             regSearch={regSearch}
             setRegSearch={setRegSearch}
@@ -405,7 +410,13 @@ export default function BiochemistryMain() {
             sourceFilter={sourceFilter}
             setSourceFilter={setSourceFilter}
           />
+          </EngComponent>
 
+          <EngComponent
+            name="Patient Register Table"
+            type="Tables"
+            parent="Biochemistry.jsx"
+          >
           <div className="table-wrapper">
             <table className="dept-table">
               <thead>
@@ -519,29 +530,42 @@ export default function BiochemistryMain() {
               />
             </table>
           </div>
+          </EngComponent>
       </div>
       )}
 
       {activeTab === "hormones" && (
+        <EngComponent name="Hormones Tab" type="Page" parent="Biochemistry.jsx">
         <Suspense fallback={<p>Loading Hormones…</p>}>
           <HormonesMain />
         </Suspense>
+        </EngComponent>
       )}
 
       {activeTab === "inventory" && (
+        <EngComponent name="Inventory Tab" type="Tables" parent="Biochemistry.jsx">
         <Suspense fallback={<p>Loading Inventory…</p>}>
           <DeptInventoryTab department="Biochemistry" machineType="Main" />
         </Suspense>
+        </EngComponent>
       )}
 
       {activeTab === "adjustment" && (
+        <EngComponent
+          name="InventoryAdjustmentTab"
+          type="Tables"
+          parent="Biochemistry.jsx"
+          moduleId="InventoryAdjustmentTab"
+        >
         <Suspense fallback={<p>Loading Adjustment…</p>}>
           <InventoryAdjustmentTab />
         </Suspense>
+        </EngComponent>
       )}
 
       
       {criticalModalOpen && (
+      <EngComponent name="Critical Alerts" type="Dialogs" parent="Biochemistry.jsx">
       <CriticalAlertModal
         open={criticalModalOpen}
         parameterInput={criticalParameterInput}
@@ -555,8 +579,10 @@ export default function BiochemistryMain() {
         onSave={saveCriticalDetails}
         parameterPlaceholder="e.g. K+: 7.2"
       />
+      </EngComponent>
       )}
 
     </div>
+    </EngComponent>
   );
 }

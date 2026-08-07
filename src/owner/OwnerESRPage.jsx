@@ -5,6 +5,7 @@
 // ------------------------------------------------------
 
 import React, { useContext, useEffect, useMemo, useState, Suspense } from "react";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 import { OwnerContext } from "../owner/OwnerContext.jsx";
 
 import DateSourceFilter from "../owner/components/DateSourceFilter";
@@ -236,6 +237,7 @@ export default function OwnerESRPage() {
   );
 
   return (
+    <EngComponent name="OwnerESR" type="Page" parent={null} moduleId="OwnerESR">
     <div className="owner-root">
       <header className="owner-header">
         <h1>ESR — Analytics</h1>
@@ -837,5 +839,6 @@ export default function OwnerESRPage() {
              </Suspense>
       )}
     </div>
+    </EngComponent>
   );
 }

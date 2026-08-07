@@ -6,6 +6,7 @@ import testMapping from "./test_mapping.json";
 import { collection, serverTimestamp, setDoc, doc } from "firebase/firestore";
 import { trackedGetDoc as getDoc } from "./shared/firestore/trackedFirestore.js";
 import UserMenu from "./auth/UserMenu";
+import { EngComponent } from "./engineering/ui/EngComponent.jsx";
 
 
 export default function Mango() {
@@ -509,7 +510,9 @@ const selectedTests = qrTests
         <div className="mango-header-left">  
       <h1>Vasundhara Hospital Limited</h1>
     </div>
-    <UserMenu />
+    <EngComponent name="User Menu" type="Layout" parent="Mango">
+      <UserMenu />
+    </EngComponent>
     </header>
 
       <div className="mango-content">

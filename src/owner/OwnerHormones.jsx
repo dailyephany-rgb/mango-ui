@@ -1,6 +1,7 @@
 
 
 import React, { useContext, useEffect, useMemo, useState, Suspense } from "react";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 import { OwnerContext } from "./OwnerContext.jsx";
 
 import DateSourceFilter from "./components/DateSourceFilter";
@@ -208,6 +209,7 @@ export default function OwnerHormones() {
     );
 
   return (
+    <EngComponent name="OwnerHormones" type="Page" parent={null} moduleId="OwnerHormones">
     <div className="owner-root">
       <header className="owner-header">
         <h1>Hormones — Analytics</h1>
@@ -815,6 +817,10 @@ export default function OwnerHormones() {
 
 
     </div>
+      
+
+
+    </EngComponent>
   );
 }
 

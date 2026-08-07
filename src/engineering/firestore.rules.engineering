@@ -6,7 +6,8 @@
  *
  * Collections used by Engineering / Performance ops plane:
  *   eng_devices, eng_device_status, eng_heartbeat_hourly, eng_departments,
- *   eng_firestore_metrics, eng_pages, eng_page_loads, eng_network, eng_memory, eng_react_metrics,
+ *   eng_firestore_metrics, eng_firestore_by_component, eng_fs_component_loads,
+ *   eng_pages, eng_page_loads, eng_components, eng_network, eng_memory, eng_react_metrics,
  *   eng_errors, eng_audit, eng_health, eng_settings, eng_builds, eng_alerts,
  *   eng_listener_daily
  *   (+ optional debug: heartbeats — prefer eng_heartbeats if you enable debugSampling)

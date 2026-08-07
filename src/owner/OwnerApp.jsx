@@ -12,6 +12,7 @@ import { OwnerContext } from "./OwnerContext.jsx";
 
 import WorkflowKPIBlocks from "./workflow/WorkflowKPIBlocks";
 import { OwnerChartsSection } from "./charts/lazyOwnerCharts";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 const WorkflowStackedBars = lazy(() => import("./workflow/WorkflowStackedBars"));
 const WorkflowStaffDistribution = lazy(
@@ -74,6 +75,7 @@ export default function OwnerApp() {
   }
 
   return (
+    <EngComponent name="OwnerApp.jsx" type="Page" parent={null} moduleId="OwnerApp">
     <div className="owner-root">
       {/* ================= HEADER ================= */}
       <header className="owner-header">
@@ -143,10 +145,16 @@ export default function OwnerApp() {
       </header>
 
       {/* ================= FILTERS ================= */}
+      <EngComponent name="Filters" type="Layout" parent="OwnerApp.jsx">
       <DateSourceFilter />
+      </EngComponent>
 
       {/* ================= KPI BLOCKS ================= */}
+      <EngComponent name="Workflow Fetcher" type="Data" parent="OwnerApp.jsx" moduleId="workflowfetcher">
+      <EngComponent name="KPIs" type="Charts" parent="OwnerApp.jsx">
       <WorkflowKPIBlocks summary={summary} />
+      </EngComponent>
+      </EngComponent>
 
       {/* ================= TABS ================= */}
       <div
@@ -170,14 +178,17 @@ export default function OwnerApp() {
 
       {/* ================= OVERVIEW TAB ================= */}
       {activeTab === "overview" ? (
+       <EngComponent name="Charts" type="Charts" parent="OwnerApp.jsx">
        <OwnerChartsSection>
        <div className="chart-card full-width">
          <h3>Routine Workflow Duration</h3>
          <WorkflowStackedBars records={stackedBarRecords} />
        </div>
      </OwnerChartsSection>
+       </EngComponent>
       ) : (
         /* ================= STAFF ANALYTICS TAB ================= */
+        <EngComponent name="Staff Analytics" type="Charts" parent="OwnerApp.jsx">
         <OwnerChartsSection>
         <div className="chart-card full-width">
           <WorkflowStaffDistribution
@@ -191,8 +202,10 @@ export default function OwnerApp() {
           />
         </div>
       </OwnerChartsSection>
+        </EngComponent>
       )}
     </div>
+    </EngComponent>
   );
 }
 

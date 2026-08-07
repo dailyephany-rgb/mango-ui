@@ -30,6 +30,7 @@ import QCMonitorTab from "./tabs/QCMonitorTab";
 import ConsumptionLedgerTab from "./tabs/ConsumptionLedgerTab";
 import CostAnalyticsTab from "./tabs/CostAnalyticsTab";
 import ConsumedInventoryTab from "./tabs/ConsumedInventoryTab";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 const mapDocs = (snapshot) =>
   snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -318,6 +319,7 @@ const InventoryCommandCenter = () => {
   const dateProps = { fromDate, toDate, setFromDate, setToDate };
 
   return (
+    <EngComponent name="ICC Shell" type="Page" parent={null} moduleId="InventoryCommandCenter">
     <div className="inventory-command-center">
       <div className="command-center-header">
         <h1>Inventory Command Center</h1>
@@ -387,44 +389,57 @@ const InventoryCommandCenter = () => {
       )}
 
       {activeTab === "Inventory" && (
+        <EngComponent name="Live Inventory" type="Tables" parent="ICC Shell">
         <LiveInventoryTab inventoryLogs={inventoryLogs} />
+        </EngComponent>
       )}
 
       {activeTab === "Expiry" && (
+        <EngComponent name="Expiry" type="Tables" parent="ICC Shell">
         <ExpirySurveillanceTab inventoryLogs={inventoryLogs} />
+        </EngComponent>
       )}
 
       {activeTab === "QC" && (
+        <EngComponent name="QC Monitor" type="QC" parent="ICC Shell">
         <QCMonitorTab
           qcLogs={qcLogs}
           calibrationLogs={calibrationLogs}
           {...dateProps}
         />
+        </EngComponent>
       )}
 
       {activeTab === "Ledger" && (
+        <EngComponent name="Ledger" type="Tables" parent="ICC Shell">
         <ConsumptionLedgerTab
           ledgerEntries={ledgerEntries}
           comboLedgerEntries={comboLedgerEntries}
           {...dateProps}
         />
+        </EngComponent>
       )}
 
       {activeTab === "Cost" && (
+        <EngComponent name="Cost Analytics" type="Charts" parent="ICC Shell">
         <CostAnalyticsTab
           ledgerEntries={ledgerEntries}
           inventory={inventoryLogs}
           {...dateProps}
         />
+        </EngComponent>
       )}
 
       {activeTab === "Consumed" && (
+        <EngComponent name="Consumed" type="Tables" parent="ICC Shell" moduleId="ICC_Consumed">
         <ConsumedInventoryTab
           inventoryLogs={inventoryLogs}
           {...dateProps}
         />
+        </EngComponent>
       )}
     </div>
+    </EngComponent>
   );
 };
 

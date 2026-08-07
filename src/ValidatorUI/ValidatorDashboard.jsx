@@ -29,6 +29,7 @@ import {
   localDayEndExclusive,
 } from "../shared/utils/dates.js";
 import { reportDetailsStageCascadeFields } from "../shared/utils/routineStageFlags.js";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 function getActiveCollection(
   activeMainTab,
@@ -215,7 +216,9 @@ export default function ValidatorDashboard() {
   });
 
   return (
+    <EngComponent name="Validator.jsx" type="Page" parent={null}>
     <div className="validator-dashboard">
+      <EngComponent name="Toolbar" type="Layout" parent="Validator.jsx">
       <div className="validator-header-row">
         <h2>🧪 Validator Interface</h2>
 
@@ -229,7 +232,9 @@ export default function ValidatorDashboard() {
           <UserMenu />
         </div>
       </div>
+      </EngComponent>
 
+      <EngComponent name="Filters" type="Layout" parent="Validator.jsx">
       <div className="tab-container">
         {["biochem", "backup", "coag", "haem", "backroom"].map((tab) => (
           <button
@@ -308,7 +313,9 @@ export default function ValidatorDashboard() {
           )}
         </>
       )}
+      </EngComponent>
 
+      <EngComponent name="Main Register" type="Tables" parent="Validator.jsx">
       <ValidatorTable
         title={getTitle(
           activeMainTab,
@@ -327,7 +334,9 @@ export default function ValidatorDashboard() {
         onValidate={(entry) => handleValidate(entry, activeCollection)}
         onEntered={(entry) => handleEntered(entry, activeCollection)}
       />
+      </EngComponent>
     </div>
+    </EngComponent>
   );
 }
 

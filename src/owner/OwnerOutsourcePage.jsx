@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState, useContext } from "react";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 import { OwnerContext } from "../owner/OwnerContext.jsx";
 import DateSourceFilter from "../owner/components/DateSourceFilter";
 import KPIBlocks from "../owner/components/KPIBlocksOutsource";
@@ -303,6 +304,7 @@ export default function OwnerOutsourcePage() {
   ]);
 
   return (
+    <EngComponent name="OwnerOutsource" type="Page" parent={null} moduleId="OwnerOutsource">
     <div className="owner-root">
       <header className="owner-header">
         <h1>Outsource Lab Analytics</h1>
@@ -615,5 +617,6 @@ export default function OwnerOutsourcePage() {
         patients={modalData} 
       />
     </div>
+    </EngComponent>
   );
 }

@@ -25,6 +25,7 @@ import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 const HaemInventoryTab = lazy(() => import("../inventory/HaemInventoryTab.jsx"));
 
@@ -385,6 +386,7 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
   if (loading) return <p>Loading Haematology data...</p>;
 
   return (
+    <EngComponent name="Haematology.jsx" type="Page" parent={null}>
     <div className="haem-container">
 
       
@@ -396,6 +398,7 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
     alignItems: "center"
   }}
 >
+  <EngComponent name="Toolbar" type="Layout" parent="Haematology.jsx">
   <div>
     <h2>🩸 Haematology Department</h2>
 
@@ -417,16 +420,20 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
   
    
   </div>
+  </EngComponent>
 
   <UserMenu />
 </div>
 
       {activeTab === "inventory" ? (
+        <EngComponent name="Inventory Tab" type="Tables" parent="Haematology.jsx">
         <Suspense fallback={<p>Loading Inventory…</p>}>
           <HaemInventoryTab />
         </Suspense>
+        </EngComponent>
       ) : (
         <>
+          <EngComponent name="Filter Bar" type="Layout" parent="Haematology.jsx">
           <RegisterFilterBar
             regSearch={regSearch}
             setRegSearch={setRegSearch}
@@ -437,7 +444,13 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
             sourceFilter={sourceFilter}
             setSourceFilter={setSourceFilter}
           />
+          </EngComponent>
 
+          <EngComponent
+            name="Patient Register Table"
+            type="Tables"
+            parent="Haematology.jsx"
+          >
           <div className="table-card">
             <div className="haem-table-wrapper">
               <table className="haem-table">
@@ -597,10 +610,12 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
               </table>
             </div>
           </div>
+          </EngComponent>
         </>
             )}
 
             {criticalModalOpen && (
+      <EngComponent name="Critical Alerts" type="Dialogs" parent="Haematology.jsx">
       <CriticalAlertModal
         open={criticalModalOpen}
         parameterInput={criticalParameterInput}
@@ -615,8 +630,10 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
         parameterPlaceholder="e.g. HB: 4.2"
         actionsClassName="modal-actions"
       />
+      </EngComponent>
       )}
       
           </div>
+    </EngComponent>
         );
       }

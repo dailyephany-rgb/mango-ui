@@ -23,6 +23,7 @@ import {
   localDayStart,
   localDayEndExclusive,
 } from "../shared/utils/dates.js";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 export default function CriticalAlertDashboard() {
   const [alerts, setAlerts] = useState([]);
@@ -214,6 +215,7 @@ export default function CriticalAlertDashboard() {
 
   return (
    
+   <EngComponent name="Critical Dashboard" type="Page" parent={null}>
    <div className="register-section">
               <div className="header-row-critical">
           <h3 className="dept-header-critical">
@@ -234,6 +236,7 @@ export default function CriticalAlertDashboard() {
 
       
 
+      <EngComponent name="Filters" type="Layout" parent="Critical Dashboard">
       <div className="filter-bar">
         <input 
           type="text" 
@@ -270,7 +273,9 @@ export default function CriticalAlertDashboard() {
           ))}
         </div>
       </div>
+      </EngComponent>
 
+      <EngComponent name="Alerts Table" type="Tables" parent="Critical Dashboard">
       <div className="table-scroll-container">
         <table className="backroom-table">
           <thead>
@@ -430,6 +435,8 @@ export default function CriticalAlertDashboard() {
           </tbody>
         </table>
       </div>
+      </EngComponent>
     </div>
+    </EngComponent>
   );
 }

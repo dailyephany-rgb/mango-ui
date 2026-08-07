@@ -1,5 +1,6 @@
 
 import React, { useEffect, useMemo, useState, useContext, Suspense } from "react";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 import { OwnerContext } from "./OwnerContext.jsx";
 
 import DateSourceFilter from "./components/DateSourceFilter";
@@ -222,6 +223,7 @@ export default function OwnerHaemPage() {
   );
 
   return (
+    <EngComponent name="OwnerHaem" type="Page" parent={null} moduleId="OwnerHaem">
     <div className="owner-root">
       <header className="owner-header">
         <h1>Haematology — Analytics</h1>
@@ -808,5 +810,6 @@ export default function OwnerHaemPage() {
       </Suspense>
     )}
     </div>
+    </EngComponent>
   );
 }

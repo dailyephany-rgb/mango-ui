@@ -24,6 +24,9 @@ import {
   SettingsPage,
 } from "./pages.jsx";
 import { TimelinePage } from "./TimelinePage.jsx";
+import { ComponentsPage } from "./ComponentsPage.jsx";
+import { FirestoreByComponentPage } from "./FirestoreByComponentPage.jsx";
+import { EngComponent } from "../ui/EngComponent.jsx";
 import "./Engineering.css";
 
 const NAV = [
@@ -31,11 +34,17 @@ const NAV = [
   { id: "devices", label: "Devices", Page: DevicesPage },
   { id: "departments", label: "Departments", Page: DepartmentsPage },
   { id: "firestore", label: "Firestore", Page: FirestorePage },
+  {
+    id: "fs-by-component",
+    label: "FS by Component",
+    Page: FirestoreByComponentPage,
+  },
   { id: "listeners", label: "Listeners", Page: ListenersPage },
   { id: "memory", label: "Memory", Page: MemoryPage },
   { id: "react", label: "React", Page: ReactMetricsPage },
   { id: "performance", label: "Performance", Page: PerformancePage },
   { id: "timeline", label: "Timeline", Page: TimelinePage },
+  { id: "components", label: "Components", Page: ComponentsPage },
   { id: "network", label: "Network", Page: NetworkPage },
   { id: "errors", label: "Errors", Page: ErrorsPage },
   { id: "builds", label: "Builds", Page: BuildsPage },
@@ -53,6 +62,7 @@ export default function EngineeringApp() {
     <EngErrorBoundary>
       <EngOpsGate>
         <EngFilterProvider>
+          <EngComponent name="Dashboard Shell" type="Page" parent={null} moduleId="EngineeringDashboard">
           <div className="eng-app">
             <nav className="eng-nav" aria-label="Engineering sections">
               <div className="eng-brand">
@@ -71,10 +81,17 @@ export default function EngineeringApp() {
               ))}
             </nav>
             <main className="eng-main">
-              {showFilters && <GlobalFilterBar />}
-              <Page />
+              {showFilters && (
+                <EngComponent name="Filter Bar" type="Layout" parent="Dashboard Shell">
+                  <GlobalFilterBar />
+                </EngComponent>
+              )}
+              <EngComponent name="Active Tab" type="Layout" parent="Dashboard Shell">
+                <Page />
+              </EngComponent>
             </main>
           </div>
+          </EngComponent>
         </EngFilterProvider>
       </EngOpsGate>
     </EngErrorBoundary>

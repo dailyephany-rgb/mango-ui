@@ -22,6 +22,8 @@ import {
 } from "../shared/utils/dates.js";
 import { normalizeSource } from "../shared/utils/source.js";
 import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
+import { EngTelemetry } from "../engineering/telemetry/EngTelemetry.js";
+import { isEngTelemetryEnabled } from "../engineering/telemetry/killSwitch.js";
 import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
@@ -54,6 +56,18 @@ export default function BloodGroupRegister() {
   const [retestingDocs, setRetestingDocs] = useState({});
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("testing");
+
+  // Observer-only: mark retesting sub-view for Component Timeline
+  useEffect(() => {
+    if (!isEngTelemetryEnabled()) return undefined;
+    if (activeTab !== "retesting") return undefined;
+    EngTelemetry.componentMount({
+      name: "Blood Group Retesting",
+      type: "Tables",
+      parent: "Backroom.jsx",
+    });
+    return () => EngTelemetry.componentUnmount("Blood Group Retesting");
+  }, [activeTab]);
 
   // 🛡️ INTERNAL BUFFER: Shields dropdown selections from cloud sync wipes
   const [localResults, setLocalResults] = usePersistedObjectState("bloodgroup_localResults", {});

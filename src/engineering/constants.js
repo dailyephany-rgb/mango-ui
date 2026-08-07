@@ -67,4 +67,10 @@ export const ENG_COLLECTIONS = {
   heartbeats: "eng_heartbeats",
   /** Individual page-load samples (flight recorder) — written in same flush as aggregates */
   pageLoads: "eng_page_loads",
+  /** One doc per page load — component breakdown for that loadId */
+  components: "eng_components",
+  /** Daily aggregates: module × collection × kind (Firestore-by-Component) */
+  firestoreByComponent: "eng_firestore_by_component",
+  /** Per page-load Firestore breakdown (same loadId as eng_page_loads / eng_components) */
+  fsComponentLoads: "eng_fs_component_loads",
 };

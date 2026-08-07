@@ -23,6 +23,7 @@ import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 const CoagulationInventory = lazy(() =>
   import("../inventory/CoagulationInventoryTab")
@@ -507,8 +508,10 @@ const logout = () => {
   if (loading) return <p>Loading Coagulation data...</p>;
 
   return (
+    <EngComponent name="Coagulation.jsx" type="Page" parent={null}>
     <div className="coag-container">
      
+     <EngComponent name="Toolbar" type="Layout" parent="Coagulation.jsx">
      <div
   style={{
     display: "flex",
@@ -578,10 +581,12 @@ const logout = () => {
     </div>
   </details>
 </div>
+     </EngComponent>
 
       {activeTab === "tests" ? (
         <>
           <h2 className="dept-header">Coagulation Department</h2>
+          <EngComponent name="Filter Bar" type="Layout" parent="Coagulation.jsx">
           <RegisterFilterBar
             regSearch={regSearch}
             setRegSearch={setRegSearch}
@@ -592,7 +597,13 @@ const logout = () => {
             sourceFilter={sourceFilter}
             setSourceFilter={setSourceFilter}
           />
+          </EngComponent>
 
+          <EngComponent
+            name="Patient Register Table"
+            type="Tables"
+            parent="Coagulation.jsx"
+          >
           <div className="table-wrapper">
             <table className="dept-table">
               <thead>
@@ -814,14 +825,18 @@ const logout = () => {
               />
             </table>
           </div>
+          </EngComponent>
         </>
             ) : (
+              <EngComponent name="Inventory Tab" type="Tables" parent="Coagulation.jsx">
               <Suspense fallback={<p>Loading Inventory…</p>}>
                 <CoagulationInventory />
               </Suspense>
+              </EngComponent>
             )}
       
             {criticalModalOpen && (
+      <EngComponent name="Critical Alerts" type="Dialogs" parent="Coagulation.jsx">
       <CriticalAlertModal
         open={criticalModalOpen}
         parameterInput={criticalParameterInput}
@@ -836,8 +851,10 @@ const logout = () => {
         parameterPlaceholder="Enter Critical Value"
         actionsClassName="modal-actions"
       />
+      </EngComponent>
       )}
       
           </div>
+    </EngComponent>
         );
       }

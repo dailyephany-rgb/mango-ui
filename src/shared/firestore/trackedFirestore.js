@@ -102,6 +102,89 @@ function estimatePayloadBytes(snap) {
 }
 
 /**
+ * Read-only best-effort query shape for Query Explorer (never mutates ref).
+ * Uses Firebase modular Query private fields when present.
+ */
+function describeQueryConstraints(refOrQuery) {
+  try {
+    if (!refOrQuery) return null;
+    const out = {
+      path: null,
+      where: [],
+      orderBy: [],
+      limit: null,
+      limitToLast: null,
+      startAt: null,
+      endAt: null,
+    };
+    if (typeof refOrQuery.path === "string") {
+      out.path = refOrQuery.path;
+    }
+    const q = refOrQuery._query;
+    if (!q) {
+      return out.path || out.where.length ? out : null;
+    }
+    if (Array.isArray(q.path?.segments)) {
+      out.path = q.path.segments.join("/");
+    }
+    const filters = q.filters || q.explicitFilters || [];
+    if (Array.isArray(filters)) {
+      for (const f of filters) {
+        try {
+          const field =
+            f.field?.canonicalString?.() ||
+            f.field?.toString?.() ||
+            f.field?.segments?.join(".") ||
+            f.field ||
+            "?";
+          const op = f.op || f.opStr || f.operator || "==";
+          let value = f.value;
+          if (value && typeof value === "object" && "arrayValue" in (value || {})) {
+            value = "[array]";
+          } else if (typeof value === "object") {
+            value = JSON.stringify(value).slice(0, 80);
+          }
+          out.where.push({ field: String(field), op: String(op), value });
+        } catch {
+          /* skip filter */
+        }
+      }
+    }
+    const orderBys = q.orderBy || q.explicitOrderBy || [];
+    if (Array.isArray(orderBys)) {
+      for (const o of orderBys) {
+        try {
+          const field =
+            o.field?.canonicalString?.() ||
+            o.field?.toString?.() ||
+            o.field?.segments?.join(".") ||
+            "?";
+          out.orderBy.push({
+            field: String(field),
+            dir: o.dir || o.direction || "asc",
+          });
+        } catch {
+          /* skip */
+        }
+      }
+    }
+    if (q.limit != null) out.limit = q.limit;
+    if (q.limitToLast != null) out.limitToLast = q.limitToLast;
+    if (q.startAt != null) out.startAt = true;
+    if (q.endAt != null) out.endAt = true;
+    const has =
+      out.path ||
+      out.where.length ||
+      out.orderBy.length ||
+      out.limit != null ||
+      out.limitToLast != null;
+    return has ? out : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * @param {any} refOrQuery
  * @param {any} onNext
  * @param {any} [onError]
@@ -116,6 +199,7 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
   const eng = engOn();
   const collection = extractCollectionName(refOrQuery);
   const ctx = getPageContext();
+  const constraints = eng ? describeQueryConstraints(refOrQuery) : null;
   const annotated = readListenReasonAnnotation(refOrQuery);
   const { reason, recreated } = resolveOpenReason(
     ctx.page,
@@ -336,6 +420,8 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
             docCount,
             kind: "snapshot_first",
             queryKey: `${ctx.page}:${collection}:listen`,
+            constraints,
+            firstSnapshot: true,
           });
           EngTelemetry.trackListenerSnapshot({
             event: "first_snapshot_received",
@@ -345,6 +431,9 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
             durationMs,
             payloadBytes,
             reason,
+            constraints,
+            queryKey: `${ctx.page}:${collection}:listen`,
+            firstSnapshot: true,
           });
           EngTelemetry.trackListener({
             action: "snapshot",
@@ -407,6 +496,8 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
               docCount: added + modified + removed,
               kind: "snapshot_incremental",
               queryKey: `${ctx.page}:${collection}:listen`,
+              constraints,
+              subsequentSnapshot: true,
             });
             EngTelemetry.trackListenerSnapshot({
               event: "snapshot_incremental",
@@ -414,6 +505,9 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
               listenerId: id,
               docCount,
               durationMs: now() - t0,
+              subsequentSnapshot: true,
+              queryKey: `${ctx.page}:${collection}:listen`,
+              constraints,
             });
           }, "eng.snap.inc");
         }
@@ -536,6 +630,7 @@ export async function trackedGetDocs(query) {
   const eng = engOn();
   const collection = extractCollectionName(query);
   const ctx = getPageContext();
+  const constraints = eng ? describeQueryConstraints(query) : null;
   const t0 = now();
   const snap = await fbGetDocs(query);
   const durationMs = now() - t0;
@@ -558,6 +653,7 @@ export async function trackedGetDocs(query) {
         docCount,
         kind: "getDocs",
         queryKey: `${ctx.page}:${collection}:getDocs`,
+        constraints,
       });
     }, "eng.getDocs");
   }
@@ -570,6 +666,7 @@ export async function trackedGetDoc(docRef) {
   const eng = engOn();
   const collection = extractCollectionName(docRef);
   const ctx = getPageContext();
+  const constraints = eng ? describeQueryConstraints(docRef) : null;
   const t0 = now();
   const snap = await fbGetDoc(docRef);
   const durationMs = now() - t0;
@@ -592,6 +689,7 @@ export async function trackedGetDoc(docRef) {
         docCount,
         kind: "getDoc",
         queryKey: `${ctx.page}:${collection}:getDoc`,
+        constraints,
       });
     }, "eng.getDoc");
   }

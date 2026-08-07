@@ -21,8 +21,19 @@ import {
   getRuntimeSettings,
   refreshRuntimeSettings,
 } from "./runtimeSettings.js";
-
-/** @type {{ deviceId: string, buildId: string, page: string, department: string, user: string | null, reactStrictDev: boolean, lastFirstSnapshotMs: number | null, lastPageLoadMs: number | null }} */
+import {
+  startComponentSession,
+  getComponentLoadId,
+  markComponentMount,
+  markComponentRender,
+  markComponentUnmount,
+  markComponentFirstSnapshot,
+  markComponentPhase,
+  buildComponentBreakdown,
+  resetComponentSession,
+  getFsAttribution,
+} from "./componentTimeline.js";
+/** @type {{ deviceId: string, buildId: string, page: string, department: string, user: string | null, reactStrictDev: boolean, lastFirstSnapshotMs: number | null, lastPageLoadMs: number | null, loadId: string | null }} */
 let context = {
   deviceId: "",
   buildId: ENG_BUILD_ID,
@@ -32,6 +43,7 @@ let context = {
   reactStrictDev: false,
   lastFirstSnapshotMs: null,
   lastPageLoadMs: null,
+  loadId: null,
 };
 
 let initialized = false;
@@ -54,7 +66,16 @@ function base() {
     user: context.user,
     label: label || undefined,
     reactStrictDev: context.reactStrictDev || undefined,
+    loadId: context.loadId || getComponentLoadId() || undefined,
   };
+}
+
+function ensureLoadId() {
+  if (context.loadId) return context.loadId;
+  const deviceId = context.deviceId || getDeviceId();
+  const id = `${deviceId}_${Date.now()}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+  context.loadId = id;
+  return id;
 }
 
 function enabled() {
@@ -69,15 +90,25 @@ function init(opts = {}) {
     }
     if (!enabled()) return;
     initialized = true;
+    const deviceId = opts.deviceId || getDeviceId();
     context = {
       ...context,
-      deviceId: opts.deviceId || getDeviceId(),
+      deviceId,
       buildId: opts.buildId || ENG_BUILD_ID,
       page: opts.page || "unknown",
       department: opts.department || "Unknown",
       user: opts.user ?? null,
       reactStrictDev: !!opts.reactStrictDev,
+      loadId: null,
+      lastFirstSnapshotMs: null,
+      lastPageLoadMs: null,
     };
+    const lid = ensureLoadId();
+    startComponentSession({
+      loadId: lid,
+      page: context.page,
+      startedAt: performance.now(),
+    });
     setHeartbeatContext({
       page: context.page,
       department: context.department,
@@ -134,6 +165,7 @@ function noteFirstSnapshot(arrivalMs) {
     if (context.lastFirstSnapshotMs == null && typeof arrivalMs === "number") {
       context.lastFirstSnapshotMs = arrivalMs;
       setHeartbeatContext({ lastFirstSnapshotMs: arrivalMs });
+      markComponentFirstSnapshot(arrivalMs);
     }
   }, "eng.noteSnap");
 }
@@ -145,10 +177,12 @@ function getFirstSnapshotMs() {
 function trackPageLoad(timings = {}) {
   safeRun(() => {
     if (!enabled() || !initialized) return;
+    const lid = ensureLoadId();
     const merged = {
       ...timings,
       firstSnapshotMs:
         timings.firstSnapshotMs ?? context.lastFirstSnapshotMs ?? null,
+      loadId: lid,
     };
     if (merged.totalMs != null) {
       context.lastPageLoadMs = merged.totalMs;
@@ -159,25 +193,101 @@ function trackPageLoad(timings = {}) {
       domain: "pages",
       ...merged,
     });
+    // One eng_components doc per page load (same loadId)
+    pushComponentBreakdown({
+      totalMs: merged.totalMs ?? null,
+      hung: !!merged.hung,
+    });
     // Push samples promptly so Engineering Timeline sees new rows without
     // waiting for the 60s interval / Engineering Refresh.
     scheduleFlush({ force: true });
   }, "eng.pageLoad");
 }
 
+/**
+ * Emit / refresh component breakdown for current loadId.
+ * Safe to call again when a lazy tab mounts after page-load finalize.
+ */
+function pushComponentBreakdown(extra = {}) {
+  safeRun(() => {
+    if (!enabled() || !initialized) return;
+    const lid = ensureLoadId();
+    const components = buildComponentBreakdown();
+    pushEvent({
+      ...base(),
+      domain: "components",
+      loadId: lid,
+      ts: Date.now(),
+      totalMs: extra.totalMs ?? context.lastPageLoadMs ?? null,
+      hung: extra.hung || false,
+      components,
+    });
+  }, "eng.components.push");
+}
+
+function componentMount(spec) {
+  safeRun(() => {
+    if (!enabled() || !initialized) return;
+    markComponentMount(spec);
+    // Lazy tabs after page load — refresh eng_components for same loadId
+    if (context.lastPageLoadMs != null) {
+      pushComponentBreakdown();
+      scheduleFlush({ force: true });
+    }
+  }, "eng.comp.mount");
+}
+
+function componentRender(name, actualDuration, phase) {
+  safeRun(() => {
+    if (!enabled() || !initialized) return;
+    markComponentRender(name, actualDuration, phase);
+  }, "eng.comp.render");
+}
+
+function componentUnmount(name) {
+  safeRun(() => {
+    if (!enabled() || !initialized) return;
+    markComponentUnmount(name);
+  }, "eng.comp.unmount");
+}
+
+function componentPhase(name, phase, ms) {
+  safeRun(() => {
+    if (!enabled() || !initialized) return;
+    markComponentPhase(name, phase, ms);
+  }, "eng.comp.phase");
+}
+
 function trackQuery(payload = {}) {
   safeRun(() => {
     if (!enabled() || !initialized) return;
+    const attr = getFsAttribution();
+    const durationMs = payload.durationMs ?? null;
+    const slowMs = getRuntimeSettings().slowQueryMs ?? 2000;
+    const slow =
+      payload.slow === true ||
+      (durationMs != null && durationMs >= slowMs);
     pushEvent({
       ...base(),
       domain: "firestore",
+      loadId: attr.loadId || context.loadId || undefined,
+      pageId: attr.pageId || context.page,
+      moduleId: payload.moduleId || attr.moduleId || context.page || "unknown",
+      componentId: payload.componentId || attr.componentId || null,
       collection: payload.collection || "unknown",
       kind: payload.kind || "query",
-      durationMs: payload.durationMs ?? null,
+      operation: payload.operation || payload.kind || "query",
+      durationMs,
       docCount: payload.docCount ?? 0,
+      snapshotCount: payload.snapshotCount ?? null,
       queryKey: payload.queryKey || null,
+      constraints: payload.constraints || null,
       failure: payload.failure || false,
       reconnect: payload.reconnect || false,
+      firstSnapshot: !!payload.firstSnapshot,
+      subsequentSnapshot: !!payload.subsequentSnapshot,
+      error: payload.error ? String(payload.error).slice(0, 200) : null,
+      slow,
     });
   }, "eng.query");
 }
@@ -185,19 +295,35 @@ function trackQuery(payload = {}) {
 function trackListener(payload = {}) {
   safeRun(() => {
     if (!enabled() || !initialized) return;
+    const attr = getFsAttribution();
+    const durationMs = payload.durationMs ?? null;
+    const slowMs = getRuntimeSettings().slowQueryMs ?? 2000;
+    const slow =
+      payload.slow === true ||
+      (durationMs != null && durationMs >= slowMs);
     pushEvent({
       ...base(),
       domain: "listeners",
+      loadId: attr.loadId || context.loadId || undefined,
+      pageId: attr.pageId || context.page,
+      moduleId: payload.moduleId || attr.moduleId || context.page || "unknown",
+      componentId: payload.componentId || attr.componentId || null,
       action: payload.action || "snapshot",
       event: payload.event || payload.action || null,
       collection: payload.collection || "unknown",
+      operation: payload.operation || payload.action || "snapshot",
       listenerId: payload.listenerId || null,
       docCount: payload.docCount ?? null,
-      durationMs: payload.durationMs ?? null,
+      durationMs,
       payloadBytes: payload.payloadBytes ?? null,
       reason: payload.reason || null,
       recreated: payload.recreated || false,
+      queryKey: payload.queryKey || null,
+      constraints: payload.constraints || null,
+      firstSnapshot: !!payload.firstSnapshot,
+      subsequentSnapshot: !!payload.subsequentSnapshot,
       error: payload.error ? String(payload.error).slice(0, 200) : null,
+      slow,
     });
   }, "eng.listener");
 }
@@ -373,6 +499,7 @@ function shutdown() {
     if (memoryTimer) clearInterval(memoryTimer);
     if (networkTimer) clearInterval(networkTimer);
     flushTimer = memoryTimer = networkTimer = null;
+    resetComponentSession();
     initialized = false;
   }, "eng.shutdown");
 }
@@ -503,6 +630,12 @@ export const EngTelemetry = {
   shutdown,
   setActiveListeners,
   setListenerWaitState,
+  componentMount,
+  componentRender,
+  componentUnmount,
+  componentPhase,
+  pushComponentBreakdown,
+  getLoadId: () => context.loadId || getComponentLoadId(),
   isInitialized: () => initialized,
   pendingCount: () => bufferSize(),
   flushNow: () => flushNow({ force: true }).catch(() => {}),

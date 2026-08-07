@@ -6,6 +6,7 @@
 // ------------------------------------------------------
 
 import React, { useEffect, useMemo, useState, useContext, Suspense } from "react";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 import { OwnerContext } from "./OwnerContext.jsx";
 
 import DateSourceFilter from "./components/DateSourceFilter";
@@ -223,6 +224,7 @@ export default function OwnerCoagPage() {
 
 
   return (
+    <EngComponent name="OwnerCoag" type="Page" parent={null} moduleId="OwnerCoag">
     <div className="owner-root">
       <header className="owner-header">
         <h1>Coagulation — Analytics</h1>
@@ -853,5 +855,6 @@ export default function OwnerCoagPage() {
       </Suspense>
       )}
     </div>
+    </EngComponent>
   );
 }

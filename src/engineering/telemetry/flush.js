@@ -165,7 +165,16 @@ async function deliverEvents(events) {
   const results = await Promise.allSettled([
     flushQueries(db, byDomain.firestore || [], deviceId, settings),
     flushListeners(db, byDomain.listeners || [], deviceId),
+    flushFirestoreByComponent(
+      db,
+      byDomain.firestore || [],
+      byDomain.listeners || [],
+      deviceId,
+      deviceLabel,
+      settings
+    ),
     flushPages(db, byDomain.pages || [], deviceId, deviceLabel),
+    flushComponents(db, byDomain.components || [], deviceId, deviceLabel),
     flushMemory(db, byDomain.memory || [], deviceId),
     flushNetwork(db, byDomain.network || [], deviceId),
     flushReact(db, byDomain.react || [], deviceId),
@@ -262,6 +271,340 @@ async function flushQueries(db, events, deviceId, settings) {
     );
   });
   await Promise.all(writes);
+}
+
+/**
+ * Firestore-by-Component — observer-only aggregates attributed to first-class modules.
+ * Writes:
+ *   eng_firestore_by_component — daily module × collection × kind
+ *   eng_fs_component_loads — one doc per loadId (linked to Timeline / Components)
+ */
+async function flushFirestoreByComponent(
+  db,
+  firestoreEvents,
+  listenerEvents,
+  deviceId,
+  deviceLabel,
+  settings
+) {
+  const events = [...(firestoreEvents || []), ...(listenerEvents || [])];
+  if (!events.length) return;
+
+  const slowMs = settings.slowQueryMs ?? 2000;
+  const dayAgg = {};
+  /** @type {Map<string, object>} */
+  const byLoad = new Map();
+
+  const ensureDay = (e, col, kind) => {
+    const moduleId = e.moduleId || e.page || "unknown";
+    const pageId = e.pageId || e.page || "unknown";
+    const day = dayKey(e.ts);
+    const key = `${day}|${deviceId}|${moduleId}|${col}|${kind}`;
+    if (!dayAgg[key]) {
+      dayAgg[key] = {
+        day,
+        deviceId,
+        page: pageId,
+        moduleId,
+        collection: col,
+        kind,
+        queryCount: 0,
+        reads: 0,
+        writes: 0,
+        listeners: 0,
+        docCountSum: 0,
+        durationSum: 0,
+        durationMax: 0,
+        slowCount: 0,
+        firstSnapCount: 0,
+        firstSnapSumMs: 0,
+        subsequentCount: 0,
+        estimatedDocReads: 0,
+        queryKeyInc: {},
+        constraintsSample: null,
+      };
+    }
+    return dayAgg[key];
+  };
+
+  const ensureLoad = (e) => {
+    const loadId =
+      e.loadId ||
+      `${deviceId}_${e.ts || Date.now()}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+    if (!byLoad.has(loadId)) {
+      byLoad.set(loadId, {
+        loadId,
+        ts: e.ts || Date.now(),
+        page: e.pageId || e.page || "unknown",
+        department: e.department || null,
+        deviceId,
+        label: e.label || deviceLabel || null,
+        buildId: e.buildId || null,
+        modules: {},
+        queries: {},
+        timeline: [],
+      });
+    }
+    const row = byLoad.get(loadId);
+    if ((e.ts || 0) > (row.ts || 0)) row.ts = e.ts;
+    return row;
+  };
+
+  const bumpModule = (load, moduleId, patch) => {
+    if (!load.modules[moduleId]) {
+      load.modules[moduleId] = {
+        moduleId,
+        reads: 0,
+        writes: 0,
+        listeners: 0,
+        queries: 0,
+        slow: 0,
+        docCountSum: 0,
+        durationSum: 0,
+        firstSnapCount: 0,
+        firstSnapSumMs: 0,
+        subsequentCount: 0,
+        estimatedDocReads: 0,
+        collections: {},
+      };
+    }
+    const m = load.modules[moduleId];
+    for (const [k, v] of Object.entries(patch)) {
+      if (k === "collections") continue;
+      m[k] = (m[k] || 0) + (v || 0);
+    }
+    if (patch._collection) {
+      const c = patch._collection;
+      if (!m.collections[c]) {
+        m.collections[c] = {
+          reads: 0,
+          writes: 0,
+          listeners: 0,
+          queries: 0,
+          slow: 0,
+          docCountSum: 0,
+        };
+      }
+      const mc = m.collections[c];
+      mc.reads += patch.reads || 0;
+      mc.writes += patch.writes || 0;
+      mc.listeners += patch.listeners || 0;
+      mc.queries += patch.queries || 0;
+      mc.slow += patch.slow || 0;
+      mc.docCountSum += patch.docCountSum || 0;
+    }
+  };
+
+  for (const e of events) {
+    const col = e.collection || "unknown";
+    const moduleId = e.moduleId || e.page || "unknown";
+    const load = ensureLoad(e);
+    const dur = e.durationMs || 0;
+    const docs = e.docCount || 0;
+    const isSlow = e.slow || dur >= slowMs;
+
+    if (e.domain === "listeners") {
+      const action = e.action || "";
+      // Opens only — snapshot metrics come from firestore-domain trackQuery
+      // (avoids double-counting first/incremental snapshots).
+      if (action === "open") {
+        const a = ensureDay(e, col, "listener_open");
+        a.listeners += 1;
+        a.queryCount += 1;
+        bumpModule(load, moduleId, {
+          listeners: 1,
+          queries: 1,
+          _collection: col,
+        });
+        if (load.timeline.length < 40) {
+          load.timeline.push({
+            ts: e.ts,
+            moduleId,
+            collection: col,
+            operation: "listener_open",
+            componentId: e.componentId || null,
+          });
+        }
+      }
+      continue;
+    }
+
+    // firestore domain
+    const kind = e.kind || "query";
+    const a = ensureDay(e, col, kind);
+    a.queryCount += 1;
+    a.durationSum += dur;
+    a.durationMax = Math.max(a.durationMax, dur);
+    a.docCountSum += docs;
+    if (isSlow) a.slowCount += 1;
+    if (e.firstSnapshot) {
+      a.firstSnapCount += 1;
+      a.firstSnapSumMs += dur;
+    }
+    if (e.subsequentSnapshot) a.subsequentCount += 1;
+
+    const isWrite = kind === "write" || kind === "batch_write";
+    if (isWrite) {
+      a.writes += 1;
+    } else {
+      a.reads += 1;
+      a.estimatedDocReads += docs;
+    }
+
+    if (e.queryKey) {
+      const qk = String(e.queryKey).slice(0, 160);
+      a.queryKeyInc[qk] = (a.queryKeyInc[qk] || 0) + 1;
+      load.queries[qk] = load.queries[qk] || {
+        queryKey: qk,
+        collection: col,
+        kind,
+        moduleId,
+        count: 0,
+        durationSum: 0,
+        slow: 0,
+        constraints: null,
+      };
+      load.queries[qk].count += 1;
+      load.queries[qk].durationSum += dur;
+      if (isSlow) load.queries[qk].slow += 1;
+      if (e.constraints && !load.queries[qk].constraints) {
+        load.queries[qk].constraints = e.constraints;
+      }
+    }
+    if (e.constraints && !a.constraintsSample) {
+      a.constraintsSample = e.constraints;
+    }
+
+    bumpModule(load, moduleId, {
+      reads: isWrite ? 0 : 1,
+      writes: isWrite ? 1 : 0,
+      queries: 1,
+      slow: isSlow ? 1 : 0,
+      docCountSum: docs,
+      durationSum: dur,
+      firstSnapCount: e.firstSnapshot ? 1 : 0,
+      firstSnapSumMs: e.firstSnapshot ? dur : 0,
+      subsequentCount: e.subsequentSnapshot ? 1 : 0,
+      estimatedDocReads: isWrite ? 0 : docs,
+      _collection: col,
+    });
+
+    if (load.timeline.length < 40) {
+      load.timeline.push({
+        ts: e.ts,
+        moduleId,
+        collection: col,
+        operation: kind,
+        durationMs: dur,
+        docCount: docs,
+        slow: !!isSlow,
+        componentId: e.componentId || null,
+      });
+    }
+  }
+
+  const dayWrites = Object.values(dayAgg).map((a) => {
+    const id = `${a.day}_${deviceId}_${a.moduleId}_${a.collection}_${a.kind}`.replace(
+      /[^a-zA-Z0-9_-]/g,
+      "_"
+    );
+    const payload = {
+      day: a.day,
+      deviceId,
+      page: a.page,
+      moduleId: a.moduleId,
+      collection: a.collection,
+      kind: a.kind,
+      queryCount: increment(a.queryCount),
+      reads: increment(a.reads),
+      writes: increment(a.writes),
+      listeners: increment(a.listeners),
+      docCountSum: increment(a.docCountSum),
+      durationSumMs: increment(a.durationSum),
+      durationMaxMs: a.durationMax,
+      slowCount: increment(a.slowCount),
+      firstSnapCount: increment(a.firstSnapCount),
+      firstSnapSumMs: increment(a.firstSnapSumMs),
+      subsequentCount: increment(a.subsequentCount),
+      estimatedDocReads: increment(a.estimatedDocReads),
+      avgQueryMs: a.queryCount ? a.durationSum / a.queryCount : null,
+      constraintsSample: a.constraintsSample || null,
+      updatedAt: serverTimestamp(),
+    };
+    for (const [qk, n] of Object.entries(a.queryKeyInc)) {
+      const safe = qk.replace(/[./\[\]]/g, "_").slice(0, 120);
+      payload[`qk_${safe}`] = increment(n);
+    }
+    return setDoc(doc(db, ENG_COLLECTIONS.firestoreByComponent, id), payload, {
+      merge: true,
+    });
+  });
+
+  const loadWrites = [...byLoad.values()].map((load) => {
+    const payload = {
+      loadId: load.loadId,
+      ts: load.ts,
+      day: dayKey(load.ts),
+      deviceId,
+      label: load.label,
+      page: load.page,
+      department: load.department,
+      buildId: load.buildId,
+      updatedAt: serverTimestamp(),
+    };
+    let estBatch = 0;
+    for (const m of Object.values(load.modules)) {
+      const mid = String(m.moduleId).replace(/\./g, "_");
+      const p = `m__${mid}`;
+      payload[`${p}__reads`] = increment(m.reads || 0);
+      payload[`${p}__writes`] = increment(m.writes || 0);
+      payload[`${p}__listeners`] = increment(m.listeners || 0);
+      payload[`${p}__queries`] = increment(m.queries || 0);
+      payload[`${p}__slow`] = increment(m.slow || 0);
+      payload[`${p}__docCountSum`] = increment(m.docCountSum || 0);
+      payload[`${p}__durationSum`] = increment(m.durationSum || 0);
+      payload[`${p}__firstSnapCount`] = increment(m.firstSnapCount || 0);
+      payload[`${p}__firstSnapSumMs`] = increment(m.firstSnapSumMs || 0);
+      payload[`${p}__subsequentCount`] = increment(m.subsequentCount || 0);
+      payload[`${p}__estimatedDocReads`] = increment(
+        m.estimatedDocReads || 0
+      );
+      estBatch += m.estimatedDocReads || 0;
+      for (const [cname, c] of Object.entries(m.collections || {})) {
+        const safeCol = String(cname).replace(/[^a-zA-Z0-9_]/g, "_");
+        const cp = `${p}__c__${safeCol}`;
+        payload[`${cp}__reads`] = increment(c.reads || 0);
+        payload[`${cp}__writes`] = increment(c.writes || 0);
+        payload[`${cp}__listeners`] = increment(c.listeners || 0);
+        payload[`${cp}__queries`] = increment(c.queries || 0);
+        payload[`${cp}__slow`] = increment(c.slow || 0);
+        payload[`${cp}__docCountSum`] = increment(c.docCountSum || 0);
+      }
+    }
+    payload.estimatedDocReads = increment(estBatch);
+    payload.recentTimeline = load.timeline;
+    payload.recentQueries = Object.values(load.queries)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 40)
+      .map((q) => ({
+        queryKey: q.queryKey,
+        collection: q.collection,
+        kind: q.kind,
+        moduleId: q.moduleId,
+        count: q.count,
+        avgMs: q.count ? q.durationSum / q.count : null,
+        slow: q.slow,
+        constraints: q.constraints || null,
+      }));
+    payload.moduleIds = Object.keys(load.modules);
+    return setDoc(
+      doc(db, ENG_COLLECTIONS.fsComponentLoads, load.loadId),
+      payload,
+      { merge: true }
+    );
+  });
+
+  await Promise.all([...dayWrites, ...loadWrites]);
 }
 
 async function flushListeners(db, events, deviceId) {
@@ -451,12 +794,16 @@ async function flushPages(db, events, deviceId, deviceLabel = null) {
   // Individual samples for Timeline / waterfall (same flush cycle; no extra schedule)
   const sampleWrites = events.map((e) => {
     const ts = e.ts || Date.now();
-    const id = `${deviceId}_${ts}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const loadId =
+      e.loadId ||
+      `${deviceId}_${ts}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const id = loadId;
     return setDoc(
       doc(db, ENG_COLLECTIONS.pageLoads, id),
       {
         ts,
         day: dayKey(ts),
+        loadId,
         deviceId,
         label: e.label || deviceLabel || null,
         page: e.page || "unknown",
@@ -477,6 +824,45 @@ async function flushPages(db, events, deviceId, deviceLabel = null) {
   });
 
   await Promise.all([...aggWrites, ...sampleWrites]);
+}
+
+/**
+ * One eng_components doc per page-load loadId (component timeline breakdown).
+ */
+async function flushComponents(db, events, deviceId, deviceLabel) {
+  if (!events.length) return;
+  // Keep latest event per loadId in this batch
+  const byLoad = new Map();
+  for (const e of events) {
+    const loadId =
+      e.loadId ||
+      `${deviceId}_${e.ts || Date.now()}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+    byLoad.set(loadId, e);
+  }
+  const writes = [...byLoad.entries()].map(([loadId, e]) => {
+    const ts = e.ts || Date.now();
+    const components = Array.isArray(e.components) ? e.components : [];
+    return setDoc(
+      doc(db, ENG_COLLECTIONS.components, loadId),
+      {
+        loadId,
+        ts,
+        day: dayKey(ts),
+        deviceId,
+        label: e.label || deviceLabel || null,
+        page: e.page || "unknown",
+        department: e.department || null,
+        buildId: e.buildId || null,
+        user: e.user || null,
+        totalMs: e.totalMs ?? null,
+        hung: !!e.hung,
+        components,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  });
+  await Promise.all(writes);
 }
 
 async function flushMemory(db, events, deviceId) {

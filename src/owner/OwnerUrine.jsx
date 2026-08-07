@@ -2,6 +2,7 @@
 
 // src/owner_ui/OwnerUrinePage.jsx
 import React, { useEffect, useMemo, useState, useContext, Suspense } from "react";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 import { OwnerContext } from "../owner/OwnerContext.jsx";
 
 import DateSourceFilter from "../owner/components/DateSourceFilter";
@@ -234,6 +235,7 @@ export default function OwnerUrinePage() {
 
 
   return (
+    <EngComponent name="OwnerUrine" type="Page" parent={null} moduleId="OwnerUrine">
     <div className="owner-root">
       <header className="owner-header">
         <h1>Urine Examination — Analytics</h1>
@@ -837,5 +839,6 @@ export default function OwnerUrinePage() {
 </Suspense>
 )}    
     </div>
+    </EngComponent>
   );
 }

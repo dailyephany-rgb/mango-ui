@@ -204,10 +204,19 @@ export function startEngineeringTelemetry() {
     if (identity.page !== "Engineering" && identity.page !== "Performance") {
       installLongTaskHook();
       capturePageLoad();
+    } else if (identity.page === "Engineering") {
+      // Engineering skips page-load capture but still emits component timeline
+      setTimeout(() => {
+        safeRun(() => {
+          EngTelemetry.pushComponentBreakdown();
+          scheduleFlush({ force: true });
+        }, "eng.comp.engShell");
+      }, 1500);
     }
 
     const onLeave = () => {
       safeRun(() => {
+        EngTelemetry.pushComponentBreakdown();
         spillToSession();
         flushViaBeacon();
         scheduleFlush({ force: true });

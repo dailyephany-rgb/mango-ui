@@ -1,6 +1,7 @@
 
 // src/owner/OwnerBloodGroupPage.jsx
 import React, { useEffect, useMemo, useState, useContext, Suspense } from "react";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 import { OwnerContext } from "./OwnerContext.jsx";
 import DateSourceFilter from "./components/DateSourceFilter";
 
@@ -217,6 +218,12 @@ export default function OwnerBloodGroupPage() {
 
 
   return (
+    <EngComponent
+      name={mode === "testing" ? "OwnerBloodGroupTesting" : "OwnerBloodGroupRetesting"}
+      type="Page"
+      parent={null}
+      moduleId={mode === "testing" ? "OwnerBloodGroupTesting" : "OwnerBloodGroupRetesting"}
+    >
     <div className="owner-root">
       <header className="owner-header">
         <h1>Blood Group — Analytics</h1>
@@ -856,5 +863,6 @@ export default function OwnerBloodGroupPage() {
       </Suspense>
     )}
     </div>
+    </EngComponent>
   );
 }

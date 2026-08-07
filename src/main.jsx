@@ -4,6 +4,7 @@ import { mountEngApp } from "./shared/mountEngApp.jsx";
 import Mango from "./mango.jsx";
 import MasterView_Table from "./master/MasterView_Table.jsx";
 import MasterView_Rectangle from "./master_register_2/MasterView_Rectangle.jsx";
+import { EngComponent } from "./engineering/ui/EngComponent.jsx";
 import "./mango.css"; // Keep global styling consistent
 
 function App() {
@@ -64,11 +65,31 @@ function App() {
         </button>
       </nav>
 
-      {/* 🔄 Dynamic View Rendering */}
+      {/* 🔄 Dynamic View Rendering — EngComponent is observer-only */}
       <div style={{ padding: "20px" }}>
-        {activeView === "mango" && <Mango />}
-        {activeView === "table" && <MasterView_Table />}
-        {activeView === "rectangle" && <MasterView_Rectangle />}
+        {activeView === "mango" && (
+          <EngComponent name="Patient Entry" type="Forms" parent="Mango">
+            <Mango />
+          </EngComponent>
+        )}
+        {activeView === "table" && (
+          <EngComponent
+            name="MasterView_Table"
+            type="Tables"
+            parent="Mango"
+          >
+            <MasterView_Table />
+          </EngComponent>
+        )}
+        {activeView === "rectangle" && (
+          <EngComponent
+            name="MasterView_Rectangle"
+            type="Tables"
+            parent="Mango"
+          >
+            <MasterView_Rectangle />
+          </EngComponent>
+        )}
       </div>
     </div>
   );
@@ -77,4 +98,3 @@ function App() {
 mountEngApp(document.getElementById("root"),
   <App />
 );
-
