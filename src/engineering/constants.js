@@ -46,22 +46,23 @@ export const SLOW_QUERY_MS = 2000;
 export const DEVICE_ONLINE_MS = 90_000;
 export const DEVICE_STALE_MS = 300_000;
 
-/** Engineering Firestore collection names (separate project) */
+/** Engineering Firestore collection names (eng_* prefix — safe on shared clinical project) */
 export const ENG_COLLECTIONS = {
-  devices: "devices",
-  deviceStatus: "device_status",
-  heartbeatHourly: "heartbeat_hourly",
-  departments: "departments",
-  firestoreMetrics: "firestore_metrics",
-  pages: "pages",
-  network: "network",
-  memory: "memory",
-  reactDaily: "react_metrics",
-  errors: "errors",
-  audit: "audit",
-  health: "health",
-  settings: "settings",
-  builds: "builds",
-  alerts: "alerts",
-  listenerDaily: "listener_daily",
+  devices: "eng_devices",
+  deviceStatus: "eng_device_status",
+  heartbeatHourly: "eng_heartbeat_hourly",
+  departments: "eng_departments",
+  firestoreMetrics: "eng_firestore_metrics",
+  pages: "eng_pages",
+  network: "eng_network",
+  memory: "eng_memory",
+  reactDaily: "eng_react_metrics",
+  errors: "eng_errors",
+  audit: "eng_audit",
+  health: "eng_health",
+  settings: "eng_settings",
+  builds: "eng_builds",
+  alerts: "eng_alerts",
+  listenerDaily: "eng_listener_daily",
+  heartbeats: "eng_heartbeats",
 };

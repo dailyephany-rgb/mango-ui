@@ -1,14 +1,11 @@
 /**
- * Engineering Firebase — SEPARATE project from clinical vasundhara-4c6e5.
+ * Engineering Firebase config.
  *
- * Configure (first match wins):
- * 1. Vite env: VITE_ENG_API_KEY, VITE_ENG_PROJECT_ID, …
- * 2. engFirebase.options.js export
+ * Default: same project as clinical (vasundhara-4c6e5) via engFirebase.options.js,
+ * using a separately named app instance. Telemetry writes only `eng_*` collections.
  *
- * Named-database fallback (EDS option B):
- *   VITE_ENG_DATABASE_ID=engineering (with eng project OR same-project eng options)
- *
- * If unset, telemetry buffers locally; dashboard runs in local-only mode.
+ * Optional override: VITE_ENG_* env vars (takes precedence).
+ * Optional named DB: VITE_ENG_DATABASE_ID
  */
 
 import { initializeApp, getApps } from "firebase/app";

@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "REPLACE_WITH_MANGO_ENGINEERING_PROJECT_ID",
+    "engineering": "REPLACE_WITH_MANGO_ENGINEERING_PROJECT_ID"
+  }
+}

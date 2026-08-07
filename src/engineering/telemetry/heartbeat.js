@@ -132,7 +132,7 @@ export function sendHeartbeat() {
         /[^a-zA-Z0-9_-]/g,
         "_"
       );
-      void setDoc(doc(db, "heartbeats", minuteId), {
+      void setDoc(doc(db, ENG_COLLECTIONS.heartbeats, minuteId), {
         ...payload,
         lastSeenAt: undefined,
         lastHeartbeatAt: undefined,

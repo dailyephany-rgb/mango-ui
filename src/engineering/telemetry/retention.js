@@ -59,6 +59,7 @@ export async function runEngRetention(opts = {}) {
     { col: ENG_COLLECTIONS.memory, days: retention },
     { col: ENG_COLLECTIONS.reactDaily, days: retention },
     { col: ENG_COLLECTIONS.heartbeatHourly, days: Math.min(14, retention) },
+    { col: ENG_COLLECTIONS.heartbeats, days: Math.min(14, retention) },
     { col: ENG_COLLECTIONS.errors, days: errRetention },
     { col: ENG_COLLECTIONS.health, days: 365 },
   ];
