@@ -1748,10 +1748,21 @@ export function SettingsPage() {
     setKillSwitch,
     refresh,
   } = useEngSettings();
+  const { refresh: refreshFilters } = useEngFilters();
   const local = useLocalEngBuffer();
   const [label, setLabel] = useState(getDeviceLabel());
   const [assigning, setAssigning] = useState(false);
   const kind = detectDeviceKind();
+
+  const saveLabel = async (raw) => {
+    const n = normalizeDeviceLabel(raw) || raw;
+    setLabel(n);
+    setDeviceLabel(n);
+    await publishDeviceLabel(n);
+    EngTelemetry.heartbeat();
+    refresh();
+    refreshFilters();
+  };
   const [heartbeatSec, setHeartbeatSec] = useState(
     settings?.heartbeatSec ?? 30
   );
@@ -1813,13 +1824,8 @@ export function SettingsPage() {
             type="button"
             className="eng-btn"
             onClick={async () => {
-              const n = normalizeDeviceLabel(label) || label;
-              setLabel(n);
-              setDeviceLabel(n);
-              await publishDeviceLabel(n);
+              await saveLabel(label);
               scheduleFlush({ force: true });
-              EngTelemetry.heartbeat();
-              refresh();
             }}
           >
             Flush now
@@ -1865,13 +1871,8 @@ export function SettingsPage() {
               const v = e.target.value;
               setLabel(v);
             }}
-            onBlur={async () => {
-              const n = normalizeDeviceLabel(label) || label;
-              setLabel(n);
-              setDeviceLabel(n);
-              await publishDeviceLabel(n);
-              EngTelemetry.heartbeat();
-              refresh();
+            onBlur={() => {
+              void saveLabel(label);
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -1896,12 +1897,8 @@ export function SettingsPage() {
                   ? { outline: "2px solid #2563eb", fontWeight: 700 }
                   : undefined
               }
-              onClick={async () => {
-                setLabel(p);
-                setDeviceLabel(p);
-                await publishDeviceLabel(p);
-                EngTelemetry.heartbeat();
-                refresh();
+              onClick={() => {
+                void saveLabel(p);
               }}
             >
               {p}
@@ -1918,6 +1915,7 @@ export function SettingsPage() {
                 setLabel(next || "");
                 EngTelemetry.heartbeat();
                 refresh();
+                refreshFilters();
               } finally {
                 setAssigning(false);
               }

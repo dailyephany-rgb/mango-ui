@@ -20,15 +20,12 @@ import {
 } from "./perfViews.js";
 import { WaterfallPanel } from "./WaterfallPanel.jsx";
 
-function DeviceName({ id, label }) {
-  const { formatDeviceName, deviceLabelById } = useEngFilters();
-  if (!id && !label) return "—";
-  // Prefer live fleet label (device_status) so rename updates all history rows
-  const live = id ? deviceLabelById?.get(id) : null;
-  const pick = (v) =>
-    v && v !== id && !/^[0-9a-f]{8}-/i.test(String(v)) ? v : null;
-  const name = pick(live) || pick(label) || formatDeviceName(id);
-  return <span title={id || label}>{name}</span>;
+function DeviceName({ id, label: _rowLabel }) {
+  const { formatDeviceName } = useEngFilters();
+  // Always use LIVE device_status label for this deviceId.
+  // Ignore embedded row.label — that froze Timeline on mac-3 after rename.
+  if (!id) return "—";
+  return <span title={id}>{formatDeviceName(id)}</span>;
 }
 
 function Empty({ configured, loading, label }) {

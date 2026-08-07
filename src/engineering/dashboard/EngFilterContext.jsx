@@ -10,7 +10,13 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { collection, getDocs, limit, query } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  limit,
+  onSnapshot,
+  query,
+} from "firebase/firestore";
 import { getEngDb } from "../firebaseEngConfig.js";
 import { ENG_COLLECTIONS } from "../constants.js";
 import {
@@ -23,32 +29,33 @@ import {
 
 const EngFilterContext = createContext(null);
 
-async function loadFilterOptions() {
-  const db = getEngDb();
-  if (!db) return { devices: [], builds: [] };
-  try {
-    const [devSnap, buildSnap] = await Promise.all([
-      getDocs(query(collection(db, ENG_COLLECTIONS.deviceStatus), limit(200))),
-      getDocs(query(collection(db, ENG_COLLECTIONS.builds), limit(100))),
-    ]);
-    const devices = devSnap.docs.map((d) => {
-      const data = d.data() || {};
-      return {
-        id: data.deviceId || d.id,
-        label: data.label || data.deviceId || d.id,
-      };
-    });
-    const builds = buildSnap.docs
-      .map((d) => d.data()?.buildId || d.id)
-      .filter(Boolean);
+function mapDeviceDocs(snap) {
+  const devices = snap.docs.map((d) => {
+    const data = d.data() || {};
     return {
-      devices: [...new Map(devices.map((x) => [x.id, x])).values()].sort(
-        (a, b) => String(a.label).localeCompare(String(b.label))
-      ),
-      builds: [...new Set(builds)].sort(),
+      id: data.deviceId || d.id,
+      label: data.label || data.deviceId || d.id,
     };
+  });
+  return [...new Map(devices.map((x) => [x.id, x])).values()].sort((a, b) =>
+    String(a.label).localeCompare(String(b.label))
+  );
+}
+
+async function loadBuilds() {
+  const db = getEngDb();
+  if (!db) return [];
+  try {
+    const buildSnap = await getDocs(
+      query(collection(db, ENG_COLLECTIONS.builds), limit(100))
+    );
+    return [
+      ...new Set(
+        buildSnap.docs.map((d) => d.data()?.buildId || d.id).filter(Boolean)
+      ),
+    ].sort();
   } catch {
-    return { devices: [], builds: [] };
+    return [];
   }
 }
 
@@ -61,17 +68,37 @@ export function EngFilterProvider({ children }) {
 
   const range = useMemo(() => resolveFilterRange(filters), [filters]);
 
-  const reloadOptions = useCallback(async () => {
+  // Live device labels — Timeline/Devices/filters all share this map.
+  // One-shot getDocs left Timeline stuck on old names (mac-3) after rename.
+  useEffect(() => {
+    const db = getEngDb();
+    if (!db) {
+      setDevices([]);
+      return undefined;
+    }
     setOptionsLoading(true);
-    const opts = await loadFilterOptions();
-    setDevices(opts.devices);
-    setBuilds(opts.builds);
-    setOptionsLoading(false);
-  }, []);
+    const q = query(collection(db, ENG_COLLECTIONS.deviceStatus), limit(300));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setDevices(mapDeviceDocs(snap));
+        setOptionsLoading(false);
+      },
+      () => {
+        setOptionsLoading(false);
+      }
+    );
+    return () => unsub();
+  }, [refreshKey]);
 
   useEffect(() => {
-    void reloadOptions();
-  }, [reloadOptions, refreshKey]);
+    void loadBuilds().then(setBuilds);
+  }, [refreshKey]);
+
+  const reloadOptions = useCallback(async () => {
+    setRefreshKey((k) => k + 1);
+    setBuilds(await loadBuilds());
+  }, []);
 
   const setFilters = useCallback((patch) => {
     setFiltersState((prev) => ({
@@ -85,7 +112,6 @@ export function EngFilterProvider({ children }) {
   }, []);
 
   const refresh = useCallback(() => {
-    setRefreshKey((k) => k + 1);
     void reloadOptions();
   }, [reloadOptions]);
 
@@ -102,7 +128,7 @@ export function EngFilterProvider({ children }) {
     return m;
   }, [devices]);
 
-  /** Resolve friendly name from eng_device_status label; fall back to short id */
+  /** Resolve friendly name from live eng_device_status label */
   const formatDeviceName = useCallback(
     (deviceId) => {
       if (!deviceId) return "—";
