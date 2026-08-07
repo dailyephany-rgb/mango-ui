@@ -1,0 +1,5347 @@
+{
+  "fileCount": 213,
+  "files": [
+    {
+      "path": "src/Outsource.json",
+      "bytes": 5410,
+      "lines": 208,
+      "ext": ".json",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/analytics/LabAnalytics.jsx",
+        "src/outsource/Outsource.jsx",
+        "src/owner/lib/dataFetcher_outsource.js"
+      ],
+      "importCount": 3
+    },
+    {
+      "path": "src/ValidatorUI/ValidatorDashboard.css",
+      "bytes": 5188,
+      "lines": 271,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/ValidatorUI/ValidatorDashboard.jsx",
+      "bytes": 10517,
+      "lines": 353,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "firebase/firestore",
+        "../shared/firestore/trackedFirestore.js",
+        "../firebaseConfig.js",
+        "./ValidatorTable.jsx",
+        "../auth/UserMenu",
+        "../shared/config/collections.js",
+        "../shared/hooks/useRegisterFilters.js",
+        "../shared/utils/dates.js",
+        "../shared/utils/routineStageFlags.js"
+      ],
+      "onSnapshotMentions": 3,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 3,
+      "importedBy": [
+        "src/main_validator.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/ValidatorUI/ValidatorTable.jsx",
+      "bytes": 8372,
+      "lines": 273,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/ValidatorUI/ValidatorDashboard.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/ValidatorUI/validatorConfig.js",
+      "bytes": 2121,
+      "lines": 73,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "validatorConfigs"
+      ],
+      "importsFrom": [
+        "../biochem_testRouting.json",
+        "../hormone_testRouting.json",
+        "../coag_testRouting.json",
+        "../backroom_routing.json"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/analytics/LabAnalytics.jsx",
+      "bytes": 12526,
+      "lines": 452,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../shared/firestore/trackedFirestore.js",
+        "./analyticsUtils",
+        "../Outsource.json",
+        "../inside_room_routing.json",
+        "../shared/utils/dates.js",
+        "../shared/firestore/scopedTimestampRangeQuery.js",
+        "../shared/cache/sessionQueryCache.js"
+      ],
+      "onSnapshotMentions": 3,
+      "useEffectMentions": 3,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_analytics.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/analytics/analyticsUtils.js",
+      "bytes": 914,
+      "lines": 36,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "getCountByTest"
+      ],
+      "importsFrom": [
+        "./testRoutingMap.json"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/analytics/LabAnalytics.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/analytics/css/LabAnalytics.css",
+      "bytes": 2031,
+      "lines": 127,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/analytics/css/LabAnalytics1.css",
+      "bytes": 1605,
+      "lines": 99,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/analytics/testRoutingMap.json",
+      "bytes": 9304,
+      "lines": 289,
+      "ext": ".json",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/analytics/analyticsUtils.js"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/auth/AuthGuard.js",
+      "bytes": 208,
+      "lines": 17,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "requireLogin"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/auth/LoginPage.css",
+      "bytes": 745,
+      "lines": 49,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/auth/LoginPage.jsx",
+      "bytes": 1825,
+      "lines": 106,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "./users"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_login.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/auth/UserMenu.jsx",
+      "bytes": 1302,
+      "lines": 63,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/ValidatorUI/ValidatorDashboard.jsx",
+        "src/backroom/BackroomMain.jsx",
+        "src/biochem_main/BiochemistryMain.jsx",
+        "src/critical/CriticalAlertDashboard.jsx",
+        "src/haem/Haematology.jsx",
+        "src/mango.jsx",
+        "src/mango1.jsx",
+        "src/master_register_2/MasterView_Rectangle.jsx",
+        "src/outsource/Outsource.jsx"
+      ],
+      "importCount": 9
+    },
+    {
+      "path": "src/auth/users.js",
+      "bytes": 2058,
+      "lines": 177,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "departments",
+        "users"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/auth/LoginPage.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/backroom/Backroom.css",
+      "bytes": 8907,
+      "lines": 442,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/backroom/BackroomMain.jsx",
+      "bytes": 2905,
+      "lines": 121,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../auth/UserMenu",
+        "./ESRRegister.jsx",
+        "./BloodGroupRegister.jsx",
+        "./SerologyRegister.jsx",
+        "./RapidCardRegister.jsx",
+        "./UrineAnalysisRegister.jsx",
+        "../inventory/BackroomInventoryTab.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_backroom.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/backroom/BloodGroupRegister.jsx",
+      "bytes": 15218,
+      "lines": 504,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../shared/firestore/trackedFirestore.js",
+        "../shared/utils/dates.js",
+        "../shared/utils/source.js",
+        "../shared/hooks/usePersistedObjectState.js",
+        "../shared/hooks/useRegisterFilters.js",
+        "../shared/hooks/useScopedMasterEntries.js",
+        "../shared/components/RegisterFilterBar.jsx"
+      ],
+      "onSnapshotMentions": 4,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/backroom/BackroomMain.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/backroom/ESRRegister.jsx",
+      "bytes": 18081,
+      "lines": 555,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../backroom_routing.json",
+        "../shared/utils/dates.js",
+        "../shared/utils/source.js",
+        "../shared/utils/ids.js",
+        "../shared/hooks/usePersistedObjectState.js",
+        "../shared/hooks/useRegisterFilters.js",
+        "../shared/hooks/useMasterDeptSnapshots.js",
+        "../shared/components/RegisterFilterBar.jsx",
+        "../shared/components/CriticalAlertModal.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/backroom/BackroomMain.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/backroom/RapidCardRegister.jsx",
+      "bytes": 25253,
+      "lines": 829,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../backroom_routing.json",
+        "../shared/utils/dates.js",
+        "../shared/utils/source.js",
+        "../shared/utils/ids.js",
+        "../shared/hooks/usePersistedObjectState.js",
+        "../shared/hooks/useRegisterFilters.js",
+        "../shared/hooks/useMasterDeptSnapshots.js",
+        "../shared/components/RegisterFilterBar.jsx",
+        "../shared/components/CriticalAlertModal.jsx",
+        "../inventory/inventorymapping"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/backroom/BackroomMain.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/backroom/SerologyRegister.jsx",
+      "bytes": 20523,
+      "lines": 641,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../backroom_routing.json",
+        "../shared/utils/dates.js",
+        "../shared/utils/source.js",
+        "../shared/utils/ids.js",
+        "../shared/hooks/usePersistedObjectState.js",
+        "../shared/hooks/useRegisterFilters.js",
+        "../shared/hooks/useMasterDeptSnapshots.js",
+        "../shared/components/RegisterFilterBar.jsx",
+        "../shared/components/CriticalAlertModal.jsx",
+        "../inventory/inventorymapping"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/backroom/BackroomMain.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/backroom/UrineAnalysisRegister.jsx",
+      "bytes": 22858,
+      "lines": 659,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../backroom_routing.json",
+        "../shared/utils/dates.js",
+        "../shared/utils/source.js",
+        "../shared/utils/ids.js",
+        "../shared/hooks/usePersistedObjectState.js",
+        "../shared/hooks/useRegisterFilters.js",
+        "../shared/hooks/useMasterDeptSnapshots.js",
+        "../shared/components/RegisterFilterBar.jsx",
+        "../shared/components/CriticalAlertModal.jsx",
+        "../inventory/inventorymapping"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/backroom/BackroomMain.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/backroom_routing.json",
+      "bytes": 740,
+      "lines": 36,
+      "ext": ".json",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/ValidatorUI/validatorConfig.js",
+        "src/backroom/ESRRegister.jsx",
+        "src/backroom/RapidCardRegister.jsx",
+        "src/backroom/SerologyRegister.jsx",
+        "src/backroom/UrineAnalysisRegister.jsx",
+        "src/owner/lib/dataFetcher_rapid.js",
+        "src/owner/lib/dataFetcher_serology.js"
+      ],
+      "importCount": 7
+    },
+    {
+      "path": "src/backup/BackupEntry.css",
+      "bytes": 5662,
+      "lines": 309,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/backup/BackupEntry.jsx",
+      "bytes": 12837,
+      "lines": 368,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../shared/firestore/trackedFirestore.js",
+        "../inventory/inventorymapping",
+        "../inventory/BackupInventoryTab.jsx",
+        "../shared/utils/dates.js"
+      ],
+      "onSnapshotMentions": 3,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_backup.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/biochem_main/BiochemistryMain.css",
+      "bytes": 5273,
+      "lines": 285,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/biochem_main/BiochemistryMain.jsx",
+      "bytes": 18166,
+      "lines": 562,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig.js",
+        "firebase/firestore",
+        "../biochem_testRouting.json",
+        "./HormonesMain.jsx",
+        "../inventory/DeptInventoryTab.jsx",
+        "../inventory/inventorymapping",
+        "../auth/Authguard.js",
+        "../auth/UserMenu",
+        "../inventory/InventoryAdjustmentTab.jsx",
+        "../shared/utils/dates.js",
+        "../shared/utils/source.js",
+        "../shared/utils/ids.js",
+        "../shared/utils/tests.js",
+        "../shared/hooks/usePersistedObjectState.js",
+        "../shared/hooks/useRegisterFilters.js",
+        "../shared/hooks/useMasterDeptSnapshots.js",
+        "../shared/components/RegisterFilterBar.jsx",
+        "../shared/components/CriticalAlertModal.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 1,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_biochem.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/biochem_main/HormonesMain.jsx",
+      "bytes": 15749,
+      "lines": 482,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig.js",
+        "firebase/firestore",
+        "../hormone_testRouting.json",
+        "../inventory/DeptInventoryTab.jsx",
+        "../inventory/inventorymapping",
+        "../shared/utils/dates.js",
+        "../shared/utils/source.js",
+        "../shared/utils/ids.js",
+        "../shared/utils/tests.js",
+        "../shared/hooks/usePersistedObjectState.js",
+        "../shared/hooks/useRegisterFilters.js",
+        "../shared/hooks/useMasterDeptSnapshots.js",
+        "../shared/components/RegisterFilterBar.jsx",
+        "../shared/components/CriticalAlertModal.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 1,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/biochem_main/BiochemistryMain.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/biochem_testRouting.json",
+      "bytes": 1641,
+      "lines": 57,
+      "ext": ".json",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/ValidatorUI/validatorConfig.js",
+        "src/biochem_main/BiochemistryMain.jsx",
+        "src/owner/lib/dataFetcher_biochem_main.js"
+      ],
+      "importCount": 3
+    },
+    {
+      "path": "src/coag_testRouting.json",
+      "bytes": 361,
+      "lines": 15,
+      "ext": ".json",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/ValidatorUI/validatorConfig.js",
+        "src/coagulation/CoagulationMain.jsx"
+      ],
+      "importCount": 2
+    },
+    {
+      "path": "src/coagulation/CoagulationMain.css",
+      "bytes": 6992,
+      "lines": 346,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/coagulation/CoagulationMain.jsx",
+      "bytes": 27680,
+      "lines": 855,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig.js",
+        "firebase/firestore",
+        "../coag_testRouting.json",
+        "../inventory/CoagulationInventoryTab",
+        "../inventory/inventorymapping",
+        "../shared/utils/dates.js",
+        "../shared/utils/source.js",
+        "../shared/utils/ids.js",
+        "../shared/utils/tests.js",
+        "../shared/hooks/usePersistedObjectState.js",
+        "../shared/hooks/useRegisterFilters.js",
+        "../shared/hooks/useMasterDeptSnapshots.js",
+        "../shared/components/RegisterFilterBar.jsx",
+        "../shared/components/CriticalAlertModal.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_coag.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/critical/CriticalAlertDashboard.jsx",
+      "bytes": 13648,
+      "lines": 435,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../shared/firestore/trackedFirestore.js",
+        "jspdf",
+        "../auth/UserMenu",
+        "../shared/utils/dates.js"
+      ],
+      "onSnapshotMentions": 3,
+      "useEffectMentions": 3,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_critical.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/critical/CriticalDashboard.css",
+      "bytes": 5698,
+      "lines": 310,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/doc/listener-counts-2026-08-02.json",
+      "bytes": 19301,
+      "lines": 634,
+      "ext": ".json",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 1,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/firebaseConfig.js",
+      "bytes": 1520,
+      "lines": 51,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "db"
+      ],
+      "importsFrom": [
+        "firebase/app",
+        "firebase/firestore"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/ValidatorUI/ValidatorDashboard.jsx",
+        "src/backroom/BloodGroupRegister.jsx",
+        "src/backroom/ESRRegister.jsx",
+        "src/backroom/RapidCardRegister.jsx",
+        "src/backroom/SerologyRegister.jsx",
+        "src/backroom/UrineAnalysisRegister.jsx",
+        "src/backup/BackupEntry.jsx",
+        "src/biochem_main/BiochemistryMain.jsx",
+        "src/biochem_main/HormonesMain.jsx",
+        "src/coagulation/CoagulationMain.jsx",
+        "src/critical/CriticalAlertDashboard.jsx",
+        "src/haem/Haematology.jsx",
+        "src/inside_lab/InsideLab.jsx",
+        "src/inventory-command-center/InventoryCommandCenter.jsx",
+        "src/inventory-command-center/utils/consumptionledger.js",
+        "src/inventory/BackroomInventoryTab.jsx",
+        "src/inventory/BackupInventoryTab.jsx",
+        "src/inventory/CoagulationInventoryTab.jsx",
+        "src/inventory/DeptInventoryTab.jsx",
+        "src/inventory/HaemInventoryTab.jsx",
+        "src/inventory/InventoryAdjustmentTab.jsx",
+        "src/inventory/InventoryIntake.jsx",
+        "src/inventory/inventorymapping.js",
+        "src/mango.jsx",
+        "src/mango1.jsx",
+        "src/master/MasterView_Table.jsx",
+        "src/master/MasterView_Table1.jsx",
+        "src/master_admin/MasterAdmin.jsx",
+        "src/master_admin/MasterAdmin1.jsx",
+        "src/master_register_2/MasterView_Rectangle.jsx",
+        "src/outsource/Outsource.jsx",
+        "src/owner/lib/dataFetcher.js",
+        "src/owner/lib/dataFetcher_biochem_main.js",
+        "src/owner/lib/dataFetcher_bloodgroup_retesting.js",
+        "src/owner/lib/dataFetcher_bloodgroup_testing.js",
+        "src/owner/lib/dataFetcher_esr.js",
+        "src/owner/lib/dataFetcher_haem.js",
+        "src/owner/lib/dataFetcher_hormones_main.js",
+        "src/owner/lib/dataFetcher_lab.js",
+        "src/owner/lib/dataFetcher_outsource.js",
+        "src/owner/lib/dataFetcher_rapid.js",
+        "src/owner/lib/dataFetcher_serology.js",
+        "src/owner/lib/dataFetcher_urine.js",
+        "src/performance/perfDailyFirestore.js",
+        "src/shared/firestore/scopedTimePrintedQuery.js",
+        "src/shared/firestore/scopedTimestampRangeQuery.js",
+        "src/shared/firestore/subscribeInventoryByMachines.js",
+        "src/shared/hooks/useMasterDeptSnapshots.js",
+        "src/shared/hooks/useMasterRegisterSnapshots.js",
+        "src/shared/hooks/useScopedMasterEntries.js"
+      ],
+      "importCount": 50
+    },
+    {
+      "path": "src/haem/Haematology.css",
+      "bytes": 8292,
+      "lines": 446,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/haem/Haematology.jsx",
+      "bytes": 21317,
+      "lines": 647,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig.js",
+        "firebase/firestore",
+        "../inventory/inventorymapping",
+        "../inventory/HaemInventoryTab.jsx",
+        "../auth/UserMenu",
+        "../shared/firestore/subscribeInventoryByMachines.js",
+        "../shared/utils/dates.js",
+        "../shared/utils/source.js",
+        "../shared/utils/ids.js",
+        "../shared/utils/tests.js",
+        "../shared/hooks/usePersistedObjectState.js",
+        "../shared/hooks/useRegisterFilters.js",
+        "../shared/hooks/useMasterDeptSnapshots.js",
+        "../shared/components/RegisterFilterBar.jsx",
+        "../shared/components/CriticalAlertModal.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_haem.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/hormone_testRouting.json",
+      "bytes": 898,
+      "lines": 39,
+      "ext": ".json",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/ValidatorUI/validatorConfig.js",
+        "src/biochem_main/HormonesMain.jsx"
+      ],
+      "importCount": 2
+    },
+    {
+      "path": "src/inside_lab/InsideLab.css",
+      "bytes": 5123,
+      "lines": 151,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/inside_lab/InsideLab.jsx",
+      "bytes": 15038,
+      "lines": 497,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../shared/firestore/trackedFirestore.js",
+        "../inside_room_routing.json",
+        "../shared/utils/dates.js",
+        "../shared/hooks/useRegisterFilters.js",
+        "../shared/hooks/useScopedMasterEntries.js",
+        "../shared/components/RegisterFilterBar.jsx"
+      ],
+      "onSnapshotMentions": 3,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 3,
+      "importedBy": [
+        "src/main_inside_lab.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inside_room_routing.json",
+      "bytes": 1258,
+      "lines": 49,
+      "ext": ".json",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/analytics/LabAnalytics.jsx",
+        "src/inside_lab/InsideLab.jsx",
+        "src/owner/lib/dataFetcher_lab.js"
+      ],
+      "importCount": 3
+    },
+    {
+      "path": "src/inventory/BackroomInventoryTab.jsx",
+      "bytes": 36466,
+      "lines": 1555,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../inventory-command-center/utils/consumptionledger",
+        "../shared/firestore/subscribeInventoryByMachines.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/backroom/BackroomMain.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory/BackupInventoryTab.jsx",
+      "bytes": 54932,
+      "lines": 1675,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../inventory/inventorymapping",
+        "../inventory-command-center/utils/consumptionledger",
+        "../shared/firestore/subscribeInventoryByMachines.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/backup/BackupEntry.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory/CoagulationInventoryTab.jsx",
+      "bytes": 43679,
+      "lines": 1419,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../inventory-command-center/utils/consumptionledger",
+        "../shared/firestore/subscribeInventoryByMachines.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/coagulation/CoagulationMain.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory/DeptInventory.css",
+      "bytes": 6182,
+      "lines": 217,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/inventory/DeptInventoryTab.jsx",
+      "bytes": 56268,
+      "lines": 1787,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../inventory-command-center/utils/consumptionledger",
+        "../shared/firestore/subscribeInventoryByMachines.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/biochem_main/BiochemistryMain.jsx",
+        "src/biochem_main/HormonesMain.jsx"
+      ],
+      "importCount": 2
+    },
+    {
+      "path": "src/inventory/HaemInventoryTab.jsx",
+      "bytes": 48669,
+      "lines": 1535,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../inventory-command-center/utils/consumptionledger",
+        "../shared/firestore/subscribeInventoryByMachines.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/haem/Haematology.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory/InventoryAdjustmentTab.jsx",
+      "bytes": 8885,
+      "lines": 473,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "firebase/firestore",
+        "../shared/firestore/trackedFirestore.js",
+        "../firebaseConfig",
+        "../shared/cache/staticConfigCache.js"
+      ],
+      "onSnapshotMentions": 3,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/biochem_main/BiochemistryMain.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory/InventoryCommandCentre.jsx",
+      "bytes": 911,
+      "lines": 35,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/inventory/InventoryIntake.css",
+      "bytes": 4915,
+      "lines": 236,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/inventory/InventoryIntake.jsx",
+      "bytes": 19767,
+      "lines": 508,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../shared/firestore/trackedFirestore.js",
+        "./reagents.json"
+      ],
+      "onSnapshotMentions": 4,
+      "useEffectMentions": 4,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_inventory.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory/inventorymapping.js",
+      "bytes": 25306,
+      "lines": 775,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "getVitrosDeductibleTests",
+        "handleInventoryDeduction",
+        "testToReagentMap"
+      ],
+      "importsFrom": [
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../shared/firestore/trackedFirestore.js",
+        "../inventory-command-center/utils/consumptionledger",
+        "../shared/cache/staticConfigCache.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 4,
+      "getDocMentions": 4,
+      "importedBy": [
+        "src/backroom/RapidCardRegister.jsx",
+        "src/backroom/SerologyRegister.jsx",
+        "src/backroom/UrineAnalysisRegister.jsx",
+        "src/backup/BackupEntry.jsx",
+        "src/biochem_main/BiochemistryMain.jsx",
+        "src/biochem_main/HormonesMain.jsx",
+        "src/coagulation/CoagulationMain.jsx",
+        "src/haem/Haematology.jsx",
+        "src/inventory/BackupInventoryTab.jsx"
+      ],
+      "importCount": 9
+    },
+    {
+      "path": "src/inventory/reagents.json",
+      "bytes": 23225,
+      "lines": 292,
+      "ext": ".json",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory/InventoryIntake.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory-command-center/InventoryCommandCenter.jsx",
+      "bytes": 9537,
+      "lines": 336,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "firebase/firestore",
+        "../shared/firestore/trackedFirestore.js",
+        "../firebaseConfig.js",
+        "../shared/utils/dates.js",
+        "../shared/firestore/scopedTimestampRangeQuery.js",
+        "../shared/firestore/subscribeInventoryByMachines.js",
+        "../shared/cache/sessionQueryCache.js",
+        "./tabs/LiveInventoryTab",
+        "./tabs/ExpirySurveillanceTab",
+        "./tabs/QCMonitorTab",
+        "./tabs/ConsumptionLedgerTab",
+        "./tabs/CostAnalyticsTab",
+        "./tabs/ConsumedInventoryTab"
+      ],
+      "onSnapshotMentions": 8,
+      "useEffectMentions": 6,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_commandcenter.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory-command-center/commandcenter.css",
+      "bytes": 3758,
+      "lines": 327,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/inventory-command-center/components/CommandCenterHeader.jsx",
+      "bytes": 502,
+      "lines": 44,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/inventory-command-center/components/DateRangeFilter.jsx",
+      "bytes": 463,
+      "lines": 38,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory-command-center/tabs/ComboConsumptionLedgerTab.jsx",
+        "src/inventory-command-center/tabs/ConsumedInventoryTab.jsx",
+        "src/inventory-command-center/tabs/ConsumptionLedgerTab.jsx",
+        "src/inventory-command-center/tabs/CostAnalyticsTab.jsx",
+        "src/inventory-command-center/tabs/QCMonitorTab.jsx"
+      ],
+      "importCount": 5
+    },
+    {
+      "path": "src/inventory-command-center/components/DepartmentFilter.jsx",
+      "bytes": 510,
+      "lines": 40,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory-command-center/tabs/ExpirySurveillanceTab.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory-command-center/components/EmergencyBadge.jsx",
+      "bytes": 397,
+      "lines": 32,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory-command-center/tabs/ExpirySurveillanceTab.jsx",
+        "src/inventory-command-center/tabs/LiveInventoryTab.jsx",
+        "src/inventory-command-center/tabs/QCMonitorTab.jsx"
+      ],
+      "importCount": 3
+    },
+    {
+      "path": "src/inventory-command-center/components/HealthIndicator.jsx",
+      "bytes": 916,
+      "lines": 69,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/inventory-command-center/components/MetricCard.jsx",
+      "bytes": 316,
+      "lines": 27,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory-command-center/tabs/ExpirySurveillanceTab.jsx",
+        "src/inventory-command-center/tabs/LiveInventoryTab.jsx",
+        "src/inventory-command-center/tabs/QCMonitorTab.jsx"
+      ],
+      "importCount": 3
+    },
+    {
+      "path": "src/inventory-command-center/config/inventoryThresholds.js",
+      "bytes": 178,
+      "lines": 15,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "inventoryThresholds"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory-command-center/utils/inventoryAggregations.js"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory-command-center/tabs/ComboConsumptionLedgerTab.jsx",
+      "bytes": 17008,
+      "lines": 1048,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../components/DateRangeFilter"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory-command-center/tabs/ConsumptionLedgerTab.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory-command-center/tabs/ConsumedInventoryTab.jsx",
+      "bytes": 10623,
+      "lines": 589,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../components/DateRangeFilter"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory-command-center/InventoryCommandCenter.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory-command-center/tabs/ConsumptionLedgerTab.jsx",
+      "bytes": 19340,
+      "lines": 947,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../components/DateRangeFilter",
+        "./ComboConsumptionLedgerTab"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory-command-center/InventoryCommandCenter.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory-command-center/tabs/CostAnalyticsTab.jsx",
+      "bytes": 22248,
+      "lines": 998,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../components/DateRangeFilter"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory-command-center/InventoryCommandCenter.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory-command-center/tabs/ExpirySurveillanceTab.jsx",
+      "bytes": 4305,
+      "lines": 252,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../components/EmergencyBadge",
+        "../components/MetricCard",
+        "../components/DepartmentFilter",
+        "../utils/Expiryutils"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory-command-center/InventoryCommandCenter.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory-command-center/tabs/LiveInventoryTab.jsx",
+      "bytes": 5132,
+      "lines": 285,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../utils/inventoryAggregations",
+        "../components/MetricCard",
+        "../components/EmergencyBadge"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory-command-center/InventoryCommandCenter.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory-command-center/tabs/QCMonitorTab.jsx",
+      "bytes": 17024,
+      "lines": 1014,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../components/EmergencyBadge",
+        "../components/MetricCard",
+        "../components/DateRangeFilter",
+        "../utils/qcUtils"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory-command-center/InventoryCommandCenter.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory-command-center/utils/Expiryutils.js",
+      "bytes": 938,
+      "lines": 74,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "calculateDaysLeft",
+        "filterExpiringInventory",
+        "getRiskLabel",
+        "isExpiringSoon"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory-command-center/tabs/ExpirySurveillanceTab.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory-command-center/utils/consumptionledger.js",
+      "bytes": 727,
+      "lines": 42,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "addConsumptionLedgerEntry"
+      ],
+      "importsFrom": [
+        "firebase/firestore",
+        "../../firebaseConfig"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory/BackroomInventoryTab.jsx",
+        "src/inventory/BackupInventoryTab.jsx",
+        "src/inventory/CoagulationInventoryTab.jsx",
+        "src/inventory/DeptInventoryTab.jsx",
+        "src/inventory/HaemInventoryTab.jsx",
+        "src/inventory/inventorymapping.js"
+      ],
+      "importCount": 6
+    },
+    {
+      "path": "src/inventory-command-center/utils/inventoryAggregations.js",
+      "bytes": 1799,
+      "lines": 94,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "buildInventoryRows"
+      ],
+      "importsFrom": [
+        "../config/inventoryThresholds"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory-command-center/tabs/LiveInventoryTab.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/inventory-command-center/utils/ledgerUtils.js",
+      "bytes": 1333,
+      "lines": 103,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "calculateTotalConsumption",
+        "getTopConsumedReagent",
+        "groupConsumptionByDepartment",
+        "groupConsumptionByReagent"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/inventory-command-center/utils/qcUtils.js",
+      "bytes": 780,
+      "lines": 69,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "calculateQCFailureCount",
+        "formatQCStatus",
+        "groupQCByDepartment",
+        "isQCFailure"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory-command-center/tabs/QCMonitorTab.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/main.jsx",
+      "bytes": 2239,
+      "lines": 82,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./mango.jsx",
+        "./master/MasterView_Table.jsx",
+        "./master_register_2/MasterView_Rectangle.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_analytics.jsx",
+      "bytes": 452,
+      "lines": 17,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerContext.jsx",
+        "./analytics/LabAnalytics.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_backroom.jsx",
+      "bytes": 287,
+      "lines": 11,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./backroom/BackroomMain.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_backup.jsx",
+      "bytes": 298,
+      "lines": 10,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./backup/BackupEntry.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_biochem.jsx",
+      "bytes": 270,
+      "lines": 11,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./biochem_main/BiochemistryMain.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_coag.jsx",
+      "bytes": 266,
+      "lines": 11,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./coagulation/CoagulationMain.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_commandcenter.jsx",
+      "bytes": 600,
+      "lines": 39,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerContext.jsx",
+        "./inventory-command-center/InventoryCommandCenter.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_critical.jsx",
+      "bytes": 283,
+      "lines": 10,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./critical/CriticalAlertDashboard.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_haem.jsx",
+      "bytes": 309,
+      "lines": 12,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./haem/Haematology.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_inside_lab.jsx",
+      "bytes": 357,
+      "lines": 15,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./inside_lab/InsideLab.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_inventory.jsx",
+      "bytes": 552,
+      "lines": 19,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerContext.jsx",
+        "./inventory/InventoryIntake.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_login.jsx",
+      "bytes": 236,
+      "lines": 10,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./auth/LoginPage"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_master_admin.jsx",
+      "bytes": 528,
+      "lines": 20,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerContext.jsx",
+        "./master_admin/MasterAdmin.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_outsource.jsx",
+      "bytes": 384,
+      "lines": 15,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./outsource/Outsource.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_owner.jsx",
+      "bytes": 462,
+      "lines": 19,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerContext.jsx",
+        "./owner/OwnerApp.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_owner_biochem.jsx",
+      "bytes": 383,
+      "lines": 16,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerBiochem.jsx",
+        "./owner/OwnerContext.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_owner_blood_group.jsx",
+      "bytes": 423,
+      "lines": 18,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerContext.jsx",
+        "./owner/OwnerBloodGroup.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_owner_bloodgroup.jsx",
+      "bytes": 391,
+      "lines": 15,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerBloodGroup.jsx",
+        "./owner/OwnerContext.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_owner_coag.jsx",
+      "bytes": 474,
+      "lines": 21,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerContext.jsx",
+        "./owner/OwnerCoag.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_owner_esr.jsx",
+      "bytes": 473,
+      "lines": 21,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerContext.jsx",
+        "./owner/OwnerESRPage.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_owner_haem.jsx",
+      "bytes": 650,
+      "lines": 25,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerContext.jsx",
+        "./owner/OwnerHaemPage.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_owner_hormones.jsx",
+      "bytes": 495,
+      "lines": 22,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerContext.jsx",
+        "./owner/OwnerHormones.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_owner_lab.jsx",
+      "bytes": 383,
+      "lines": 16,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerLabPage.jsx",
+        "./owner/OwnerContext.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_owner_outsource.jsx",
+      "bytes": 402,
+      "lines": 17,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerOutsourcePage.jsx",
+        "./owner/OwnerContext.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_owner_rapid.jsx",
+      "bytes": 412,
+      "lines": 18,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerContext.jsx",
+        "./owner/OwnerRapidPage.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_owner_serology.jsx",
+      "bytes": 494,
+      "lines": 21,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerContext.jsx",
+        "./owner/OwnerSerology.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_owner_urine.jsx",
+      "bytes": 405,
+      "lines": 15,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./owner/OwnerContext.jsx",
+        "./owner/OwnerUrine.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_performance.jsx",
+      "bytes": 280,
+      "lines": 10,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./performance/PerformanceDashboard.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/main_validator.jsx",
+      "bytes": 322,
+      "lines": 12,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./ValidatorUI/ValidatorDashboard.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/mango.css",
+      "bytes": 5202,
+      "lines": 271,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/mango.jsx",
+      "bytes": 24144,
+      "lines": 698,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "./firebaseConfig.js",
+        "./test_mapping.json",
+        "firebase/firestore",
+        "./shared/firestore/trackedFirestore.js",
+        "./auth/UserMenu"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 4,
+      "getDocsMentions": 0,
+      "getDocMentions": 4,
+      "importedBy": [
+        "src/main.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/mango1.jsx",
+      "bytes": 21649,
+      "lines": 592,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "./firebaseConfig.js",
+        "./test_mapping.json",
+        "firebase/firestore",
+        "./shared/firestore/trackedFirestore.js",
+        "./auth/UserMenu"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 3,
+      "getDocsMentions": 0,
+      "getDocMentions": 4,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/master/MasterView_Table.css",
+      "bytes": 4456,
+      "lines": 227,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/master/MasterView_Table.jsx",
+      "bytes": 5676,
+      "lines": 169,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig.js",
+        "firebase/firestore",
+        "../shared/hooks/useMasterRegisterSnapshots.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/master/MasterView_Table1.jsx",
+      "bytes": 6035,
+      "lines": 173,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig.js",
+        "firebase/firestore",
+        "../shared/firestore/trackedFirestore.js",
+        "../shared/utils/dates.js"
+      ],
+      "onSnapshotMentions": 3,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/master_admin/MasterAdmin.css",
+      "bytes": 4961,
+      "lines": 254,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/master_admin/MasterAdmin.jsx",
+      "bytes": 27841,
+      "lines": 604,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../shared/firestore/trackedFirestore.js",
+        "xlsx",
+        "../shared/config/collections.js"
+      ],
+      "onSnapshotMentions": 3,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_master_admin.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/master_admin/MasterAdmin1.jsx",
+      "bytes": 27145,
+      "lines": 585,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../shared/firestore/trackedFirestore.js",
+        "xlsx",
+        "../shared/config/collections.js"
+      ],
+      "onSnapshotMentions": 3,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/master_register_2/MasterView_Rectangle.css",
+      "bytes": 10022,
+      "lines": 666,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/master_register_2/MasterView_Rectangle.jsx",
+      "bytes": 25466,
+      "lines": 1090,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig.js",
+        "firebase/firestore",
+        "../shared/firestore/trackedFirestore.js",
+        "../auth/UserMenu",
+        "../shared/utils/dates.js",
+        "../shared/utils/routineStageFlags.js"
+      ],
+      "onSnapshotMentions": 3,
+      "useEffectMentions": 3,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/master_register_2/main.jsx",
+      "bytes": 2203,
+      "lines": 81,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "react-dom/client",
+        "./mango.jsx",
+        "./master/MasterView_Table.jsx",
+        "./master_register_2/MasterView_Rectangle.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/outsource/Outsource.css",
+      "bytes": 5951,
+      "lines": 273,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/outsource/Outsource.jsx",
+      "bytes": 19757,
+      "lines": 671,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../firebaseConfig",
+        "firebase/firestore",
+        "../shared/firestore/trackedFirestore.js",
+        "../Outsource.json",
+        "../auth/UserMenu",
+        "../shared/utils/dates.js",
+        "../shared/hooks/usePersistedObjectState.js",
+        "../shared/hooks/useRegisterFilters.js",
+        "../shared/hooks/useScopedMasterEntries.js"
+      ],
+      "onSnapshotMentions": 3,
+      "useEffectMentions": 3,
+      "getDocsMentions": 0,
+      "getDocMentions": 6,
+      "importedBy": [
+        "src/main_outsource.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/OwnerApp.jsx",
+      "bytes": 5651,
+      "lines": 193,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "./components/DateSourceFilter",
+        "./OwnerContext.jsx",
+        "./workflow/WorkflowKPIBlocks",
+        "./workflow/WorkflowStackedBars",
+        "./workflow/WorkflowStaffDistribution",
+        "./workflow/workflowfetcher"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_owner.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/OwnerBiochem.jsx",
+      "bytes": 18604,
+      "lines": 767,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "./OwnerContext.jsx",
+        "./components/DateSourceFilter",
+        "./components/KPIBlocks",
+        "./components/DelayTable",
+        "./components/PatientListModal",
+        "./charts/CountsBar",
+        "./charts/StackedStageLines",
+        "./charts/TimeBricks",
+        "./charts/DelayHistogram",
+        "./charts/SLAScoreDonut",
+        "./charts/StaffDistribution",
+        "./charts/StaffAvgCards",
+        "./charts/StaffTimeline",
+        "./lib/dataFetcher_biochem_main"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_owner_biochem.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/OwnerBloodGroup.jsx",
+      "bytes": 19627,
+      "lines": 835,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "./OwnerContext.jsx",
+        "./components/DateSourceFilter",
+        "./components/KPIBlocks_BloodGroup",
+        "./components/PatientListModal",
+        "./components/DelayTable",
+        "./charts/CountsBar",
+        "./charts/StackedStageLines",
+        "./charts/TimeBricks",
+        "./charts/DelayHistogram",
+        "./charts/SLAScoreDonut",
+        "./charts/StaffDistribution",
+        "./charts/StaffAvgCards",
+        "./charts/StaffTimeline",
+        "./lib/dataFetcher_bloodgroup_testing.js",
+        "./lib/dataFetcher_bloodgroup_retesting.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 3,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_owner_blood_group.jsx",
+        "src/main_owner_bloodgroup.jsx"
+      ],
+      "importCount": 2
+    },
+    {
+      "path": "src/owner/OwnerCoag.jsx",
+      "bytes": 19626,
+      "lines": 836,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "./OwnerContext.jsx",
+        "./components/DateSourceFilter",
+        "./components/KPIBlocks",
+        "./components/PatientListModal",
+        "./components/DelayTable",
+        "./charts/CountsBar",
+        "./charts/StackedStageLines",
+        "./charts/TimeBricks",
+        "./charts/DelayHistogram",
+        "./charts/SLAScoreDonut",
+        "./charts/StaffDistribution",
+        "./charts/StaffAvgCards",
+        "./charts/StaffTimeline",
+        "./lib/dataFetcher.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_owner_coag.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/OwnerContext.jsx",
+      "bytes": 535,
+      "lines": 29,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [
+        "OwnerContext",
+        "OwnerProvider"
+      ],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_analytics.jsx",
+        "src/main_commandcenter.jsx",
+        "src/main_inventory.jsx",
+        "src/main_master_admin.jsx",
+        "src/main_owner.jsx",
+        "src/main_owner_biochem.jsx",
+        "src/main_owner_blood_group.jsx",
+        "src/main_owner_bloodgroup.jsx",
+        "src/main_owner_coag.jsx",
+        "src/main_owner_esr.jsx",
+        "src/main_owner_haem.jsx",
+        "src/main_owner_hormones.jsx",
+        "src/main_owner_lab.jsx",
+        "src/main_owner_outsource.jsx",
+        "src/main_owner_rapid.jsx",
+        "src/main_owner_serology.jsx",
+        "src/main_owner_urine.jsx",
+        "src/owner/OwnerApp.jsx",
+        "src/owner/OwnerBiochem.jsx",
+        "src/owner/OwnerBloodGroup.jsx",
+        "src/owner/OwnerCoag.jsx",
+        "src/owner/OwnerESRPage.jsx",
+        "src/owner/OwnerHaemPage.jsx",
+        "src/owner/OwnerHormones.jsx",
+        "src/owner/OwnerLabPage.jsx",
+        "src/owner/OwnerOutsourcePage.jsx",
+        "src/owner/OwnerRapidPage.jsx",
+        "src/owner/OwnerSerology.jsx",
+        "src/owner/OwnerUrine.jsx",
+        "src/owner/components/DateSourceFilter.jsx"
+      ],
+      "importCount": 30
+    },
+    {
+      "path": "src/owner/OwnerESRPage.jsx",
+      "bytes": 19710,
+      "lines": 819,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../owner/OwnerContext.jsx",
+        "../owner/components/DateSourceFilter",
+        "../owner/components/KPIBlocks",
+        "../owner/components/DelayTable",
+        "../owner/components/PatientListModal",
+        "../owner/charts/CountsBar",
+        "../owner/charts/StackedStageLines",
+        "../owner/charts/TimeBricks",
+        "../owner/charts/DelayHistogram",
+        "../owner/charts/SLAScoreDonut",
+        "../owner/charts/StaffDistribution",
+        "../owner/charts/StaffAvgCards",
+        "../owner/charts/StaffTimeline",
+        "../owner/lib/dataFetcher_esr.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_owner_esr.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/OwnerHaemPage.jsx",
+      "bytes": 18694,
+      "lines": 790,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "./OwnerContext.jsx",
+        "./components/DateSourceFilter",
+        "./components/KPIBlocks",
+        "./components/PatientListModal",
+        "./components/DelayTable",
+        "./charts/CountsBar",
+        "./charts/StackedStageLines",
+        "./charts/TimeBricks",
+        "./charts/DelayHistogram",
+        "./charts/SLAScoreDonut",
+        "./charts/StaffDistribution",
+        "./charts/StaffAvgCards",
+        "./charts/StaffTimeline",
+        "./lib/dataFetcher_haem.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_owner_haem.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/OwnerHormones.jsx",
+      "bytes": 17868,
+      "lines": 801,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "./OwnerContext.jsx",
+        "./components/DateSourceFilter",
+        "./components/KPIBlocks",
+        "./components/DelayTable",
+        "./components/PatientListModal",
+        "./charts/CountsBar",
+        "./charts/StackedStageLines",
+        "./charts/TimeBricks",
+        "./charts/DelayHistogram",
+        "./charts/SLAScoreDonut",
+        "./charts/StaffDistribution",
+        "./charts/StaffAvgCards",
+        "./charts/StaffTimeline",
+        "./lib/dataFetcher_hormones_main"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_owner_hormones.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/OwnerLabPage.jsx",
+      "bytes": 5906,
+      "lines": 183,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../owner/OwnerContext.jsx",
+        "../owner/components/DateSourceFilter",
+        "../owner/components/KPIBlocksInside",
+        "../owner/components/DelayTable",
+        "../owner/components/PatientListModalInside",
+        "../owner/charts/CountsBarInside",
+        "../owner/charts/StackedStageLinesInside",
+        "../owner/charts/TimeBricks",
+        "../owner/charts/SLAScoreDonut",
+        "../owner/charts/DelayHistogram",
+        "../owner/charts/StaffDistribution",
+        "../owner/lib/dataFetcher_lab.js",
+        "../owner/data/test_timings.json"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_owner_lab.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/OwnerOutsourcePage.jsx",
+      "bytes": 14930,
+      "lines": 616,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../owner/OwnerContext.jsx",
+        "../owner/components/DateSourceFilter",
+        "../owner/components/KPIBlocksOutsource",
+        "../owner/components/DelayTable",
+        "../owner/components/PatientListModalOutsource",
+        "../owner/charts/CountsBarOutsource",
+        "../owner/charts/StackedStageLinesOutsource",
+        "../owner/charts/TimeBricksOutsource",
+        "../owner/charts/SLAScoreDonut",
+        "../owner/charts/DelayHistogram",
+        "../owner/charts/StaffDistribution",
+        "../owner/lib/dataFetcher_outsource.js",
+        "../owner/data/test_timings.json"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_owner_outsource.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/OwnerRapidPage.jsx",
+      "bytes": 18505,
+      "lines": 814,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../owner/OwnerContext.jsx",
+        "../owner/components/DateSourceFilter",
+        "../owner/components/KPIBlocks",
+        "../owner/components/PatientListModal",
+        "../owner/components/DelayTable",
+        "../owner/charts/CountsBar",
+        "../owner/charts/StackedStageLines",
+        "../owner/charts/TimeBricks",
+        "../owner/charts/DelayHistogram",
+        "../owner/charts/SLAScoreDonut",
+        "../owner/charts/StaffDistribution",
+        "../owner/charts/StaffAvgCards",
+        "../owner/charts/StaffTimeline",
+        "../owner/lib/dataFetcher_rapid.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_owner_rapid.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/OwnerSerology.jsx",
+      "bytes": 18551,
+      "lines": 862,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "./OwnerContext.jsx",
+        "./components/DateSourceFilter",
+        "./components/KPIBlocks",
+        "./components/PatientListModal",
+        "./components/DelayTable",
+        "./charts/CountsBar",
+        "./charts/StackedStageLines",
+        "./charts/TimeBricks",
+        "./charts/DelayHistogram",
+        "./charts/SLAScoreDonut",
+        "./charts/StaffDistribution",
+        "./charts/StaffAvgCards",
+        "./charts/StaffTimeline",
+        "./lib/dataFetcher_serology.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_owner_serology.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/OwnerUI.css",
+      "bytes": 4582,
+      "lines": 189,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/owner/OwnerUrine.jsx",
+      "bytes": 19005,
+      "lines": 820,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../owner/OwnerContext.jsx",
+        "../owner/components/DateSourceFilter",
+        "../owner/components/KPIBlocks",
+        "../owner/components/PatientListModal",
+        "../owner/components/DelayTable",
+        "../owner/charts/CountsBar",
+        "../owner/charts/StackedStageLines",
+        "../owner/charts/TimeBricks",
+        "../owner/charts/DelayHistogram",
+        "../owner/charts/SLAScoreDonut",
+        "../owner/charts/StaffDistribution",
+        "../owner/charts/StaffAvgCards",
+        "../owner/charts/StaffTimeline",
+        "../owner/lib/dataFetcher_urine.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_owner_urine.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/charts/CountsBar.jsx",
+      "bytes": 1245,
+      "lines": 44,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "recharts"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerBiochem.jsx",
+        "src/owner/OwnerBloodGroup.jsx",
+        "src/owner/OwnerCoag.jsx",
+        "src/owner/OwnerESRPage.jsx",
+        "src/owner/OwnerHaemPage.jsx",
+        "src/owner/OwnerHormones.jsx",
+        "src/owner/OwnerRapidPage.jsx",
+        "src/owner/OwnerSerology.jsx",
+        "src/owner/OwnerUrine.jsx"
+      ],
+      "importCount": 9
+    },
+    {
+      "path": "src/owner/charts/CountsBarInside.jsx",
+      "bytes": 844,
+      "lines": 32,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "recharts"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerLabPage.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/charts/CountsBarOutsource.jsx",
+      "bytes": 930,
+      "lines": 37,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "recharts"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerOutsourcePage.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/charts/DelayHistogram.jsx",
+      "bytes": 1251,
+      "lines": 39,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "recharts"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerBiochem.jsx",
+        "src/owner/OwnerBloodGroup.jsx",
+        "src/owner/OwnerCoag.jsx",
+        "src/owner/OwnerESRPage.jsx",
+        "src/owner/OwnerHaemPage.jsx",
+        "src/owner/OwnerHormones.jsx",
+        "src/owner/OwnerLabPage.jsx",
+        "src/owner/OwnerOutsourcePage.jsx",
+        "src/owner/OwnerRapidPage.jsx",
+        "src/owner/OwnerSerology.jsx",
+        "src/owner/OwnerUrine.jsx"
+      ],
+      "importCount": 11
+    },
+    {
+      "path": "src/owner/charts/SLAScoreDonut.jsx",
+      "bytes": 1403,
+      "lines": 47,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "recharts"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerBiochem.jsx",
+        "src/owner/OwnerBloodGroup.jsx",
+        "src/owner/OwnerCoag.jsx",
+        "src/owner/OwnerESRPage.jsx",
+        "src/owner/OwnerHaemPage.jsx",
+        "src/owner/OwnerHormones.jsx",
+        "src/owner/OwnerLabPage.jsx",
+        "src/owner/OwnerOutsourcePage.jsx",
+        "src/owner/OwnerRapidPage.jsx",
+        "src/owner/OwnerSerology.jsx",
+        "src/owner/OwnerUrine.jsx"
+      ],
+      "importCount": 11
+    },
+    {
+      "path": "src/owner/charts/StackedStageLines.jsx",
+      "bytes": 8089,
+      "lines": 318,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "recharts"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerBiochem.jsx",
+        "src/owner/OwnerBloodGroup.jsx",
+        "src/owner/OwnerCoag.jsx",
+        "src/owner/OwnerESRPage.jsx",
+        "src/owner/OwnerHaemPage.jsx",
+        "src/owner/OwnerHormones.jsx",
+        "src/owner/OwnerRapidPage.jsx",
+        "src/owner/OwnerSerology.jsx",
+        "src/owner/OwnerUrine.jsx"
+      ],
+      "importCount": 9
+    },
+    {
+      "path": "src/owner/charts/StackedStageLinesInside.jsx",
+      "bytes": 2518,
+      "lines": 66,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "recharts"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerLabPage.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/charts/StackedStageLinesOutsource.jsx",
+      "bytes": 6873,
+      "lines": 293,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "recharts"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerOutsourcePage.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/charts/StaffAvgCards.jsx",
+      "bytes": 2250,
+      "lines": 109,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerBiochem.jsx",
+        "src/owner/OwnerBloodGroup.jsx",
+        "src/owner/OwnerCoag.jsx",
+        "src/owner/OwnerESRPage.jsx",
+        "src/owner/OwnerHaemPage.jsx",
+        "src/owner/OwnerHormones.jsx",
+        "src/owner/OwnerRapidPage.jsx",
+        "src/owner/OwnerSerology.jsx",
+        "src/owner/OwnerUrine.jsx"
+      ],
+      "importCount": 9
+    },
+    {
+      "path": "src/owner/charts/StaffDistribution.jsx",
+      "bytes": 5274,
+      "lines": 251,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "recharts"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerBiochem.jsx",
+        "src/owner/OwnerBloodGroup.jsx",
+        "src/owner/OwnerCoag.jsx",
+        "src/owner/OwnerESRPage.jsx",
+        "src/owner/OwnerHaemPage.jsx",
+        "src/owner/OwnerHormones.jsx",
+        "src/owner/OwnerLabPage.jsx",
+        "src/owner/OwnerOutsourcePage.jsx",
+        "src/owner/OwnerRapidPage.jsx",
+        "src/owner/OwnerSerology.jsx",
+        "src/owner/OwnerUrine.jsx"
+      ],
+      "importCount": 11
+    },
+    {
+      "path": "src/owner/charts/StaffTimeline.jsx",
+      "bytes": 7140,
+      "lines": 374,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "recharts"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerBiochem.jsx",
+        "src/owner/OwnerBloodGroup.jsx",
+        "src/owner/OwnerCoag.jsx",
+        "src/owner/OwnerESRPage.jsx",
+        "src/owner/OwnerHaemPage.jsx",
+        "src/owner/OwnerHormones.jsx",
+        "src/owner/OwnerRapidPage.jsx",
+        "src/owner/OwnerSerology.jsx",
+        "src/owner/OwnerUrine.jsx"
+      ],
+      "importCount": 9
+    },
+    {
+      "path": "src/owner/charts/TimeBricks.css",
+      "bytes": 3456,
+      "lines": 123,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/owner/charts/TimeBricks.jsx",
+      "bytes": 4396,
+      "lines": 163,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "@fullcalendar/react",
+        "@fullcalendar/resource-timeline",
+        "moment"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerBiochem.jsx",
+        "src/owner/OwnerBloodGroup.jsx",
+        "src/owner/OwnerCoag.jsx",
+        "src/owner/OwnerESRPage.jsx",
+        "src/owner/OwnerHaemPage.jsx",
+        "src/owner/OwnerHormones.jsx",
+        "src/owner/OwnerLabPage.jsx",
+        "src/owner/OwnerRapidPage.jsx",
+        "src/owner/OwnerSerology.jsx",
+        "src/owner/OwnerUrine.jsx"
+      ],
+      "importCount": 10
+    },
+    {
+      "path": "src/owner/charts/TimeBricksOutsource.css",
+      "bytes": 1418,
+      "lines": 69,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/owner/charts/TimeBricksOutsource.jsx",
+      "bytes": 6300,
+      "lines": 197,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "@fullcalendar/react",
+        "@fullcalendar/resource-timeline",
+        "@fullcalendar/interaction",
+        "moment"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerOutsourcePage.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/components/DateSourceFilter.jsx",
+      "bytes": 1490,
+      "lines": 60,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "../OwnerContext.jsx"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerApp.jsx",
+        "src/owner/OwnerBiochem.jsx",
+        "src/owner/OwnerBloodGroup.jsx",
+        "src/owner/OwnerCoag.jsx",
+        "src/owner/OwnerESRPage.jsx",
+        "src/owner/OwnerHaemPage.jsx",
+        "src/owner/OwnerHormones.jsx",
+        "src/owner/OwnerLabPage.jsx",
+        "src/owner/OwnerOutsourcePage.jsx",
+        "src/owner/OwnerRapidPage.jsx",
+        "src/owner/OwnerSerology.jsx",
+        "src/owner/OwnerUrine.jsx"
+      ],
+      "importCount": 12
+    },
+    {
+      "path": "src/owner/components/DelayTable.jsx",
+      "bytes": 2467,
+      "lines": 76,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerBiochem.jsx",
+        "src/owner/OwnerBloodGroup.jsx",
+        "src/owner/OwnerCoag.jsx",
+        "src/owner/OwnerESRPage.jsx",
+        "src/owner/OwnerHaemPage.jsx",
+        "src/owner/OwnerHormones.jsx",
+        "src/owner/OwnerLabPage.jsx",
+        "src/owner/OwnerOutsourcePage.jsx",
+        "src/owner/OwnerRapidPage.jsx",
+        "src/owner/OwnerSerology.jsx",
+        "src/owner/OwnerUrine.jsx"
+      ],
+      "importCount": 11
+    },
+    {
+      "path": "src/owner/components/KPIBlocks.jsx",
+      "bytes": 4242,
+      "lines": 124,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerBiochem.jsx",
+        "src/owner/OwnerCoag.jsx",
+        "src/owner/OwnerESRPage.jsx",
+        "src/owner/OwnerHaemPage.jsx",
+        "src/owner/OwnerHormones.jsx",
+        "src/owner/OwnerRapidPage.jsx",
+        "src/owner/OwnerSerology.jsx",
+        "src/owner/OwnerUrine.jsx"
+      ],
+      "importCount": 8
+    },
+    {
+      "path": "src/owner/components/KPIBlocksInside.jsx",
+      "bytes": 2445,
+      "lines": 73,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerLabPage.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/components/KPIBlocksOutsource.jsx",
+      "bytes": 3605,
+      "lines": 100,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerOutsourcePage.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/components/KPIBlocks_BloodGroup.jsx",
+      "bytes": 3930,
+      "lines": 116,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerBloodGroup.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/components/PatientListModal.jsx",
+      "bytes": 2315,
+      "lines": 74,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerBiochem.jsx",
+        "src/owner/OwnerBloodGroup.jsx",
+        "src/owner/OwnerCoag.jsx",
+        "src/owner/OwnerESRPage.jsx",
+        "src/owner/OwnerHaemPage.jsx",
+        "src/owner/OwnerHormones.jsx",
+        "src/owner/OwnerRapidPage.jsx",
+        "src/owner/OwnerSerology.jsx",
+        "src/owner/OwnerUrine.jsx"
+      ],
+      "importCount": 9
+    },
+    {
+      "path": "src/owner/components/PatientListModalInside.jsx",
+      "bytes": 1542,
+      "lines": 56,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerLabPage.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/components/PatientListModalOutsource.jsx",
+      "bytes": 2123,
+      "lines": 86,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerOutsourcePage.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/data/test_timings.json",
+      "bytes": 2360,
+      "lines": 53,
+      "ext": ".json",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerLabPage.jsx",
+        "src/owner/OwnerOutsourcePage.jsx",
+        "src/owner/lib/dataFetcher.js",
+        "src/owner/lib/dataFetcher_biochem_main.js",
+        "src/owner/lib/dataFetcher_bloodgroup_retesting.js",
+        "src/owner/lib/dataFetcher_bloodgroup_testing.js",
+        "src/owner/lib/dataFetcher_esr.js",
+        "src/owner/lib/dataFetcher_haem.js",
+        "src/owner/lib/dataFetcher_hormones_main.js",
+        "src/owner/lib/dataFetcher_lab.js",
+        "src/owner/lib/dataFetcher_outsource.js",
+        "src/owner/lib/dataFetcher_rapid.js",
+        "src/owner/lib/dataFetcher_serology.js",
+        "src/owner/lib/dataFetcher_urine.js"
+      ],
+      "importCount": 14
+    },
+    {
+      "path": "src/owner/lib/dataFetcher.js",
+      "bytes": 18030,
+      "lines": 772,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "computeKPIs",
+        "computeSLAViolations",
+        "computeStaffAnalytics",
+        "extractCoagTestCount",
+        "fetchTestTimings",
+        "isCoagTest",
+        "mergeDeptRows",
+        "minutesDiff",
+        "normalizeTestsField",
+        "subscribeOverview",
+        "toDate",
+        "unifyForCharts"
+      ],
+      "importsFrom": [
+        "../../firebaseConfig.js",
+        "../../shared/firestore/scopedTimePrintedQuery.js",
+        "../../shared/cache/createOwnerSessionPaint.js",
+        "../../shared/firestore/trackedFirestore.js",
+        "./withOwnerSourceControl.js",
+        "../data/test_timings.json",
+        "../../shared/utils/dates.js",
+        "../../shared/utils/normalizeTestsField.js"
+      ],
+      "onSnapshotMentions": 4,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerCoag.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/lib/dataFetcher_biochem_main.js",
+      "bytes": 16025,
+      "lines": 580,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "computeKPIs",
+        "computeSLAViolations",
+        "computeStaffAnalytics",
+        "extractBiochemMainTestCount",
+        "fetchTestTimings",
+        "isBiochemMainTest",
+        "mergeDeptRows",
+        "minutesDiff",
+        "normalizeTestsField",
+        "subscribeOverview",
+        "toDate",
+        "unifyForCharts"
+      ],
+      "importsFrom": [
+        "../../firebaseConfig.js",
+        "../../shared/firestore/scopedTimePrintedQuery.js",
+        "../../shared/cache/createOwnerSessionPaint.js",
+        "../../shared/firestore/trackedFirestore.js",
+        "./withOwnerSourceControl.js",
+        "../data/test_timings.json",
+        "../../biochem_testRouting.json",
+        "../../shared/utils/dates.js",
+        "../../shared/utils/normalizeTestsField.js"
+      ],
+      "onSnapshotMentions": 4,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerBiochem.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/lib/dataFetcher_bloodgroup_retesting.js",
+      "bytes": 14206,
+      "lines": 501,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "computeKPIs",
+        "computeSLAViolations",
+        "computeStaffAnalytics",
+        "extractBloodGroupTestCount",
+        "fetchTestTimings",
+        "isBloodGroupTest",
+        "mergeDeptRows",
+        "minutesDiff",
+        "normalizeTestsField",
+        "subscribeOverview",
+        "toDate",
+        "unifyForCharts"
+      ],
+      "importsFrom": [
+        "../../firebaseConfig.js",
+        "../../shared/firestore/scopedTimePrintedQuery.js",
+        "../../shared/cache/createOwnerSessionPaint.js",
+        "../../shared/firestore/trackedFirestore.js",
+        "./withOwnerSourceControl.js",
+        "../data/test_timings.json",
+        "../../shared/utils/dates.js",
+        "../../shared/utils/normalizeTestsField.js"
+      ],
+      "onSnapshotMentions": 4,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerBloodGroup.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/lib/dataFetcher_bloodgroup_testing.js",
+      "bytes": 15952,
+      "lines": 594,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "computeKPIs",
+        "computeSLAViolations",
+        "computeStaffAnalytics",
+        "extractBloodGroupTestCount",
+        "fetchTestTimings",
+        "isBloodGroupTest",
+        "mergeDeptRows",
+        "minutesDiff",
+        "normalizeTestsField",
+        "subscribeOverview",
+        "toDate",
+        "unifyForCharts"
+      ],
+      "importsFrom": [
+        "../../firebaseConfig.js",
+        "../../shared/firestore/scopedTimePrintedQuery.js",
+        "../../shared/cache/createOwnerSessionPaint.js",
+        "../../shared/firestore/trackedFirestore.js",
+        "./withOwnerSourceControl.js",
+        "../data/test_timings.json",
+        "../../shared/utils/dates.js",
+        "../../shared/utils/normalizeTestsField.js"
+      ],
+      "onSnapshotMentions": 4,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerBloodGroup.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/lib/dataFetcher_esr.js",
+      "bytes": 17949,
+      "lines": 760,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "computeKPIs",
+        "computeSLAViolations",
+        "computeStaffAnalytics",
+        "extractESRTestCount",
+        "fetchTestTimings",
+        "isESRTest",
+        "mergeDeptRows",
+        "minutesDiff",
+        "normalizeTestsField",
+        "subscribeOverview",
+        "toDate",
+        "unifyForCharts"
+      ],
+      "importsFrom": [
+        "../../firebaseConfig.js",
+        "../../shared/firestore/scopedTimePrintedQuery.js",
+        "../../shared/cache/createOwnerSessionPaint.js",
+        "../../shared/firestore/trackedFirestore.js",
+        "./withOwnerSourceControl.js",
+        "../data/test_timings.json",
+        "../../shared/utils/dates.js",
+        "../../shared/utils/normalizeTestsField.js"
+      ],
+      "onSnapshotMentions": 4,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerESRPage.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/lib/dataFetcher_haem.js",
+      "bytes": 16821,
+      "lines": 696,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "computeKPIs",
+        "computeSLAViolations",
+        "computeStaffAnalytics",
+        "extractHaemTestCount",
+        "fetchTestTimings",
+        "isHaemTest",
+        "mergeDeptRows",
+        "minutesDiff",
+        "normalizeTestsField",
+        "subscribeOverview",
+        "toDate",
+        "unifyForCharts"
+      ],
+      "importsFrom": [
+        "../../firebaseConfig.js",
+        "../../shared/firestore/scopedTimePrintedQuery.js",
+        "../../shared/cache/createOwnerSessionPaint.js",
+        "../../shared/firestore/trackedFirestore.js",
+        "./withOwnerSourceControl.js",
+        "../data/test_timings.json",
+        "../../shared/utils/dates.js",
+        "../../shared/utils/normalizeTestsField.js"
+      ],
+      "onSnapshotMentions": 4,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerHaemPage.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/lib/dataFetcher_hormones_main.js",
+      "bytes": 16005,
+      "lines": 563,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "computeKPIs",
+        "computeSLAViolations",
+        "computeStaffAnalytics",
+        "extractHormonesMainTestCount",
+        "fetchTestTimings",
+        "isHormonesMainTest",
+        "mergeDeptRows",
+        "minutesDiff",
+        "normalizeTestsField",
+        "subscribeOverview",
+        "toDate",
+        "unifyForCharts"
+      ],
+      "importsFrom": [
+        "../../firebaseConfig.js",
+        "../../shared/firestore/scopedTimePrintedQuery.js",
+        "../../shared/cache/createOwnerSessionPaint.js",
+        "../../shared/firestore/trackedFirestore.js",
+        "./withOwnerSourceControl.js",
+        "../data/test_timings.json",
+        "../../shared/utils/dates.js",
+        "../../shared/utils/normalizeTestsField.js"
+      ],
+      "onSnapshotMentions": 4,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerHormones.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/lib/dataFetcher_lab.js",
+      "bytes": 8775,
+      "lines": 293,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "computeKPIs",
+        "mergeDeptRows",
+        "minutesDiff",
+        "normalizeTestsField",
+        "subscribeOverview",
+        "toDate"
+      ],
+      "importsFrom": [
+        "../../firebaseConfig.js",
+        "../../shared/firestore/scopedTimePrintedQuery.js",
+        "../../shared/cache/createOwnerSessionPaint.js",
+        "../../shared/firestore/trackedFirestore.js",
+        "./withOwnerSourceControl.js",
+        "../data/test_timings.json",
+        "../../inside_room_routing.json",
+        "../../shared/utils/dates.js",
+        "../../shared/utils/normalizeTestsFieldUpper.js"
+      ],
+      "onSnapshotMentions": 4,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerLabPage.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/lib/dataFetcher_outsource.js",
+      "bytes": 14675,
+      "lines": 518,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "computeKPIs",
+        "formatTAT",
+        "mergeOutsourceRows",
+        "minutesDiff",
+        "normalizeTestsField",
+        "subscribeOverview",
+        "toDate"
+      ],
+      "importsFrom": [
+        "../../firebaseConfig.js",
+        "../../shared/firestore/scopedTimePrintedQuery.js",
+        "../../shared/cache/createOwnerSessionPaint.js",
+        "../../shared/firestore/trackedFirestore.js",
+        "./withOwnerSourceControl.js",
+        "../data/test_timings.json",
+        "../../Outsource.json",
+        "../../shared/utils/dates.js",
+        "../../shared/utils/normalizeTestsFieldUpper.js"
+      ],
+      "onSnapshotMentions": 4,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerOutsourcePage.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/lib/dataFetcher_rapid.js",
+      "bytes": 18317,
+      "lines": 793,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "computeKPIs",
+        "computeSLAViolations",
+        "computeStaffAnalytics",
+        "extractRapidTestCount",
+        "fetchTestTimings",
+        "isRapidTest",
+        "mergeDeptRows",
+        "minutesDiff",
+        "normalizeTestsField",
+        "subscribeOverview",
+        "toDate",
+        "unifyForCharts"
+      ],
+      "importsFrom": [
+        "../../firebaseConfig.js",
+        "../../shared/firestore/scopedTimePrintedQuery.js",
+        "../../shared/cache/createOwnerSessionPaint.js",
+        "../../shared/firestore/trackedFirestore.js",
+        "./withOwnerSourceControl.js",
+        "../data/test_timings.json",
+        "../../backroom_routing.json",
+        "../../shared/utils/dates.js",
+        "../../shared/utils/normalizeTestsField.js"
+      ],
+      "onSnapshotMentions": 4,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerRapidPage.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/lib/dataFetcher_serology.js",
+      "bytes": 18716,
+      "lines": 784,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "computeKPIs",
+        "computeSLAViolations",
+        "computeStaffAnalytics",
+        "extractSerologyTestCount",
+        "fetchTestTimings",
+        "isSerologyTest",
+        "mergeDeptRows",
+        "minutesDiff",
+        "normalizeTestsField",
+        "subscribeOverview",
+        "toDate",
+        "unifyForCharts"
+      ],
+      "importsFrom": [
+        "../../firebaseConfig.js",
+        "../../shared/firestore/scopedTimePrintedQuery.js",
+        "../../shared/cache/createOwnerSessionPaint.js",
+        "../../shared/firestore/trackedFirestore.js",
+        "./withOwnerSourceControl.js",
+        "../../backroom_routing.json",
+        "../data/test_timings.json",
+        "../../shared/utils/dates.js",
+        "../../shared/utils/normalizeTestsField.js"
+      ],
+      "onSnapshotMentions": 4,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerSerology.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/lib/dataFetcher_urine.js",
+      "bytes": 16397,
+      "lines": 606,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "computeKPIs",
+        "computeSLAViolations",
+        "computeStaffAnalytics",
+        "extractUrineTestCount",
+        "fetchTestTimings",
+        "isUrineTest",
+        "mergeDeptRows",
+        "minutesDiff",
+        "normalizeTestsField",
+        "subscribeOverview",
+        "toDate",
+        "unifyForCharts"
+      ],
+      "importsFrom": [
+        "../../firebaseConfig.js",
+        "../../shared/firestore/scopedTimePrintedQuery.js",
+        "../../shared/cache/createOwnerSessionPaint.js",
+        "../../shared/firestore/trackedFirestore.js",
+        "./withOwnerSourceControl.js",
+        "../data/test_timings.json",
+        "../../shared/utils/dates.js",
+        "../../shared/utils/normalizeTestsField.js"
+      ],
+      "onSnapshotMentions": 4,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerUrine.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/lib/withOwnerSourceControl.js",
+      "bytes": 640,
+      "lines": 25,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "withOwnerSourceControl"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/lib/dataFetcher.js",
+        "src/owner/lib/dataFetcher_biochem_main.js",
+        "src/owner/lib/dataFetcher_bloodgroup_retesting.js",
+        "src/owner/lib/dataFetcher_bloodgroup_testing.js",
+        "src/owner/lib/dataFetcher_esr.js",
+        "src/owner/lib/dataFetcher_haem.js",
+        "src/owner/lib/dataFetcher_hormones_main.js",
+        "src/owner/lib/dataFetcher_lab.js",
+        "src/owner/lib/dataFetcher_outsource.js",
+        "src/owner/lib/dataFetcher_rapid.js",
+        "src/owner/lib/dataFetcher_serology.js",
+        "src/owner/lib/dataFetcher_urine.js",
+        "src/owner/workflow/workflowfetcher.js"
+      ],
+      "importCount": 13
+    },
+    {
+      "path": "src/owner/workflow/WorkflowKPIBlocks.jsx",
+      "bytes": 3017,
+      "lines": 131,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerApp.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/workflow/WorkflowStackedBars.jsx",
+      "bytes": 10134,
+      "lines": 404,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "recharts",
+        "./workflowfetcher"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerApp.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/workflow/WorkflowStaffDistribution.jsx",
+      "bytes": 6099,
+      "lines": 280,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "recharts"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerApp.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/owner/workflow/workflowfetcher.js",
+      "bytes": 18281,
+      "lines": 753,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "ROUTINE_WORKFLOW_CHART_KEYS",
+        "ROUTINE_WORKFLOW_COLORS",
+        "ROUTINE_WORKFLOW_LABELS",
+        "ROUTINE_WORKFLOW_LOOKUP",
+        "SPECIAL_WORKFLOW_LOOKUP",
+        "buildWorkflowSummary",
+        "mergeWorkflowRecords",
+        "subscribeToWorkflowAnalytics"
+      ],
+      "importsFrom": [
+        "../../shared/firestore/trackedFirestore.js",
+        "../../shared/firestore/scopedTimePrintedQuery.js",
+        "../../shared/cache/createOwnerSessionPaint.js",
+        "../lib/withOwnerSourceControl.js",
+        "../../test_mapping.json"
+      ],
+      "onSnapshotMentions": 3,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/OwnerApp.jsx",
+        "src/owner/workflow/WorkflowStackedBars.jsx"
+      ],
+      "importCount": 2
+    },
+    {
+      "path": "src/performance/Performance.css",
+      "bytes": 5683,
+      "lines": 326,
+      "ext": ".css",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/performance/PerformanceContext.jsx",
+      "bytes": 9974,
+      "lines": 318,
+      "ext": ".jsx",
+      "exportDefault": false,
+      "exportsNamed": [
+        "PerformanceProvider",
+        "usePerf"
+      ],
+      "importsFrom": [
+        "react",
+        "./performanceStore.js",
+        "./healthScorer.js",
+        "./cacheMetrics.js",
+        "./networkMetrics.js",
+        "./renderMetrics.js",
+        "./rollupMerge.js",
+        "./perfDailyFirestore.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 3,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/performance/PerformanceDashboard.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/performance/PerformanceDashboard.jsx",
+      "bytes": 28292,
+      "lines": 903,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react",
+        "./PerformanceContext.jsx",
+        "./pageLoadBands.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/main_performance.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/performance/bootstrap.js",
+      "bytes": 5226,
+      "lines": 209,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "startPerformanceMonitoring"
+      ],
+      "importsFrom": [
+        "./performanceStore.js",
+        "./performanceCollector.js",
+        "./firestoreMetrics.js",
+        "./renderMetrics.js",
+        "./healthScorer.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/performance/cacheMetrics.js",
+      "bytes": 1476,
+      "lines": 57,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "summarizeCache"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/performance/PerformanceContext.jsx",
+        "src/performance/exportPerformancePdf.js",
+        "src/performance/healthScorer.js",
+        "src/performance/perfDailyFirestore.js",
+        "src/performance/rollupMerge.js"
+      ],
+      "importCount": 5
+    },
+    {
+      "path": "src/performance/exportPerformancePdf.js",
+      "bytes": 22325,
+      "lines": 747,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "downloadPerformancePdf"
+      ],
+      "importsFrom": [
+        "jspdf",
+        "jspdf-autotable",
+        "./performanceStore.js",
+        "./healthScorer.js",
+        "./cacheMetrics.js",
+        "./networkMetrics.js",
+        "./renderMetrics.js",
+        "./rollupMerge.js",
+        "./perfDailyFirestore.js",
+        "./pageLoadBands.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [],
+      "importCount": 0
+    },
+    {
+      "path": "src/performance/firestoreMetrics.js",
+      "bytes": 5823,
+      "lines": 131,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "classifyCollection",
+        "departmentForCollection",
+        "extractCollectionName",
+        "resolvePageIdentity"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/performance/bootstrap.js",
+        "src/performance/performanceCollector.js",
+        "src/shared/firestore/trackedFirestore.js"
+      ],
+      "importCount": 3
+    },
+    {
+      "path": "src/performance/healthScorer.js",
+      "bytes": 12250,
+      "lines": 407,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "band",
+        "buildDepartmentRankings",
+        "buildQueryLeaderboard",
+        "computeAlerts",
+        "computeHealthScores",
+        "countDuplicateListeners",
+        "getHealthHistory",
+        "persistTodayHealth"
+      ],
+      "importsFrom": [
+        "./performanceStore.js",
+        "./cacheMetrics.js",
+        "./networkMetrics.js",
+        "./performanceStore.js",
+        "./rollupMerge.js",
+        "./pageLoadBands.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/performance/PerformanceContext.jsx",
+        "src/performance/bootstrap.js",
+        "src/performance/exportPerformancePdf.js"
+      ],
+      "importCount": 3
+    },
+    {
+      "path": "src/performance/networkMetrics.js",
+      "bytes": 2288,
+      "lines": 85,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "dayEndExclusiveMs",
+        "dayStartMs",
+        "filterByDateRange",
+        "filterSince",
+        "percentile",
+        "sinceMs",
+        "startOfTodayMs",
+        "summarizeDurations",
+        "toDateKey",
+        "todayKey"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/performance/PerformanceContext.jsx",
+        "src/performance/exportPerformancePdf.js",
+        "src/performance/healthScorer.js",
+        "src/performance/perfDailyFirestore.js",
+        "src/performance/rollupMerge.js"
+      ],
+      "importCount": 5
+    },
+    {
+      "path": "src/performance/pageLoadBands.js",
+      "bytes": 1196,
+      "lines": 39,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "PAGE_LOAD_BAND_LEGEND",
+        "PAGE_LOAD_GREEN_MS",
+        "PAGE_LOAD_ORANGE_MS",
+        "PAGE_LOAD_RED_MS",
+        "PAGE_LOAD_SLOW_MS",
+        "PAGE_LOAD_YELLOW_MS",
+        "loadBand",
+        "loadBandLabel"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/performance/PerformanceDashboard.jsx",
+        "src/performance/exportPerformancePdf.js",
+        "src/performance/healthScorer.js",
+        "src/performance/perfDailyFirestore.js",
+        "src/performance/performanceCollector.js",
+        "src/performance/rollupMerge.js"
+      ],
+      "importCount": 6
+    },
+    {
+      "path": "src/performance/perfDailyFirestore.js",
+      "bytes": 8514,
+      "lines": 291,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "buildSessionDayRollup",
+        "combineLocalAndRemoteRollups",
+        "fetchPerfDailyRange",
+        "flushPerfDaily",
+        "getPerfClientId",
+        "mergeUniqueByAt",
+        "schedulePerfDailyFlush"
+      ],
+      "importsFrom": [
+        "firebase/firestore",
+        "../firebaseConfig.js",
+        "../shared/config/collections.js",
+        "./performanceStore.js",
+        "./cacheMetrics.js",
+        "./networkMetrics.js",
+        "./rollupMerge.js",
+        "./pageLoadBands.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 2,
+      "getDocMentions": 2,
+      "importedBy": [
+        "src/performance/PerformanceContext.jsx",
+        "src/performance/exportPerformancePdf.js"
+      ],
+      "importCount": 2
+    },
+    {
+      "path": "src/performance/performanceCollector.js",
+      "bytes": 8379,
+      "lines": 307,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "closeListener",
+        "finalizePageLoad",
+        "getPageContext",
+        "markCacheHitOnLoad",
+        "markPageLoadStart",
+        "onFirstSnapshot",
+        "recordCacheEvent",
+        "recordEvent",
+        "recordIncrementalSync",
+        "recordOwnerPaint",
+        "recordOwnerRefresh",
+        "recordQuery",
+        "recordRead",
+        "setPageContext",
+        "upsertListener"
+      ],
+      "importsFrom": [
+        "./performanceStore.js",
+        "./firestoreMetrics.js",
+        "./renderMetrics.js",
+        "./pageLoadBands.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/performance/bootstrap.js",
+        "src/shared/firestore/trackedFirestore.js"
+      ],
+      "importCount": 2
+    },
+    {
+      "path": "src/performance/performanceStore.js",
+      "bytes": 10049,
+      "lines": 391,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "addCountedReads",
+        "clearMetrics",
+        "estimateCachePayloadBytes",
+        "estimatePerfStoreBytes",
+        "estimateSessionStorageBytes",
+        "exportMetricsJson",
+        "flushCountedReads",
+        "flushPersist",
+        "getCountedReads",
+        "getCountedReadsInRange",
+        "getDailyRollups",
+        "getDailyRollupsInRange",
+        "getHealthHistory",
+        "getState",
+        "isMonitorEnabled",
+        "loadPersisted",
+        "mutate",
+        "recordToRing",
+        "saveDailyHealth",
+        "saveDailyRollup",
+        "setMonitorEnabled",
+        "subscribeStore"
+      ],
+      "importsFrom": [
+        "./rollupMerge.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/performance/PerformanceContext.jsx",
+        "src/performance/bootstrap.js",
+        "src/performance/exportPerformancePdf.js",
+        "src/performance/healthScorer.js",
+        "src/performance/perfDailyFirestore.js",
+        "src/performance/performanceCollector.js",
+        "src/performance/renderMetrics.js",
+        "src/shared/firestore/trackedFirestore.js"
+      ],
+      "importCount": 8
+    },
+    {
+      "path": "src/performance/renderMetrics.js",
+      "bytes": 1552,
+      "lines": 63,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "getHeapEstimate",
+        "startLongTaskObserver",
+        "stopLongTaskObserver"
+      ],
+      "importsFrom": [
+        "./performanceStore.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/performance/PerformanceContext.jsx",
+        "src/performance/bootstrap.js",
+        "src/performance/exportPerformancePdf.js",
+        "src/performance/performanceCollector.js"
+      ],
+      "importCount": 4
+    },
+    {
+      "path": "src/performance/rollupMerge.js",
+      "bytes": 3816,
+      "lines": 138,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "ROLLUP_CAPS",
+        "flattenRollupSamples",
+        "mergeRollupRecords",
+        "mergeUniqueByAt",
+        "sampleKey"
+      ],
+      "importsFrom": [
+        "./cacheMetrics.js",
+        "./networkMetrics.js",
+        "./pageLoadBands.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/performance/PerformanceContext.jsx",
+        "src/performance/exportPerformancePdf.js",
+        "src/performance/healthScorer.js",
+        "src/performance/perfDailyFirestore.js",
+        "src/performance/performanceStore.js"
+      ],
+      "importCount": 5
+    },
+    {
+      "path": "src/shared/cache/createOwnerSessionPaint.js",
+      "bytes": 1869,
+      "lines": 66,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "createOwnerSessionPaint"
+      ],
+      "importsFrom": [
+        "./sessionQueryCache.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/lib/dataFetcher.js",
+        "src/owner/lib/dataFetcher_biochem_main.js",
+        "src/owner/lib/dataFetcher_bloodgroup_retesting.js",
+        "src/owner/lib/dataFetcher_bloodgroup_testing.js",
+        "src/owner/lib/dataFetcher_esr.js",
+        "src/owner/lib/dataFetcher_haem.js",
+        "src/owner/lib/dataFetcher_hormones_main.js",
+        "src/owner/lib/dataFetcher_lab.js",
+        "src/owner/lib/dataFetcher_outsource.js",
+        "src/owner/lib/dataFetcher_rapid.js",
+        "src/owner/lib/dataFetcher_serology.js",
+        "src/owner/lib/dataFetcher_urine.js",
+        "src/owner/workflow/workflowfetcher.js"
+      ],
+      "importCount": 13
+    },
+    {
+      "path": "src/shared/cache/sessionQueryCache.js",
+      "bytes": 4618,
+      "lines": 180,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "SESSION_QUERY_TTL_MS",
+        "clearExpired",
+        "getCache",
+        "ownerCacheKey",
+        "removeCache",
+        "setCache"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/analytics/LabAnalytics.jsx",
+        "src/inventory-command-center/InventoryCommandCenter.jsx",
+        "src/shared/cache/createOwnerSessionPaint.js",
+        "src/shared/cache/staticConfigCache.js"
+      ],
+      "importCount": 4
+    },
+    {
+      "path": "src/shared/cache/staticConfigCache.js",
+      "bytes": 723,
+      "lines": 30,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "STATIC_CONFIG_TTL_MS",
+        "getStaticConfig",
+        "removeStaticConfig",
+        "setStaticConfig"
+      ],
+      "importsFrom": [
+        "./sessionQueryCache.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/inventory/InventoryAdjustmentTab.jsx",
+        "src/inventory/inventorymapping.js"
+      ],
+      "importCount": 2
+    },
+    {
+      "path": "src/shared/components/CriticalAlertModal.jsx",
+      "bytes": 2352,
+      "lines": 94,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/backroom/ESRRegister.jsx",
+        "src/backroom/RapidCardRegister.jsx",
+        "src/backroom/SerologyRegister.jsx",
+        "src/backroom/UrineAnalysisRegister.jsx",
+        "src/biochem_main/BiochemistryMain.jsx",
+        "src/biochem_main/HormonesMain.jsx",
+        "src/coagulation/CoagulationMain.jsx",
+        "src/haem/Haematology.jsx"
+      ],
+      "importCount": 8
+    },
+    {
+      "path": "src/shared/components/RegisterFilterBar.jsx",
+      "bytes": 1684,
+      "lines": 69,
+      "ext": ".jsx",
+      "exportDefault": true,
+      "exportsNamed": [],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/backroom/BloodGroupRegister.jsx",
+        "src/backroom/ESRRegister.jsx",
+        "src/backroom/RapidCardRegister.jsx",
+        "src/backroom/SerologyRegister.jsx",
+        "src/backroom/UrineAnalysisRegister.jsx",
+        "src/biochem_main/BiochemistryMain.jsx",
+        "src/biochem_main/HormonesMain.jsx",
+        "src/coagulation/CoagulationMain.jsx",
+        "src/haem/Haematology.jsx",
+        "src/inside_lab/InsideLab.jsx"
+      ],
+      "importCount": 10
+    },
+    {
+      "path": "src/shared/config/collections.js",
+      "bytes": 2663,
+      "lines": 77,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "COMPLETION_FIELDS",
+        "MASTER_ADMIN_DEPARTMENTS",
+        "PERF_DAILY_COLLECTION",
+        "ROUTINE_DEPARTMENTS",
+        "VALIDATOR_COLLECTIONS",
+        "VALIDATOR_DATE_FIELDS"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/ValidatorUI/ValidatorDashboard.jsx",
+        "src/master_admin/MasterAdmin.jsx",
+        "src/master_admin/MasterAdmin1.jsx",
+        "src/performance/perfDailyFirestore.js"
+      ],
+      "importCount": 4
+    },
+    {
+      "path": "src/shared/firestore/incrementalDocStore.js",
+      "bytes": 3938,
+      "lines": 146,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "compareByTimePrinted",
+        "createIncrementalDocStore"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/shared/firestore/subscribeInventoryByMachines.js",
+        "src/shared/hooks/useMasterDeptSnapshots.js",
+        "src/shared/hooks/useMasterRegisterSnapshots.js",
+        "src/shared/hooks/useScopedMasterEntries.js"
+      ],
+      "importCount": 4
+    },
+    {
+      "path": "src/shared/firestore/scopedTimePrintedQuery.js",
+      "bytes": 979,
+      "lines": 29,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "scopedTimePrintedQuery"
+      ],
+      "importsFrom": [
+        "firebase/firestore",
+        "../../firebaseConfig.js",
+        "../utils/dates.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/lib/dataFetcher.js",
+        "src/owner/lib/dataFetcher_biochem_main.js",
+        "src/owner/lib/dataFetcher_bloodgroup_retesting.js",
+        "src/owner/lib/dataFetcher_bloodgroup_testing.js",
+        "src/owner/lib/dataFetcher_esr.js",
+        "src/owner/lib/dataFetcher_haem.js",
+        "src/owner/lib/dataFetcher_hormones_main.js",
+        "src/owner/lib/dataFetcher_lab.js",
+        "src/owner/lib/dataFetcher_outsource.js",
+        "src/owner/lib/dataFetcher_rapid.js",
+        "src/owner/lib/dataFetcher_serology.js",
+        "src/owner/lib/dataFetcher_urine.js",
+        "src/owner/workflow/workflowfetcher.js"
+      ],
+      "importCount": 13
+    },
+    {
+      "path": "src/shared/firestore/scopedTimestampRangeQuery.js",
+      "bytes": 904,
+      "lines": 38,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "scopedTimestampRangeQuery"
+      ],
+      "importsFrom": [
+        "firebase/firestore",
+        "../../firebaseConfig.js",
+        "../utils/dates.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/analytics/LabAnalytics.jsx",
+        "src/inventory-command-center/InventoryCommandCenter.jsx"
+      ],
+      "importCount": 2
+    },
+    {
+      "path": "src/shared/firestore/subscribeInventoryByMachines.js",
+      "bytes": 2870,
+      "lines": 106,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "INVENTORY_LIVE_STATUSES",
+        "INVENTORY_MACHINES",
+        "subscribeInventoryByMachines"
+      ],
+      "importsFrom": [
+        "firebase/firestore",
+        "./trackedFirestore.js",
+        "./incrementalDocStore.js",
+        "../../firebaseConfig.js"
+      ],
+      "onSnapshotMentions": 3,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/haem/Haematology.jsx",
+        "src/inventory-command-center/InventoryCommandCenter.jsx",
+        "src/inventory/BackroomInventoryTab.jsx",
+        "src/inventory/BackupInventoryTab.jsx",
+        "src/inventory/CoagulationInventoryTab.jsx",
+        "src/inventory/DeptInventoryTab.jsx",
+        "src/inventory/HaemInventoryTab.jsx"
+      ],
+      "importCount": 7
+    },
+    {
+      "path": "src/shared/firestore/trackedFirestore.js",
+      "bytes": 5143,
+      "lines": 195,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "trackedGetDoc",
+        "trackedGetDocs",
+        "trackedOnSnapshot"
+      ],
+      "importsFrom": [
+        "firebase/firestore",
+        "../../performance/performanceStore.js",
+        "../../performance/performanceCollector.js",
+        "../../performance/firestoreMetrics.js"
+      ],
+      "onSnapshotMentions": 4,
+      "useEffectMentions": 0,
+      "getDocsMentions": 6,
+      "getDocMentions": 7,
+      "importedBy": [
+        "src/ValidatorUI/ValidatorDashboard.jsx",
+        "src/analytics/LabAnalytics.jsx",
+        "src/backroom/BloodGroupRegister.jsx",
+        "src/backup/BackupEntry.jsx",
+        "src/critical/CriticalAlertDashboard.jsx",
+        "src/inside_lab/InsideLab.jsx",
+        "src/inventory-command-center/InventoryCommandCenter.jsx",
+        "src/inventory/InventoryAdjustmentTab.jsx",
+        "src/inventory/InventoryIntake.jsx",
+        "src/inventory/inventorymapping.js",
+        "src/mango.jsx",
+        "src/mango1.jsx",
+        "src/master/MasterView_Table1.jsx",
+        "src/master_admin/MasterAdmin.jsx",
+        "src/master_admin/MasterAdmin1.jsx",
+        "src/master_register_2/MasterView_Rectangle.jsx",
+        "src/outsource/Outsource.jsx",
+        "src/owner/lib/dataFetcher.js",
+        "src/owner/lib/dataFetcher_biochem_main.js",
+        "src/owner/lib/dataFetcher_bloodgroup_retesting.js",
+        "src/owner/lib/dataFetcher_bloodgroup_testing.js",
+        "src/owner/lib/dataFetcher_esr.js",
+        "src/owner/lib/dataFetcher_haem.js",
+        "src/owner/lib/dataFetcher_hormones_main.js",
+        "src/owner/lib/dataFetcher_lab.js",
+        "src/owner/lib/dataFetcher_outsource.js",
+        "src/owner/lib/dataFetcher_rapid.js",
+        "src/owner/lib/dataFetcher_serology.js",
+        "src/owner/lib/dataFetcher_urine.js",
+        "src/owner/workflow/workflowfetcher.js",
+        "src/shared/firestore/subscribeInventoryByMachines.js",
+        "src/shared/hooks/useMasterDeptSnapshots.js",
+        "src/shared/hooks/useMasterRegisterSnapshots.js",
+        "src/shared/hooks/useScopedMasterEntries.js"
+      ],
+      "importCount": 34
+    },
+    {
+      "path": "src/shared/hooks/useMasterDeptSnapshots.js",
+      "bytes": 8581,
+      "lines": 297,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "useMasterDeptSnapshots"
+      ],
+      "importsFrom": [
+        "react",
+        "firebase/firestore",
+        "../firestore/trackedFirestore.js",
+        "../firestore/incrementalDocStore.js",
+        "../../firebaseConfig.js",
+        "../utils/ids.js",
+        "../utils/dates.js"
+      ],
+      "onSnapshotMentions": 5,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/backroom/ESRRegister.jsx",
+        "src/backroom/RapidCardRegister.jsx",
+        "src/backroom/SerologyRegister.jsx",
+        "src/backroom/UrineAnalysisRegister.jsx",
+        "src/biochem_main/BiochemistryMain.jsx",
+        "src/biochem_main/HormonesMain.jsx",
+        "src/coagulation/CoagulationMain.jsx",
+        "src/haem/Haematology.jsx"
+      ],
+      "importCount": 8
+    },
+    {
+      "path": "src/shared/hooks/useMasterRegisterSnapshots.js",
+      "bytes": 2153,
+      "lines": 114,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "useMasterRegisterSnapshots"
+      ],
+      "importsFrom": [
+        "react",
+        "firebase/firestore",
+        "../firestore/trackedFirestore.js",
+        "../firestore/incrementalDocStore.js",
+        "../../firebaseConfig.js",
+        "../utils/dates.js"
+      ],
+      "onSnapshotMentions": 3,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/master/MasterView_Table.jsx"
+      ],
+      "importCount": 1
+    },
+    {
+      "path": "src/shared/hooks/usePersistedObjectState.js",
+      "bytes": 917,
+      "lines": 34,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "usePersistedObjectState"
+      ],
+      "importsFrom": [
+        "react"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/backroom/BloodGroupRegister.jsx",
+        "src/backroom/ESRRegister.jsx",
+        "src/backroom/RapidCardRegister.jsx",
+        "src/backroom/SerologyRegister.jsx",
+        "src/backroom/UrineAnalysisRegister.jsx",
+        "src/biochem_main/BiochemistryMain.jsx",
+        "src/biochem_main/HormonesMain.jsx",
+        "src/coagulation/CoagulationMain.jsx",
+        "src/haem/Haematology.jsx",
+        "src/outsource/Outsource.jsx"
+      ],
+      "importCount": 10
+    },
+    {
+      "path": "src/shared/hooks/useRegisterFilters.js",
+      "bytes": 734,
+      "lines": 27,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "useRegisterFilters"
+      ],
+      "importsFrom": [
+        "react",
+        "../utils/dates.js"
+      ],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/ValidatorUI/ValidatorDashboard.jsx",
+        "src/backroom/BloodGroupRegister.jsx",
+        "src/backroom/ESRRegister.jsx",
+        "src/backroom/RapidCardRegister.jsx",
+        "src/backroom/SerologyRegister.jsx",
+        "src/backroom/UrineAnalysisRegister.jsx",
+        "src/biochem_main/BiochemistryMain.jsx",
+        "src/biochem_main/HormonesMain.jsx",
+        "src/coagulation/CoagulationMain.jsx",
+        "src/haem/Haematology.jsx",
+        "src/inside_lab/InsideLab.jsx",
+        "src/outsource/Outsource.jsx"
+      ],
+      "importCount": 12
+    },
+    {
+      "path": "src/shared/hooks/useScopedMasterEntries.js",
+      "bytes": 2692,
+      "lines": 102,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "useScopedMasterEntries"
+      ],
+      "importsFrom": [
+        "react",
+        "firebase/firestore",
+        "../firestore/trackedFirestore.js",
+        "../firestore/incrementalDocStore.js",
+        "../../firebaseConfig.js",
+        "../utils/dates.js"
+      ],
+      "onSnapshotMentions": 3,
+      "useEffectMentions": 2,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/backroom/BloodGroupRegister.jsx",
+        "src/inside_lab/InsideLab.jsx",
+        "src/outsource/Outsource.jsx"
+      ],
+      "importCount": 3
+    },
+    {
+      "path": "src/shared/utils/dates.js",
+      "bytes": 3791,
+      "lines": 119,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "getISTDateString",
+        "getISTLocaleString",
+        "getLocalDateString",
+        "istDayEndExclusive",
+        "istDayStart",
+        "localDayEndExclusive",
+        "localDayStart",
+        "minutesDiff",
+        "parseDateField",
+        "parseEntryDate",
+        "toDate",
+        "toLocalDateString"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/ValidatorUI/ValidatorDashboard.jsx",
+        "src/analytics/LabAnalytics.jsx",
+        "src/backroom/BloodGroupRegister.jsx",
+        "src/backroom/ESRRegister.jsx",
+        "src/backroom/RapidCardRegister.jsx",
+        "src/backroom/SerologyRegister.jsx",
+        "src/backroom/UrineAnalysisRegister.jsx",
+        "src/backup/BackupEntry.jsx",
+        "src/biochem_main/BiochemistryMain.jsx",
+        "src/biochem_main/HormonesMain.jsx",
+        "src/coagulation/CoagulationMain.jsx",
+        "src/critical/CriticalAlertDashboard.jsx",
+        "src/haem/Haematology.jsx",
+        "src/inside_lab/InsideLab.jsx",
+        "src/inventory-command-center/InventoryCommandCenter.jsx",
+        "src/master/MasterView_Table1.jsx",
+        "src/master_register_2/MasterView_Rectangle.jsx",
+        "src/outsource/Outsource.jsx",
+        "src/owner/lib/dataFetcher.js",
+        "src/owner/lib/dataFetcher_biochem_main.js",
+        "src/owner/lib/dataFetcher_bloodgroup_retesting.js",
+        "src/owner/lib/dataFetcher_bloodgroup_testing.js",
+        "src/owner/lib/dataFetcher_esr.js",
+        "src/owner/lib/dataFetcher_haem.js",
+        "src/owner/lib/dataFetcher_hormones_main.js",
+        "src/owner/lib/dataFetcher_lab.js",
+        "src/owner/lib/dataFetcher_outsource.js",
+        "src/owner/lib/dataFetcher_rapid.js",
+        "src/owner/lib/dataFetcher_serology.js",
+        "src/owner/lib/dataFetcher_urine.js",
+        "src/shared/firestore/scopedTimePrintedQuery.js",
+        "src/shared/firestore/scopedTimestampRangeQuery.js",
+        "src/shared/hooks/useMasterDeptSnapshots.js",
+        "src/shared/hooks/useMasterRegisterSnapshots.js",
+        "src/shared/hooks/useRegisterFilters.js",
+        "src/shared/hooks/useScopedMasterEntries.js"
+      ],
+      "importCount": 36
+    },
+    {
+      "path": "src/shared/utils/ids.js",
+      "bytes": 379,
+      "lines": 14,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "compositeId",
+        "safeKey"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/backroom/ESRRegister.jsx",
+        "src/backroom/RapidCardRegister.jsx",
+        "src/backroom/SerologyRegister.jsx",
+        "src/backroom/UrineAnalysisRegister.jsx",
+        "src/biochem_main/BiochemistryMain.jsx",
+        "src/biochem_main/HormonesMain.jsx",
+        "src/coagulation/CoagulationMain.jsx",
+        "src/haem/Haematology.jsx",
+        "src/shared/hooks/useMasterDeptSnapshots.js"
+      ],
+      "importCount": 9
+    },
+    {
+      "path": "src/shared/utils/normalizeTestsField.js",
+      "bytes": 650,
+      "lines": 27,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "normalizeTestsField"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/lib/dataFetcher.js",
+        "src/owner/lib/dataFetcher_biochem_main.js",
+        "src/owner/lib/dataFetcher_bloodgroup_retesting.js",
+        "src/owner/lib/dataFetcher_bloodgroup_testing.js",
+        "src/owner/lib/dataFetcher_esr.js",
+        "src/owner/lib/dataFetcher_haem.js",
+        "src/owner/lib/dataFetcher_hormones_main.js",
+        "src/owner/lib/dataFetcher_rapid.js",
+        "src/owner/lib/dataFetcher_serology.js",
+        "src/owner/lib/dataFetcher_urine.js"
+      ],
+      "importCount": 10
+    },
+    {
+      "path": "src/shared/utils/normalizeTestsFieldUpper.js",
+      "bytes": 750,
+      "lines": 27,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "normalizeTestsFieldUpper"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/owner/lib/dataFetcher_lab.js",
+        "src/owner/lib/dataFetcher_outsource.js"
+      ],
+      "importCount": 2
+    },
+    {
+      "path": "src/shared/utils/routineStageFlags.js",
+      "bytes": 1745,
+      "lines": 68,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "cascadeRoutineStages",
+        "reportDetailsStageCascadeFields"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/ValidatorUI/ValidatorDashboard.jsx",
+        "src/master_register_2/MasterView_Rectangle.jsx"
+      ],
+      "importCount": 2
+    },
+    {
+      "path": "src/shared/utils/source.js",
+      "bytes": 371,
+      "lines": 12,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "normalizeSource"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/backroom/BloodGroupRegister.jsx",
+        "src/backroom/ESRRegister.jsx",
+        "src/backroom/RapidCardRegister.jsx",
+        "src/backroom/SerologyRegister.jsx",
+        "src/backroom/UrineAnalysisRegister.jsx",
+        "src/biochem_main/BiochemistryMain.jsx",
+        "src/biochem_main/HormonesMain.jsx",
+        "src/coagulation/CoagulationMain.jsx",
+        "src/haem/Haematology.jsx"
+      ],
+      "importCount": 9
+    },
+    {
+      "path": "src/shared/utils/tests.js",
+      "bytes": 865,
+      "lines": 31,
+      "ext": ".js",
+      "exportDefault": false,
+      "exportsNamed": [
+        "entryHasCanonicalTest",
+        "extractTestName",
+        "getTestName"
+      ],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/biochem_main/BiochemistryMain.jsx",
+        "src/biochem_main/HormonesMain.jsx",
+        "src/coagulation/CoagulationMain.jsx",
+        "src/haem/Haematology.jsx"
+      ],
+      "importCount": 4
+    },
+    {
+      "path": "src/test_mapping.json",
+      "bytes": 9529,
+      "lines": 379,
+      "ext": ".json",
+      "exportDefault": false,
+      "exportsNamed": [],
+      "importsFrom": [],
+      "onSnapshotMentions": 0,
+      "useEffectMentions": 0,
+      "getDocsMentions": 0,
+      "getDocMentions": 0,
+      "importedBy": [
+        "src/mango.jsx",
+        "src/mango1.jsx",
+        "src/owner/workflow/workflowfetcher.js"
+      ],
+      "importCount": 3
+    }
+  ]
+}

@@ -1,0 +1,492 @@
+{
+  "htmlEntries": {
+    "commandcenter.html": {
+      "title": "\n      Inventory Command Center\n    ",
+      "scripts": [
+        "/src/main_commandcenter.jsx"
+      ]
+    },
+    "Critical.html": {
+      "title": "Critical Register",
+      "scripts": [
+        "./src/main_critical.jsx"
+      ]
+    },
+    "index_coag.html": {
+      "title": "Coagulation Register",
+      "scripts": [
+        "./src/main_coag.jsx"
+      ]
+    },
+    "index_backup.html": {
+      "title": "Backup Analyzer Register (C-150 / Access 2)",
+      "scripts": [
+        "https://cdn.tailwindcss.com",
+        "/src/main_backup.jsx"
+      ]
+    },
+    "index.html": {
+      "title": "Mango UI",
+      "scripts": [
+        "https://cdn.tailwindcss.com",
+        "/src/main.jsx"
+      ]
+    },
+    "index_haem.html": {
+      "title": "Haematology Digital Register",
+      "scripts": [
+        "https://cdn.tailwindcss.com",
+        "/src/main_haem.jsx"
+      ]
+    },
+    "inventory.html": {
+      "title": "Lab Inventory \u2014 Reagent Tracking",
+      "scripts": [
+        "/src/main_inventory.jsx"
+      ]
+    },
+    "owner_lab.html": {
+      "title": "Owner \u2014 Lab Analytics",
+      "scripts": [
+        "/src/main_owner_lab.jsx"
+      ]
+    },
+    "index_outsource.html": {
+      "title": "Outsource Department Register",
+      "scripts": [
+        "/src/main_outsource.jsx"
+      ]
+    },
+    "owner_outsource.html": {
+      "title": "Owner \u2014 Outsource Analytics",
+      "scripts": [
+        "/src/main_owner_outsource.jsx"
+      ]
+    },
+    "owner_hormones.html": {
+      "title": "Owner \u2014 Hormones Analytics",
+      "scripts": [
+        "/src/main_owner_hormones.jsx"
+      ]
+    },
+    "performance.html": {
+      "title": "Performance & Diagnostics \u2014 Engineering",
+      "scripts": [
+        "/src/main_performance.jsx"
+      ]
+    },
+    "login.html": {
+      "title": "Lab Department Login",
+      "scripts": [
+        "/src/main_login.jsx"
+      ]
+    },
+    "index_backroom.html": {
+      "title": "Backroom Register",
+      "scripts": [
+        "./src/main_backroom.jsx"
+      ]
+    },
+    "index_inside_lab.html": {
+      "title": "Inside Lab Register",
+      "scripts": [
+        "/src/main_inside_lab.jsx"
+      ]
+    },
+    "owner_biochem.html": {
+      "title": "Owner \u2014 Biochemistry Analytics",
+      "scripts": [
+        "/src/main_owner_biochem.jsx"
+      ]
+    },
+    "index_owner_coag.html": {
+      "title": "Owner \u2014 Coagulation Analytics",
+      "scripts": [
+        "/src/main_owner_coag.jsx"
+      ]
+    },
+    "master_admin.html": {
+      "title": "Master Admin \u2014 Hospital Control",
+      "scripts": [
+        "/src/main_master_admin.jsx"
+      ]
+    },
+    "index_biochem.html": {
+      "title": "Biochemistry Main Register",
+      "scripts": [
+        "https://cdn.tailwindcss.com",
+        "/src/main_biochem.jsx"
+      ]
+    },
+    "owner_serology.html": {
+      "title": "Owner \u2014 Serology Analytics",
+      "scripts": [
+        "/src/main_owner_serology.jsx"
+      ]
+    },
+    "index_owner_haem.html": {
+      "title": "Owner \u2014 Haematology Analytics",
+      "scripts": [
+        "/src/main_owner_haem.jsx"
+      ]
+    },
+    "index_validator.html": {
+      "title": "Validator Dashboard",
+      "scripts": [
+        "/src/main_validator.jsx"
+      ]
+    },
+    "analytics.html": {
+      "title": "Lab Analytics Dashboard",
+      "scripts": [
+        "./src/main_analytics.jsx"
+      ]
+    },
+    "owner_bloodgroup.html": {
+      "title": "Owner \u2014 Blood Group Analytics",
+      "scripts": [
+        "/src/main_owner_bloodgroup.jsx"
+      ]
+    },
+    "index_owner_urine.html": {
+      "title": "Owner \u2014 Urine Analytics",
+      "scripts": [
+        "/src/main_owner_urine.jsx"
+      ]
+    },
+    "owner_esr.html": {
+      "title": "Owner \u2013 ESR Analytics",
+      "scripts": [
+        "/src/main_owner_esr.jsx"
+      ]
+    },
+    "index_owner.html": {
+      "title": "Owner Analytics Dashboard",
+      "scripts": [
+        "/src/main_owner.jsx"
+      ]
+    },
+    "owner_rapid.html": {
+      "title": "Owner \u2014 Rapid Card Analytics",
+      "scripts": [
+        "/src/main_owner_rapid.jsx"
+      ]
+    }
+  },
+  "mainBootstraps": {
+    "src/main_inventory.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerContext.jsx",
+      "./inventory/InventoryIntake.jsx"
+    ],
+    "src/main_backroom.jsx": [
+      "react",
+      "react-dom/client",
+      "./backroom/BackroomMain.jsx"
+    ],
+    "src/main_owner_coag.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerContext.jsx",
+      "./owner/OwnerCoag.jsx"
+    ],
+    "src/main_backup.jsx": [
+      "react",
+      "react-dom/client",
+      "./backup/BackupEntry.jsx"
+    ],
+    "src/main_owner_serology.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerContext.jsx",
+      "./owner/OwnerSerology.jsx"
+    ],
+    "src/main_coag.jsx": [
+      "react",
+      "react-dom/client",
+      "./coagulation/CoagulationMain.jsx"
+    ],
+    "src/main_owner_blood_group.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerContext.jsx",
+      "./owner/OwnerBloodGroup.jsx"
+    ],
+    "src/main_owner_biochem.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerBiochem.jsx",
+      "./owner/OwnerContext.jsx"
+    ],
+    "src/main_validator.jsx": [
+      "react",
+      "react-dom/client",
+      "./ValidatorUI/ValidatorDashboard.jsx"
+    ],
+    "src/main_critical.jsx": [
+      "react",
+      "react-dom/client",
+      "./critical/CriticalAlertDashboard.jsx"
+    ],
+    "src/main_biochem.jsx": [
+      "react",
+      "react-dom/client",
+      "./biochem_main/BiochemistryMain.jsx"
+    ],
+    "src/main_owner_haem.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerContext.jsx",
+      "./owner/OwnerHaemPage.jsx"
+    ],
+    "src/main_owner_lab.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerLabPage.jsx",
+      "./owner/OwnerContext.jsx"
+    ],
+    "src/main_inside_lab.jsx": [
+      "react",
+      "react-dom/client",
+      "./inside_lab/InsideLab.jsx"
+    ],
+    "src/main_haem.jsx": [
+      "react",
+      "react-dom/client",
+      "./haem/Haematology.jsx"
+    ],
+    "src/main_owner_bloodgroup.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerBloodGroup.jsx",
+      "./owner/OwnerContext.jsx"
+    ],
+    "src/main_analytics.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerContext.jsx",
+      "./analytics/LabAnalytics.jsx"
+    ],
+    "src/main_owner_outsource.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerOutsourcePage.jsx",
+      "./owner/OwnerContext.jsx"
+    ],
+    "src/main.jsx": [
+      "react",
+      "react-dom/client",
+      "./mango.jsx",
+      "./master/MasterView_Table.jsx",
+      "./master_register_2/MasterView_Rectangle.jsx"
+    ],
+    "src/main_outsource.jsx": [
+      "react",
+      "react-dom/client",
+      "./outsource/Outsource.jsx"
+    ],
+    "src/main_owner.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerContext.jsx",
+      "./owner/OwnerApp.jsx"
+    ],
+    "src/main_login.jsx": [
+      "react",
+      "react-dom/client",
+      "./auth/LoginPage"
+    ],
+    "src/main_owner_esr.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerContext.jsx",
+      "./owner/OwnerESRPage.jsx"
+    ],
+    "src/main_owner_rapid.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerContext.jsx",
+      "./owner/OwnerRapidPage.jsx"
+    ],
+    "src/main_owner_hormones.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerContext.jsx",
+      "./owner/OwnerHormones.jsx"
+    ],
+    "src/main_owner_urine.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerContext.jsx",
+      "./owner/OwnerUrine.jsx"
+    ],
+    "src/main_master_admin.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerContext.jsx",
+      "./master_admin/MasterAdmin.jsx"
+    ],
+    "src/main_commandcenter.jsx": [
+      "react",
+      "react-dom/client",
+      "./owner/OwnerContext.jsx",
+      "./inventory-command-center/InventoryCommandCenter.jsx"
+    ],
+    "src/main_performance.jsx": [
+      "react",
+      "react-dom/client",
+      "./performance/PerformanceDashboard.jsx"
+    ]
+  },
+  "collections": {
+    "backup_entries_logs": [
+      "src/backup/BackupEntry.jsx"
+    ],
+    "biochemistry_register": [
+      "src/biochem_main/BiochemistryMain.jsx",
+      "src/owner/lib/dataFetcher_biochem_main.js"
+    ],
+    "bloodgroup_retesting_register": [
+      "src/backroom/BloodGroupRegister.jsx",
+      "src/owner/lib/dataFetcher_bloodgroup_retesting.js"
+    ],
+    "bloodgroup_testing_register": [
+      "src/backroom/BloodGroupRegister.jsx",
+      "src/owner/lib/dataFetcher_bloodgroup_testing.js"
+    ],
+    "calibration_logs": [
+      "src/inventory-command-center/InventoryCommandCenter.jsx",
+      "src/inventory/BackupInventoryTab.jsx",
+      "src/inventory/DeptInventoryTab.jsx"
+    ],
+    "coagulation_register": [
+      "src/coagulation/CoagulationMain.jsx",
+      "src/owner/lib/dataFetcher.js"
+    ],
+    "combo_consumption_ledger": [
+      "src/inventory-command-center/InventoryCommandCenter.jsx",
+      "src/inventory/inventorymapping.js"
+    ],
+    "consumption_ledger": [
+      "src/inventory-command-center/InventoryCommandCenter.jsx",
+      "src/inventory-command-center/utils/consumptionledger.js"
+    ],
+    "critical_alerts": [
+      "src/backroom/ESRRegister.jsx",
+      "src/backroom/RapidCardRegister.jsx",
+      "src/backroom/SerologyRegister.jsx",
+      "src/backroom/UrineAnalysisRegister.jsx",
+      "src/biochem_main/BiochemistryMain.jsx",
+      "src/biochem_main/HormonesMain.jsx",
+      "src/coagulation/CoagulationMain.jsx",
+      "src/critical/CriticalAlertDashboard.jsx",
+      "src/haem/Haematology.jsx",
+      "src/shared/hooks/useMasterDeptSnapshots.js"
+    ],
+    "esr_register": [
+      "src/backroom/ESRRegister.jsx",
+      "src/owner/lib/dataFetcher_esr.js"
+    ],
+    "haematology_register": [
+      "src/haem/Haematology.jsx",
+      "src/owner/lib/dataFetcher_haem.js"
+    ],
+    "hormones_main": [
+      "src/biochem_main/HormonesMain.jsx",
+      "src/owner/lib/dataFetcher_hormones_main.js"
+    ],
+    "inside_lab_results": [
+      "src/inside_lab/InsideLab.jsx",
+      "src/owner/lib/dataFetcher_lab.js"
+    ],
+    "inventory_adjustments": [
+      "src/inventory/InventoryAdjustmentTab.jsx",
+      "src/inventory/inventorymapping.js"
+    ],
+    "inventory_logs": [
+      "src/inventory-command-center/InventoryCommandCenter.jsx",
+      "src/inventory/BackroomInventoryTab.jsx",
+      "src/inventory/BackupInventoryTab.jsx",
+      "src/inventory/CoagulationInventoryTab.jsx",
+      "src/inventory/DeptInventoryTab.jsx",
+      "src/inventory/HaemInventoryTab.jsx",
+      "src/inventory/InventoryIntake.jsx",
+      "src/inventory/inventorymapping.js",
+      "src/shared/firestore/subscribeInventoryByMachines.js"
+    ],
+    "invoices": [
+      "src/inventory/InventoryIntake.jsx"
+    ],
+    "maintenance_logs": [
+      "src/inventory/HaemInventoryTab.jsx"
+    ],
+    "master_register": [
+      "src/biochem_main/BiochemistryMain.jsx",
+      "src/mango.jsx",
+      "src/mango1.jsx",
+      "src/master/MasterView_Table.jsx",
+      "src/master/MasterView_Table1.jsx",
+      "src/owner/lib/dataFetcher.js",
+      "src/owner/lib/dataFetcher_biochem_main.js",
+      "src/owner/lib/dataFetcher_bloodgroup_retesting.js",
+      "src/owner/lib/dataFetcher_bloodgroup_testing.js",
+      "src/owner/lib/dataFetcher_esr.js",
+      "src/owner/lib/dataFetcher_haem.js",
+      "src/owner/lib/dataFetcher_hormones_main.js",
+      "src/owner/lib/dataFetcher_lab.js",
+      "src/owner/lib/dataFetcher_outsource.js",
+      "src/owner/lib/dataFetcher_rapid.js",
+      "src/owner/lib/dataFetcher_serology.js",
+      "src/owner/lib/dataFetcher_urine.js",
+      "src/shared/hooks/useMasterDeptSnapshots.js",
+      "src/shared/hooks/useMasterRegisterSnapshots.js",
+      "src/shared/hooks/useScopedMasterEntries.js"
+    ],
+    "outsource_tracking": [
+      "src/outsource/Outsource.jsx",
+      "src/owner/lib/dataFetcher_outsource.js"
+    ],
+    "qc_logs": [
+      "src/inventory-command-center/InventoryCommandCenter.jsx",
+      "src/inventory/BackroomInventoryTab.jsx",
+      "src/inventory/BackupInventoryTab.jsx",
+      "src/inventory/DeptInventoryTab.jsx",
+      "src/inventory/HaemInventoryTab.jsx"
+    ],
+    "rapid_card_register": [
+      "src/backroom/RapidCardRegister.jsx",
+      "src/owner/lib/dataFetcher_rapid.js"
+    ],
+    "report_details": [
+      "src/ValidatorUI/ValidatorDashboard.jsx",
+      "src/backroom/BloodGroupRegister.jsx",
+      "src/backroom/ESRRegister.jsx",
+      "src/backroom/RapidCardRegister.jsx",
+      "src/backroom/SerologyRegister.jsx",
+      "src/backroom/UrineAnalysisRegister.jsx",
+      "src/biochem_main/BiochemistryMain.jsx",
+      "src/biochem_main/HormonesMain.jsx",
+      "src/coagulation/CoagulationMain.jsx",
+      "src/haem/Haematology.jsx",
+      "src/inside_lab/InsideLab.jsx",
+      "src/mango.jsx",
+      "src/mango1.jsx",
+      "src/master_register_2/MasterView_Rectangle.jsx",
+      "src/outsource/Outsource.jsx",
+      "src/owner/workflow/workflowfetcher.js"
+    ],
+    "serology_register": [
+      "src/backroom/SerologyRegister.jsx",
+      "src/owner/lib/dataFetcher_serology.js"
+    ],
+    "urine_analysis_register": [
+      "src/backroom/UrineAnalysisRegister.jsx",
+      "src/owner/lib/dataFetcher_urine.js"
+    ],
+    "waste_logs": [
+      "src/inventory/CoagulationInventoryTab.jsx",
+      "src/inventory/HaemInventoryTab.jsx"
+    ]
+  }
+}
