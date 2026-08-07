@@ -21,6 +21,7 @@ import {
   BuildsPage,
   SettingsPage,
 } from "./pages.jsx";
+import { TimelinePage } from "./TimelinePage.jsx";
 import "./Engineering.css";
 
 const NAV = [
@@ -32,13 +33,13 @@ const NAV = [
   { id: "memory", label: "Memory", Page: MemoryPage },
   { id: "react", label: "React", Page: ReactMetricsPage },
   { id: "performance", label: "Performance", Page: PerformancePage },
+  { id: "timeline", label: "Timeline", Page: TimelinePage },
   { id: "network", label: "Network", Page: NetworkPage },
   { id: "errors", label: "Errors", Page: ErrorsPage },
   { id: "builds", label: "Builds", Page: BuildsPage },
   { id: "settings", label: "Settings", Page: SettingsPage },
   { id: "audit", label: "Audit", Page: AuditPage },
 ];
-
 export default function EngineeringApp() {
   const [tab, setTab] = useState("health");
   const active = NAV.find((n) => n.id === tab) || NAV[0];

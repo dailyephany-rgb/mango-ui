@@ -65,4 +65,6 @@ export const ENG_COLLECTIONS = {
   alerts: "eng_alerts",
   listenerDaily: "eng_listener_daily",
   heartbeats: "eng_heartbeats",
+  /** Individual page-load samples (flight recorder) — written in same flush as aggregates */
+  pageLoads: "eng_page_loads",
 };

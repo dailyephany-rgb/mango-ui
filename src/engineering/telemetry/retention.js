@@ -55,6 +55,7 @@ export async function runEngRetention(opts = {}) {
     { col: ENG_COLLECTIONS.firestoreMetrics, days: retention },
     { col: ENG_COLLECTIONS.listenerDaily, days: retention },
     { col: ENG_COLLECTIONS.pages, days: retention },
+    { col: ENG_COLLECTIONS.pageLoads, days: Math.min(14, retention) },
     { col: ENG_COLLECTIONS.network, days: retention },
     { col: ENG_COLLECTIONS.memory, days: retention },
     { col: ENG_COLLECTIONS.reactDaily, days: retention },

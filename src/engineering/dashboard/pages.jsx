@@ -16,6 +16,19 @@ import { getDeviceId, setDeviceLabel, getDeviceLabel } from "../telemetry/device
 import { EngTelemetry } from "../telemetry/EngTelemetry.js";
 import { scheduleFlush } from "../telemetry/flush.js";
 import { getEngProjectId } from "../firebaseEngConfig.js";
+import {
+  fmtMs,
+  fmtTs as fmtTsPerf,
+  dayKeyFromTs,
+  downloadCsv,
+  loadStatus,
+  summarizeLoads,
+  trendByDay,
+  avg,
+  inDatePreset,
+  rangeDaysFromPreset,
+} from "./perfViews.js";
+import { WaterfallPanel } from "./WaterfallPanel.jsx";
 
 function ms(n) {
   if (n == null || Number.isNaN(n)) return "—";
@@ -197,12 +210,30 @@ export function HealthPage() {
   );
 }
 
+function Sparkline({ series, valueKey = "avg" }) {
+  const vals = (series || []).map((s) => s[valueKey]).filter((n) => typeof n === "number");
+  const max = Math.max(1, ...vals);
+  return (
+    <div className="eng-spark" title={vals.map((v) => Math.round(v)).join(", ")}>
+      {(series || []).map((s) => {
+        const v = s[valueKey];
+        const h = typeof v === "number" ? Math.max(4, (48 * v) / max) : 2;
+        return <span key={s.day} style={{ height: h }} title={`${s.day}: ${fmtMs(v)}`} />;
+      })}
+    </div>
+  );
+}
+
 export function DevicesPage() {
   const configured = useEngConfigured();
   const { rows, loading } = useEngCollection(ENG_COLLECTIONS.deviceStatus);
   const { rows: hourly } = useEngCollection(ENG_COLLECTIONS.heartbeatHourly);
+  const { rows: pageLoads } = useEngCollection(ENG_COLLECTIONS.pageLoads, {
+    limitN: 400,
+  });
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState(null);
+  const [expandedLoad, setExpandedLoad] = useState(null);
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {
@@ -211,6 +242,17 @@ export function DevicesPage() {
       return p === filter;
     });
   }, [rows, filter]);
+
+  const deviceLoads = useMemo(() => {
+    if (!selected) return [];
+    const id = selected.deviceId || selected.id;
+    return [...pageLoads]
+      .filter((r) => r.deviceId === id)
+      .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+      .slice(0, 50);
+  }, [pageLoads, selected]);
+
+  const loadStats = useMemo(() => summarizeLoads(deviceLoads), [deviceLoads]);
 
   return (
     <>
@@ -223,7 +265,7 @@ export function DevicesPage() {
           <button
             key={f}
             type="button"
-            className={filter === f ? "eng-btn" : "eng-btn"}
+            className="eng-btn"
             style={filter === f ? { borderColor: "var(--eng-accent)" } : undefined}
             onClick={() => setFilter(f)}
           >
@@ -253,7 +295,10 @@ export function DevicesPage() {
                 <tr
                   key={r.id}
                   style={{ cursor: "pointer" }}
-                  onClick={() => setSelected(r)}
+                  onClick={() => {
+                    setSelected(r);
+                    setExpandedLoad(null);
+                  }}
                 >
                   <td>
                     <PresencePill row={r} />
@@ -278,17 +323,100 @@ export function DevicesPage() {
       </div>
       {selected && (
         <div className="eng-panel">
-          <h2>Device detail</h2>
-          <pre style={{ fontSize: "0.75rem", overflow: "auto" }}>
-            {JSON.stringify(
-              {
-                ...selected,
-                lastSeenAt: undefined,
-              },
-              null,
-              2
-            )}
-          </pre>
+          <h2>
+            Device load history — {selected.label || selected.deviceId || selected.id}
+          </h2>
+          <div className="eng-grid" style={{ marginBottom: "1rem" }}>
+            <div className="eng-card">
+              <div className="label">Average load</div>
+              <div className="value">{fmtMs(loadStats.avg)}</div>
+            </div>
+            <div className="eng-card">
+              <div className="label">Fastest</div>
+              <div className="value">{fmtMs(loadStats.fastest)}</div>
+            </div>
+            <div className="eng-card">
+              <div className="label">Slowest</div>
+              <div className="value">{fmtMs(loadStats.slowest)}</div>
+            </div>
+            <div className="eng-card">
+              <div className="label">Samples</div>
+              <div className="value">{loadStats.count}</div>
+            </div>
+          </div>
+          <div className="eng-actions" style={{ marginBottom: "0.75rem" }}>
+            <button
+              type="button"
+              className="eng-btn"
+              onClick={() =>
+                downloadCsv(
+                  `eng-device-${(selected.deviceId || selected.id || "x").slice(0, 8)}.csv`,
+                  deviceLoads.map((r) => ({
+                    time: fmtTsPerf(r.ts),
+                    department: r.department,
+                    page: r.page,
+                    totalMs: r.totalMs,
+                    interactiveMs: r.interactiveMs,
+                    firstSnapshotMs: r.firstSnapshotMs,
+                    buildId: r.buildId,
+                    status: loadStatus(r),
+                  }))
+                )
+              }
+            >
+              Export device history CSV
+            </button>
+          </div>
+          {!deviceLoads.length ? (
+            <p className="eng-muted">No page-load samples for this device yet</p>
+          ) : (
+            <table className="eng-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Department</th>
+                  <th>Page</th>
+                  <th>Load Time</th>
+                  <th>Interactive</th>
+                  <th>Snapshot</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deviceLoads.map((r) => {
+                  const st = loadStatus(r);
+                  const open = expandedLoad === r.id;
+                  return (
+                    <React.Fragment key={r.id}>
+                      <tr
+                        style={{ cursor: "pointer" }}
+                        onClick={() => setExpandedLoad(open ? null : r.id)}
+                      >
+                        <td>{fmtTs(r.ts)}</td>
+                        <td>{r.department || "—"}</td>
+                        <td>{r.page || "—"}</td>
+                        <td>{fmtMs(r.totalMs)}</td>
+                        <td>{fmtMs(r.interactiveMs)}</td>
+                        <td>{fmtMs(r.firstSnapshotMs)}</td>
+                        <td>
+                          <span className={`pill ${st === "ok" ? "online" : st === "slow" ? "stale" : "offline"}`}>
+                            {st}
+                          </span>
+                        </td>
+                      </tr>
+                      {open && (
+                        <tr>
+                          <td colSpan={7}>
+                            <WaterfallPanel load={r} />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
           <h2>Recent hourly heartbeats</h2>
           <table className="eng-table">
             <thead>
@@ -323,28 +451,102 @@ export function DevicesPage() {
 export function DepartmentsPage() {
   const configured = useEngConfigured();
   const { rows, loading } = useEngCollection(ENG_COLLECTIONS.departments);
+  const { rows: pageLoads } = useEngCollection(ENG_COLLECTIONS.pageLoads, {
+    limitN: 400,
+  });
+  const { rows: devices } = useEngCollection(ENG_COLLECTIONS.deviceStatus);
+  const today = dayKeyFromTs();
+
+  const cards = useMemo(() => {
+    const names = new Set([
+      ...rows.map((d) => d.department || d.id),
+      ...pageLoads.map((r) => r.department).filter(Boolean),
+    ]);
+    return [...names].sort().map((name) => {
+      const agg = rows.find((d) => (d.department || d.id) === name);
+      const loads = pageLoads.filter((r) => r.department === name);
+      const todayLoads = loads.filter((r) => (r.day || dayKeyFromTs(r.ts)) === today);
+      const stats = summarizeLoads(todayLoads);
+      const last = [...loads].sort((a, b) => (b.ts || 0) - (a.ts || 0))[0];
+      const timeline = trendByDay(loads, "totalMs", 7);
+      const active = devices.filter(
+        (d) =>
+          d.department === name &&
+          devicePresence(clientTsOf(d)) === "online"
+      );
+      const lifetimeAvg =
+        agg?.loadCount > 0 ? Math.round(agg.loadSumMs / agg.loadCount) : stats.avg;
+      return {
+        name,
+        last,
+        stats,
+        lifetimeAvg,
+        timeline,
+        active,
+        errorCount: agg?.errorCount || 0,
+        todayCount: todayLoads.length,
+      };
+    });
+  }, [rows, pageLoads, devices, today]);
+
   return (
     <>
       <div className="eng-header">
         <h1>Departments</h1>
+        <div className="meta">load history · today stats · active devices</div>
       </div>
+      <div className="eng-actions" style={{ marginBottom: "0.75rem" }}>
+        <button
+          type="button"
+          className="eng-btn"
+          onClick={() =>
+            downloadCsv(
+              `eng-departments-${today}.csv`,
+              cards.map((c) => ({
+                department: c.name,
+                lastLoad: fmtTsPerf(c.last?.ts),
+                lastPage: c.last?.page,
+                avgTodayMs: c.stats.avg,
+                fastestTodayMs: c.stats.fastest,
+                slowestTodayMs: c.stats.slowest,
+                loadsToday: c.todayCount,
+                p95TodayMs: c.stats.p95,
+                activeDevices: c.active.length,
+              }))
+            )
+          }
+        >
+          Export department history CSV
+        </button>
+      </div>
+      {!cards.length && (
+        <EmptyHint configured={configured} loading={loading} />
+      )}
       <div className="eng-grid">
-        {!rows.length && (
-          <EmptyHint configured={configured} loading={loading} />
-        )}
-        {rows.map((d) => {
-          const avg =
-            d.loadCount > 0 ? Math.round(d.loadSumMs / d.loadCount) : null;
-          return (
-            <div className="eng-card" key={d.id}>
-              <div className="label">{d.department || d.id}</div>
-              <div className="value">{ms(avg)}</div>
-              <div className="sub">
-                errors {d.errorCount || 0} · listener events {d.listenerEvents || 0}
-              </div>
+        {cards.map((c) => (
+          <div className="eng-card" key={c.name} style={{ minWidth: 260 }}>
+            <div className="label">{c.name}</div>
+            <div className="value">{fmtMs(c.lifetimeAvg)}</div>
+            <div className="sub">current average (lifetime / today)</div>
+            <div className="sub" style={{ marginTop: "0.5rem" }}>
+              Last: {c.last ? `${fmtTs(c.last.ts)} · ${c.last.page}` : "—"}
             </div>
-          );
-        })}
+            <div className="sub">
+              Today: {c.todayCount} loads · fast {fmtMs(c.stats.fastest)} · slow{" "}
+              {fmtMs(c.stats.slowest)} · p95 {fmtMs(c.stats.p95)}
+            </div>
+            <div className="sub">
+              Active devices:{" "}
+              {c.active.length
+                ? c.active.map((d) => d.label || (d.deviceId || "").slice(0, 6)).join(", ")
+                : "none"}
+            </div>
+            <div style={{ marginTop: "0.5rem" }}>
+              <div className="sub">Recent load timeline (7d)</div>
+              <Sparkline series={c.timeline} />
+            </div>
+          </div>
+        ))}
       </div>
     </>
   );
@@ -579,6 +781,29 @@ export function ReactMetricsPage() {
 export function PerformancePage() {
   const configured = useEngConfigured();
   const { rows, loading } = useEngCollection(ENG_COLLECTIONS.pages);
+  const { rows: pageLoads } = useEngCollection(ENG_COLLECTIONS.pageLoads, {
+    limitN: 400,
+  });
+  const { rows: memory } = useEngCollection(ENG_COLLECTIONS.memory);
+  const { rows: firestore } = useEngCollection(ENG_COLLECTIONS.firestoreMetrics);
+  const { rows: reactDaily } = useEngCollection(ENG_COLLECTIONS.reactDaily);
+  const [range, setRange] = useState("7d");
+  const [q, setQ] = useState("");
+
+  const days = rangeDaysFromPreset(range);
+  const filteredLoads = useMemo(
+    () =>
+      pageLoads.filter(
+        (r) =>
+          inDatePreset(r.ts, range) &&
+          (!q ||
+            `${r.deviceId} ${r.department} ${r.page} ${r.buildId} ${fmtTsPerf(r.ts)}`
+              .toLowerCase()
+              .includes(q.toLowerCase()))
+      ),
+    [pageLoads, range, q]
+  );
+
   const byPage = useMemo(() => {
     const m = {};
     for (const r of rows) {
@@ -592,12 +817,187 @@ export function PerformancePage() {
     return Object.values(m).sort((a, b) => b.value - a.value);
   }, [rows]);
 
+  const loadTrend = useMemo(
+    () => trendByDay(filteredLoads, "totalMs", Math.min(days, 30)),
+    [filteredLoads, days]
+  );
+  const snapTrend = useMemo(
+    () => trendByDay(filteredLoads, "firstSnapshotMs", Math.min(days, 30)),
+    [filteredLoads, days]
+  );
+  const interactiveTrend = useMemo(
+    () => trendByDay(filteredLoads, "interactiveMs", Math.min(days, 30)),
+    [filteredLoads, days]
+  );
+
+  const memTrend = useMemo(() => {
+    const out = [];
+    for (let i = Math.min(days, 30) - 1; i >= 0; i--) {
+      const key = dayKeyFromTs(Date.now() - i * 86400000);
+      const dayRows = memory.filter((r) => r.day === key);
+      const heaps = dayRows
+        .map((r) =>
+          r.usedJSHeapSize != null ? r.usedJSHeapSize / 1048576 : null
+        )
+        .filter((n) => typeof n === "number");
+      out.push({ day: key, avg: avg(heaps) });
+    }
+    return out;
+  }, [memory, days]);
+
+  const fsTrend = useMemo(() => {
+    const out = [];
+    for (let i = Math.min(days, 30) - 1; i >= 0; i--) {
+      const key = dayKeyFromTs(Date.now() - i * 86400000);
+      const dayRows = firestore.filter((r) => r.day === key);
+      const lat = dayRows
+        .map((r) => {
+          if (r.avgQueryMs != null) return r.avgQueryMs;
+          if (r.durationAvgMs != null) return r.durationAvgMs;
+          if (r.queryCount > 0 && r.durationSumMs != null) {
+            return r.durationSumMs / r.queryCount;
+          }
+          return r.durationMaxMs ?? null;
+        })
+        .filter((n) => typeof n === "number");
+      out.push({ day: key, avg: avg(lat) });
+    }
+    return out;
+  }, [firestore, days]);
+
+  const reactTrend = useMemo(() => {
+    const out = [];
+    for (let i = Math.min(days, 30) - 1; i >= 0; i--) {
+      const key = dayKeyFromTs(Date.now() - i * 86400000);
+      const dayRows = reactDaily.filter((r) => r.day === key);
+      const vals = dayRows
+        .map((r) =>
+          r.renderSamples > 0 && r.longTaskDurationSumMs != null
+            ? r.longTaskDurationSumMs / Math.max(1, r.longTasks || r.renderSamples)
+            : r.longTasks
+        )
+        .filter((n) => typeof n === "number");
+      out.push({ day: key, avg: avg(vals) });
+    }
+    return out;
+  }, [reactDaily, days]);
+
+  const overall = useMemo(() => summarizeLoads(filteredLoads), [filteredLoads]);
+  const p95Series = useMemo(
+    () =>
+      loadTrend.map((d) => ({
+        day: d.day,
+        avg: d.p95,
+      })),
+    [loadTrend]
+  );
+
   return (
     <>
       <div className="eng-header">
         <h1>Performance</h1>
-        <div className="meta">page load aggregates</div>
+        <div className="meta">aggregates · trends · search · export</div>
       </div>
+
+      <div className="eng-panel eng-form">
+        <div className="eng-actions" style={{ alignItems: "flex-end" }}>
+          <label>
+            Search
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="device / dept / page / build"
+            />
+          </label>
+          <label>
+            Range
+            <select value={range} onChange={(e) => setRange(e.target.value)}>
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday+</option>
+              <option value="7d">7 Days</option>
+              <option value="30d">30 Days</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            className="eng-btn"
+            onClick={() =>
+              downloadCsv(
+                `eng-performance-${dayKeyFromTs()}.csv`,
+                filteredLoads.map((r) => ({
+                  time: fmtTsPerf(r.ts),
+                  deviceId: r.deviceId,
+                  department: r.department,
+                  page: r.page,
+                  buildId: r.buildId,
+                  totalMs: r.totalMs,
+                  firstRenderMs: r.firstRenderMs,
+                  firstSnapshotMs: r.firstSnapshotMs,
+                  interactiveMs: r.interactiveMs,
+                  status: loadStatus(r),
+                }))
+              )
+            }
+          >
+            Export performance CSV
+          </button>
+        </div>
+      </div>
+
+      <div className="eng-panel">
+        <h2>Performance trends</h2>
+        <div className="eng-trend-grid">
+          <div className="eng-trend-card">
+            <div className="label">Average load</div>
+            <div className="value">{fmtMs(overall.avg)}</div>
+            <Sparkline series={loadTrend} />
+          </div>
+          <div className="eng-trend-card">
+            <div className="label">95th percentile</div>
+            <div className="value">{fmtMs(overall.p95)}</div>
+            <Sparkline series={p95Series} />
+          </div>
+          <div className="eng-trend-card">
+            <div className="label">Memory (MB)</div>
+            <div className="value">
+              {memTrend.filter((d) => d.avg != null).slice(-1)[0]?.avg?.toFixed?.(1) ?? "—"}
+            </div>
+            <Sparkline series={memTrend} />
+          </div>
+          <div className="eng-trend-card">
+            <div className="label">Firestore latency</div>
+            <div className="value">
+              {fmtMs(fsTrend.filter((d) => d.avg != null).slice(-1)[0]?.avg)}
+            </div>
+            <Sparkline series={fsTrend} />
+          </div>
+          <div className="eng-trend-card">
+            <div className="label">Snapshot latency</div>
+            <div className="value">
+              {fmtMs(avg(filteredLoads.map((r) => r.firstSnapshotMs)))}
+            </div>
+            <Sparkline series={snapTrend} />
+          </div>
+          <div className="eng-trend-card">
+            <div className="label">React / long tasks</div>
+            <div className="value">
+              {fmtMs(reactTrend.filter((d) => d.avg != null).slice(-1)[0]?.avg)}
+            </div>
+            <Sparkline series={reactTrend} />
+          </div>
+          <div className="eng-trend-card">
+            <div className="label">Interactive</div>
+            <div className="value">
+              {fmtMs(avg(filteredLoads.map((r) => r.interactiveMs)))}
+            </div>
+            <Sparkline series={interactiveTrend} />
+          </div>
+        </div>
+        <p className="eng-muted" style={{ marginTop: "0.75rem" }}>
+          Individual loads: Timeline page. Aggregates below reuse eng_pages.
+        </p>
+      </div>
+
       <div className="eng-panel">
         <h2>Last / max total load by page</h2>
         <BarList items={byPage} />
@@ -697,6 +1097,28 @@ export function ErrorsPage() {
       <div className="eng-header">
         <h1>Errors</h1>
       </div>
+      <div className="eng-actions" style={{ marginBottom: "0.75rem" }}>
+        <button
+          type="button"
+          className="eng-btn"
+          onClick={() =>
+            downloadCsv(
+              `eng-errors-${dayKeyFromTs()}.csv`,
+              sorted.map((r) => ({
+                time: fmtTsPerf(r.ts),
+                source: r.source,
+                page: r.page,
+                department: r.department,
+                message: r.message,
+                deviceId: r.deviceId,
+                buildId: r.buildId,
+              }))
+            )
+          }
+        >
+          Export errors CSV
+        </button>
+      </div>
       <div className="eng-panel">
         {!sorted.length ? (
           <EmptyHint configured={configured} loading={loading} label="No errors recorded" />
@@ -776,35 +1198,138 @@ export function AuditPage() {
 export function BuildsPage() {
   const configured = useEngConfigured();
   const { rows, loading } = useEngCollection(ENG_COLLECTIONS.builds);
+  const { rows: pageLoads } = useEngCollection(ENG_COLLECTIONS.pageLoads, {
+    limitN: 400,
+  });
+  const { rows: memory } = useEngCollection(ENG_COLLECTIONS.memory);
+  const { rows: errors } = useEngCollection(ENG_COLLECTIONS.errors, {
+    limitN: 150,
+  });
+  const { rows: devices } = useEngCollection(ENG_COLLECTIONS.deviceStatus);
+
+  const compared = useMemo(() => {
+    const byBuild = {};
+    for (const r of pageLoads) {
+      const id = r.buildId || "unknown";
+      if (!byBuild[id]) byBuild[id] = [];
+      byBuild[id].push(r);
+    }
+    const list = rows.length
+      ? rows.map((r) => r.buildId || r.id)
+      : Object.keys(byBuild);
+    const unique = [...new Set(list)];
+    const enriched = unique.map((buildId) => {
+      const loads = byBuild[buildId] || [];
+      const stats = summarizeLoads(loads);
+      const snapAvg = avg(loads.map((l) => l.firstSnapshotMs));
+      const intAvg = avg(loads.map((l) => l.interactiveMs));
+      const memRows = memory.filter(
+        (m) => m.buildId === buildId || (!m.buildId && loads.some((l) => l.deviceId === m.deviceId))
+      );
+      const memAvg = avg(
+        memRows
+          .map((m) =>
+            m.usedJSHeapSize != null ? m.usedJSHeapSize / 1048576 : null
+          )
+          .filter((n) => typeof n === "number")
+      );
+      const errCount = errors.filter((e) => e.buildId === buildId).length;
+      const deviceIds = new Set([
+        ...loads.map((l) => l.deviceId).filter(Boolean),
+        ...devices.filter((d) => d.buildId === buildId).map((d) => d.deviceId || d.id),
+      ]);
+      const health =
+        errCount > 10 || (stats.avg != null && stats.avg > 4000)
+          ? "poor"
+          : errCount > 3 || (stats.avg != null && stats.avg > 2500)
+            ? "fair"
+            : "good";
+      const meta = rows.find((r) => (r.buildId || r.id) === buildId);
+      return {
+        buildId,
+        seenCount: meta?.seenCount || deviceIds.size,
+        avgLoad: stats.avg,
+        avgSnapshot: snapAvg,
+        avgInteractive: intAvg,
+        memory: memAvg,
+        errors: errCount,
+        health,
+        devices: deviceIds.size,
+        lastTs: Math.max(0, ...loads.map((l) => l.ts || 0)),
+      };
+    });
+    return enriched.sort((a, b) => (b.lastTs || 0) - (a.lastTs || 0));
+  }, [rows, pageLoads, memory, errors, devices]);
+
   return (
     <>
       <div className="eng-header">
         <h1>Builds</h1>
+        <div className="meta">compare averages · highlight regressions</div>
       </div>
       <div className="eng-panel">
-        {!rows.length ? (
+        {!compared.length ? (
           <EmptyHint configured={configured} loading={loading} />
         ) : (
           <table className="eng-table">
             <thead>
               <tr>
                 <th>Build</th>
-                <th>Seen</th>
-                <th>Last device</th>
-                <th>UA</th>
+                <th>Avg Load</th>
+                <th>Avg Snapshot</th>
+                <th>Avg Interactive</th>
+                <th>Memory</th>
+                <th>Errors</th>
+                <th>Health</th>
+                <th>Devices</th>
+                <th>vs prev</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.buildId || r.id}</td>
-                  <td>{r.seenCount || 0}</td>
-                  <td>{(r.lastDeviceId || "").slice(0, 8)}</td>
-                  <td className="eng-muted" style={{ fontSize: "0.7rem" }}>
-                    {(r.userAgent || "").slice(0, 80)}
-                  </td>
-                </tr>
-              ))}
+              {compared.map((r, i) => {
+                const prev = compared[i + 1];
+                const delta =
+                  prev?.avgLoad != null && r.avgLoad != null
+                    ? r.avgLoad - prev.avgLoad
+                    : null;
+                const regressed = delta != null && delta > 200;
+                const improved = delta != null && delta < -200;
+                return (
+                  <tr key={r.buildId}>
+                    <td>{r.buildId}</td>
+                    <td className={regressed ? "eng-regressed" : improved ? "eng-improved" : undefined}>
+                      {fmtMs(r.avgLoad)}
+                    </td>
+                    <td>{fmtMs(r.avgSnapshot)}</td>
+                    <td>{fmtMs(r.avgInteractive)}</td>
+                    <td>{r.memory != null ? `${r.memory.toFixed(1)} MB` : "—"}</td>
+                    <td>{r.errors}</td>
+                    <td>
+                      <span
+                        className={`pill ${
+                          r.health === "good"
+                            ? "online"
+                            : r.health === "fair"
+                              ? "stale"
+                              : "offline"
+                        }`}
+                      >
+                        {r.health}
+                      </span>
+                    </td>
+                    <td>{r.devices}</td>
+                    <td
+                      className={
+                        regressed ? "eng-regressed" : improved ? "eng-improved" : undefined
+                      }
+                    >
+                      {delta == null
+                        ? "—"
+                        : `${delta > 0 ? "+" : ""}${Math.round(delta)}ms`}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

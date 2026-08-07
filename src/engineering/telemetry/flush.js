@@ -328,7 +328,7 @@ async function flushListeners(db, events, deviceId) {
 
 async function flushPages(db, events, deviceId) {
   if (!events.length) return;
-  const writes = events.map((e) => {
+  const aggWrites = events.map((e) => {
     const day = dayKey(e.ts);
     const page = e.page || "unknown";
     const id = `${day}_${deviceId}_${page}`.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -339,6 +339,7 @@ async function flushPages(db, events, deviceId) {
         deviceId,
         page,
         department: e.department || null,
+        buildId: e.buildId || null,
         loadCount: increment(1),
         firstPaintMsSum: increment(e.firstPaintMs || 0),
         firstRenderMsSum: increment(e.firstRenderMs || 0),
@@ -355,7 +356,34 @@ async function flushPages(db, events, deviceId) {
       { merge: true }
     );
   });
-  await Promise.all(writes);
+
+  // Individual samples for Timeline / waterfall (same flush cycle; no extra schedule)
+  const sampleWrites = events.map((e) => {
+    const ts = e.ts || Date.now();
+    const id = `${deviceId}_${ts}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+    return setDoc(
+      doc(db, ENG_COLLECTIONS.pageLoads, id),
+      {
+        ts,
+        day: dayKey(ts),
+        deviceId,
+        page: e.page || "unknown",
+        department: e.department || null,
+        buildId: e.buildId || null,
+        user: e.user || null,
+        firstPaintMs: e.firstPaintMs ?? null,
+        firstRenderMs: e.firstRenderMs ?? null,
+        firstSnapshotMs: e.firstSnapshotMs ?? null,
+        interactiveMs: e.interactiveMs ?? null,
+        totalMs: e.totalMs ?? null,
+        kind: "page_load",
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  });
+
+  await Promise.all([...aggWrites, ...sampleWrites]);
 }
 
 async function flushMemory(db, events, deviceId) {
