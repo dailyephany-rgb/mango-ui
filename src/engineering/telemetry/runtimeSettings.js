@@ -14,6 +14,9 @@ import {
   NETWORK_PROBE_MS,
   SLOW_QUERY_MS,
   BUFFER_CAPACITY,
+  ENG_AGG_RETENTION_DAYS,
+  ENG_ERROR_RETENTION_DAYS,
+  ENG_SAMPLE_RETENTION_DAYS,
 } from "../constants.js";
 import { safeRun, safeCall } from "./safeRun.js";
 
@@ -28,8 +31,9 @@ let cached = {
   networkProbeMs: NETWORK_PROBE_MS,
   slowQueryMs: SLOW_QUERY_MS,
   bufferCapacity: BUFFER_CAPACITY,
-  retentionDays: 90,
-  errorRetentionDays: 60,
+  retentionDays: ENG_AGG_RETENTION_DAYS,
+  sampleRetentionDays: ENG_SAMPLE_RETENTION_DAYS,
+  errorRetentionDays: ENG_ERROR_RETENTION_DAYS,
   debugSampling: false,
   trackWrites: false,
   sampleRates: {
@@ -100,6 +104,9 @@ export async function refreshRuntimeSettings(opts = {}) {
       next.flushIntervalMs = Number(d.flushIntervalSec) * 1000;
     }
     if (d.retentionDays != null) next.retentionDays = Number(d.retentionDays);
+    if (d.sampleRetentionDays != null) {
+      next.sampleRetentionDays = Number(d.sampleRetentionDays);
+    }
     if (d.errorRetentionDays != null) {
       next.errorRetentionDays = Number(d.errorRetentionDays);
     }

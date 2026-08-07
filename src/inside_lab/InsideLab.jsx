@@ -16,6 +16,7 @@ import {
   trackedOnSnapshot as onSnapshot,
   trackedGetDoc as getDoc,
 } from "../shared/firestore/trackedFirestore.js";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 import INSIDE_ROOM_MAP from "../inside_room_routing.json"; 
 import "./InsideLab.css";
@@ -303,6 +304,7 @@ export default function InsideLabRegister() {
   }, [entries, activeTab, activeSource, regSearch, dateFrom, dateTo]);
 
   return (
+    <EngComponent name="InsideLab" type="Page" parent={null} moduleId="InsideLab">
     <div className="register-section">
      <div
   style={{
@@ -493,5 +495,6 @@ export default function InsideLabRegister() {
         </div>
       )}
     </div>
+    </EngComponent>
   );
 }

@@ -33,7 +33,16 @@ import {
   resetComponentSession,
   getFsAttribution,
 } from "./componentTimeline.js";
-/** @type {{ deviceId: string, buildId: string, page: string, department: string, user: string | null, reactStrictDev: boolean, lastFirstSnapshotMs: number | null, lastPageLoadMs: number | null, loadId: string | null }} */
+import {
+  buildEngMeta,
+  getOrCreateSessionId,
+  detectPlatform,
+  detectBrowser,
+  SCHEMA_VERSION,
+  TELEMETRY_VERSION,
+} from "./metadata.js";
+
+/** @type {{ deviceId: string, buildId: string, page: string, department: string, user: string | null, reactStrictDev: boolean, lastFirstSnapshotMs: number | null, lastPageLoadMs: number | null, loadId: string | null, sessionId: string | null, platform: string, browser: string | null }} */
 let context = {
   deviceId: "",
   buildId: ENG_BUILD_ID,
@@ -44,6 +53,9 @@ let context = {
   lastFirstSnapshotMs: null,
   lastPageLoadMs: null,
   loadId: null,
+  sessionId: null,
+  platform: "unknown",
+  browser: null,
 };
 
 let initialized = false;
@@ -57,17 +69,29 @@ let prevHeapAt = null;
 
 function base() {
   const label = getDeviceLabel() || undefined;
-  return {
+  let attr = { moduleId: null, componentId: null, pageId: context.page };
+  try {
+    attr = getFsAttribution() || attr;
+  } catch {
+    /* ignore */
+  }
+  return buildEngMeta({
     ts: Date.now(),
     deviceId: context.deviceId || getDeviceId(),
-    buildId: context.buildId,
+    sessionId: context.sessionId,
+    loadId: context.loadId || getComponentLoadId() || null,
+    pageId: attr.pageId || context.page,
     page: context.page,
+    moduleId: attr.moduleId || null,
+    componentId: attr.componentId || null,
     department: context.department,
+    buildId: context.buildId,
+    appVersion: context.buildId,
+    platform: context.platform,
+    browser: context.browser,
+    label: label || null,
     user: context.user,
-    label: label || undefined,
-    reactStrictDev: context.reactStrictDev || undefined,
-    loadId: context.loadId || getComponentLoadId() || undefined,
-  };
+  });
 }
 
 function ensureLoadId() {
@@ -75,6 +99,7 @@ function ensureLoadId() {
   const deviceId = context.deviceId || getDeviceId();
   const id = `${deviceId}_${Date.now()}`.replace(/[^a-zA-Z0-9_-]/g, "_");
   context.loadId = id;
+  setHeartbeatContext({ loadId: id });
   return id;
 }
 
@@ -91,6 +116,7 @@ function init(opts = {}) {
     if (!enabled()) return;
     initialized = true;
     const deviceId = opts.deviceId || getDeviceId();
+    const sessionId = getOrCreateSessionId(deviceId);
     context = {
       ...context,
       deviceId,
@@ -100,6 +126,9 @@ function init(opts = {}) {
       user: opts.user ?? null,
       reactStrictDev: !!opts.reactStrictDev,
       loadId: null,
+      sessionId,
+      platform: detectPlatform(),
+      browser: detectBrowser(),
       lastFirstSnapshotMs: null,
       lastPageLoadMs: null,
     };
@@ -113,6 +142,10 @@ function init(opts = {}) {
       page: context.page,
       department: context.department,
       user: context.user,
+      sessionId,
+      loadId: lid,
+      buildId: context.buildId,
+      platform: context.platform,
     });
     startHeartbeat();
     armFlush();
@@ -128,6 +161,8 @@ function init(opts = {}) {
       ...base(),
       domain: "builds",
       buildId: context.buildId,
+      schemaVersion: SCHEMA_VERSION,
+      telemetryVersion: TELEMETRY_VERSION,
       userAgent:
         typeof navigator !== "undefined"
           ? String(navigator.userAgent || "").slice(0, 300)

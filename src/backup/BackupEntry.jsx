@@ -15,6 +15,7 @@ import {
   handleInventoryDeduction
 } from "../inventory/inventorymapping";
 import "./BackupEntry.css";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 import DeptInventoryTab from "../inventory/BackupInventoryTab.jsx";
 import {
@@ -237,6 +238,12 @@ const BackupEntry = () => {
   };
 
   return (
+    <EngComponent
+      name={activeTab === "inventory" ? "BackupInventoryTab" : "BackupEntry"}
+      type="Page"
+      parent={null}
+      moduleId={activeTab === "inventory" ? "BackupInventoryTab" : "BackupEntry"}
+    >
     <div className="backup-entry-container">
       <div className="tab-container">
         <button className={`tab-btn ${activeTab === "register" ? "active" : ""}`} onClick={() => setActiveTab("register")}>
@@ -362,6 +369,7 @@ const BackupEntry = () => {
         <DeptInventoryTab department="Biochemistry" machineType="Backup" />
       </div>
     </div>
+    </EngComponent>
   );
 };
 

@@ -13,6 +13,7 @@ import {
 import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFirestore.js";
 import reagentData from "./reagents.json";
 import "./InventoryIntake.css";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 export default function InventoryIntake() {
   const [view, setView] = useState("bill");
@@ -233,6 +234,7 @@ setSaving(true);
   const headerPrefix = view === 'history_reagent' ? 'PRODUCT' : 'BILL NO';
 
   return (
+    <EngComponent name="InventoryIntake" type="Page" parent={null} moduleId="InventoryIntake">
     <div className="dark-intake-wrapper">
       <header className="dark-header">
         <h1>LABORATORY INVENTORY INTAKE</h1>
@@ -504,5 +506,6 @@ setSaving(true);
         </section>
       </div>
     </div>
+    </EngComponent>
   );
 }

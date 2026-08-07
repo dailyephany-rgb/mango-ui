@@ -423,6 +423,8 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
             constraints,
             firstSnapshot: true,
           });
+          // Single listener-domain snapshot event (was triple-counted via
+          // trackListenerSnapshot + duration + doccount emits).
           EngTelemetry.trackListenerSnapshot({
             event: "first_snapshot_received",
             collection,
@@ -434,24 +436,6 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
             constraints,
             queryKey: `${ctx.page}:${collection}:listen`,
             firstSnapshot: true,
-          });
-          EngTelemetry.trackListener({
-            action: "snapshot",
-            event: "first_snapshot_duration",
-            collection,
-            listenerId: id,
-            durationMs,
-            docCount,
-            reason,
-          });
-          EngTelemetry.trackListener({
-            action: "snapshot",
-            event: "first_snapshot_doccount",
-            collection,
-            listenerId: id,
-            docCount,
-            durationMs,
-            reason,
           });
           if (pendingRetry) {
             EngTelemetry.trackListenerRetry({

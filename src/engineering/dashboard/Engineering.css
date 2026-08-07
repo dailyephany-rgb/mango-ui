@@ -315,6 +315,21 @@ body,
   border-color: var(--eng-accent);
 }
 
+.eng-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.eng-btn-primary {
+  border-color: var(--eng-accent);
+  background: color-mix(in srgb, var(--eng-accent) 18%, var(--eng-panel-2));
+  font-weight: 600;
+}
+
+.eng-btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--eng-accent) 28%, var(--eng-panel-2));
+}
+
 .eng-form label {
   display: block;
   margin: 0.5rem 0;

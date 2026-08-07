@@ -1,7 +1,8 @@
 /**
  * Production-oriented rules template for a DEDICATED eng project only.
- * For shared vasundhara project, merge eng_* allow from firestore.rules.engineering
- * into existing clinical rules — never replace clinical rules with this file.
+ * For shared vasundhara project, use npm run eng:ops-deploy (merges into live).
+ *
+ * Clinical impact: NONE (dedicated eng DB or eng_* prefix only).
  */
 
 rules_version = '2';
@@ -18,13 +19,25 @@ service cloud.firestore {
       return col.matches('eng_.*');
     }
 
+    function hasEngWriteSchema() {
+      return request.resource.data.keys().hasAll(['schemaVersion', 'deviceId'])
+        || request.resource.data.keys().hasAll(['schemaVersion', 'telemetryVersion']);
+    }
+
+    function engExpired() {
+      return resource.data.keys().hasAny(['expireAt'])
+        && resource.data.expireAt is timestamp
+        && request.time > resource.data.expireAt;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
 
     match /{col}/{docId} {
       allow read: if isEngCol(col) && isOps();
-      allow write: if isEngCol(col);
+      allow create, update: if isEngCol(col) && hasEngWriteSchema();
+      allow delete: if isEngCol(col) && (isOps() || engExpired());
     }
   }
 }

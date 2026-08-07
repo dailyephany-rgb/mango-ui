@@ -527,9 +527,10 @@ export function FirestoreByComponentPage() {
           </button>
         </div>
         <p className="eng-muted" style={{ margin: "0.5rem 0 0", fontSize: "0.75rem" }}>
-          Linked via loadId to Timeline · Components · React · Memory · Listeners.
-          Shared hooks attributed to the mounting module. Multi-owner collections
-          show contribution by module.
+          Linked via loadId to Timeline · Components · FS loads. Shared hooks
+          attributed to the mounting module. Multi-owner collections show
+          contribution by module. React/Memory join via loadId when samples
+          include it (schema v2).
         </p>
       </div>
 

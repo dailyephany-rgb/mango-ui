@@ -6,42 +6,69 @@
 import {
   collection,
   doc,
+  getDoc,
   setDoc,
   serverTimestamp,
   increment,
 } from "firebase/firestore";
 import { getEngDb, isEngFirebaseConfigured } from "../firebaseEngConfig.js";
 import { ENG_COLLECTIONS } from "../constants.js";
-import { drainEvents, loadSpill, clearSpill, pushEvent, spillToSession, peekEvents, bufferSize } from "./buffer.js";
+import {
+  drainEvents,
+  loadSpill,
+  clearSpill,
+  replaceSpill,
+  pushEvent,
+  spillToSession,
+  peekEvents,
+  bufferSize,
+} from "./buffer.js";
 import { getDeviceId, getDeviceLabel } from "./deviceId.js";
 import { isEngTelemetryEnabled } from "./killSwitch.js";
 import { safeRun } from "./safeRun.js";
 import { getRuntimeSettings } from "./runtimeSettings.js";
 import { computeHealthScore } from "../health/scores.js";
+import {
+  dayKey,
+  hourKey,
+  buildTimeFields,
+  buildEngMeta,
+  compactMeta,
+  SCHEMA_VERSION,
+  TELEMETRY_VERSION,
+} from "./metadata.js";
+import {
+  writeRollingDailyDoc,
+  percentile,
+} from "./rollingAgg.js";
+import { expireAtForCollection } from "./expireAt.js";
 
 let flushing = false;
 /** @type {object[][]} */
 let retryQueue = [];
 let retryTimer = null;
 
-function dayKey(ts = Date.now()) {
-  const d = new Date(ts);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function hourKey(ts = Date.now()) {
-  const d = new Date(ts);
-  return `${dayKey(ts)}T${String(d.getHours()).padStart(2, "0")}`;
-}
-
-function percentile(values, p) {
-  if (!values.length) return null;
-  const s = [...values].sort((a, b) => a - b);
-  const idx = Math.min(s.length - 1, Math.ceil(p * (s.length - 1)));
-  return s[idx];
+/** Meta slice from a buffer event for eng_* persistence */
+function metaFromEvent(e, deviceId, deviceLabel) {
+  return compactMeta(
+    buildEngMeta({
+      ts: e.ts || Date.now(),
+      deviceId: e.deviceId || deviceId,
+      sessionId: e.sessionId || null,
+      loadId: e.loadId || null,
+      pageId: e.pageId || e.page || null,
+      page: e.page || null,
+      moduleId: e.moduleId || null,
+      componentId: e.componentId || null,
+      department: e.department || null,
+      buildId: e.buildId || null,
+      appVersion: e.appVersion || e.buildId || null,
+      platform: e.platform || null,
+      browser: e.browser || null,
+      label: e.label || deviceLabel || null,
+      user: e.user || null,
+    })
+  );
 }
 
 /**
@@ -109,11 +136,13 @@ function enqueueRetry(events) {
       if (!batch) return;
       try {
         await deliverEvents(batch);
+        clearSpill();
       } catch {
         if (attempt < 5) {
           retryQueue.unshift(batch);
           tick();
         } else {
+          replaceSpill(batch);
           for (const e of batch) pushEvent(e);
         }
       }
@@ -141,10 +170,12 @@ export async function flushNow(opts = {}) {
       return;
     }
 
-    clearSpill();
+    // Clear spill only after successful deliver (crash mid-flush must not lose events).
     try {
       await deliverEvents(events);
+      clearSpill();
     } catch {
+      replaceSpill(events);
       enqueueRetry(events);
     }
   } catch {
@@ -199,29 +230,30 @@ function groupBy(arr, keyFn) {
 
 async function flushQueries(db, events, deviceId, settings) {
   if (!events.length) return;
-  const day = dayKey();
+  const deviceLabel = getDeviceLabel();
   const slowMs = settings.slowQueryMs ?? 2000;
   const agg = {};
   for (const e of events) {
     const col = e.collection || "unknown";
     const kind = e.kind || "unknown";
-    const key = `${col}|${kind}`;
+    const day = dayKey(e.ts || Date.now());
+    const key = `${day}|${col}|${kind}`;
     if (!agg[key]) {
       agg[key] = {
+        day,
         collection: col,
         kind,
         count: 0,
         docCountSum: 0,
         durationSum: 0,
-        durationMax: 0,
-        durationMin: Infinity,
         durations: [],
         slowCount: 0,
         writes: 0,
         failures: 0,
         reconnects: 0,
-        page: e.page,
-        department: e.department,
+        earliestTs: e.ts || Date.now(),
+        latestTs: e.ts || Date.now(),
+        sample: e,
       };
     }
     const a = agg[key];
@@ -229,48 +261,57 @@ async function flushQueries(db, events, deviceId, settings) {
     a.docCountSum += e.docCount || 0;
     const dur = e.durationMs || 0;
     a.durationSum += dur;
-    a.durationMax = Math.max(a.durationMax, dur);
-    a.durationMin = Math.min(a.durationMin, dur);
     a.durations.push(dur);
     if (dur >= slowMs) a.slowCount += 1;
     if (kind === "write") a.writes += 1;
     if (e.failure) a.failures += 1;
     if (e.reconnect) a.reconnects += 1;
+    const ts = e.ts || Date.now();
+    if (ts < a.earliestTs) a.earliestTs = ts;
+    if (ts > a.latestTs) a.latestTs = ts;
+    a.sample = e;
   }
 
-  const writes = Object.values(agg).map((a) => {
-    const id = `${day}_${deviceId}_${a.collection}_${a.kind}`.replace(
-      /[^a-zA-Z0-9_-]/g,
-      "_"
-    );
-    const avg = a.count ? a.durationSum / a.count : null;
-    const p95 = percentile(a.durations, 0.95);
-    return setDoc(
-      doc(db, ENG_COLLECTIONS.firestoreMetrics, id),
-      {
-        day,
-        deviceId,
-        collection: a.collection,
-        kind: a.kind,
-        page: a.page || null,
-        department: a.department || null,
-        queryCount: increment(a.count),
-        docCountSum: increment(a.docCountSum),
-        durationSumMs: increment(a.durationSum),
-        durationMaxMs: a.durationMax,
-        durationMinMs: Number.isFinite(a.durationMin) ? a.durationMin : null,
-        avgQueryMs: avg,
-        p95QueryMs: p95,
-        slowCount: increment(a.slowCount),
-        writes: increment(a.writes),
-        failures: increment(a.failures),
-        reconnects: increment(a.reconnects),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
-  });
-  await Promise.all(writes);
+  await Promise.all(
+    Object.values(agg).map((a) => {
+      const id = `${a.day}_${deviceId}_${a.collection}_${a.kind}`.replace(
+        /[^a-zA-Z0-9_-]/g,
+        "_"
+      );
+      const meta = metaFromEvent(a.sample, deviceId, deviceLabel);
+      return writeRollingDailyDoc(db, ENG_COLLECTIONS.firestoreMetrics, id, {
+        meta: {
+          ...meta,
+          day: a.day,
+          dateKey: a.day,
+          collection: a.collection,
+          kind: a.kind,
+          // keep page/module from last sample but prefer event fields
+          page: a.sample.page || meta.page,
+          moduleId: a.sample.moduleId || meta.moduleId,
+        },
+        increments: {
+          queryCount: a.count,
+          docCountSum: a.docCountSum,
+          durationSumMs: a.durationSum,
+          slowCount: a.slowCount,
+          writes: a.writes,
+          failures: a.failures,
+          reconnects: a.reconnects,
+        },
+        durations: a.durations,
+        earliestTs: a.earliestTs,
+        latestTs: a.latestTs,
+        avgFrom: {
+          sumField: "durationSumMs",
+          countField: "queryCount",
+          outField: "avgQueryMs",
+          batchSum: a.durationSum,
+          batchCount: a.count,
+        },
+      });
+    })
+  );
 }
 
 /**
@@ -315,6 +356,7 @@ async function flushFirestoreByComponent(
         docCountSum: 0,
         durationSum: 0,
         durationMax: 0,
+        durations: [],
         slowCount: 0,
         firstSnapCount: 0,
         firstSnapSumMs: 0,
@@ -322,9 +364,17 @@ async function flushFirestoreByComponent(
         estimatedDocReads: 0,
         queryKeyInc: {},
         constraintsSample: null,
+        earliestTs: e.ts || Date.now(),
+        latestTs: e.ts || Date.now(),
+        sample: e,
       };
     }
-    return dayAgg[key];
+    const row = dayAgg[key];
+    const ets = e.ts || Date.now();
+    if (ets < row.earliestTs) row.earliestTs = ets;
+    if (ets > row.latestTs) row.latestTs = ets;
+    row.sample = e;
+    return row;
   };
 
   const ensureLoad = (e) => {
@@ -435,6 +485,7 @@ async function flushFirestoreByComponent(
     a.queryCount += 1;
     a.durationSum += dur;
     a.durationMax = Math.max(a.durationMax, dur);
+    if (typeof dur === "number" && Number.isFinite(dur)) a.durations.push(dur);
     a.docCountSum += docs;
     if (isSlow) a.slowCount += 1;
     if (e.firstSnapshot) {
@@ -503,44 +554,77 @@ async function flushFirestoreByComponent(
     }
   }
 
-  const dayWrites = Object.values(dayAgg).map((a) => {
+  const dayWrites = Object.values(dayAgg).map(async (a) => {
     const id = `${a.day}_${deviceId}_${a.moduleId}_${a.collection}_${a.kind}`.replace(
       /[^a-zA-Z0-9_-]/g,
       "_"
     );
-    const payload = {
-      day: a.day,
-      deviceId,
-      page: a.page,
-      moduleId: a.moduleId,
-      collection: a.collection,
-      kind: a.kind,
-      queryCount: increment(a.queryCount),
-      reads: increment(a.reads),
-      writes: increment(a.writes),
-      listeners: increment(a.listeners),
-      docCountSum: increment(a.docCountSum),
-      durationSumMs: increment(a.durationSum),
-      durationMaxMs: a.durationMax,
-      slowCount: increment(a.slowCount),
-      firstSnapCount: increment(a.firstSnapCount),
-      firstSnapSumMs: increment(a.firstSnapSumMs),
-      subsequentCount: increment(a.subsequentCount),
-      estimatedDocReads: increment(a.estimatedDocReads),
-      avgQueryMs: a.queryCount ? a.durationSum / a.queryCount : null,
-      constraintsSample: a.constraintsSample || null,
-      updatedAt: serverTimestamp(),
+    const meta = metaFromEvent(a.sample || {}, deviceId, deviceLabel);
+    const increments = {
+      queryCount: a.queryCount,
+      reads: a.reads,
+      writes: a.writes,
+      listeners: a.listeners,
+      docCountSum: a.docCountSum,
+      durationSumMs: a.durationSum,
+      slowCount: a.slowCount,
+      firstSnapCount: a.firstSnapCount,
+      firstSnapSumMs: a.firstSnapSumMs,
+      subsequentCount: a.subsequentCount,
+      estimatedDocReads: a.estimatedDocReads,
     };
     for (const [qk, n] of Object.entries(a.queryKeyInc)) {
       const safe = qk.replace(/[./\[\]]/g, "_").slice(0, 120);
-      payload[`qk_${safe}`] = increment(n);
+      increments[`qk_${safe}`] = n;
     }
-    return setDoc(doc(db, ENG_COLLECTIONS.firestoreByComponent, id), payload, {
-      merge: true,
+    await writeRollingDailyDoc(db, ENG_COLLECTIONS.firestoreByComponent, id, {
+      meta: {
+        ...meta,
+        day: a.day,
+        dateKey: a.day,
+        deviceId,
+        page: a.page,
+        pageId: a.page,
+        moduleId: a.moduleId,
+        collection: a.collection,
+        kind: a.kind,
+      },
+      increments,
+      durations: a.durations,
+      earliestTs: a.earliestTs,
+      latestTs: a.latestTs,
+      absolute: a.constraintsSample
+        ? { constraintsSample: a.constraintsSample }
+        : undefined,
+      avgFrom: {
+        sumField: "durationSumMs",
+        countField: "queryCount",
+        outField: "avgQueryMs",
+        batchSum: a.durationSum,
+        batchCount: a.queryCount,
+      },
     });
   });
 
-  const loadWrites = [...byLoad.values()].map((load) => {
+  const loadWrites = [...byLoad.values()].map(async (load) => {
+    const ref = doc(db, ENG_COLLECTIONS.fsComponentLoads, load.loadId);
+    let prevTimeline = [];
+    let prevQueries = [];
+    try {
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const prev = snap.data() || {};
+        prevTimeline = Array.isArray(prev.recentTimeline)
+          ? prev.recentTimeline
+          : [];
+        prevQueries = Array.isArray(prev.recentQueries)
+          ? prev.recentQueries
+          : [];
+      }
+    } catch {
+      /* ignore */
+    }
+
     const payload = {
       loadId: load.loadId,
       ts: load.ts,
@@ -548,11 +632,14 @@ async function flushFirestoreByComponent(
       deviceId,
       label: load.label,
       page: load.page,
+      pageId: load.page,
       department: load.department,
       buildId: load.buildId,
+      schemaVersion: SCHEMA_VERSION,
+      telemetryVersion: TELEMETRY_VERSION,
       updatedAt: serverTimestamp(),
+      expireAt: expireAtForCollection(ENG_COLLECTIONS.fsComponentLoads),
     };
-    let estBatch = 0;
     for (const m of Object.values(load.modules)) {
       const mid = String(m.moduleId).replace(/\./g, "_");
       const p = `m__${mid}`;
@@ -582,9 +669,40 @@ async function flushFirestoreByComponent(
       }
     }
     payload.estimatedDocReads = increment(estBatch);
-    payload.recentTimeline = load.timeline;
-    payload.recentQueries = Object.values(load.queries)
-      .sort((a, b) => b.count - a.count)
+
+    const mergedTimeline = [...prevTimeline, ...load.timeline]
+      .filter((t) => t && typeof t === "object")
+      .sort((a, b) => (a.ts || 0) - (b.ts || 0))
+      .slice(-40);
+    payload.recentTimeline = mergedTimeline;
+
+    /** @type {Map<string, object>} */
+    const qMap = new Map();
+    for (const q of prevQueries) {
+      if (q?.queryKey) qMap.set(q.queryKey, { ...q });
+    }
+    for (const q of Object.values(load.queries)) {
+      const prev = qMap.get(q.queryKey);
+      if (!prev) {
+        qMap.set(q.queryKey, {
+          queryKey: q.queryKey,
+          collection: q.collection,
+          kind: q.kind,
+          moduleId: q.moduleId,
+          count: q.count,
+          durationSum: q.durationSum,
+          slow: q.slow,
+          constraints: q.constraints || null,
+        });
+      } else {
+        prev.count = (prev.count || 0) + (q.count || 0);
+        prev.durationSum = (prev.durationSum || 0) + (q.durationSum || 0);
+        prev.slow = (prev.slow || 0) + (q.slow || 0);
+        if (!prev.constraints && q.constraints) prev.constraints = q.constraints;
+      }
+    }
+    payload.recentQueries = [...qMap.values()]
+      .sort((a, b) => (b.count || 0) - (a.count || 0))
       .slice(0, 40)
       .map((q) => ({
         queryKey: q.queryKey,
@@ -592,16 +710,12 @@ async function flushFirestoreByComponent(
         kind: q.kind,
         moduleId: q.moduleId,
         count: q.count,
-        avgMs: q.count ? q.durationSum / q.count : null,
+        avgMs: q.count ? (q.durationSum || 0) / q.count : null,
         slow: q.slow,
         constraints: q.constraints || null,
       }));
     payload.moduleIds = Object.keys(load.modules);
-    return setDoc(
-      doc(db, ENG_COLLECTIONS.fsComponentLoads, load.loadId),
-      payload,
-      { merge: true }
-    );
+    return setDoc(ref, payload, { merge: true });
   });
 
   await Promise.all([...dayWrites, ...loadWrites]);
@@ -609,12 +723,17 @@ async function flushFirestoreByComponent(
 
 async function flushListeners(db, events, deviceId) {
   if (!events.length) return;
-  const day = dayKey();
-  const byCol = {};
+  const deviceLabel = getDeviceLabel();
+  /** @type {Record<string, object>} */
+  const byKey = {};
   for (const e of events) {
     const col = e.collection || "unknown";
-    if (!byCol[col]) {
-      byCol[col] = {
+    const day = dayKey(e.ts || Date.now());
+    const key = `${day}|${col}`;
+    if (!byKey[key]) {
+      byKey[key] = {
+        day,
+        collection: col,
         opens: 0,
         closes: 0,
         snapshots: 0,
@@ -628,6 +747,8 @@ async function flushListeners(db, events, deviceId) {
         retryFailed: 0,
         durationSum: 0,
         durationCount: 0,
+        durations: [],
+        firstSnapDurations: [],
         firstSnapSumMs: 0,
         firstSnapCount: 0,
         firstSnapMaxMs: 0,
@@ -644,13 +765,18 @@ async function flushListeners(db, events, deviceId) {
         reasonRetry: 0,
         reasonDepsChange: 0,
         reasonUnknown: 0,
-        page: e.page,
-        department: e.department,
+        earliestTs: e.ts || Date.now(),
+        latestTs: e.ts || Date.now(),
+        sample: e,
       };
     }
-    const b = byCol[col];
+    const b = byKey[key];
     const action = e.action;
     const event = e.event || "";
+    const ts = e.ts || Date.now();
+    if (ts < b.earliestTs) b.earliestTs = ts;
+    if (ts > b.latestTs) b.latestTs = ts;
+    b.sample = e;
     if (action === "open") {
       b.opens += 1;
       const reason = e.reason || "unknown";
@@ -669,6 +795,7 @@ async function flushListeners(db, events, deviceId) {
       if (e.durationMs != null) {
         b.durationSum += e.durationMs;
         b.durationCount += 1;
+        b.durations.push(e.durationMs);
       }
       if (
         event === "first_snapshot_received" ||
@@ -677,6 +804,7 @@ async function flushListeners(db, events, deviceId) {
         if (e.durationMs != null) {
           b.firstSnapSumMs += e.durationMs;
           b.firstSnapCount += 1;
+          b.firstSnapDurations.push(e.durationMs);
           if (e.durationMs > b.firstSnapMaxMs) b.firstSnapMaxMs = e.durationMs;
         }
         if (e.docCount != null) {
@@ -692,15 +820,9 @@ async function flushListeners(db, events, deviceId) {
     } else if (action === "error") b.errors += 1;
     else if (action === "reconnect") b.reconnects += 1;
     else if (action === "recreated") b.recreates += 1;
-    else if (
-      action === "timeout_10" ||
-      event === "first_snapshot_timeout_10"
-    )
+    else if (action === "timeout_10" || event === "first_snapshot_timeout_10")
       b.timeouts10 += 1;
-    else if (
-      action === "timeout_30" ||
-      event === "first_snapshot_timeout_30"
-    )
+    else if (action === "timeout_30" || event === "first_snapshot_timeout_30")
       b.timeouts30 += 1;
     else if (action === "retry" || event === "retry_clicked") b.retries += 1;
     else if (action === "retry_success" || event === "retry_success")
@@ -709,115 +831,178 @@ async function flushListeners(db, events, deviceId) {
       b.retryFailed += 1;
   }
 
-  const writes = Object.entries(byCol).map(([collectionName, b]) => {
-    const id = `${day}_${deviceId}_${collectionName}`.replace(
-      /[^a-zA-Z0-9_-]/g,
-      "_"
-    );
-    return setDoc(
-      doc(db, ENG_COLLECTIONS.listenerDaily, id),
-      {
-        day,
-        deviceId,
-        collection: collectionName,
-        page: b.page || null,
-        department: b.department || null,
-        opens: increment(b.opens),
-        closes: increment(b.closes),
-        snapshots: increment(b.snapshots),
-        errors: increment(b.errors),
-        reconnects: increment(b.reconnects),
-        recreates: increment(b.recreates),
-        timeouts10: increment(b.timeouts10),
-        timeouts30: increment(b.timeouts30),
-        retries: increment(b.retries),
-        retrySuccess: increment(b.retrySuccess),
-        retryFailed: increment(b.retryFailed),
-        reasonPageLoad: increment(b.reasonPageLoad),
-        reasonRefresh: increment(b.reasonRefresh),
-        reasonDateChange: increment(b.reasonDateChange),
-        reasonDepartmentChange: increment(b.reasonDepartmentChange),
-        reasonReconnect: increment(b.reasonReconnect),
-        reasonRetry: increment(b.reasonRetry),
-        reasonDepsChange: increment(b.reasonDepsChange),
-        reasonUnknown: increment(b.reasonUnknown),
-        lastDocCount: b.lastDocCount,
-        avgSnapshotMs:
-          b.durationCount > 0 ? b.durationSum / b.durationCount : null,
-        firstSnapshotSumMs: increment(b.firstSnapSumMs),
-        firstSnapshotCount: increment(b.firstSnapCount),
-        firstSnapshotMaxMs: b.firstSnapMaxMs || null,
-        firstSnapshotDocSum: increment(b.firstSnapDocSum),
-        firstSnapshotMaxDocs: b.firstSnapMaxDocs || null,
-        payloadBytesSum: increment(b.payloadBytesSum),
-        payloadBytesMax: b.payloadBytesMax || null,
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
-  });
-  await Promise.all(writes);
+  await Promise.all(
+    Object.values(byKey).map(async (b) => {
+      const id = `${b.day}_${deviceId}_${b.collection}`.replace(
+        /[^a-zA-Z0-9_-]/g,
+        "_"
+      );
+      const meta = metaFromEvent(b.sample, deviceId, deviceLabel);
+      // Rolling max for first snapshot via writeRolling helper durations
+      await writeRollingDailyDoc(db, ENG_COLLECTIONS.listenerDaily, id, {
+        meta: {
+          ...meta,
+          day: b.day,
+          dateKey: b.day,
+          collection: b.collection,
+        },
+        increments: {
+          opens: b.opens,
+          closes: b.closes,
+          snapshots: b.snapshots,
+          errors: b.errors,
+          reconnects: b.reconnects,
+          recreates: b.recreates,
+          timeouts10: b.timeouts10,
+          timeouts30: b.timeouts30,
+          retries: b.retries,
+          retrySuccess: b.retrySuccess,
+          retryFailed: b.retryFailed,
+          reasonPageLoad: b.reasonPageLoad,
+          reasonRefresh: b.reasonRefresh,
+          reasonDateChange: b.reasonDateChange,
+          reasonDepartmentChange: b.reasonDepartmentChange,
+          reasonReconnect: b.reasonReconnect,
+          reasonRetry: b.reasonRetry,
+          reasonDepsChange: b.reasonDepsChange,
+          reasonUnknown: b.reasonUnknown,
+          firstSnapshotSumMs: b.firstSnapSumMs,
+          firstSnapshotCount: b.firstSnapCount,
+          firstSnapshotDocSum: b.firstSnapDocSum,
+          payloadBytesSum: b.payloadBytesSum,
+          durationSumMs: b.durationSum,
+          durationCount: b.durationCount,
+        },
+        durations: b.firstSnapDurations,
+        earliestTs: b.earliestTs,
+        latestTs: b.latestTs,
+        absolute: {
+          lastDocCount: b.lastDocCount,
+          avgSnapshotMs:
+            b.durationCount > 0 ? b.durationSum / b.durationCount : null,
+          payloadBytesMax: b.payloadBytesMax || null,
+          firstSnapshotMaxDocs: b.firstSnapMaxDocs || null,
+        },
+        legacyMaxField: "firstSnapshotMaxMs",
+        avgFrom: {
+          sumField: "firstSnapshotSumMs",
+          countField: "firstSnapshotCount",
+          outField: "avgFirstSnapshotMs",
+          batchSum: b.firstSnapSumMs,
+          batchCount: b.firstSnapCount,
+        },
+      });
+    })
+  );
 }
 
 async function flushPages(db, events, deviceId, deviceLabel = null) {
   if (!events.length) return;
-  const aggWrites = events.map((e) => {
-    const day = dayKey(e.ts);
+
+  // Group page-load events for rolling daily page aggregates
+  /** @type {Record<string, object>} */
+  const byPageDay = {};
+  for (const e of events) {
+    const day = dayKey(e.ts || Date.now());
     const page = e.page || "unknown";
-    const id = `${day}_${deviceId}_${page}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-    return setDoc(
-      doc(db, ENG_COLLECTIONS.pages, id),
-      {
+    const key = `${day}|${page}`;
+    if (!byPageDay[key]) {
+      byPageDay[key] = {
         day,
-        deviceId,
-        label: e.label || deviceLabel || null,
         page,
-        department: e.department || null,
-        buildId: e.buildId || null,
-        loadCount: increment(1),
-        firstPaintMsSum: increment(e.firstPaintMs || 0),
-        firstRenderMsSum: increment(e.firstRenderMs || 0),
-        firstSnapshotMsSum: increment(e.firstSnapshotMs || 0),
-        interactiveMsSum: increment(e.interactiveMs || 0),
-        totalMsSum: increment(e.totalMs || 0),
-        lastTotalMs: e.totalMs || null,
-        lastFirstSnapshotMs: e.firstSnapshotMs ?? null,
-        lastInteractiveMs: e.interactiveMs ?? null,
-        maxTotalMs: e.totalMs || null,
-        minTotalMs: e.totalMs || null,
-        updatedAt: serverTimestamp(),
+        count: 0,
+        totals: [],
+        snaps: [],
+        paintSum: 0,
+        renderSum: 0,
+        snapSum: 0,
+        interactiveSum: 0,
+        totalSum: 0,
+        earliestTs: e.ts || Date.now(),
+        latestTs: e.ts || Date.now(),
+        sample: e,
+      };
+    }
+    const a = byPageDay[key];
+    a.count += 1;
+    a.paintSum += e.firstPaintMs || 0;
+    a.renderSum += e.firstRenderMs || 0;
+    a.snapSum += e.firstSnapshotMs || 0;
+    a.interactiveSum += e.interactiveMs || 0;
+    a.totalSum += e.totalMs || 0;
+    if (typeof e.totalMs === "number") a.totals.push(e.totalMs);
+    if (typeof e.firstSnapshotMs === "number") a.snaps.push(e.firstSnapshotMs);
+    const ts = e.ts || Date.now();
+    if (ts < a.earliestTs) a.earliestTs = ts;
+    if (ts > a.latestTs) a.latestTs = ts;
+    a.sample = e;
+  }
+
+  const aggWrites = Object.values(byPageDay).map((a) => {
+    const id = `${a.day}_${deviceId}_${a.page}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const meta = metaFromEvent(a.sample, deviceId, deviceLabel);
+    const last = a.sample;
+    return writeRollingDailyDoc(db, ENG_COLLECTIONS.pages, id, {
+      meta: {
+        ...meta,
+        day: a.day,
+        dateKey: a.day,
+        page: a.page,
+        pageId: a.page,
       },
-      { merge: true }
-    );
+      increments: {
+        loadCount: a.count,
+        firstPaintMsSum: a.paintSum,
+        firstRenderMsSum: a.renderSum,
+        firstSnapshotMsSum: a.snapSum,
+        interactiveMsSum: a.interactiveSum,
+        totalMsSum: a.totalSum,
+      },
+      durations: a.totals,
+      earliestTs: a.earliestTs,
+      latestTs: a.latestTs,
+      absolute: {
+        lastTotalMs: last.totalMs ?? null,
+        lastFirstSnapshotMs: last.firstSnapshotMs ?? null,
+        lastInteractiveMs: last.interactiveMs ?? null,
+      },
+      legacyMaxField: "maxTotalMs",
+      legacyMinField: "minTotalMs",
+      avgFrom: {
+        sumField: "totalMsSum",
+        countField: "loadCount",
+        outField: "avgTotalMs",
+        batchSum: a.totalSum,
+        batchCount: a.count,
+      },
+    });
   });
 
-  // Individual samples for Timeline / waterfall (same flush cycle; no extra schedule)
+  // Individual samples for Timeline / waterfall
   const sampleWrites = events.map((e) => {
     const ts = e.ts || Date.now();
+    const time = buildTimeFields(ts);
     const loadId =
       e.loadId ||
       `${deviceId}_${ts}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-    const id = loadId;
+    const meta = metaFromEvent({ ...e, ts }, deviceId, deviceLabel);
     return setDoc(
-      doc(db, ENG_COLLECTIONS.pageLoads, id),
+      doc(db, ENG_COLLECTIONS.pageLoads, loadId),
       {
+        ...meta,
+        ...time,
         ts,
-        day: dayKey(ts),
         loadId,
-        deviceId,
-        label: e.label || deviceLabel || null,
-        page: e.page || "unknown",
-        department: e.department || null,
-        buildId: e.buildId || null,
-        user: e.user || null,
         firstPaintMs: e.firstPaintMs ?? null,
         firstRenderMs: e.firstRenderMs ?? null,
         firstSnapshotMs: e.firstSnapshotMs ?? null,
         interactiveMs: e.interactiveMs ?? null,
         totalMs: e.totalMs ?? null,
         hung: e.hung || (e.firstSnapshotMs == null && e.totalMs != null),
-        kind: e.hung || e.firstSnapshotMs == null ? "page_load_hung" : "page_load",
+        kind:
+          e.hung || e.firstSnapshotMs == null ? "page_load_hung" : "page_load",
         updatedAt: serverTimestamp(),
+        expireAt: expireAtForCollection(ENG_COLLECTIONS.pageLoads, ts),
       },
       { merge: true }
     );
@@ -831,7 +1016,6 @@ async function flushPages(db, events, deviceId, deviceLabel = null) {
  */
 async function flushComponents(db, events, deviceId, deviceLabel) {
   if (!events.length) return;
-  // Keep latest event per loadId in this batch
   const byLoad = new Map();
   for (const e of events) {
     const loadId =
@@ -841,23 +1025,21 @@ async function flushComponents(db, events, deviceId, deviceLabel) {
   }
   const writes = [...byLoad.entries()].map(([loadId, e]) => {
     const ts = e.ts || Date.now();
+    const time = buildTimeFields(ts);
     const components = Array.isArray(e.components) ? e.components : [];
+    const meta = metaFromEvent({ ...e, ts }, deviceId, deviceLabel);
     return setDoc(
       doc(db, ENG_COLLECTIONS.components, loadId),
       {
+        ...meta,
+        ...time,
         loadId,
         ts,
-        day: dayKey(ts),
-        deviceId,
-        label: e.label || deviceLabel || null,
-        page: e.page || "unknown",
-        department: e.department || null,
-        buildId: e.buildId || null,
-        user: e.user || null,
         totalMs: e.totalMs ?? null,
         hung: !!e.hung,
         components,
         updatedAt: serverTimestamp(),
+        expireAt: expireAtForCollection(ENG_COLLECTIONS.components, ts),
       },
       { merge: true }
     );
@@ -867,8 +1049,9 @@ async function flushComponents(db, events, deviceId, deviceLabel) {
 
 async function flushMemory(db, events, deviceId) {
   if (!events.length) return;
+  const deviceLabel = getDeviceLabel();
   const last = events[events.length - 1];
-  const day = dayKey(last.ts);
+  const day = dayKey(last.ts || Date.now());
   const id = `${day}_${deviceId}`.replace(/[^a-zA-Z0-9_-]/g, "_");
   const first = events[0];
   let growth = null;
@@ -885,14 +1068,15 @@ async function flushMemory(db, events, deviceId) {
         hours;
     }
   }
+  const meta = metaFromEvent(last, deviceId, deviceLabel);
+  const time = buildTimeFields(last.ts || Date.now());
   await Promise.all([
     setDoc(
       doc(db, ENG_COLLECTIONS.memory, id),
       {
+        ...meta,
         day,
-        deviceId,
-        page: last.page || null,
-        department: last.department || null,
+        dateKey: day,
         sampleCount: increment(events.length),
         usedJSHeapSize: last.usedJSHeapSize || null,
         totalJSHeapSize: last.totalJSHeapSize || null,
@@ -901,19 +1085,34 @@ async function flushMemory(db, events, deviceId) {
         sessionStorageKB: last.sessionStorageKB ?? null,
         localStorageKB: last.localStorageKB ?? null,
         listenerCount: last.listenerCount ?? null,
-engBufferSize: last.engBufferSize ?? null,
+        engBufferSize: last.engBufferSize ?? null,
         sqcCacheEntries: last.sqcCacheEntries ?? null,
+        loadId: last.loadId || meta.loadId || null,
+        sessionId: last.sessionId || meta.sessionId || null,
         updatedAt: serverTimestamp(),
+        expireAt: expireAtForCollection(ENG_COLLECTIONS.memory),
       },
       { merge: true }
     ),
     setDoc(
       doc(db, ENG_COLLECTIONS.memory, `latest_${deviceId}`),
       {
-        deviceId,
-        ...last,
+        ...meta,
+        ...time,
         day,
+        dateKey: day,
+        usedJSHeapSize: last.usedJSHeapSize || null,
+        totalJSHeapSize: last.totalJSHeapSize || null,
+        jsHeapSizeLimit: last.jsHeapSizeLimit || null,
+        heapGrowthMBPerHour: growth,
+        sessionStorageKB: last.sessionStorageKB ?? null,
+        localStorageKB: last.localStorageKB ?? null,
+        listenerCount: last.listenerCount ?? null,
+        engBufferSize: last.engBufferSize ?? null,
+        sqcCacheEntries: last.sqcCacheEntries ?? null,
+        loadId: last.loadId || meta.loadId || null,
         updatedAt: serverTimestamp(),
+        expireAt: expireAtForCollection(ENG_COLLECTIONS.memory),
       },
       { merge: true }
     ),
@@ -922,126 +1121,149 @@ engBufferSize: last.engBufferSize ?? null,
 
 async function flushNetwork(db, events, deviceId) {
   if (!events.length) return;
-  const day = dayKey();
+  const deviceLabel = getDeviceLabel();
+  const last = events[events.length - 1];
+  const day = dayKey(last.ts || Date.now());
   const online = events.filter((e) => e.online === true).length;
   const offline = events.filter((e) => e.online === false).length;
   const reconnects = events.filter((e) => e.reconnect).length;
   const latencies = events
     .map((e) => e.latencyMs)
     .filter((n) => typeof n === "number");
-  const avg =
-    latencies.length > 0
-      ? latencies.reduce((a, b) => a + b, 0) / latencies.length
-      : null;
   const id = `${day}_${deviceId}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const last = events[events.length - 1];
-  await Promise.all([
-    setDoc(
-      doc(db, ENG_COLLECTIONS.network, id),
-      {
-        day,
-        deviceId,
-        onlineEvents: increment(online),
-        offlineEvents: increment(offline),
-        reconnects: increment(reconnects),
-        probeCount: increment(latencies.length),
-        latencyAvgMs: avg,
-        latencyP95Ms: percentile(latencies, 0.95),
-        lastOnline: last?.online ?? null,
-        lastOfflineAt: last?.online === false ? last.ts : null,
-        flushRetries: increment(
-          events.filter((e) => e.flushRetry).length
-        ),
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    ),
-    setDoc(
-      doc(db, ENG_COLLECTIONS.network, `latest_${deviceId}`),
-      {
-        deviceId,
-        online: last?.online ?? null,
-        latencyMs: last?.latencyMs ?? null,
-        updatedAt: serverTimestamp(),
-        clientTs: Date.now(),
-      },
-      { merge: true }
-    ),
-  ]);
+  const meta = metaFromEvent(last, deviceId, deviceLabel);
+  const time = buildTimeFields(last.ts || Date.now());
+  await writeRollingDailyDoc(db, ENG_COLLECTIONS.network, id, {
+    meta: { ...meta, day, dateKey: day },
+    increments: {
+      onlineEvents: online,
+      offlineEvents: offline,
+      reconnects,
+      probeCount: latencies.length,
+      flushRetries: events.filter((e) => e.flushRetry).length,
+      durationSumMs: latencies.reduce((a, b) => a + b, 0),
+    },
+    durations: latencies,
+    earliestTs: events[0]?.ts || Date.now(),
+    latestTs: last.ts || Date.now(),
+    absolute: {
+      lastOnline: last?.online ?? null,
+      lastOfflineAt: last?.online === false ? last.ts : null,
+      latencyP95Ms: percentile(latencies, 0.95),
+    },
+    avgFrom: {
+      sumField: "durationSumMs",
+      countField: "probeCount",
+      outField: "latencyAvgMs",
+      batchSum: latencies.reduce((a, b) => a + b, 0),
+      batchCount: latencies.length,
+    },
+  });
+  await setDoc(
+    doc(db, ENG_COLLECTIONS.network, `latest_${deviceId}`),
+    {
+      ...meta,
+      ...time,
+      day,
+      dateKey: day,
+      online: last?.online ?? null,
+      latencyMs: last?.latencyMs ?? null,
+      clientTs: Date.now(),
+      updatedAt: serverTimestamp(),
+      expireAt: expireAtForCollection(ENG_COLLECTIONS.network),
+    },
+    { merge: true }
+  );
 }
 
 async function flushReact(db, events, deviceId) {
   if (!events.length) return;
-  const day = dayKey();
+  const deviceLabel = getDeviceLabel();
+  const last = events[events.length - 1];
+  const day = dayKey(last.ts || Date.now());
   let longTasks = 0;
   let renderSamples = 0;
   let durationSum = 0;
   let slowCommits = 0;
+  const durations = [];
   for (const e of events) {
     if (e.kind === "longtask") {
       longTasks += 1;
       durationSum += e.durationMs || 0;
+      if (typeof e.durationMs === "number") durations.push(e.durationMs);
       if ((e.durationMs || 0) >= 50) slowCommits += 1;
     } else {
       renderSamples += 1;
     }
   }
   const id = `${day}_${deviceId}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-  await setDoc(
-    doc(db, ENG_COLLECTIONS.reactDaily, id),
-    {
-      day,
-      deviceId,
-      longTasks: increment(longTasks),
-      renderSamples: increment(renderSamples),
-      longTaskDurationSumMs: increment(durationSum),
-      slowCommitCount: increment(slowCommits),
-      updatedAt: serverTimestamp(),
+  const meta = metaFromEvent(last, deviceId, deviceLabel);
+  await writeRollingDailyDoc(db, ENG_COLLECTIONS.reactDaily, id, {
+    meta: { ...meta, day, dateKey: day },
+    increments: {
+      longTasks,
+      renderSamples,
+      longTaskDurationSumMs: durationSum,
+      slowCommitCount: slowCommits,
     },
-    { merge: true }
-  );
+    durations,
+    earliestTs: events[0]?.ts || Date.now(),
+    latestTs: last.ts || Date.now(),
+    avgFrom: {
+      sumField: "longTaskDurationSumMs",
+      countField: "longTasks",
+      outField: "avgLongTaskMs",
+      batchSum: durationSum,
+      batchCount: longTasks,
+    },
+  });
 }
 
 async function flushErrors(db, events, deviceId) {
   if (!events.length) return;
+  const deviceLabel = getDeviceLabel();
   const byHash = {};
   for (const e of events) {
     const hash = e.stackHash || `raw_${e.ts}`;
-    if (!byHash[hash]) {
-      byHash[hash] = { ...e, count: 0 };
-    }
+    if (!byHash[hash]) byHash[hash] = { ...e, count: 0 };
     byHash[hash].count += 1;
     byHash[hash].ts = e.ts || byHash[hash].ts;
     byHash[hash].message = e.message || byHash[hash].message;
   }
-
   const writes = Object.values(byHash)
     .slice(-50)
-    .map((e) => {
-      const day = dayKey(e.ts);
-      const id = `${deviceId}_${e.stackHash || "x"}_${day}`.replace(
+    .map(async (e) => {
+      const ts = e.ts || Date.now();
+      const time = buildTimeFields(ts);
+      const meta = metaFromEvent({ ...e, ts }, deviceId, deviceLabel);
+      const id = `${deviceId}_${e.stackHash || "x"}_${time.day}`.replace(
         /[^a-zA-Z0-9_-]/g,
         "_"
       );
-      return setDoc(
-        doc(db, ENG_COLLECTIONS.errors, id),
-        {
-          deviceId,
-          day,
-          page: e.page || null,
-          department: e.department || null,
-          source: e.source || "unknown",
-          name: e.name || null,
-          message: String(e.message || "").slice(0, 500),
-          stack: String(e.stack || "").slice(0, 2000),
-          stackHash: e.stackHash || null,
-          count: increment(e.count || 1),
-          ts: e.ts || Date.now(),
-          lastSeenAt: serverTimestamp(),
-          createdAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
+      const ref = doc(db, ENG_COLLECTIONS.errors, id);
+      let isNew = true;
+      try {
+        const snap = await getDoc(ref);
+        isNew = !snap.exists();
+      } catch {
+        isNew = true;
+      }
+      const payload = {
+        ...meta,
+        ...time,
+        ts,
+        source: e.source || "unknown",
+        name: e.name || null,
+        message: String(e.message || "").slice(0, 500),
+        stack: String(e.stack || "").slice(0, 2000),
+        stackHash: e.stackHash || null,
+        count: increment(e.count || 1),
+        lastSeenAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        expireAt: expireAtForCollection(ENG_COLLECTIONS.errors, ts),
+      };
+      if (isNew) payload.createdAt = serverTimestamp();
+      return setDoc(ref, payload, { merge: true });
     });
   await Promise.all(writes);
 }
@@ -1050,14 +1272,37 @@ async function flushBuilds(db, events, deviceId) {
   if (!events.length) return;
   const e = events[events.length - 1];
   const id = String(e.buildId || "dev").replace(/[^a-zA-Z0-9_.-]/g, "_");
+  const time = buildTimeFields(e.ts || Date.now());
+  const ref = doc(db, ENG_COLLECTIONS.builds, id);
+  let firstSeenDay = time.day;
+  let firstSeenAt = e.ts || Date.now();
+  try {
+    const { getDoc } = await import("firebase/firestore");
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const d = snap.data() || {};
+      if (d.firstSeenDay) firstSeenDay = d.firstSeenDay;
+      if (d.firstSeenAt) firstSeenAt = d.firstSeenAt;
+    }
+  } catch {
+    /* ignore */
+  }
   await setDoc(
-    doc(db, ENG_COLLECTIONS.builds, id),
+    ref,
     {
       buildId: e.buildId || "dev",
       lastDeviceId: deviceId,
       userAgent: e.userAgent || null,
+      platform: e.platform || null,
+      browser: e.browser || null,
+      appVersion: e.appVersion || e.buildId || null,
+      schemaVersion: SCHEMA_VERSION,
+      telemetryVersion: TELEMETRY_VERSION,
+      firstSeenDay,
+      firstSeenAt,
       lastSeenAt: serverTimestamp(),
       seenCount: increment(1),
+      updatedAt: serverTimestamp(),
     },
     { merge: true }
   );
@@ -1065,6 +1310,7 @@ async function flushBuilds(db, events, deviceId) {
 
 async function flushDepartments(db, events, deviceId) {
   if (!events.length) return;
+  const deviceLabel = getDeviceLabel();
   const byDept = {};
   for (const e of events) {
     const dept = e.department || "Unknown";
@@ -1076,9 +1322,16 @@ async function flushDepartments(db, events, deviceId) {
         loads: [],
         listenerEvents: 0,
         openDelta: 0,
+        sample: e,
+        earliestTs: e.ts || Date.now(),
+        latestTs: e.ts || Date.now(),
       };
     }
     const b = byDept[dept];
+    const ts = e.ts || Date.now();
+    if (ts < b.earliestTs) b.earliestTs = ts;
+    if (ts > b.latestTs) b.latestTs = ts;
+    b.sample = e;
     if (e.domain === "errors") b.errorCount += 1;
     if (e.domain === "pages" && e.totalMs != null) {
       b.loadSum += e.totalMs;
@@ -1091,30 +1344,72 @@ async function flushDepartments(db, events, deviceId) {
       if (e.action === "close") b.openDelta -= 1;
     }
   }
-  const writes = Object.entries(byDept).map(([department, b]) =>
+
+  const lifetimeWrites = Object.entries(byDept).map(([department, b]) =>
     setDoc(
       doc(db, ENG_COLLECTIONS.departments, department.replace(/[\/\\]/g, "_")),
       {
         department,
         lastDeviceId: deviceId,
+        deviceId,
+        buildId: b.sample.buildId || null,
+        platform: b.sample.platform || null,
         errorCount: increment(b.errorCount),
         errorCount1h: increment(b.errorCount),
         loadSumMs: increment(b.loadSum),
         loadCount: increment(b.loadCount),
-        avgLoadMs: b.loadCount ? b.loadSum / b.loadCount : null,
-        p95LoadMs: percentile(b.loads, 0.95),
         listenerEvents: increment(b.listenerEvents),
         openListeners: increment(b.openDelta),
+        schemaVersion: SCHEMA_VERSION,
+        telemetryVersion: TELEMETRY_VERSION,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
     )
   );
-  await Promise.all(writes);
+
+  const dailyWrites = Object.entries(byDept).map(([department, b]) => {
+    const day = dayKey(b.latestTs);
+    const id = `${day}_${department}`.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const meta = metaFromEvent(b.sample, deviceId, deviceLabel);
+    return writeRollingDailyDoc(db, ENG_COLLECTIONS.departmentsDaily, id, {
+      meta: {
+        ...meta,
+        day,
+        dateKey: day,
+        department,
+        page: null,
+        moduleId: null,
+      },
+      increments: {
+        errorCount: b.errorCount,
+        loadCount: b.loadCount,
+        loadSumMs: b.loadSum,
+        listenerEvents: b.listenerEvents,
+        openDelta: b.openDelta,
+      },
+      durations: b.loads,
+      earliestTs: b.earliestTs,
+      latestTs: b.latestTs,
+      avgFrom: {
+        sumField: "loadSumMs",
+        countField: "loadCount",
+        outField: "avgLoadMs",
+        batchSum: b.loadSum,
+        batchCount: b.loadCount,
+      },
+      legacyMaxField: "maxLoadMs",
+      legacyMinField: "minLoadMs",
+    });
+  });
+
+  await Promise.all([...lifetimeWrites, ...dailyWrites]);
 }
 
 async function flushHealthAndAlerts(db, events, deviceId, settings) {
-  const day = dayKey();
+  const sampleTs = events[0]?.ts || Date.now();
+  const day = dayKey(sampleTs);
+  const time = buildTimeFields(sampleTs);
   const errorCount = events.filter((e) => e.domain === "errors").length;
   const slowQueryCount = events.filter(
     (e) =>
@@ -1136,6 +1431,33 @@ async function flushHealthAndAlerts(db, events, deviceId, settings) {
     devicesTotal: 1,
   });
 
+  // Device-scoped health sample (fleet_latest kept for back-compat but marked)
+  await setDoc(
+    doc(db, ENG_COLLECTIONS.health, `device_${deviceId}`),
+    {
+      ...health,
+      ...time,
+      day,
+      dateKey: day,
+      errorCount,
+      slowQueryCount,
+      queryCount,
+      offlineEvents,
+      deviceId,
+      buildId: events[0]?.buildId || null,
+      department: events[0]?.department || null,
+      page: events[0]?.page || null,
+      sessionId: events[0]?.sessionId || null,
+      schemaVersion: SCHEMA_VERSION,
+      telemetryVersion: TELEMETRY_VERSION,
+      scope: "device",
+      updatedAt: serverTimestamp(),
+      clientTs: Date.now(),
+      expireAt: expireAtForCollection(ENG_COLLECTIONS.health),
+    },
+    { merge: true }
+  );
+
   await setDoc(
     doc(db, ENG_COLLECTIONS.health, "fleet_latest"),
     {
@@ -1144,9 +1466,14 @@ async function flushHealthAndAlerts(db, events, deviceId, settings) {
       slowQueryCount,
       queryCount,
       offlineEvents,
+      note: "Single-device flush artifact — prefer dashboard recompute",
+      schemaVersion: SCHEMA_VERSION,
+      telemetryVersion: TELEMETRY_VERSION,
+      deviceId,
       updatedAt: serverTimestamp(),
       clientTs: Date.now(),
       lastDeviceId: deviceId,
+      expireAt: expireAtForCollection(ENG_COLLECTIONS.health),
     },
     { merge: true }
   );
@@ -1155,11 +1482,16 @@ async function flushHealthAndAlerts(db, events, deviceId, settings) {
     doc(db, ENG_COLLECTIONS.health, `daily_${day}`),
     {
       day,
+      dateKey: day,
       scoreSum: increment(health.score),
       sampleCount: increment(1),
       errorCount: increment(errorCount),
       slowQueryCount: increment(slowQueryCount),
+      schemaVersion: SCHEMA_VERSION,
+      telemetryVersion: TELEMETRY_VERSION,
+      deviceId,
       updatedAt: serverTimestamp(),
+      expireAt: expireAtForCollection(ENG_COLLECTIONS.health),
     },
     { merge: true }
   );
@@ -1174,10 +1506,17 @@ async function flushHealthAndAlerts(db, events, deviceId, settings) {
           severity: "high",
           title: "Elevated error rate",
           deviceId,
+          day,
+          dateKey: day,
+          ts: sampleTs,
+          buildId: events[0]?.buildId || null,
           department: events[0]?.department || null,
           ruleId: "errors_burst",
+          schemaVersion: SCHEMA_VERSION,
+          telemetryVersion: TELEMETRY_VERSION,
           openedAt: serverTimestamp(),
           count: increment(errorCount),
+          expireAt: expireAtForCollection(ENG_COLLECTIONS.alerts, sampleTs),
         },
         { merge: true }
       )
@@ -1192,9 +1531,17 @@ async function flushHealthAndAlerts(db, events, deviceId, settings) {
           severity: "medium",
           title: "Slow Firestore queries observed",
           deviceId,
+          day,
+          dateKey: day,
+          ts: sampleTs,
+          buildId: events[0]?.buildId || null,
+          department: events[0]?.department || null,
           ruleId: "slow_query",
+          schemaVersion: SCHEMA_VERSION,
+          telemetryVersion: TELEMETRY_VERSION,
           openedAt: serverTimestamp(),
           count: increment(slowQueryCount),
+          expireAt: expireAtForCollection(ENG_COLLECTIONS.alerts, sampleTs),
         },
         { merge: true }
       )

@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Engineering ops deploy artifacts (live clinical rules must not be eng-only)
+firestore.rules
+src/engineering/.ops-backups/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

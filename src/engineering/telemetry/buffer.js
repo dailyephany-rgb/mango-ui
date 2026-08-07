@@ -89,3 +89,21 @@ export function clearSpill() {
     sessionStorage.removeItem(ENG_BUFFER_KEY);
   }, "eng.clearSpill");
 }
+
+/**
+ * Overwrite session spill with an explicit event batch (crash recovery).
+ * Used after a failed flush so undelivered events survive tab kill.
+ * @param {object[]} events
+ */
+export function replaceSpill(events) {
+  safeRun(() => {
+    if (typeof sessionStorage === "undefined") return;
+    const list = Array.isArray(events) ? events : [];
+    const merged = list.slice(-capacity());
+    if (!merged.length) {
+      sessionStorage.removeItem(ENG_BUFFER_KEY);
+      return;
+    }
+    sessionStorage.setItem(ENG_BUFFER_KEY, JSON.stringify(merged));
+  }, "eng.replaceSpill");
+}

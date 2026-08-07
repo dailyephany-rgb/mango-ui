@@ -16,9 +16,16 @@ import { isEngTelemetryEnabled } from "./killSwitch.js";
 import { safeRun } from "./safeRun.js";
 import { hourKey, dayKey } from "./flush.js";
 import { getRuntimeSettings } from "./runtimeSettings.js";
+import {
+  buildTimeFields,
+  SCHEMA_VERSION,
+  TELEMETRY_VERSION,
+  detectPlatform,
+  detectBrowser,
+} from "./metadata.js";
 /** @type {ReturnType<typeof setInterval> | null} */
 let timer = null;
-/** @type {{ page?: string, department?: string, activeListeners?: number, waitingListeners?: number, hungLoads?: number, loadingPages?: string[] | null, retryCount?: number | null, memoryMB?: number, user?: string | null, lastPageLoadMs?: number | null, lastFirstSnapshotMs?: number | null, networkRttMs?: number | null }} */
+/** @type {{ page?: string, department?: string, activeListeners?: number, waitingListeners?: number, hungLoads?: number, loadingPages?: string[] | null, retryCount?: number | null, memoryMB?: number, user?: string | null, lastPageLoadMs?: number | null, lastFirstSnapshotMs?: number | null, networkRttMs?: number | null, sessionId?: string | null, loadId?: string | null, buildId?: string | null, platform?: string | null }} */
 let ctx = {};
 
 /**
@@ -52,13 +59,18 @@ export function sendHeartbeat() {
     const label = getDeviceLabel();
     const now = Date.now();
     const settings = getRuntimeSettings();
+    const time = buildTimeFields(now);
     const payload = {
       deviceId,
       label: label || null,
       page: ctx.page || null,
+      pageId: ctx.page || null,
       department: ctx.department || null,
-      buildId: ENG_BUILD_ID,
+      buildId: ctx.buildId || ENG_BUILD_ID,
+      appVersion: ctx.buildId || ENG_BUILD_ID,
       version: ENG_BUILD_ID,
+      sessionId: ctx.sessionId || null,
+      loadId: ctx.loadId || null,
       user: ctx.user || null,
       activeListeners: ctx.activeListeners ?? null,
       listenerCount: ctx.activeListeners ?? null,
@@ -84,8 +96,11 @@ export function sendHeartbeat() {
         typeof navigator !== "undefined"
           ? String(navigator.userAgent || "").slice(0, 300)
           : null,
-      platform:
-        typeof navigator !== "undefined" ? navigator.platform || null : null,
+      platform: ctx.platform || detectPlatform(),
+      browser: detectBrowser(),
+      ...time,
+      schemaVersion: SCHEMA_VERSION,
+      telemetryVersion: TELEMETRY_VERSION,
       lastSeenAt: serverTimestamp(),
       lastHeartbeatAt: serverTimestamp(),
       clientTs: now,
@@ -101,6 +116,10 @@ export function sendHeartbeat() {
       lastSeenAt: serverTimestamp(),
       userAgent: payload.userAgent,
       platform: payload.platform,
+      browser: payload.browser,
+      buildId: payload.buildId,
+      schemaVersion: SCHEMA_VERSION,
+      telemetryVersion: TELEMETRY_VERSION,
       updatedAt: serverTimestamp(),
     };
     try {
@@ -123,7 +142,17 @@ export function sendHeartbeat() {
       doc(db, ENG_COLLECTIONS.heartbeatHourly, hid),
       {
         hour: hk,
+        day: time.day,
+        dateKey: time.day,
         deviceId,
+        department: ctx.department || null,
+        buildId: ctx.buildId || ENG_BUILD_ID,
+        platform: ctx.platform || detectPlatform(),
+        page: ctx.page || null,
+        pageId: ctx.page || null,
+        label: label || null,
+        schemaVersion: SCHEMA_VERSION,
+        telemetryVersion: TELEMETRY_VERSION,
         beats: increment(1),
         lastPage: ctx.page || null,
         updatedAt: serverTimestamp(),

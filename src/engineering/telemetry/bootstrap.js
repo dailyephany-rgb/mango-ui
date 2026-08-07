@@ -205,9 +205,17 @@ export function startEngineeringTelemetry() {
       installLongTaskHook();
       capturePageLoad();
     } else if (identity.page === "Engineering") {
-      // Engineering skips page-load capture but still emits component timeline
+      // Synthetic page_load so eng_components share a loadId with Timeline (no clinical impact).
       setTimeout(() => {
         safeRun(() => {
+          EngTelemetry.trackPageLoad({
+            totalMs: Math.round(performance.now()),
+            hung: false,
+            firstPaintMs: null,
+            firstRenderMs: null,
+            firstSnapshotMs: null,
+            interactiveMs: Math.round(performance.now()),
+          });
           EngTelemetry.pushComponentBreakdown();
           scheduleFlush({ force: true });
         }, "eng.comp.engShell");

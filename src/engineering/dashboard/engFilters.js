@@ -4,6 +4,10 @@
  */
 
 import { dayKeyFromTs } from "./perfViews.js";
+import {
+  ENG_AGG_RETENTION_DAYS,
+  ENG_SAMPLE_RETENTION_DAYS,
+} from "../constants.js";
 
 /** Presets shown in the global filter bar */
 export const DATE_PRESETS = [
@@ -13,9 +17,14 @@ export const DATE_PRESETS = [
   { id: "30d", label: "Last 30 Days" },
   { id: "this_month", label: "This Month" },
   { id: "prev_month", label: "Previous Month" },
+  { id: "all_time", label: "All Time" },
   { id: "custom_date", label: "Custom Date Range" },
   { id: "custom_datetime", label: "Custom Date + Time Range" },
 ];
+
+/** @deprecated use ENG_AGG_RETENTION_DAYS — kept for dashboard copy */
+export const ALL_TIME_AGG_DAYS = ENG_AGG_RETENTION_DAYS;
+export const ALL_TIME_SAMPLE_DAYS = ENG_SAMPLE_RETENTION_DAYS;
 
 /** Canonical department filter options (labels match ops language) */
 export const DEPARTMENT_OPTIONS = [
@@ -82,6 +91,7 @@ const OPEN_ENDED_PRESETS = new Set([
   "7d",
   "30d",
   "this_month",
+  "all_time",
 ]);
 
 /**
@@ -127,6 +137,13 @@ export function resolveFilterRange(filters = DEFAULT_FILTERS) {
     startMs = startOfLocalDay(new Date(lastPrev.getFullYear(), lastPrev.getMonth(), 1));
     endMs = endOfLocalDay(lastPrev);
     label = `Previous Month (${dayKeyFromTs(startMs).slice(0, 7)})`;
+  } else if (preset === "all_time") {
+    // Cap to aggregate retention so UI never promises data past purge windows.
+    const days = ENG_AGG_RETENTION_DAYS;
+    startMs = startOfLocalDay(new Date(now.getTime() - (days - 1) * 86400000));
+    endMs = endOfLocalDay(now);
+    openEnded = true;
+    label = `All Time (retained ${days}d)`;
   } else if (preset === "custom_date") {
     startMs =
       parseDateInput(filters.startDate, "00:00", false) ??

@@ -11,6 +11,7 @@ import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFire
 import * as XLSX from "xlsx"; // Import SheetJS
 import "./MasterAdmin.css";
 import { MASTER_ADMIN_DEPARTMENTS } from "../shared/config/collections.js";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 const DEPARTMENTS = MASTER_ADMIN_DEPARTMENTS;
 
@@ -425,6 +426,7 @@ if (mappedLabNames && mappedLabNames.length > 0) {
   };
 
   return (
+    <EngComponent name="MasterAdmin" type="Page" parent={null} moduleId="MasterAdmin">
     <div className="master-container">
       <div className="header-bar">
         <h2>📋 Lab Admin Panel — Management View</h2>
@@ -599,5 +601,6 @@ if (mappedLabNames && mappedLabNames.length > 0) {
         </>
       )}
     </div>
+    </EngComponent>
   );
 }

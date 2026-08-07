@@ -15,6 +15,13 @@ export const ENG_DEVICE_LABEL_KEY = "mango.eng.deviceLabel";
 /** Session spill for undelivered events */
 export const ENG_BUFFER_KEY = "mango.eng.buffer.v1";
 
+/** Tab session id (also in metadata.js) */
+export const ENG_SESSION_ID_KEY = "mango.eng.sessionId";
+
+/** Schema / telemetry versions (mirrored in metadata.js) */
+export const ENG_SCHEMA_VERSION = 2;
+export const ENG_TELEMETRY_VERSION = "2.1.0";
+
 export const ENG_BUILD_ID =
   (typeof import.meta !== "undefined" &&
     import.meta.env &&
@@ -46,6 +53,15 @@ export const SLOW_QUERY_MS = 2000;
 export const DEVICE_ONLINE_MS = 90_000;
 export const DEVICE_STALE_MS = 300_000;
 
+/**
+ * Retention defaults (days). Dashboard "All Time" is capped to these windows
+ * so filters never promise data the store no longer keeps.
+ */
+export const ENG_AGG_RETENTION_DAYS = 90;
+/** Flight-recorder samples: page_loads, components, fs_component_loads, hourly */
+export const ENG_SAMPLE_RETENTION_DAYS = 30;
+export const ENG_ERROR_RETENTION_DAYS = 60;
+
 /** Engineering Firestore collection names (eng_* prefix — safe on shared clinical project) */
 export const ENG_COLLECTIONS = {
   devices: "eng_devices",
@@ -73,4 +89,6 @@ export const ENG_COLLECTIONS = {
   firestoreByComponent: "eng_firestore_by_component",
   /** Per page-load Firestore breakdown (same loadId as eng_page_loads / eng_components) */
   fsComponentLoads: "eng_fs_component_loads",
+  /** Daily department aggregates (period KPIs; lifetime docs remain in departments) */
+  departmentsDaily: "eng_departments_daily",
 };

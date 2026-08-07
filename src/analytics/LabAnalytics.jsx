@@ -12,6 +12,7 @@ import {
   setCache,
   SESSION_QUERY_TTL_MS,
 } from "../shared/cache/sessionQueryCache.js";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 const DEPARTMENTS = [
   { id: "biochemistry_register", label: "Biochemistry" },
@@ -304,6 +305,7 @@ if (activeColl === "biochemistry_combo") {
    
 
   return (
+    <EngComponent name="LabAnalytics" type="Page" parent={null} moduleId="LabAnalytics">
     <div className="analytics-container">
       <div className="header-section">
         <h1>{DEPARTMENTS.find(d => d.id === activeColl)?.label} Analytics</h1>
@@ -448,5 +450,6 @@ if (activeColl === "biochemistry_combo") {
         )}
       </div>
     </div>
+    </EngComponent>
   );
 }

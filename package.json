@@ -9,8 +9,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "dev:owner": "vite --open index_owner.html",
-    "eng:login": "firebase login",
-    "eng:deploy-rules": "echo 'Do NOT deploy eng rules over clinical project. Merge eng_* allow into Console rules — see src/engineering/firestore.rules.engineering'"
+    "eng:login": "firebase-tools login --reauth",
+    "eng:ops-deploy": "node scripts/eng-ops-deploy.mjs",
+    "eng:ops-deploy:dry": "node scripts/eng-ops-deploy.mjs --dry-run",
+    "eng:ops-deploy:indexes": "node scripts/eng-ops-deploy.mjs --indexes-only"
   },
   "dependencies": {
     "@fullcalendar/interaction": "^6.1.20",

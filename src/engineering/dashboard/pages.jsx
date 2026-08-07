@@ -164,14 +164,17 @@ export function HealthPage() {
     { timeMode: "day" }
   );
   const { rows: alerts } = useFilteredEngCollection(ENG_COLLECTIONS.alerts, {
-    timeMode: "none",
+    timeMode: "day",
     live: true,
-    skipTime: true,
+    limitN: 200,
   });
   const { rows: network } = useFilteredEngCollection(ENG_COLLECTIONS.network, {
     timeMode: "day",
   });
-  const { rows: healthDocs } = useEngCollection(ENG_COLLECTIONS.health);
+  const { rows: healthDocs } = useFilteredEngCollection(ENG_COLLECTIONS.health, {
+    timeMode: "day",
+    limitN: 100,
+  });
   const { rows: pageLoads } = useFilteredEngCollection(
     ENG_COLLECTIONS.pageLoads,
     { limitN: 400, timeMode: "ts" }
@@ -186,19 +189,21 @@ export function HealthPage() {
   const slow = firestore.reduce((a, r) => a + (r.slowCount || 0), 0);
   const qCount = firestore.reduce((a, r) => a + (r.queryCount || 0), 0);
   const offlineEvents = network.reduce((a, r) => a + (r.offlineEvents || 0), 0);
-  const fleetLatest = healthDocs.find((h) => h.id === "fleet_latest");
-  const loadSamples = pages
-    .map((p) => p.lastTotalMs)
-    .filter((n) => typeof n === "number");
-  const p95 =
-    loadSamples.length > 0
-      ? [...loadSamples].sort((a, b) => a - b)[
-          Math.min(
-            loadSamples.length - 1,
-            Math.ceil(0.95 * (loadSamples.length - 1))
-          )
-        ]
-      : null;
+  const fleetLatest =
+    healthDocs.find((h) => h.id === "fleet_latest") ||
+    healthDocs.find((h) => String(h.id || "").startsWith("device_")) ||
+    healthDocs.find((h) => String(h.id || "").startsWith("daily_"));
+  // P95 from page_load samples (same distribution as Timeline/Performance).
+  // Fall back to rolling eng_pages.p95Ms / p95QueryMs when samples are sparse.
+  const loadSummary = useMemo(() => summarizeLoads(pageLoads), [pageLoads]);
+  const pagesP95Fallback = useMemo(() => {
+    const vals = (pages || [])
+      .map((p) => p.p95Ms ?? p.p95QueryMs)
+      .filter((n) => typeof n === "number");
+    if (!vals.length) return null;
+    return Math.max(...vals);
+  }, [pages]);
+  const p95 = loadSummary.p95 ?? pagesP95Fallback;
 
   const snapFromLoads = useMemo(() => summarizeFirstSnapshotMs(pageLoads), [pageLoads]);
   const snapFromPages = useMemo(() => {
@@ -272,12 +277,20 @@ export function HealthPage() {
         <div className="eng-card">
           <div className="label">P95 page load</div>
           <div className="value">{ms(p95)}</div>
+          <div className="sub">
+            {loadSummary.count
+              ? `${loadSummary.count} page-load samples`
+              : pagesP95Fallback != null
+                ? "from eng_pages rolling p95"
+                : "—"}
+          </div>
         </div>
         <div className="eng-card">
           <div className="label">Open alerts</div>
           <div className="value">
             {alerts.filter((a) => !a.resolvedAt).length}
           </div>
+          <div className="sub">in selected range</div>
         </div>
         <div className="eng-card">
           <div className="label">Slow queries</div>
@@ -643,6 +656,10 @@ export function DepartmentsPage() {
     ENG_COLLECTIONS.departments,
     { timeMode: "none", live: true, skipTime: true }
   );
+  const { rows: dailyRows } = useFilteredEngCollection(
+    ENG_COLLECTIONS.departmentsDaily,
+    { timeMode: "day", limitN: 800 }
+  );
   const { rows: pageLoads } = useFilteredEngCollection(
     ENG_COLLECTIONS.pageLoads,
     { limitN: 400, timeMode: "ts" }
@@ -653,8 +670,35 @@ export function DepartmentsPage() {
   );
 
   const cards = useMemo(() => {
+    /** @type {Record<string, { loadCount: number, loadSumMs: number, errorCount: number, avgLoadMs: number | null, p95Ms: number | null }>} */
+    const dailyByDept = {};
+    for (const d of dailyRows) {
+      const name = d.department || "Unknown";
+      if (!dailyByDept[name]) {
+        dailyByDept[name] = {
+          loadCount: 0,
+          loadSumMs: 0,
+          errorCount: 0,
+          avgLoadMs: null,
+          p95Ms: null,
+        };
+      }
+      const b = dailyByDept[name];
+      b.loadCount += d.loadCount || 0;
+      b.loadSumMs += d.loadSumMs || 0;
+      b.errorCount += d.errorCount || 0;
+      if (typeof d.p95Ms === "number") {
+        b.p95Ms =
+          b.p95Ms == null ? d.p95Ms : Math.max(b.p95Ms, d.p95Ms);
+      }
+    }
+    for (const b of Object.values(dailyByDept)) {
+      b.avgLoadMs = b.loadCount ? Math.round(b.loadSumMs / b.loadCount) : null;
+    }
+
     const names = new Set([
       ...rows.map((d) => d.department || d.id),
+      ...Object.keys(dailyByDept),
       ...pageLoads.map((r) => r.department).filter(Boolean),
     ]);
     return [...names]
@@ -662,6 +706,7 @@ export function DepartmentsPage() {
       .sort()
       .map((name) => {
         const agg = rows.find((d) => (d.department || d.id) === name);
+        const daily = dailyByDept[name];
         const loads = pageLoads.filter((r) => r.department === name);
         const stats = summarizeLoads(loads);
         const last = [...loads].sort((a, b) => (b.ts || 0) - (a.ts || 0))[0];
@@ -673,22 +718,34 @@ export function DepartmentsPage() {
             d.department === name &&
             devicePresence(clientTsOf(d)) === "online"
         );
-        const periodAvg = stats.avg;
+        // Prefer daily aggregates for period count/avg (complete vs sample cap);
+        // keep sample stats for last / sparkline / p95 when samples exist.
+        const periodCount = daily?.loadCount || stats.count || 0;
+        const periodAvg =
+          daily?.avgLoadMs ?? stats.avg ?? null;
+        const periodP95 = stats.p95 ?? daily?.p95Ms ?? null;
         const lifetimeAvg =
           agg?.loadCount > 0 ? Math.round(agg.loadSumMs / agg.loadCount) : null;
         return {
           name,
           last,
-          stats,
+          stats: {
+            ...stats,
+            avg: periodAvg,
+            p95: periodP95,
+            count: periodCount,
+            fastest: stats.fastest,
+            slowest: stats.slowest,
+          },
           periodAvg,
           lifetimeAvg,
           timeline,
           active,
-          errorCount: agg?.errorCount || 0,
-          periodCount: loads.length,
+          errorCount: daily?.errorCount ?? 0,
+          periodCount,
         };
       });
-  }, [rows, pageLoads, devices, filters.department, range]);
+  }, [rows, dailyRows, pageLoads, devices, filters.department, range]);
 
   return (
     <>
@@ -711,6 +768,7 @@ export function DepartmentsPage() {
                 fastestMs: c.stats.fastest,
                 slowestMs: c.stats.slowest,
                 loadsInPeriod: c.periodCount,
+                errorsInPeriod: c.errorCount,
                 p95Ms: c.stats.p95,
                 activeDevices: c.active.length,
               }))
@@ -735,6 +793,7 @@ export function DepartmentsPage() {
             <div className="sub">
               Period: {c.periodCount} loads · fast {fmtMs(c.stats.fastest)} · slow{" "}
               {fmtMs(c.stats.slowest)} · p95 {fmtMs(c.stats.p95)}
+              {c.errorCount ? ` · ${c.errorCount} errors` : ""}
             </div>
             <div className="sub">
               Active devices:{" "}
@@ -1849,6 +1908,12 @@ export function SettingsPage() {
           <p className="eng-muted">
             Retention: deleted {retentionResult.deleted} / scanned{" "}
             {retentionResult.scanned}
+            {retentionResult.stamped != null
+              ? ` / stamped ${retentionResult.stamped}`
+              : ""}
+            {retentionResult.denied
+              ? ` / denied ${retentionResult.denied}`
+              : ""}
           </p>
         )}
         <p>

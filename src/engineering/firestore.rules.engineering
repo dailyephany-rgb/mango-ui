@@ -1,27 +1,44 @@
 /**
- * Example Engineering Firebase security rules for SHARED project vasundhara-4c6e5.
+ * Shared Engineering Firebase security rules MERGE FRAGMENT for vasundhara-4c6e5.
  *
  * DO NOT deploy this file alone — it would wipe clinical rules.
- * Merge the eng_* match block into your existing clinical Firestore rules in Console.
+ * Use: npm run eng:ops-deploy  (fetches live rules, merges this fragment, deploys)
  *
- * Collections used by Engineering / Performance ops plane:
- *   eng_devices, eng_device_status, eng_heartbeat_hourly, eng_departments,
- *   eng_firestore_metrics, eng_firestore_by_component, eng_fs_component_loads,
- *   eng_pages, eng_page_loads, eng_components, eng_network, eng_memory, eng_react_metrics,
- *   eng_errors, eng_audit, eng_health, eng_settings, eng_builds, eng_alerts,
- *   eng_listener_daily
- *   (+ optional debug: heartbeats — prefer eng_heartbeats if you enable debugSampling)
+ * Clinical impact: NONE — eng_* prefix only.
+ *
+ * Retention: client delete allowed ONLY when expireAt is in the past
+ * (stamped by eng writers). Fresh eng_* docs cannot be wiped.
  */
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ===== MERGE THIS BLOCK into existing clinical rules =====
-    match /{col}/{docId} {
-      allow read, write: if col.matches('eng_.*');
+    // ===== BEGIN ENG MERGE BLOCK (mango-ui) =====
+    function isEngCol(col) {
+      return col.matches('eng_.*');
     }
-    // ===== END MERGE =====
+
+    function hasEngWriteSchema() {
+      return request.resource.data.keys().hasAll(['schemaVersion', 'deviceId'])
+        || request.resource.data.keys().hasAll(['schemaVersion', 'telemetryVersion']);
+    }
+
+    function engExpired() {
+      return resource.data.keys().hasAny(['expireAt'])
+        && resource.data.expireAt is timestamp
+        && request.time > resource.data.expireAt;
+    }
+
+    match /{col}/{docId} {
+      allow read: if isEngCol(col);
+
+      allow create, update: if isEngCol(col) && hasEngWriteSchema();
+
+      // Retention-only deletes: past expireAt. Blocks wipe of live telemetry.
+      allow delete: if isEngCol(col) && engExpired();
+    }
+    // ===== END ENG MERGE BLOCK (mango-ui) =====
 
     // Keep all existing clinical match rules below / above as they are today.
   }

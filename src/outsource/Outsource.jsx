@@ -23,6 +23,7 @@ import {
   trackedOnSnapshot as onSnapshot,
   trackedGetDoc as getDoc,
 } from "../shared/firestore/trackedFirestore.js";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 
 import OUTSOURCE_MAP from "../Outsource.json"; 
@@ -471,6 +472,7 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
   }, [entries, activeLab, activeSource, regSearch, dateFrom, dateTo]);
 
   return (
+    <EngComponent name="Outsource" type="Page" parent={null} moduleId="Outsource">
     <div className="register-section">
 
   <div
@@ -667,5 +669,6 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
         </table>
       </div>
     </div>
+    </EngComponent>
   );
 }

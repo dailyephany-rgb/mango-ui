@@ -2,8 +2,12 @@
  * Global filter bar — one control surface for all Engineering Dashboard tabs.
  */
 
-import React from "react";
+import React, { useState } from "react";
 import { useEngFilters } from "./EngFilterContext.jsx";
+import {
+  ALL_TIME_AGG_DAYS,
+  ALL_TIME_SAMPLE_DAYS,
+} from "./engFilters.js";
 
 export function GlobalFilterBar() {
   const {
@@ -18,10 +22,30 @@ export function GlobalFilterBar() {
     DATE_PRESETS,
     DEPARTMENT_OPTIONS,
   } = useEngFilters();
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState("");
 
   const showCustomDate =
     filters.preset === "custom_date" || filters.preset === "custom_datetime";
   const showCustomTime = filters.preset === "custom_datetime";
+  const showRetentionHint =
+    filters.preset === "all_time" ||
+    filters.preset === "30d" ||
+    filters.preset === "this_month" ||
+    filters.preset === "prev_month";
+
+  const exportPdf = async () => {
+    setPdfError("");
+    setPdfBusy(true);
+    try {
+      const { downloadEngReportPdf } = await import("./exportEngReportPdf.js");
+      await downloadEngReportPdf({ filters, range });
+    } catch (err) {
+      setPdfError(err?.message || String(err));
+    } finally {
+      setPdfBusy(false);
+    }
+  };
 
   return (
     <div className="eng-filter-bar" role="search" aria-label="Global dashboard filters">
@@ -29,6 +53,14 @@ export function GlobalFilterBar() {
         <strong>Global filters</strong>
         <span className="eng-muted">{range.label}</span>
       </div>
+
+      {showRetentionHint && (
+        <div className="eng-muted" style={{ fontSize: "0.8rem", marginBottom: "0.35rem" }}>
+          Retention: daily aggregates ~{ALL_TIME_AGG_DAYS}d · flight samples ~
+          {ALL_TIME_SAMPLE_DAYS}d (Timeline / Components / FS loads). Queries may also
+          be capped by limitN — Refresh if a tab looks truncated.
+        </div>
+      )}
 
       <div className="eng-filter-grid">
         <label>
@@ -152,8 +184,22 @@ export function GlobalFilterBar() {
           <button type="button" className="eng-btn" onClick={() => resetFilters()}>
             Reset Filters
           </button>
+          <button
+            type="button"
+            className="eng-btn eng-btn-primary"
+            onClick={exportPdf}
+            disabled={pdfBusy}
+            title="Export all tabs as PDF for the current global filters"
+          >
+            {pdfBusy ? "Exporting PDF…" : "Export PDF"}
+          </button>
         </div>
       </div>
+      {pdfError && (
+        <div className="eng-muted" style={{ color: "#b42318", marginTop: "0.35rem" }}>
+          PDF export failed: {pdfError}
+        </div>
+      )}
     </div>
   );
 }
