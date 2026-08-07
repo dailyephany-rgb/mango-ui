@@ -6,11 +6,14 @@
 import React, { useMemo, useState } from "react";
 import {
   useEngCollection,
+  useFilteredEngCollection,
   useEngConfigured,
   useLocalEngBuffer,
   useEngSettings,
   ENG_COLLECTIONS,
 } from "./useEngData.js";
+import { useEngFilters } from "./EngFilterContext.jsx";
+import { departmentMatches } from "./engFilters.js";
 import { devicePresence, computeHealthScore } from "../health/scores.js";
 import { getDeviceId, setDeviceLabel, getDeviceLabel } from "../telemetry/deviceId.js";
 import { EngTelemetry } from "../telemetry/EngTelemetry.js";
@@ -25,8 +28,6 @@ import {
   summarizeLoads,
   trendByDay,
   avg,
-  inDatePreset,
-  rangeDaysFromPreset,
 } from "./perfViews.js";
 import { WaterfallPanel } from "./WaterfallPanel.jsx";
 
@@ -94,14 +95,30 @@ function BarList({ items }) {
 
 export function HealthPage() {
   const configured = useEngConfigured();
-  const { rows: devices, loading } = useEngCollection(ENG_COLLECTIONS.deviceStatus);
-  const { rows: errors } = useEngCollection(ENG_COLLECTIONS.errors, {
-    limitN: 100,
+  const { range, filters } = useEngFilters();
+  const { rows: devices, loading } = useFilteredEngCollection(
+    ENG_COLLECTIONS.deviceStatus,
+    { timeMode: "none", live: true, skipTime: true }
+  );
+  const { rows: errors } = useFilteredEngCollection(ENG_COLLECTIONS.errors, {
+    limitN: 300,
+    timeMode: "ts",
   });
-  const { rows: pages } = useEngCollection(ENG_COLLECTIONS.pages);
-  const { rows: firestore } = useEngCollection(ENG_COLLECTIONS.firestoreMetrics);
-  const { rows: alerts } = useEngCollection(ENG_COLLECTIONS.alerts);
-  const { rows: network } = useEngCollection(ENG_COLLECTIONS.network);
+  const { rows: pages } = useFilteredEngCollection(ENG_COLLECTIONS.pages, {
+    timeMode: "day",
+  });
+  const { rows: firestore } = useFilteredEngCollection(
+    ENG_COLLECTIONS.firestoreMetrics,
+    { timeMode: "day" }
+  );
+  const { rows: alerts } = useFilteredEngCollection(ENG_COLLECTIONS.alerts, {
+    timeMode: "none",
+    live: true,
+    skipTime: true,
+  });
+  const { rows: network } = useFilteredEngCollection(ENG_COLLECTIONS.network, {
+    timeMode: "day",
+  });
   const { rows: healthDocs } = useEngCollection(ENG_COLLECTIONS.health);
   const local = useLocalEngBuffer();
 
@@ -109,8 +126,7 @@ export function HealthPage() {
   const online = devices.filter((d) => devicePresence(clientTsOf(d), now) === "online").length;
   const stale = devices.filter((d) => devicePresence(clientTsOf(d), now) === "stale").length;
   const offline = devices.length - online - stale;
-  const hourAgo = now - 3600_000;
-  const errors1h = errors.filter((e) => (e.ts || 0) >= hourAgo).length;
+  const errorsInRange = errors.length;
   const slow = firestore.reduce((a, r) => a + (r.slowCount || 0), 0);
   const qCount = firestore.reduce((a, r) => a + (r.queryCount || 0), 0);
   const offlineEvents = network.reduce((a, r) => a + (r.offlineEvents || 0), 0);
@@ -129,7 +145,7 @@ export function HealthPage() {
       : null;
 
   const health = computeHealthScore({
-    errorCount: errors1h,
+    errorCount: errorsInRange,
     slowQueryCount: slow,
     queryCount: qCount,
     offlineEvents,
@@ -143,6 +159,8 @@ export function HealthPage() {
       <div className="eng-header">
         <h1>Fleet Health</h1>
         <div className="meta">
+          {range.label}
+          {filters.department !== "all" ? ` · ${filters.department}` : ""} ·
           project: {getEngProjectId() || "local-only"} · buffer: {local.size}
         </div>
       </div>
@@ -156,18 +174,18 @@ export function HealthPage() {
         <div className="eng-card">
           <div className="label">Health score</div>
           <div className={`score-ring ${health.grade}`}>{health.score}</div>
-          <div className="sub">Grade {health.grade}</div>
+          <div className="sub">Grade {health.grade} · filtered period</div>
         </div>
         <div className="eng-card">
           <div className="label">Devices online</div>
           <div className="value">{online}</div>
           <div className="sub">
-            {stale} stale · {offline} offline · {devices.length} total
+            {stale} stale · {offline} offline · {devices.length} matched
           </div>
         </div>
         <div className="eng-card">
-          <div className="label">Errors (1h)</div>
-          <div className="value">{errors1h}</div>
+          <div className="label">Errors (period)</div>
+          <div className="value">{errorsInRange}</div>
         </div>
         <div className="eng-card">
           <div className="label">P95 page load</div>
@@ -182,7 +200,7 @@ export function HealthPage() {
         <div className="eng-card">
           <div className="label">Slow queries</div>
           <div className="value">{slow}</div>
-          <div className="sub">of {qCount} observed</div>
+          <div className="sub">of {qCount} observed in period</div>
         </div>
       </div>
       <div className="eng-panel">
@@ -199,6 +217,7 @@ export function HealthPage() {
                   }
                 : null,
               offlineEvents,
+              range: range.label,
             },
             null,
             2
@@ -226,14 +245,27 @@ function Sparkline({ series, valueKey = "avg" }) {
 
 export function DevicesPage() {
   const configured = useEngConfigured();
-  const { rows, loading } = useEngCollection(ENG_COLLECTIONS.deviceStatus);
-  const { rows: hourly } = useEngCollection(ENG_COLLECTIONS.heartbeatHourly);
-  const { rows: pageLoads } = useEngCollection(ENG_COLLECTIONS.pageLoads, {
-    limitN: 400,
-  });
+  const { range, filterRows } = useEngFilters();
+  const { rows, loading } = useFilteredEngCollection(
+    ENG_COLLECTIONS.deviceStatus,
+    { timeMode: "none", live: true, skipTime: true }
+  );
+  const { rows: hourly } = useFilteredEngCollection(
+    ENG_COLLECTIONS.heartbeatHourly,
+    { timeMode: "none", skipTime: true, limitN: 400 }
+  );
+  const { rows: pageLoads } = useFilteredEngCollection(
+    ENG_COLLECTIONS.pageLoads,
+    { limitN: 400, timeMode: "ts" }
+  );
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState(null);
   const [expandedLoad, setExpandedLoad] = useState(null);
+
+  const hourlyInRange = useMemo(
+    () => filterRows(hourly, { skipTime: false }),
+    [hourly, filterRows]
+  );
 
   const filtered = useMemo(() => {
     return rows.filter((r) => {
@@ -258,7 +290,7 @@ export function DevicesPage() {
     <>
       <div className="eng-header">
         <h1>Devices</h1>
-        <div className="meta">device_status live board</div>
+        <div className="meta">device_status · history for {range.label}</div>
       </div>
       <div className="eng-actions">
         {["all", "online", "stale", "offline"].map((f) => (
@@ -427,7 +459,7 @@ export function DevicesPage() {
               </tr>
             </thead>
             <tbody>
-              {hourly
+              {hourlyInRange
                 .filter((h) => h.deviceId === (selected.deviceId || selected.id))
                 .slice(0, 24)
                 .map((h) => (
@@ -450,50 +482,63 @@ export function DevicesPage() {
 
 export function DepartmentsPage() {
   const configured = useEngConfigured();
-  const { rows, loading } = useEngCollection(ENG_COLLECTIONS.departments);
-  const { rows: pageLoads } = useEngCollection(ENG_COLLECTIONS.pageLoads, {
-    limitN: 400,
-  });
-  const { rows: devices } = useEngCollection(ENG_COLLECTIONS.deviceStatus);
-  const today = dayKeyFromTs();
+  const { range, filters } = useEngFilters();
+  const { rows, loading } = useFilteredEngCollection(
+    ENG_COLLECTIONS.departments,
+    { timeMode: "none", live: true, skipTime: true }
+  );
+  const { rows: pageLoads } = useFilteredEngCollection(
+    ENG_COLLECTIONS.pageLoads,
+    { limitN: 400, timeMode: "ts" }
+  );
+  const { rows: devices } = useFilteredEngCollection(
+    ENG_COLLECTIONS.deviceStatus,
+    { timeMode: "none", live: true, skipTime: true }
+  );
 
   const cards = useMemo(() => {
     const names = new Set([
       ...rows.map((d) => d.department || d.id),
       ...pageLoads.map((r) => r.department).filter(Boolean),
     ]);
-    return [...names].sort().map((name) => {
-      const agg = rows.find((d) => (d.department || d.id) === name);
-      const loads = pageLoads.filter((r) => r.department === name);
-      const todayLoads = loads.filter((r) => (r.day || dayKeyFromTs(r.ts)) === today);
-      const stats = summarizeLoads(todayLoads);
-      const last = [...loads].sort((a, b) => (b.ts || 0) - (a.ts || 0))[0];
-      const timeline = trendByDay(loads, "totalMs", 7);
-      const active = devices.filter(
-        (d) =>
-          d.department === name &&
-          devicePresence(clientTsOf(d)) === "online"
-      );
-      const lifetimeAvg =
-        agg?.loadCount > 0 ? Math.round(agg.loadSumMs / agg.loadCount) : stats.avg;
-      return {
-        name,
-        last,
-        stats,
-        lifetimeAvg,
-        timeline,
-        active,
-        errorCount: agg?.errorCount || 0,
-        todayCount: todayLoads.length,
-      };
-    });
-  }, [rows, pageLoads, devices, today]);
+    return [...names]
+      .filter((name) => departmentMatches(name, filters.department))
+      .sort()
+      .map((name) => {
+        const agg = rows.find((d) => (d.department || d.id) === name);
+        const loads = pageLoads.filter((r) => r.department === name);
+        const stats = summarizeLoads(loads);
+        const last = [...loads].sort((a, b) => (b.ts || 0) - (a.ts || 0))[0];
+        const days =
+          Math.max(1, Math.ceil((range.endMs - range.startMs) / 86400000));
+        const timeline = trendByDay(loads, "totalMs", Math.min(days, 30));
+        const active = devices.filter(
+          (d) =>
+            d.department === name &&
+            devicePresence(clientTsOf(d)) === "online"
+        );
+        const periodAvg = stats.avg;
+        const lifetimeAvg =
+          agg?.loadCount > 0 ? Math.round(agg.loadSumMs / agg.loadCount) : null;
+        return {
+          name,
+          last,
+          stats,
+          periodAvg,
+          lifetimeAvg,
+          timeline,
+          active,
+          errorCount: agg?.errorCount || 0,
+          periodCount: loads.length,
+        };
+      });
+  }, [rows, pageLoads, devices, filters.department, range]);
 
   return (
     <>
       <div className="eng-header">
         <h1>Departments</h1>
-        <div className="meta">load history · today stats · active devices</div>
+        <div className="meta">stats for {range.label}</div>
       </div>
       <div className="eng-actions" style={{ marginBottom: "0.75rem" }}>
         <button
@@ -501,16 +546,16 @@ export function DepartmentsPage() {
           className="eng-btn"
           onClick={() =>
             downloadCsv(
-              `eng-departments-${today}.csv`,
+              `eng-departments-${dayKeyFromTs()}.csv`,
               cards.map((c) => ({
                 department: c.name,
                 lastLoad: fmtTsPerf(c.last?.ts),
                 lastPage: c.last?.page,
-                avgTodayMs: c.stats.avg,
-                fastestTodayMs: c.stats.fastest,
-                slowestTodayMs: c.stats.slowest,
-                loadsToday: c.todayCount,
-                p95TodayMs: c.stats.p95,
+                avgPeriodMs: c.stats.avg,
+                fastestMs: c.stats.fastest,
+                slowestMs: c.stats.slowest,
+                loadsInPeriod: c.periodCount,
+                p95Ms: c.stats.p95,
                 activeDevices: c.active.length,
               }))
             )
@@ -526,13 +571,13 @@ export function DepartmentsPage() {
         {cards.map((c) => (
           <div className="eng-card" key={c.name} style={{ minWidth: 260 }}>
             <div className="label">{c.name}</div>
-            <div className="value">{fmtMs(c.lifetimeAvg)}</div>
-            <div className="sub">current average (lifetime / today)</div>
+            <div className="value">{fmtMs(c.periodAvg ?? c.lifetimeAvg)}</div>
+            <div className="sub">average load in selected range</div>
             <div className="sub" style={{ marginTop: "0.5rem" }}>
               Last: {c.last ? `${fmtTs(c.last.ts)} · ${c.last.page}` : "—"}
             </div>
             <div className="sub">
-              Today: {c.todayCount} loads · fast {fmtMs(c.stats.fastest)} · slow{" "}
+              Period: {c.periodCount} loads · fast {fmtMs(c.stats.fastest)} · slow{" "}
               {fmtMs(c.stats.slowest)} · p95 {fmtMs(c.stats.p95)}
             </div>
             <div className="sub">
@@ -542,7 +587,7 @@ export function DepartmentsPage() {
                 : "none"}
             </div>
             <div style={{ marginTop: "0.5rem" }}>
-              <div className="sub">Recent load timeline (7d)</div>
+              <div className="sub">Load timeline (range)</div>
               <Sparkline series={c.timeline} />
             </div>
           </div>
@@ -554,7 +599,11 @@ export function DepartmentsPage() {
 
 export function FirestorePage() {
   const configured = useEngConfigured();
-  const { rows, loading } = useEngCollection(ENG_COLLECTIONS.firestoreMetrics);
+  const { range } = useEngFilters();
+  const { rows, loading } = useFilteredEngCollection(
+    ENG_COLLECTIONS.firestoreMetrics,
+    { timeMode: "day" }
+  );
   const sorted = useMemo(
     () =>
       [...rows].sort(
@@ -577,7 +626,7 @@ export function FirestorePage() {
     <>
       <div className="eng-header">
         <h1>Firestore</h1>
-        <div className="meta">observed client metrics (not billing)</div>
+        <div className="meta">observed client metrics · {range.label}</div>
       </div>
       <div className="eng-panel">
         <h2>Queries by collection</h2>
@@ -620,12 +669,20 @@ export function FirestorePage() {
 
 export function ListenersPage() {
   const configured = useEngConfigured();
-  const { rows, loading } = useEngCollection(ENG_COLLECTIONS.listenerDaily);
-  const { rows: devices } = useEngCollection(ENG_COLLECTIONS.deviceStatus);
+  const { range } = useEngFilters();
+  const { rows, loading } = useFilteredEngCollection(
+    ENG_COLLECTIONS.listenerDaily,
+    { timeMode: "day" }
+  );
+  const { rows: devices } = useFilteredEngCollection(
+    ENG_COLLECTIONS.deviceStatus,
+    { timeMode: "none", live: true, skipTime: true }
+  );
   return (
     <>
       <div className="eng-header">
         <h1>Listeners</h1>
+        <div className="meta">{range.label}</div>
       </div>
       <div className="eng-grid">
         <div className="eng-card">
@@ -678,11 +735,15 @@ export function ListenersPage() {
 
 export function MemoryPage() {
   const configured = useEngConfigured();
-  const { rows, loading } = useEngCollection(ENG_COLLECTIONS.memory);
+  const { range } = useEngFilters();
+  const { rows, loading } = useFilteredEngCollection(ENG_COLLECTIONS.memory, {
+    timeMode: "day",
+  });
   return (
     <>
       <div className="eng-header">
         <h1>Memory</h1>
+        <div className="meta">{range.label}</div>
       </div>
       <div className="eng-panel">
         {!rows.length ? (
@@ -740,11 +801,16 @@ export function MemoryPage() {
 
 export function ReactMetricsPage() {
   const configured = useEngConfigured();
-  const { rows, loading } = useEngCollection(ENG_COLLECTIONS.reactDaily);
+  const { range } = useEngFilters();
+  const { rows, loading } = useFilteredEngCollection(
+    ENG_COLLECTIONS.reactDaily,
+    { timeMode: "day" }
+  );
   return (
     <>
       <div className="eng-header">
         <h1>React</h1>
+        <div className="meta">{range.label}</div>
       </div>
       <div className="eng-panel">
         {!rows.length ? (
@@ -780,28 +846,29 @@ export function ReactMetricsPage() {
 
 export function PerformancePage() {
   const configured = useEngConfigured();
-  const { rows, loading } = useEngCollection(ENG_COLLECTIONS.pages);
-  const { rows: pageLoads } = useEngCollection(ENG_COLLECTIONS.pageLoads, {
-    limitN: 400,
+  const { range } = useEngFilters();
+  const { rows, loading } = useFilteredEngCollection(ENG_COLLECTIONS.pages, {
+    timeMode: "day",
   });
-  const { rows: memory } = useEngCollection(ENG_COLLECTIONS.memory);
-  const { rows: firestore } = useEngCollection(ENG_COLLECTIONS.firestoreMetrics);
-  const { rows: reactDaily } = useEngCollection(ENG_COLLECTIONS.reactDaily);
-  const [range, setRange] = useState("7d");
-  const [q, setQ] = useState("");
+  const { rows: filteredLoads } = useFilteredEngCollection(
+    ENG_COLLECTIONS.pageLoads,
+    { limitN: 400, timeMode: "ts" }
+  );
+  const { rows: memory } = useFilteredEngCollection(ENG_COLLECTIONS.memory, {
+    timeMode: "day",
+  });
+  const { rows: firestore } = useFilteredEngCollection(
+    ENG_COLLECTIONS.firestoreMetrics,
+    { timeMode: "day" }
+  );
+  const { rows: reactDaily } = useFilteredEngCollection(
+    ENG_COLLECTIONS.reactDaily,
+    { timeMode: "day" }
+  );
 
-  const days = rangeDaysFromPreset(range);
-  const filteredLoads = useMemo(
-    () =>
-      pageLoads.filter(
-        (r) =>
-          inDatePreset(r.ts, range) &&
-          (!q ||
-            `${r.deviceId} ${r.department} ${r.page} ${r.buildId} ${fmtTsPerf(r.ts)}`
-              .toLowerCase()
-              .includes(q.toLowerCase()))
-      ),
-    [pageLoads, range, q]
+  const days = Math.max(
+    1,
+    Math.min(30, Math.ceil((range.endMs - range.startMs) / 86400000) + 1)
   );
 
   const byPage = useMemo(() => {
@@ -818,22 +885,22 @@ export function PerformancePage() {
   }, [rows]);
 
   const loadTrend = useMemo(
-    () => trendByDay(filteredLoads, "totalMs", Math.min(days, 30)),
+    () => trendByDay(filteredLoads, "totalMs", days),
     [filteredLoads, days]
   );
   const snapTrend = useMemo(
-    () => trendByDay(filteredLoads, "firstSnapshotMs", Math.min(days, 30)),
+    () => trendByDay(filteredLoads, "firstSnapshotMs", days),
     [filteredLoads, days]
   );
   const interactiveTrend = useMemo(
-    () => trendByDay(filteredLoads, "interactiveMs", Math.min(days, 30)),
+    () => trendByDay(filteredLoads, "interactiveMs", days),
     [filteredLoads, days]
   );
 
   const memTrend = useMemo(() => {
     const out = [];
-    for (let i = Math.min(days, 30) - 1; i >= 0; i--) {
-      const key = dayKeyFromTs(Date.now() - i * 86400000);
+    for (let i = days - 1; i >= 0; i--) {
+      const key = dayKeyFromTs(range.endMs - i * 86400000);
       const dayRows = memory.filter((r) => r.day === key);
       const heaps = dayRows
         .map((r) =>
@@ -843,12 +910,12 @@ export function PerformancePage() {
       out.push({ day: key, avg: avg(heaps) });
     }
     return out;
-  }, [memory, days]);
+  }, [memory, days, range.endMs]);
 
   const fsTrend = useMemo(() => {
     const out = [];
-    for (let i = Math.min(days, 30) - 1; i >= 0; i--) {
-      const key = dayKeyFromTs(Date.now() - i * 86400000);
+    for (let i = days - 1; i >= 0; i--) {
+      const key = dayKeyFromTs(range.endMs - i * 86400000);
       const dayRows = firestore.filter((r) => r.day === key);
       const lat = dayRows
         .map((r) => {
@@ -863,12 +930,12 @@ export function PerformancePage() {
       out.push({ day: key, avg: avg(lat) });
     }
     return out;
-  }, [firestore, days]);
+  }, [firestore, days, range.endMs]);
 
   const reactTrend = useMemo(() => {
     const out = [];
-    for (let i = Math.min(days, 30) - 1; i >= 0; i--) {
-      const key = dayKeyFromTs(Date.now() - i * 86400000);
+    for (let i = days - 1; i >= 0; i--) {
+      const key = dayKeyFromTs(range.endMs - i * 86400000);
       const dayRows = reactDaily.filter((r) => r.day === key);
       const vals = dayRows
         .map((r) =>
@@ -880,7 +947,7 @@ export function PerformancePage() {
       out.push({ day: key, avg: avg(vals) });
     }
     return out;
-  }, [reactDaily, days]);
+  }, [reactDaily, days, range.endMs]);
 
   const overall = useMemo(() => summarizeLoads(filteredLoads), [filteredLoads]);
   const p95Series = useMemo(
@@ -896,28 +963,11 @@ export function PerformancePage() {
     <>
       <div className="eng-header">
         <h1>Performance</h1>
-        <div className="meta">aggregates · trends · search · export</div>
+        <div className="meta">aggregates · trends · {range.label}</div>
       </div>
 
       <div className="eng-panel eng-form">
         <div className="eng-actions" style={{ alignItems: "flex-end" }}>
-          <label>
-            Search
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="device / dept / page / build"
-            />
-          </label>
-          <label>
-            Range
-            <select value={range} onChange={(e) => setRange(e.target.value)}>
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday+</option>
-              <option value="7d">7 Days</option>
-              <option value="30d">30 Days</option>
-            </select>
-          </label>
           <button
             type="button"
             className="eng-btn"
@@ -1041,11 +1091,15 @@ export function PerformancePage() {
 
 export function NetworkPage() {
   const configured = useEngConfigured();
-  const { rows, loading } = useEngCollection(ENG_COLLECTIONS.network);
+  const { range } = useEngFilters();
+  const { rows, loading } = useFilteredEngCollection(ENG_COLLECTIONS.network, {
+    timeMode: "day",
+  });
   return (
     <>
       <div className="eng-header">
         <h1>Network</h1>
+        <div className="meta">{range.label}</div>
       </div>
       <div className="eng-panel">
         {!rows.length ? (
@@ -1085,8 +1139,10 @@ export function NetworkPage() {
 
 export function ErrorsPage() {
   const configured = useEngConfigured();
-  const { rows, loading } = useEngCollection(ENG_COLLECTIONS.errors, {
-    limitN: 150,
+  const { range } = useEngFilters();
+  const { rows, loading } = useFilteredEngCollection(ENG_COLLECTIONS.errors, {
+    limitN: 300,
+    timeMode: "ts",
   });
   const sorted = useMemo(
     () => [...rows].sort((a, b) => (b.ts || 0) - (a.ts || 0)),
@@ -1096,6 +1152,7 @@ export function ErrorsPage() {
     <>
       <div className="eng-header">
         <h1>Errors</h1>
+        <div className="meta">{range.label}</div>
       </div>
       <div className="eng-actions" style={{ marginBottom: "0.75rem" }}>
         <button
@@ -1153,8 +1210,10 @@ export function ErrorsPage() {
 
 export function AuditPage() {
   const configured = useEngConfigured();
-  const { rows, loading } = useEngCollection(ENG_COLLECTIONS.audit, {
-    limitN: 100,
+  const { range } = useEngFilters();
+  const { rows, loading } = useFilteredEngCollection(ENG_COLLECTIONS.audit, {
+    limitN: 200,
+    timeMode: "ts",
   });
   const sorted = useMemo(
     () => [...rows].sort((a, b) => (b.ts || 0) - (a.ts || 0)),
@@ -1164,6 +1223,7 @@ export function AuditPage() {
     <>
       <div className="eng-header">
         <h1>Audit</h1>
+        <div className="meta">{range.label}</div>
       </div>
       <div className="eng-panel">
         {!sorted.length ? (
@@ -1197,15 +1257,28 @@ export function AuditPage() {
 
 export function BuildsPage() {
   const configured = useEngConfigured();
-  const { rows, loading } = useEngCollection(ENG_COLLECTIONS.builds);
-  const { rows: pageLoads } = useEngCollection(ENG_COLLECTIONS.pageLoads, {
-    limitN: 400,
+  const { range } = useEngFilters();
+  const { rows, loading } = useFilteredEngCollection(ENG_COLLECTIONS.builds, {
+    timeMode: "none",
+    live: true,
+    skipTime: true,
+    ignoreDepartment: true,
   });
-  const { rows: memory } = useEngCollection(ENG_COLLECTIONS.memory);
-  const { rows: errors } = useEngCollection(ENG_COLLECTIONS.errors, {
-    limitN: 150,
+  const { rows: pageLoads } = useFilteredEngCollection(
+    ENG_COLLECTIONS.pageLoads,
+    { limitN: 400, timeMode: "ts" }
+  );
+  const { rows: memory } = useFilteredEngCollection(ENG_COLLECTIONS.memory, {
+    timeMode: "day",
   });
-  const { rows: devices } = useEngCollection(ENG_COLLECTIONS.deviceStatus);
+  const { rows: errors } = useFilteredEngCollection(ENG_COLLECTIONS.errors, {
+    limitN: 300,
+    timeMode: "ts",
+  });
+  const { rows: devices } = useFilteredEngCollection(
+    ENG_COLLECTIONS.deviceStatus,
+    { timeMode: "none", live: true, skipTime: true }
+  );
 
   const compared = useMemo(() => {
     const byBuild = {};
@@ -1214,10 +1287,10 @@ export function BuildsPage() {
       if (!byBuild[id]) byBuild[id] = [];
       byBuild[id].push(r);
     }
-    const list = rows.length
-      ? rows.map((r) => r.buildId || r.id)
-      : Object.keys(byBuild);
-    const unique = [...new Set(list)];
+    const listFromLoads = Object.keys(byBuild);
+    const unique = listFromLoads.length
+      ? listFromLoads
+      : [...new Set(rows.map((r) => r.buildId || r.id))];
     const enriched = unique.map((buildId) => {
       const loads = byBuild[buildId] || [];
       const stats = summarizeLoads(loads);
@@ -1265,7 +1338,7 @@ export function BuildsPage() {
     <>
       <div className="eng-header">
         <h1>Builds</h1>
-        <div className="meta">compare averages · highlight regressions</div>
+        <div className="meta">compare within {range.label}</div>
       </div>
       <div className="eng-panel">
         {!compared.length ? (

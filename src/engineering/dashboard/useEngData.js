@@ -1,8 +1,8 @@
 /**
- * Hooks for Engineering Dashboard — Engineering Firestore only.
+ * Hooks for Engineering Dashboard — Engineering Firebase only.
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   collection,
   onSnapshot,
@@ -15,6 +15,7 @@ import {
   query,
   orderBy,
   limit,
+  where,
 } from "firebase/firestore";
 import { getEngDb, isEngFirebaseConfigured } from "../firebaseEngConfig.js";
 import { ENG_COLLECTIONS } from "../constants.js";
@@ -24,17 +25,37 @@ import {
   isEngTelemetryEnabled,
   setEngTelemetryEnabled,
 } from "../telemetry/killSwitch.js";
+import { useEngFiltersOptional } from "./EngFilterContext.jsx";
 
 /**
  * Live collection snapshot from Engineering Firebase.
+ * Optional day/ts range uses single-field where (auto-indexed) — no new composite indexes.
  * @param {string} collectionName
- * @param {{ orderByField?: string, limitN?: number, enabled?: boolean }} [opts]
+ * @param {{
+ *   orderByField?: string,
+ *   limitN?: number,
+ *   enabled?: boolean,
+ *   dayGte?: string,
+ *   dayLte?: string,
+ *   tsGte?: number,
+ *   tsLte?: number,
+ *   refreshKey?: number,
+ * }} [opts]
  */
 export function useEngCollection(collectionName, opts = {}) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const enabled = opts.enabled !== false;
+  const {
+    orderByField,
+    limitN,
+    dayGte,
+    dayLte,
+    tsGte,
+    tsLte,
+    refreshKey = 0,
+  } = opts;
 
   useEffect(() => {
     if (!enabled) {
@@ -50,43 +71,154 @@ export function useEngCollection(collectionName, opts = {}) {
       return undefined;
     }
     setLoading(true);
-    let qRef = collection(db, collectionName);
-    try {
-      if (opts.orderByField) {
-        qRef = query(
-          collection(db, collectionName),
-          orderBy(opts.orderByField, "desc"),
-          ...(opts.limitN ? [limit(opts.limitN)] : [])
-        );
-      } else if (opts.limitN) {
-        qRef = query(collection(db, collectionName), limit(opts.limitN));
-      }
-    } catch {
-      qRef = collection(db, collectionName);
-    }
 
-    const unsub = onSnapshot(
-      qRef,
-      (snap) => {
-        setRows(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        setLoading(false);
-        setError(null);
-      },
-      (err) => {
-        setError(err?.message || String(err));
-        setLoading(false);
+    const buildQuery = (useRange) => {
+      const colRef = collection(db, collectionName);
+      const constraints = [];
+      if (useRange && tsGte != null && tsLte != null) {
+        constraints.push(where("ts", ">=", tsGte));
+        constraints.push(where("ts", "<=", tsLte));
+        constraints.push(orderBy("ts", "desc"));
+      } else if (useRange && dayGte && dayLte) {
+        constraints.push(where("day", ">=", dayGte));
+        constraints.push(where("day", "<=", dayLte));
+        if (orderByField === "day") {
+          constraints.push(orderBy("day", "desc"));
+        }
+      } else if (orderByField) {
+        constraints.push(orderBy(orderByField, "desc"));
       }
-    );
-    return () => {
+      if (limitN) constraints.push(limit(limitN));
+      return constraints.length ? query(colRef, ...constraints) : colRef;
+    };
+
+    let unsub = null;
+    let cancelled = false;
+
+    const attach = (useRange) => {
       try {
-        unsub();
+        const qRef = buildQuery(useRange);
+        unsub = onSnapshot(
+          qRef,
+          (snap) => {
+            if (cancelled) return;
+            setRows(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+            setLoading(false);
+            setError(null);
+          },
+          (err) => {
+            // Missing index / bad range → fall back to unbounded listen (client filter still applies)
+            if (useRange) {
+              try {
+                unsub?.();
+              } catch {
+                /* ignore */
+              }
+              attach(false);
+              return;
+            }
+            if (cancelled) return;
+            setError(err?.message || String(err));
+            setLoading(false);
+          }
+        );
+      } catch {
+        if (useRange) attach(false);
+        else {
+          setLoading(false);
+          setError("query-failed");
+        }
+      }
+    };
+
+    const wantRange =
+      (tsGte != null && tsLte != null) || (dayGte && dayLte);
+    attach(!!wantRange);
+
+    return () => {
+      cancelled = true;
+      try {
+        unsub?.();
       } catch {
         /* ignore */
       }
     };
-  }, [collectionName, opts.orderByField, opts.limitN, enabled]);
+  }, [
+    collectionName,
+    orderByField,
+    limitN,
+    enabled,
+    dayGte,
+    dayLte,
+    tsGte,
+    tsLte,
+    refreshKey,
+  ]);
 
   return { rows, loading, error };
+}
+
+/**
+ * Collection listen + global filter (client-side dimensions + optional server day/ts range).
+ * @param {string} collectionName
+ * @param {{
+ *   limitN?: number,
+ *   timeMode?: 'day' | 'ts' | 'none',
+ *   live?: boolean,
+ *   skipTime?: boolean,
+ *   orderByField?: string,
+ *   enabled?: boolean,
+ * }} [opts]
+ */
+export function useFilteredEngCollection(collectionName, opts = {}) {
+  const ctx = useEngFiltersOptional();
+  const timeMode = opts.timeMode || "day";
+  const range = ctx?.range;
+  const refreshKey = ctx?.refreshKey ?? 0;
+
+  const queryOpts = useMemo(() => {
+    const base = {
+      limitN: opts.limitN,
+      orderByField: opts.orderByField,
+      enabled: opts.enabled,
+      refreshKey,
+    };
+    if (!range || timeMode === "none") return base;
+    if (timeMode === "ts") {
+      return {
+        ...base,
+        tsGte: range.startMs,
+        tsLte: range.endMs,
+        orderByField: opts.orderByField || "ts",
+      };
+    }
+    // day
+    return {
+      ...base,
+      dayGte: range.startDay,
+      dayLte: range.endDay,
+    };
+  }, [
+    opts.limitN,
+    opts.orderByField,
+    opts.enabled,
+    refreshKey,
+    range,
+    timeMode,
+  ]);
+
+  const { rows, loading, error } = useEngCollection(collectionName, queryOpts);
+
+  const filtered = useMemo(() => {
+    if (!ctx) return rows;
+    return ctx.filterRows(rows, {
+      live: opts.live,
+      skipTime: opts.skipTime || timeMode === "none",
+      ignoreDepartment: opts.ignoreDepartment,
+    });
+  }, [rows, ctx, opts.live, opts.skipTime, opts.ignoreDepartment, timeMode]);
+
+  return { rows: filtered, rawRows: rows, loading, error };
 }
 
 export function useEngConfigured() {

@@ -6,6 +6,8 @@
 import React, { useState } from "react";
 import { EngErrorBoundary } from "./EngErrorBoundary.jsx";
 import EngOpsGate from "./EngOpsGate.jsx";
+import { EngFilterProvider } from "./EngFilterContext.jsx";
+import { GlobalFilterBar } from "./GlobalFilterBar.jsx";
 import {
   HealthPage,
   DevicesPage,
@@ -40,35 +42,40 @@ const NAV = [
   { id: "settings", label: "Settings", Page: SettingsPage },
   { id: "audit", label: "Audit", Page: AuditPage },
 ];
+
 export default function EngineeringApp() {
   const [tab, setTab] = useState("health");
   const active = NAV.find((n) => n.id === tab) || NAV[0];
   const Page = active.Page;
+  const showFilters = tab !== "settings";
 
   return (
     <EngErrorBoundary>
       <EngOpsGate>
-        <div className="eng-app">
-          <nav className="eng-nav" aria-label="Engineering sections">
-            <div className="eng-brand">
-              Mango Engineering
-              <span>Operations · observer only</span>
-            </div>
-            {NAV.map((n) => (
-              <button
-                key={n.id}
-                type="button"
-                className={tab === n.id ? "active" : ""}
-                onClick={() => setTab(n.id)}
-              >
-                {n.label}
-              </button>
-            ))}
-          </nav>
-          <main className="eng-main">
-            <Page />
-          </main>
-        </div>
+        <EngFilterProvider>
+          <div className="eng-app">
+            <nav className="eng-nav" aria-label="Engineering sections">
+              <div className="eng-brand">
+                Mango Engineering
+                <span>Operations · observer only</span>
+              </div>
+              {NAV.map((n) => (
+                <button
+                  key={n.id}
+                  type="button"
+                  className={tab === n.id ? "active" : ""}
+                  onClick={() => setTab(n.id)}
+                >
+                  {n.label}
+                </button>
+              ))}
+            </nav>
+            <main className="eng-main">
+              {showFilters && <GlobalFilterBar />}
+              <Page />
+            </main>
+          </div>
+        </EngFilterProvider>
       </EngOpsGate>
     </EngErrorBoundary>
   );

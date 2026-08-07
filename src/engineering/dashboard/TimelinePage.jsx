@@ -1,23 +1,22 @@
 /**
  * Timeline — Engineering flight recorder (page loads, errors, reconnects).
- * Presentation only; reads eng_* collections.
+ * Uses global dashboard filters.
  */
 
 import React, { useMemo, useState } from "react";
 import {
-  useEngCollection,
+  useFilteredEngCollection,
   useEngConfigured,
   ENG_COLLECTIONS,
 } from "./useEngData.js";
+import { useEngFilters } from "./EngFilterContext.jsx";
 import {
   fmtMs,
   fmtTs,
   loadStatus,
-  filterPageLoads,
   sortPageLoads,
   downloadCsv,
   dayKeyFromTs,
-  inDatePreset,
 } from "./perfViews.js";
 import { WaterfallPanel } from "./WaterfallPanel.jsx";
 
@@ -35,52 +34,37 @@ function Empty({ configured, loading, label }) {
 
 export function TimelinePage() {
   const configured = useEngConfigured();
-  const { rows: loads, loading } = useEngCollection(ENG_COLLECTIONS.pageLoads, {
-    limitN: 400,
+  const { range, filters } = useEngFilters();
+  const { rows: loads, loading } = useFilteredEngCollection(
+    ENG_COLLECTIONS.pageLoads,
+    { limitN: 400, timeMode: "ts" }
+  );
+  const { rows: errors } = useFilteredEngCollection(ENG_COLLECTIONS.errors, {
+    limitN: 300,
+    timeMode: "ts",
   });
-  const { rows: errors } = useEngCollection(ENG_COLLECTIONS.errors, {
-    limitN: 150,
-  });
-  const { rows: listeners } = useEngCollection(ENG_COLLECTIONS.listenerDaily);
+  const { rows: listeners } = useFilteredEngCollection(
+    ENG_COLLECTIONS.listenerDaily,
+    { timeMode: "day" }
+  );
 
-  const [q, setQ] = useState("");
-  const [device, setDevice] = useState("");
-  const [department, setDepartment] = useState("");
-  const [page, setPage] = useState("");
-  const [build, setBuild] = useState("");
-  const [range, setRange] = useState("7d");
   const [sortKey, setSortKey] = useState("ts");
   const [sortDir, setSortDir] = useState("desc");
   const [expanded, setExpanded] = useState(null);
   const [kind, setKind] = useState("all");
+  const [pageOnly, setPageOnly] = useState("");
 
-  const depts = useMemo(
-    () => [...new Set(loads.map((r) => r.department).filter(Boolean))].sort(),
-    [loads]
-  );
   const pages = useMemo(
     () => [...new Set(loads.map((r) => r.page).filter(Boolean))].sort(),
     [loads]
   );
-  const builds = useMemo(
-    () => [...new Set(loads.map((r) => r.buildId).filter(Boolean))].sort(),
-    [loads]
-  );
 
   const filteredLoads = useMemo(() => {
-    const f = {
-      q,
-      device,
-      department: department || undefined,
-      page: page || undefined,
-      build: build || undefined,
-    };
-    return sortPageLoads(
-      filterPageLoads(loads, f).filter((r) => inDatePreset(r.ts, range)),
-      sortKey,
-      sortDir
-    );
-  }, [loads, q, device, department, page, build, range, sortKey, sortDir]);
+    const list = pageOnly
+      ? loads.filter((r) => r.page === pageOnly)
+      : loads;
+    return sortPageLoads(list, sortKey, sortDir);
+  }, [loads, pageOnly, sortKey, sortDir]);
 
   const timeline = useMemo(() => {
     const events = [];
@@ -96,13 +80,6 @@ export function TimelinePage() {
     }
     if (kind === "all" || kind === "errors") {
       for (const r of errors) {
-        if (!inDatePreset(r.ts, range)) continue;
-        if (q) {
-          const blob = `${r.message || ""} ${r.page || ""} ${r.deviceId || ""}`.toLowerCase();
-          if (!blob.includes(q.toLowerCase())) continue;
-        }
-        if (device && !(r.deviceId || "").includes(device)) continue;
-        if (department && r.department !== department) continue;
         events.push({
           ...r,
           _kind: "error",
@@ -124,7 +101,7 @@ export function TimelinePage() {
       }
     }
     return events.sort((a, b) => b._ts - a._ts).slice(0, 300);
-  }, [filteredLoads, errors, listeners, kind, range, q, device, department]);
+  }, [filteredLoads, errors, listeners, kind]);
 
   const toggleSort = (key) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -138,53 +115,23 @@ export function TimelinePage() {
     <>
       <div className="eng-header">
         <h1>Timeline</h1>
-        <div className="meta">flight recorder · page loads · errors · reconnects</div>
+        <div className="meta">
+          flight recorder · {range.label}
+          {filters.department !== "all" ? ` · ${filters.department}` : ""}
+        </div>
       </div>
 
       <div className="eng-panel eng-form">
         <div className="eng-actions" style={{ alignItems: "flex-end" }}>
           <label>
-            Search
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="device / page / text" />
-          </label>
-          <label>
-            Device
-            <input value={device} onChange={(e) => setDevice(e.target.value)} placeholder="id fragment" />
-          </label>
-          <label>
-            Department
-            <select value={department} onChange={(e) => setDepartment(e.target.value)}>
-              <option value="">All</option>
-              {depts.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-          </label>
-          <label>
             Page
-            <select value={page} onChange={(e) => setPage(e.target.value)}>
-              <option value="">All</option>
+            <select value={pageOnly} onChange={(e) => setPageOnly(e.target.value)}>
+              <option value="">All pages</option>
               {pages.map((p) => (
-                <option key={p} value={p}>{p}</option>
+                <option key={p} value={p}>
+                  {p}
+                </option>
               ))}
-            </select>
-          </label>
-          <label>
-            Build
-            <select value={build} onChange={(e) => setBuild(e.target.value)}>
-              <option value="">All</option>
-              {builds.map((b) => (
-                <option key={b} value={b}>{b}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Range
-            <select value={range} onChange={(e) => setRange(e.target.value)}>
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday+</option>
-              <option value="7d">7 Days</option>
-              <option value="30d">30 Days</option>
             </select>
           </label>
           <label>
@@ -225,7 +172,11 @@ export function TimelinePage() {
       <div className="eng-panel">
         <h2>Performance timeline (page loads)</h2>
         {!filteredLoads.length ? (
-          <Empty configured={configured} loading={loading} label="No page-load samples yet — open clinical pages after this deploy" />
+          <Empty
+            configured={configured}
+            loading={loading}
+            label="No page-load samples in the selected filter range"
+          />
         ) : (
           <table className="eng-table">
             <thead>
@@ -250,7 +201,11 @@ export function TimelinePage() {
                     onClick={() => k !== "table" && toggleSort(k)}
                   >
                     {label}
-                    {sortKey === k && k !== "table" ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
+                    {sortKey === k && k !== "table"
+                      ? sortDir === "asc"
+                        ? " ↑"
+                        : " ↓"
+                      : ""}
                   </th>
                 ))}
                 <th>Status</th>
@@ -273,15 +228,21 @@ export function TimelinePage() {
                       <td>{r.buildId || "—"}</td>
                       <td>{fmtMs(r.totalMs)}</td>
                       <td>{fmtMs(r.firstRenderMs)}</td>
-                      <td title="Same sample as First Snapshot (not separately instrumented)">
-                        {fmtMs(r.firstSnapshotMs)}
-                      </td>
+                      <td>{fmtMs(r.firstSnapshotMs)}</td>
                       <td>{fmtMs(r.firstSnapshotMs)}</td>
                       <td title="Not instrumented">—</td>
                       <td>{fmtMs(r.interactiveMs)}</td>
                       <td>{fmtMs(r.totalMs)}</td>
                       <td>
-                        <span className={`pill ${st === "ok" ? "online" : st === "slow" ? "stale" : "offline"}`}>
+                        <span
+                          className={`pill ${
+                            st === "ok"
+                              ? "online"
+                              : st === "slow"
+                                ? "stale"
+                                : "offline"
+                          }`}
+                        >
                           {st}
                         </span>
                       </td>
