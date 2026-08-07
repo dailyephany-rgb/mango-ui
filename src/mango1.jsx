@@ -42,8 +42,6 @@ export default function Mango() {
   const selectedTestsRef = useRef();
   const resultRefs = useRef([]);
 
-  const qrInputRef = useRef();
-
   // Helper for date string - UPDATED TO IST (Asia/Kolkata)
   const getTodayDateStr = () => {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
@@ -93,10 +91,6 @@ export default function Mango() {
       let timeStr = "";
       let dateStr = getTodayDateStr();
 
-      useEffect(() => {
-        qrInputRef.current?.focus();
-    }, []);
-
       if (editData.timePrinted) {
         const d = editData.timePrinted.seconds 
           ? new Date(editData.timePrinted.seconds * 1000) 
@@ -117,90 +111,6 @@ export default function Mango() {
     const { name, value } = e.target;
     setErrors((prev) => ({ ...prev, [name]: false }));
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const findDepartment = (testName) => {
-    for (const dept in testMapping) {
-      if (testMapping[dept].includes(testName)) {
-        return dept;
-      }
-    }
-  
-    return null;
-  };
-
-  const handleQRScan = (e) => {
-    const scannedText = e.target.value.trim();
-  
-    try {
-     
-      const qrData = JSON.parse(scannedText);
-
-const qrTests = qrData.tests || qrData.Tests || [];
-
-const unknownTests = qrTests.filter(
-    test => findDepartment(test) === null
-);
-
-if (unknownTests.length > 0) {
-    alert(
-        `These tests are not mapped:\n\n${unknownTests.join("\n")}`
-    );
-}
-
-const selectedTests = qrTests
-    .map(test => {
-        const dept = findDepartment(test);
-
-        if (!dept) return null;
-
-        return {
-            dept,
-            test
-        };
-    })
-    .filter(Boolean);
-  
-      setFormData(prev => ({
-        ...prev,
-    
-        regNo: qrData.regNo || qrData.RegNo || "",
-        diagnosticNo: qrData.diagnosticNo || qrData.DiagnosticNo || "",
-        
-        source: qrData.source || qrData.Source || "OPD",
-        
-        datePrinted: qrData.datePrinted || qrData.DatePrinted || getTodayDateStr(),
-        timePrinted: qrData.timePrinted || qrData.TimePrinted || "",
-        
-        name: qrData.name || qrData.Name || "",
-        father: qrData.father || qrData.Father || "",
-        
-        age: qrData.age || qrData.Age || "",
-        ageUnit: qrData.ageUnit || qrData.AgeUnit || "years",
-        
-        gender: qrData.gender || qrData.Gender || "M",
-        
-        phone: qrData.phone || qrData.Phone || "",
-        
-        doctor: qrData.doctor || qrData.Doctor || "",
-        
-        category: qrData.category || qrData.Category || "",
-        
-        urgent: qrData.urgent ?? qrData.Urgent ?? false,
-        
-        selectedTests
-    }));
-    
-  
-    } catch (err) {
-      console.error(err);
-      alert("Invalid QR Code");
-    }
-  
-    e.target.value = "";
-    setTimeout(() => {
-      qrInputRef.current?.focus();
-  }, 0);
   };
 
   const handleSearchChange = (e) => {
@@ -519,23 +429,7 @@ const selectedTests = qrTests
 
       <div className="mango-content">
         <div className="left-panel">
-              <button
-              className="scan-btn"
-              onClick={() => qrInputRef.current?.focus()}
-          >
-              📷 Scan QR
-          </button>
-
-                    <input
-              ref={qrInputRef}
-              type="text"
-              onChange={handleQRScan}
-              style={{
-                  position: "absolute",
-                  left: "-9999px",
-                  opacity: 0
-              }}
-          />
+          <button className="scan-btn">📷 Scan QR</button>
           <p className="or-text">or</p>
           
           <label>Source</label>
