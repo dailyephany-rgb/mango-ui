@@ -31,6 +31,12 @@ import {
 } from "./perfViews.js";
 import { WaterfallPanel } from "./WaterfallPanel.jsx";
 
+function DeviceName({ id }) {
+  const { formatDeviceName } = useEngFilters();
+  if (!id) return "—";
+  return <span title={id}>{formatDeviceName(id)}</span>;
+}
+
 function ms(n) {
   if (n == null || Number.isNaN(n)) return "—";
   if (n < 1000) return `${Math.round(n)}ms`;
@@ -715,7 +721,9 @@ export function ListenersPage() {
               {rows.slice(0, 80).map((r) => (
                 <tr key={r.id}>
                   <td>{r.day}</td>
-                  <td>{(r.deviceId || "").slice(0, 8)}</td>
+                  <td>
+                    <DeviceName id={r.deviceId} />
+                  </td>
                   <td>{r.collection}</td>
                   <td>{r.opens || 0}</td>
                   <td>{r.closes || 0}</td>
@@ -770,7 +778,9 @@ export function MemoryPage() {
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td>{r.day}</td>
-                  <td>{(r.deviceId || "").slice(0, 8)}</td>
+                  <td>
+                    <DeviceName id={r.deviceId} />
+                  </td>
                   <td>
                     {r.usedJSHeapSize != null
                       ? `${(r.usedJSHeapSize / 1048576).toFixed(1)} MB`
@@ -830,7 +840,9 @@ export function ReactMetricsPage() {
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td>{r.day}</td>
-                  <td>{(r.deviceId || "").slice(0, 8)}</td>
+                  <td>
+                    <DeviceName id={r.deviceId} />
+                  </td>
                   <td>{r.longTasks || 0}</td>
                   <td>{ms(r.longTaskDurationSumMs)}</td>
                   <td>{r.renderSamples || 0}</td>
@@ -1121,7 +1133,9 @@ export function NetworkPage() {
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td>{r.day}</td>
-                  <td>{(r.deviceId || "").slice(0, 8)}</td>
+                  <td>
+                    <DeviceName id={r.deviceId} />
+                  </td>
                   <td>{r.onlineEvents || 0}</td>
                   <td>{r.offlineEvents || 0}</td>
                   <td>{r.probeCount || 0}</td>
@@ -1197,7 +1211,9 @@ export function ErrorsPage() {
                   <td>{r.source}</td>
                   <td>{r.page || "—"}</td>
                   <td title={r.stack}>{r.message}</td>
-                  <td>{(r.deviceId || "").slice(0, 8)}</td>
+                  <td>
+                    <DeviceName id={r.deviceId} />
+                  </td>
                 </tr>
               ))}
             </tbody>

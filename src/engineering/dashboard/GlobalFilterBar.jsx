@@ -111,8 +111,9 @@ export function GlobalFilterBar() {
             <option value="all">All Devices</option>
             {deviceOptions.map((d) => (
               <option key={d.id} value={d.id}>
-                {d.label}
-                {d.label !== d.id ? ` (${d.id.slice(0, 8)}…)` : ""}
+                {d.label && d.label !== d.id
+                  ? d.label
+                  : `${d.id.slice(0, 8)}…`}
               </option>
             ))}
           </select>

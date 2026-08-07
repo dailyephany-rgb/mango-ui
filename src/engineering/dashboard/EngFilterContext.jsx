@@ -94,6 +94,25 @@ export function EngFilterProvider({ children }) {
     [filters, range]
   );
 
+  const deviceLabelById = useMemo(() => {
+    const m = new Map();
+    for (const d of devices) {
+      if (d?.id) m.set(d.id, d.label || d.id);
+    }
+    return m;
+  }, [devices]);
+
+  /** Resolve friendly name from eng_device_status label; fall back to short id */
+  const formatDeviceName = useCallback(
+    (deviceId) => {
+      if (!deviceId) return "—";
+      const label = deviceLabelById.get(deviceId);
+      if (label && label !== deviceId) return label;
+      return `${String(deviceId).slice(0, 8)}…`;
+    },
+    [deviceLabelById]
+  );
+
   const value = useMemo(
     () => ({
       filters,
@@ -106,6 +125,8 @@ export function EngFilterProvider({ children }) {
       deviceOptions: devices,
       buildOptions: builds,
       optionsLoading,
+      deviceLabelById,
+      formatDeviceName,
       DATE_PRESETS,
       DEPARTMENT_OPTIONS,
     }),
@@ -120,6 +141,8 @@ export function EngFilterProvider({ children }) {
       devices,
       builds,
       optionsLoading,
+      deviceLabelById,
+      formatDeviceName,
     ]
   );
 

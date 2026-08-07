@@ -20,6 +20,12 @@ import {
 } from "./perfViews.js";
 import { WaterfallPanel } from "./WaterfallPanel.jsx";
 
+function DeviceName({ id }) {
+  const { formatDeviceName } = useEngFilters();
+  if (!id) return "—";
+  return <span title={id}>{formatDeviceName(id)}</span>;
+}
+
 function Empty({ configured, loading, label }) {
   if (loading) return <p className="eng-muted">Loading…</p>;
   if (!configured) {
@@ -222,7 +228,9 @@ export function TimelinePage() {
                       onClick={() => setExpanded(open ? null : r.id)}
                     >
                       <td>{fmtTs(r.ts)}</td>
-                      <td title={r.deviceId}>{(r.deviceId || "").slice(0, 8)}…</td>
+                      <td>
+                        <DeviceName id={r.deviceId} />
+                      </td>
                       <td>{r.department || "—"}</td>
                       <td>{r.page || "—"}</td>
                       <td>{r.buildId || "—"}</td>
@@ -279,7 +287,9 @@ export function TimelinePage() {
               <tr key={`${e._kind}-${e.id || i}`}>
                 <td>{fmtTs(e._ts)}</td>
                 <td>{e._kind}</td>
-                <td>{(e.deviceId || "").slice(0, 8) || "—"}</td>
+                <td>
+                  <DeviceName id={e.deviceId} />
+                </td>
                 <td>{e.department || "—"}</td>
                 <td>{e._label}</td>
               </tr>
