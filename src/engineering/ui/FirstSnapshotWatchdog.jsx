@@ -13,26 +13,6 @@ import {
 import { EngTelemetry } from "../telemetry/EngTelemetry.js";
 import { isEngTelemetryEnabled } from "../telemetry/killSwitch.js";
 
-const styleBanner = {
-  position: "fixed",
-  left: 12,
-  right: 12,
-  bottom: 12,
-  zIndex: 99999,
-  maxWidth: 520,
-  margin: "0 auto",
-  padding: "12px 14px",
-  borderRadius: 10,
-  border: "1px solid #cbd5e1",
-  background: "#fff",
-  color: "#0f172a",
-  fontFamily:
-    'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
-  fontSize: 13,
-  lineHeight: 1.4,
-  boxShadow: "0 8px 24px rgba(15, 23, 42, 0.12)",
-};
-
 export default function FirstSnapshotWatchdog() {
   const [tick, setTick] = useState(0);
   const [retrying, setRetrying] = useState(false);
@@ -92,39 +72,71 @@ export default function FirstSnapshotWatchdog() {
     }
   };
 
+  const banner = {
+    position: "fixed",
+    left: 12,
+    right: 12,
+    top: any30 ? 12 : undefined,
+    bottom: any30 ? undefined : 12,
+    zIndex: 99999,
+    maxWidth: 560,
+    margin: "0 auto",
+    padding: "14px 16px",
+    borderRadius: 12,
+    border: any30 ? "2px solid #b91c1c" : "1px solid #cbd5e1",
+    background: any30 ? "#fef2f2" : "#fff",
+    color: "#0f172a",
+    fontFamily:
+      'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+    fontSize: 14,
+    lineHeight: 1.45,
+    boxShadow: "0 8px 24px rgba(15, 23, 42, 0.18)",
+  };
+
   return (
     <div
-      role="status"
-      aria-live="polite"
-      style={styleBanner}
+      role="alertdialog"
+      aria-live="assertive"
+      style={banner}
       data-mango-eng-watchdog="1"
     >
-      <div style={{ fontWeight: 700, marginBottom: 4 }}>
+      <div style={{ fontWeight: 800, marginBottom: 6, fontSize: 16 }}>
         {any30
-          ? "Loading taking longer than expected"
+          ? "Firestore still not responding"
           : "Still loading…"}
       </div>
-      <div style={{ color: "#475569", marginBottom: 8 }}>
-        Waiting on {waiting.length} listener
+      <div style={{ color: "#334155", marginBottom: 10 }}>
+        Waiting on <strong>{waiting.length}</strong> listener
         {waiting.length === 1 ? "" : "s"}
         {collections ? ` (${collections})` : ""} · {waitedSec}s
+        {any30 ? (
+          <>
+            <br />
+            React already started, but the first snapshot never arrived (common
+            on iPad Wi‑Fi). Tap Retry to re-open listeners — no page reload.
+          </>
+        ) : null}
       </div>
-      {any30 && (
+      {(any30 || waitedSec >= 20) && (
         <button
           type="button"
           onClick={onRetry}
           disabled={retrying}
           style={{
-            padding: "8px 14px",
-            borderRadius: 8,
-            border: "1px solid #94a3b8",
-            background: retrying ? "#e2e8f0" : "#0f172a",
-            color: retrying ? "#64748b" : "#fff",
-            fontWeight: 600,
+            padding: "12px 18px",
+            borderRadius: 10,
+            border: "none",
+            background: retrying ? "#94a3b8" : "#b91c1c",
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: 16,
+            minHeight: 48,
+            width: "100%",
+            maxWidth: 280,
             cursor: retrying ? "default" : "pointer",
           }}
         >
-          {retrying ? "Retrying…" : "Retry"}
+          {retrying ? "Retrying listeners…" : "Retry listeners"}
         </button>
       )}
     </div>

@@ -269,7 +269,9 @@ export function TimelinePage() {
                               ? "online"
                               : st === "slow"
                                 ? "stale"
-                                : "offline"
+                                : st === "hung"
+                                  ? "offline"
+                                  : "offline"
                           }`}
                         >
                           {st}

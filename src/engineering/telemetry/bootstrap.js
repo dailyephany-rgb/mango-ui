@@ -129,14 +129,29 @@ function capturePageLoad() {
       timings.firstSnapshotMs = EngTelemetry.getFirstSnapshotMs();
       const domComplete = nav.domCompleteMs ?? performance.now();
       const snap = timings.firstSnapshotMs;
-      timings.interactiveMs =
-        snap != null ? Math.max(domComplete, snap) : domComplete;
+      const hung = snap == null;
+      // When Firestore never answers, don't pretend Interactive happened at DOM complete
+      timings.interactiveMs = hung
+        ? null
+        : Math.max(domComplete, snap);
+      timings.hung = hung;
       timings.totalMs = Math.max(
         timings.interactiveMs || 0,
         performance.now(),
         nav.loadEventEndMs || 0
       );
       EngTelemetry.trackPageLoad(timings);
+      if (hung) {
+        safeRun(() => {
+          EngTelemetry.trackListenerTimeout({
+            action: "timeout_30",
+            event: "first_snapshot_timeout_30",
+            collection: "page_load",
+            reason: "page_load",
+            durationMs: timings.totalMs,
+          });
+        }, "eng.page.hung");
+      }
     };
 
     window.addEventListener("load", () => setTimeout(finish, 800));

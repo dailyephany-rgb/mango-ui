@@ -64,6 +64,10 @@ export function buildWaterfall(load) {
         snap != null && mount != null
           ? Math.max(0, snap - mount)
           : snap,
+      note:
+        snap == null
+          ? "Never arrived — listeners still waiting or WebChannel hung (iPad Wi‑Fi pattern)"
+          : undefined,
     },
     {
       id: "table",
@@ -75,22 +79,34 @@ export function buildWaterfall(load) {
     {
       id: "interactive",
       label: "Interactive",
-      atMs: interactive,
+      atMs: snap == null ? null : interactive,
       durationMs:
-        interactive != null && snap != null
-          ? Math.max(0, interactive - snap)
-          : interactive != null && mount != null
-            ? Math.max(0, interactive - mount)
-            : interactive,
+        snap == null
+          ? null
+          : interactive != null && snap != null
+            ? Math.max(0, interactive - snap)
+            : interactive != null && mount != null
+              ? Math.max(0, interactive - mount)
+              : interactive,
+      note:
+        snap == null
+          ? "Not reached — blocked on first Firestore snapshot"
+          : undefined,
     },
     {
       id: "ready",
       label: "Ready / Total",
       atMs: total,
       durationMs:
-        total != null && interactive != null
-          ? Math.max(0, total - interactive)
-          : total,
+        snap == null
+          ? total
+          : total != null && interactive != null
+            ? Math.max(0, total - interactive)
+            : total,
+      note:
+        snap == null
+          ? "Timer finalized without snapshot (hung load)"
+          : undefined,
     },
   ];
 
@@ -104,6 +120,10 @@ export function buildWaterfall(load) {
 }
 
 export function loadStatus(load, slowMs = 2000) {
+  // No first snapshot = Firestore never answered (iPad hang pattern)
+  if (load.hung || (load.totalMs != null && load.firstSnapshotMs == null)) {
+    return "hung";
+  }
   const t = load.totalMs;
   if (t == null) return "unknown";
   if (t >= slowMs * 2) return "critical";

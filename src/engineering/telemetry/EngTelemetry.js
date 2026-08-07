@@ -159,6 +159,9 @@ function trackPageLoad(timings = {}) {
       domain: "pages",
       ...merged,
     });
+    // Push samples promptly so Engineering Timeline sees new rows without
+    // waiting for the 60s interval / Engineering Refresh.
+    scheduleFlush({ force: true });
   }, "eng.pageLoad");
 }
 

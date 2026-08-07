@@ -38,7 +38,7 @@ import { useEngFiltersOptional } from "./EngFilterContext.jsx";
  *   dayGte?: string,
  *   dayLte?: string,
  *   tsGte?: number,
- *   tsLte?: number,
+ *   tsLte?: number | null,
  *   refreshKey?: number,
  * }} [opts]
  */
@@ -78,6 +78,10 @@ export function useEngCollection(collectionName, opts = {}) {
       if (useRange && tsGte != null && tsLte != null) {
         constraints.push(where("ts", ">=", tsGte));
         constraints.push(where("ts", "<=", tsLte));
+        constraints.push(orderBy("ts", "desc"));
+      } else if (useRange && tsGte != null && tsLte == null) {
+        // Open-ended live range: lower bound only so new samples keep matching
+        constraints.push(where("ts", ">=", tsGte));
         constraints.push(orderBy("ts", "desc"));
       } else if (useRange && dayGte && dayLte) {
         constraints.push(where("day", ">=", dayGte));
@@ -131,9 +135,10 @@ export function useEngCollection(collectionName, opts = {}) {
       }
     };
 
-    const wantRange =
-      (tsGte != null && tsLte != null) || (dayGte && dayLte);
-    attach(!!wantRange);
+    // tsGte alone (open-ended live presets) still needs a ranged listen
+    const useTsRange = tsGte != null;
+    const useDayRange = Boolean(dayGte && dayLte);
+    attach(!!(useTsRange || useDayRange));
 
     return () => {
       cancelled = true;
@@ -188,11 +193,14 @@ export function useFilteredEngCollection(collectionName, opts = {}) {
       return {
         ...base,
         tsGte: range.startMs,
-        tsLte: range.endMs,
+        // Open-ended presets omit upper bound so new page_loads keep matching
+        // the live listener without requiring Engineering Refresh.
+        tsLte: range.openEnded ? undefined : range.endMs,
         orderByField: opts.orderByField || "ts",
       };
     }
-    // day
+    // day — open-ended: still bound endDay to today for index friendliness;
+    // client filter allows through openEnded day cap.
     return {
       ...base,
       dayGte: range.startDay,

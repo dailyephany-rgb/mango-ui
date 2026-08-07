@@ -468,7 +468,8 @@ async function flushPages(db, events, deviceId, deviceLabel = null) {
         firstSnapshotMs: e.firstSnapshotMs ?? null,
         interactiveMs: e.interactiveMs ?? null,
         totalMs: e.totalMs ?? null,
-        kind: "page_load",
+        hung: e.hung || (e.firstSnapshotMs == null && e.totalMs != null),
+        kind: e.hung || e.firstSnapshotMs == null ? "page_load_hung" : "page_load",
         updatedAt: serverTimestamp(),
       },
       { merge: true }

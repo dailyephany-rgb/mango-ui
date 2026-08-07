@@ -62,11 +62,24 @@ async function loadBuilds() {
 export function EngFilterProvider({ children }) {
   const [filters, setFiltersState] = useState(() => ({ ...DEFAULT_FILTERS }));
   const [refreshKey, setRefreshKey] = useState(0);
+  /** Bumps so open-ended ranges re-resolve (midnight rollover / Refresh). */
+  const [rangeTick, setRangeTick] = useState(0);
   const [devices, setDevices] = useState([]);
   const [builds, setBuilds] = useState([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
 
-  const range = useMemo(() => resolveFilterRange(filters), [filters]);
+  const range = useMemo(() => {
+    void rangeTick;
+    return resolveFilterRange(filters);
+  }, [filters, rangeTick]);
+
+  // Keep open-ended "through now" windows fresh across midnight without
+  // forcing the user to hit Refresh.
+  useEffect(() => {
+    if (!range.openEnded) return undefined;
+    const t = setInterval(() => setRangeTick((n) => n + 1), 60_000);
+    return () => clearInterval(t);
+  }, [range.openEnded]);
 
   // Live device labels — Timeline/Devices/filters all share this map.
   // One-shot getDocs left Timeline stuck on old names (mac-3) after rename.
@@ -96,6 +109,7 @@ export function EngFilterProvider({ children }) {
   }, [refreshKey]);
 
   const reloadOptions = useCallback(async () => {
+    setRangeTick((n) => n + 1);
     setRefreshKey((k) => k + 1);
     setBuilds(await loadBuilds());
   }, []);

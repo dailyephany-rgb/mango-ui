@@ -76,9 +76,17 @@ function parseDateInput(dateStr, timeStr = "00:00", end = false) {
   return d.getTime();
 }
 
+/** Presets whose end is "through now" — keep live listeners open-ended on ts. */
+const OPEN_ENDED_PRESETS = new Set([
+  "today",
+  "7d",
+  "30d",
+  "this_month",
+]);
+
 /**
  * Resolve filter preset → absolute range.
- * @returns {{ startMs: number, endMs: number, startDay: string, endDay: string, label: string, hasTimePrecision: boolean }}
+ * @returns {{ startMs: number, endMs: number, startDay: string, endDay: string, label: string, hasTimePrecision: boolean, openEnded: boolean }}
  */
 export function resolveFilterRange(filters = DEFAULT_FILTERS) {
   const now = new Date();
@@ -86,11 +94,13 @@ export function resolveFilterRange(filters = DEFAULT_FILTERS) {
   let startMs;
   let endMs = Date.now();
   let hasTimePrecision = false;
+  let openEnded = false;
   let label = DATE_PRESETS.find((p) => p.id === preset)?.label || preset;
 
   if (preset === "today") {
     startMs = startOfLocalDay(now);
     endMs = endOfLocalDay(now);
+    openEnded = true;
     label = `Today (${dayKeyFromTs(startMs)})`;
   } else if (preset === "yesterday") {
     const y = new Date(now);
@@ -101,12 +111,15 @@ export function resolveFilterRange(filters = DEFAULT_FILTERS) {
   } else if (preset === "7d") {
     startMs = startOfLocalDay(new Date(now.getTime() - 6 * 86400000));
     endMs = endOfLocalDay(now);
+    openEnded = true;
   } else if (preset === "30d") {
     startMs = startOfLocalDay(new Date(now.getTime() - 29 * 86400000));
     endMs = endOfLocalDay(now);
+    openEnded = true;
   } else if (preset === "this_month") {
     startMs = startOfLocalDay(new Date(now.getFullYear(), now.getMonth(), 1));
     endMs = endOfLocalDay(now);
+    openEnded = true;
     label = `This Month (${dayKeyFromTs(startMs).slice(0, 7)})`;
   } else if (preset === "prev_month") {
     const firstThis = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -121,6 +134,8 @@ export function resolveFilterRange(filters = DEFAULT_FILTERS) {
     endMs =
       parseDateInput(filters.endDate || filters.startDate, "23:59", true) ??
       endOfLocalDay(now);
+    // Custom end date = today → still accept new samples as they arrive
+    openEnded = dayKeyFromTs(endMs) === dayKeyFromTs(Date.now());
     label = `${dayKeyFromTs(startMs)} → ${dayKeyFromTs(endMs)}`;
   } else if (preset === "custom_datetime") {
     hasTimePrecision = true;
@@ -137,6 +152,7 @@ export function resolveFilterRange(filters = DEFAULT_FILTERS) {
   } else {
     startMs = startOfLocalDay(new Date(now.getTime() - 6 * 86400000));
     endMs = endOfLocalDay(now);
+    openEnded = OPEN_ENDED_PRESETS.has(preset);
   }
 
   if (endMs < startMs) {
@@ -152,6 +168,7 @@ export function resolveFilterRange(filters = DEFAULT_FILTERS) {
     endDay: dayKeyFromTs(endMs),
     label,
     hasTimePrecision,
+    openEnded,
   };
 }
 
@@ -210,6 +227,12 @@ export function rowMatchesGlobalFilter(row, filters, range, opts = {}) {
   if (!row) return false;
 
   if (!opts.skipTime) {
+    // Open-ended presets (Today / Last 7d / …): only enforce lower bound so
+    // samples written after subscribe-time still pass client filter.
+    const endCap = range?.openEnded
+      ? Number.POSITIVE_INFINITY
+      : range.endMs;
+
     // Prefer precise ts when present (page loads, errors, audit)
     const hasPreciseTs =
       row.ts != null &&
@@ -219,17 +242,19 @@ export function rowMatchesGlobalFilter(row, filters, range, opts = {}) {
 
     if (hasPreciseTs) {
       const ts = rowTimestampMs(row);
-      if (ts < range.startMs || ts > range.endMs) return false;
+      if (ts < range.startMs || ts > endCap) return false;
     } else if (row.hour && /^\d{4}-\d{2}-\d{2}T\d{2}/.test(row.hour)) {
       const ts = rowTimestampMs(row);
-      if (ts == null || ts < range.startMs || ts > range.endMs) return false;
+      if (ts == null || ts < range.startMs || ts > endCap) return false;
     } else if (row.day && /^\d{4}-\d{2}-\d{2}/.test(row.day)) {
       // Daily aggregates: include whole calendar days that overlap the range
-      if (row.day < range.startDay || row.day > range.endDay) return false;
+      // Open-ended: allow today and future day keys from clock skew
+      if (row.day < range.startDay) return false;
+      if (!range.openEnded && row.day > range.endDay) return false;
     } else {
       const ts = rowTimestampMs(row);
       if (ts != null) {
-        if (ts < range.startMs || ts > range.endMs) return false;
+        if (ts < range.startMs || ts > endCap) return false;
       } else if (!opts.live) {
         return false;
       }
