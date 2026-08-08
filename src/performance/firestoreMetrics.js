@@ -49,11 +49,41 @@ export function resolvePageIdentity() {
     "";
   const p = path.toLowerCase();
 
+  // Include Vite rollup short names (/coag, /haem, /biochem) — without these,
+  // pathname "coag" was stored as page "coag" and never showed as Coagulation on Timeline.
   const map = [
-    [/index_biochem|biochem\.html/, { page: "Biochemistry", department: "Biochemistry", bucket: "Department Register" }],
-    [/hormones|owner_hormones/, { page: "Hormones", department: "Hormones", bucket: "Owner" }],
-    [/index_haem|haem\.html|owner_haem/, { page: "Haematology", department: "Haematology", bucket: p.includes("owner") ? "Owner" : "Department Register" }],
-    [/index_coag|coag\.html|owner_coag/, { page: "Coagulation", department: "Coagulation", bucket: p.includes("owner") ? "Owner" : "Department Register" }],
+    [
+      /^(?:index_)?biochem(?:istry)?(?:\.html)?$|owner_biochem/,
+      {
+        page: p.includes("owner") ? "OwnerBiochem" : "Biochemistry",
+        department: "Biochemistry",
+        bucket: p.includes("owner") ? "Owner" : "Department Register",
+      },
+    ],
+    [
+      /^(?:index_)?haem(?:atology)?(?:\.html)?$|owner_haem/,
+      {
+        page: "Haematology",
+        department: "Haematology",
+        bucket: p.includes("owner") ? "Owner" : "Department Register",
+      },
+    ],
+    [
+      /^(?:index_)?coag(?:ulation)?(?:\.html)?$|owner_coag/,
+      {
+        page: "Coagulation",
+        department: "Coagulation",
+        bucket: p.includes("owner") ? "Owner" : "Department Register",
+      },
+    ],
+    [
+      /hormones|owner_hormones/,
+      {
+        page: p.includes("owner") ? "OwnerHormones" : "Hormones",
+        department: "Hormones",
+        bucket: p.includes("owner") ? "Owner" : "Department Register",
+      },
+    ],
     [/index_backroom|backroom/, { page: "Backroom", department: "Backroom", bucket: "Department Register" }],
     [/validator/, { page: "Validator", department: "Validator", bucket: "Department Register" }],
     [/critical/, { page: "Critical", department: "Critical", bucket: "Critical Alerts" }],
@@ -62,7 +92,6 @@ export function resolvePageIdentity() {
     [/master_admin/, { page: "MasterAdmin", department: "Admin", bucket: "Other" }],
     [/analytics/, { page: "LabAnalytics", department: "Analytics", bucket: "Analytics" }],
     [/index_owner\.html|main_owner\.jsx/, { page: "OwnerWorkflow", department: "Owner", bucket: "Owner" }],
-    [/owner_biochem/, { page: "OwnerBiochem", department: "Biochemistry", bucket: "Owner" }],
     [/owner_urine|index_owner_urine/, { page: "OwnerUrine", department: "Urine", bucket: "Owner" }],
     [/owner_esr/, { page: "OwnerESR", department: "ESR", bucket: "Owner" }],
     [/owner_serology/, { page: "OwnerSerology", department: "Serology", bucket: "Owner" }],

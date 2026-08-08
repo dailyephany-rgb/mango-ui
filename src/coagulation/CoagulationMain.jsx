@@ -1,7 +1,8 @@
 
-import React, { useState, useMemo, lazy, Suspense, memo } from "react";
+import React, { useState, useMemo, lazy, Suspense, memo, useEffect } from "react";
 import "./CoagulationMain.css";
 import { db } from "../firebaseConfig.js";
+import { EngTelemetry } from "../engineering/telemetry/EngTelemetry.js";
 import {
   doc,
   setDoc,
@@ -44,6 +45,14 @@ const logout = () => {
   sessionStorage.clear();
   window.location.href = "/login.html";
 };
+
+  // Pin eng Timeline identity (Vite may serve this page as /coag).
+  useEffect(() => {
+    EngTelemetry.setContext({
+      page: "Coagulation",
+      department: "Coagulation",
+    });
+  }, []);
 
   const {
     regSearch,
