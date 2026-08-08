@@ -32,6 +32,8 @@ export function useMasterDeptSnapshots({
   masterDeptKey = currentDept,
   dateFrom,
   dateTo,
+  /** When false, unsubscribe all triad listeners and clear snapshot state. Default true. */
+  enabled = true,
   getDeptDocKey = (data) => compositeId(data.regNo, data.diagnosticNo),
   isSavedDoc = (data) =>
     data?.saved === "Yes" || data?.status === "saved",
@@ -47,23 +49,33 @@ export function useMasterDeptSnapshots({
   const listenGenRef = useRef(0);
 
   useEffect(() => {
+    const clearState = () => {
+      setMasterEntries([]);
+      setDeptDocs({});
+      setSavedSet(new Set());
+      setCriticalReportedSet(new Set());
+      setLoading(false);
+    };
+
+    if (!enabled) {
+      clearState();
+      return undefined;
+    }
+
     const fromStr = dateFrom || getLocalDateString();
     const toStr = dateTo || getLocalDateString();
     const start = localDayStart(fromStr);
     const endExclusive = localDayEndExclusive(toStr);
 
     if (!masterDeptKey || !start || !endExclusive) {
-      setMasterEntries([]);
-      setDeptDocs({});
-      setSavedSet(new Set());
-      setCriticalReportedSet(new Set());
-      setLoading(false);
+      clearState();
       return undefined;
     }
 
+    setLoading(true);
     listenGenRef.current += 1;
     const listenReason =
-      listenGenRef.current === 1 ? "page_load" : "date_change";
+      listenGenRef.current === 1 ? "page_load" : "deps_change";
 
     const startTs = Timestamp.fromDate(start);
     const endTs = Timestamp.fromDate(endExclusive);
@@ -278,9 +290,9 @@ export function useMasterDeptSnapshots({
       unsubDept();
       unsubCritical();
     };
-    // Intentional: stable callbacks from call site; re-subscribe on date/dept/collection.
+    // Intentional: stable callbacks from call site; re-subscribe on date/dept/collection/enabled.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deptCollection, currentDept, masterDeptKey, dateFrom, dateTo]);
+  }, [deptCollection, currentDept, masterDeptKey, dateFrom, dateTo, enabled]);
 
   return {
     masterEntries,
@@ -295,14 +307,32 @@ export function useMasterDeptSnapshots({
 }
 
 function emitDeptMetrics(stats, t0, mapSize) {
+  const durationMs =
+    (typeof performance !== "undefined" ? performance.now() : Date.now()) - t0;
   try {
     import("../../performance/performanceCollector.js").then((m) => {
       m.recordIncrementalSync?.({
         ...stats,
         mapSize,
-        durationMs:
-          (typeof performance !== "undefined" ? performance.now() : Date.now()) -
-          t0,
+        durationMs,
+      });
+    });
+  } catch {
+    /* ignore */
+  }
+  try {
+    import("../../engineering/telemetry/EngTelemetry.js").then((m) => {
+      m.EngTelemetry?.trackListener?.({
+        action: "merge",
+        event: "listener_merge",
+        collection: stats.label || "unknown",
+        durationMs,
+        docCount: mapSize,
+        changeCount:
+          (stats.added || 0) + (stats.modified || 0) + (stats.removed || 0),
+        mergeMs: durationMs,
+        firstSnapshot: !!stats.initial,
+        subsequentSnapshot: !stats.initial,
       });
     });
   } catch {

@@ -756,6 +756,12 @@ async function flushListeners(db, events, deviceId) {
         firstSnapMaxDocs: 0,
         payloadBytesSum: 0,
         payloadBytesMax: 0,
+        changeCountSum: 0,
+        mergeMsSum: 0,
+        mergeMsCount: 0,
+        mergeMsMax: 0,
+        intervalSumMs: 0,
+        intervalCount: 0,
         lastDocCount: 0,
         reasonPageLoad: 0,
         reasonRefresh: 0,
@@ -797,6 +803,16 @@ async function flushListeners(db, events, deviceId) {
         b.durationCount += 1;
         b.durations.push(e.durationMs);
       }
+      if (e.changeCount != null) b.changeCountSum += e.changeCount;
+      if (e.payloadBytes != null) {
+        b.payloadBytesSum += e.payloadBytes;
+        if (e.payloadBytes > b.payloadBytesMax)
+          b.payloadBytesMax = e.payloadBytes;
+      }
+      if (e.avgIntervalMs != null) {
+        b.intervalSumMs += e.avgIntervalMs;
+        b.intervalCount += 1;
+      }
       if (
         event === "first_snapshot_received" ||
         e.event === "first_snapshot_received"
@@ -811,12 +827,15 @@ async function flushListeners(db, events, deviceId) {
           b.firstSnapDocSum += e.docCount;
           if (e.docCount > b.firstSnapMaxDocs) b.firstSnapMaxDocs = e.docCount;
         }
-        if (e.payloadBytes != null) {
-          b.payloadBytesSum += e.payloadBytes;
-          if (e.payloadBytes > b.payloadBytesMax)
-            b.payloadBytesMax = e.payloadBytes;
-        }
       }
+    } else if (action === "merge" || event === "listener_merge") {
+      if (e.mergeMs != null || e.durationMs != null) {
+        const ms = e.mergeMs ?? e.durationMs;
+        b.mergeMsSum += ms;
+        b.mergeMsCount += 1;
+        if (ms > b.mergeMsMax) b.mergeMsMax = ms;
+      }
+      if (e.changeCount != null) b.changeCountSum += e.changeCount;
     } else if (action === "error") b.errors += 1;
     else if (action === "reconnect") b.reconnects += 1;
     else if (action === "recreated") b.recreates += 1;
@@ -870,6 +889,11 @@ async function flushListeners(db, events, deviceId) {
           firstSnapshotCount: b.firstSnapCount,
           firstSnapshotDocSum: b.firstSnapDocSum,
           payloadBytesSum: b.payloadBytesSum,
+          changeCountSum: b.changeCountSum,
+          mergeMsSum: b.mergeMsSum,
+          mergeMsCount: b.mergeMsCount,
+          intervalSumMs: b.intervalSumMs,
+          intervalCount: b.intervalCount,
           durationSumMs: b.durationSum,
           durationCount: b.durationCount,
         },
@@ -882,6 +906,11 @@ async function flushListeners(db, events, deviceId) {
             b.durationCount > 0 ? b.durationSum / b.durationCount : null,
           payloadBytesMax: b.payloadBytesMax || null,
           firstSnapshotMaxDocs: b.firstSnapMaxDocs || null,
+          mergeMsMax: b.mergeMsMax || null,
+          avgMergeMs:
+            b.mergeMsCount > 0 ? b.mergeMsSum / b.mergeMsCount : null,
+          avgIntervalMs:
+            b.intervalCount > 0 ? b.intervalSumMs / b.intervalCount : null,
         },
         legacyMaxField: "firstSnapshotMaxMs",
         avgFrom: {

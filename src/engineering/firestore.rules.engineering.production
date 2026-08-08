@@ -1,20 +1,11 @@
 /**
- * Production-oriented rules template for a DEDICATED eng project only.
- * For shared vasundhara project, use npm run eng:ops-deploy (merges into live).
- *
- * Clinical impact: NONE (dedicated eng DB or eng_* prefix only).
+ * Dedicated eng project rules (same as firestore.rules.engineering).
+ * Deploy with: npm run eng:deploy
  */
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isOps() {
-      return request.auth != null
-        && request.auth.uid in [
-          // 'REPLACE_WITH_OPS_UID_1',
-        ];
-    }
-
     function isEngCol(col) {
       return col.matches('eng_.*');
     }
@@ -35,9 +26,9 @@ service cloud.firestore {
     }
 
     match /{col}/{docId} {
-      allow read: if isEngCol(col) && isOps();
+      allow read: if isEngCol(col);
       allow create, update: if isEngCol(col) && hasEngWriteSchema();
-      allow delete: if isEngCol(col) && (isOps() || engExpired());
+      allow delete: if isEngCol(col) && engExpired();
     }
   }
 }

@@ -16,16 +16,6 @@ export const validatorConfigs = {
     collection: "hormones_register",
     tests: hormoneRouting.MainAnalyzer.tests,
   },
-  biochem_backup: {
-    title: "Biochemistry — Backup Analyzer",
-    collection: "biochem_backup",
-    tests: biochemRouting.BackupAnalyzer.tests,
-  },
-  hormones_backup: {
-    title: "Hormones — Backup Analyzer",
-    collection: "hormones_backup",
-    tests: hormoneRouting.BackupAnalyzer.tests,
-  },
 
   // 🩸 Coagulation + Haematology
   coagulation: {

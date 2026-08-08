@@ -25,7 +25,7 @@ import {
 } from "./metadata.js";
 /** @type {ReturnType<typeof setInterval> | null} */
 let timer = null;
-/** @type {{ page?: string, department?: string, activeListeners?: number, waitingListeners?: number, hungLoads?: number, loadingPages?: string[] | null, retryCount?: number | null, memoryMB?: number, user?: string | null, lastPageLoadMs?: number | null, lastFirstSnapshotMs?: number | null, networkRttMs?: number | null, sessionId?: string | null, loadId?: string | null, buildId?: string | null, platform?: string | null }} */
+/** @type {{ page?: string, department?: string, activeListeners?: number, waitingListeners?: number, hungLoads?: number, loadingPages?: string[] | null, retryCount?: number | null, memoryMB?: number, user?: string | null, lastPageLoadMs?: number | null, lastFirstSnapshotMs?: number | null, networkRttMs?: number | null, sessionId?: string | null, loadId?: string | null, buildId?: string | null, platform?: string | null, listenerDocSum?: number | null, listenerPayloadBytesSum?: number | null, listenerUpdateCount?: number | null, listenerAvgIntervalMs?: number | null, listenerUpdatesPerMin?: number | null, listenerAvgMergeMs?: number | null }} */
 let ctx = {};
 
 /**
@@ -76,6 +76,12 @@ export function sendHeartbeat() {
       listenerCount: ctx.activeListeners ?? null,
       waitingListeners: ctx.waitingListeners ?? null,
       hungLoads: ctx.hungLoads ?? null,
+      listenerDocSum: ctx.listenerDocSum ?? null,
+      listenerPayloadBytesSum: ctx.listenerPayloadBytesSum ?? null,
+      listenerUpdateCount: ctx.listenerUpdateCount ?? null,
+      listenerAvgIntervalMs: ctx.listenerAvgIntervalMs ?? null,
+      listenerUpdatesPerMin: ctx.listenerUpdatesPerMin ?? null,
+      listenerAvgMergeMs: ctx.listenerAvgMergeMs ?? null,
       loadingPages: Array.isArray(ctx.loadingPages)
         ? ctx.loadingPages.slice(0, 8)
         : null,

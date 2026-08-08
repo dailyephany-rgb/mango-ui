@@ -1,16 +1,12 @@
 #!/usr/bin/env node
 /**
- * Safe Engineering ops deploy for shared project vasundhara-4c6e5.
+ * LEGACY: Safe eng_* merge into shared clinical project vasundhara-4c6e5.
  *
- * 1) Firebase login check
- * 2) Export LIVE indexes → merge eng composites (never drop clinical)
- * 3) Fetch LIVE Firestore rules → merge eng_* block (never wipe clinical)
- * 4) Deploy firestore:rules + firestore:indexes
+ * Prefer the dedicated project path instead:
+ *   npm run eng:deploy       → mango-engineering
+ *   npm run eng:pull-config
  *
- * Usage:
- *   npm run eng:login          # once — browser auth
- *   npm run eng:ops-deploy
- *   npm run eng:ops-deploy:dry
+ * This script remains for emergency shared-project ops only.
  */
 
 import { spawnSync } from "node:child_process";

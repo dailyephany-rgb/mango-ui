@@ -24,6 +24,19 @@ import {
   localDayEndExclusive,
 } from "../shared/utils/dates.js";
 import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import { annotateListenReason } from "../engineering/telemetry/listenerWatch.js";
+
+/** Known critical_alerts.dept values written by registers (dropdown stays usable when scoped). */
+const CRITICAL_DEPTS = [
+  "Bio-Chemistry",
+  "Hormones",
+  "Haematology",
+  "Coagulation",
+  "ESR",
+  "Serology",
+  "Rapid Card",
+  "Urine Analysis",
+];
 
 export default function CriticalAlertDashboard() {
   const [alerts, setAlerts] = useState([]);
@@ -57,12 +70,29 @@ export default function CriticalAlertDashboard() {
       return undefined;
     }
 
-    const q = query(
-      collection(db, "critical_alerts"),
-      where("flaggedAt", ">=", Timestamp.fromDate(start)),
-      where("flaggedAt", "<", Timestamp.fromDate(endExclusive)),
-      orderBy("flaggedAt", "asc")
-    );
+    setLoading(true);
+    const startTs = Timestamp.fromDate(start);
+    const endTs = Timestamp.fromDate(endExclusive);
+
+    // Wave 1 Safe: scope by dept in Firestore when not "All"
+    // (uses existing composite index: dept + flaggedAt)
+    const q =
+      deptFilter !== "All"
+        ? query(
+            collection(db, "critical_alerts"),
+            where("dept", "==", deptFilter),
+            where("flaggedAt", ">=", startTs),
+            where("flaggedAt", "<", endTs),
+            orderBy("flaggedAt", "asc")
+          )
+        : query(
+            collection(db, "critical_alerts"),
+            where("flaggedAt", ">=", startTs),
+            where("flaggedAt", "<", endTs),
+            orderBy("flaggedAt", "asc")
+          );
+
+    annotateListenReason(q, "deps_change");
 
     const unsub = onSnapshot(
       q,
@@ -76,17 +106,29 @@ export default function CriticalAlertDashboard() {
       },
       (err) => {
         console.error(
-          "[CriticalDashboard] flaggedAt query failed — check index:",
+          deptFilter !== "All"
+            ? "[CriticalDashboard] dept+flaggedAt query failed — check index (dept + flaggedAt):"
+            : "[CriticalDashboard] flaggedAt query failed — check index:",
           err
         );
         setLoading(false);
       }
     );
     return () => unsub();
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, deptFilter]);
 
-  // Unique departments for dropdown
-  const uniqueDepartments = ["All", ...new Set(alerts.map(a => a.dept).filter(Boolean))].sort();
+  // Stable dropdown: known depts + any extras present in the current snapshot
+  const uniqueDepartments = [
+    "All",
+    ...new Set([
+      ...CRITICAL_DEPTS,
+      ...alerts.map((a) => a.dept).filter(Boolean),
+    ]),
+  ].sort((a, b) => {
+    if (a === "All") return -1;
+    if (b === "All") return 1;
+    return String(a).localeCompare(String(b));
+  });
 
   const getTimeDiff = (flaggedAt, reportedAt) => {
     const start = parseDateField(flaggedAt);

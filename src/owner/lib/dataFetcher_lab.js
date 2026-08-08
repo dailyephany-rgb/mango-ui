@@ -3,6 +3,7 @@ import { db } from "../../firebaseConfig.js";
 import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrintedQuery.js";
 import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPaint.js";
 import { trackedOnSnapshot as onSnapshot } from "../../shared/firestore/trackedFirestore.js";
+import { subscribeSharedMasterRegister } from "../../shared/firestore/subscribeSharedOnSnapshot.js";
 import { withOwnerSourceControl } from "./withOwnerSourceControl.js";
 import testTimingsData from "../data/test_timings.json";
 import insideRouting from "../../inside_room_routing.json";
@@ -283,7 +284,7 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
     });
   };
 
-  const unsub1 = onSnapshot(masterRef, (s) => { mCache = s.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
+  const unsub1 = subscribeSharedMasterRegister(dateRange, (s) => { mCache = s.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
   
   const unsub2 = onSnapshot(labRef, (s) => {
     lCache = s.docs.map(d => ({ id: d.id, ...d.data() }));

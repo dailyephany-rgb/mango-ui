@@ -6,8 +6,6 @@
 export const VALIDATOR_COLLECTIONS = [
   "biochemistry_register",
   "hormones_main",
-  "biochem_backup",
-  "hormones_backup",
   "coagulation_register",
   "haematology_register",
   "esr_register",

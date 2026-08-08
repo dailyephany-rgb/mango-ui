@@ -55,6 +55,8 @@ export default function BiochemistryMain() {
     setSourceFilter,
   } = useRegisterFilters();
 
+  const [activeTab, setActiveTab] = useState("biochem");
+
   const {
     masterEntries,
     setMasterEntries,
@@ -68,9 +70,9 @@ export default function BiochemistryMain() {
     masterDeptKey: "Bio-Chemistry",
     dateFrom,
     dateTo,
+    // Pause parent triad while Hormones / Inventory / Adjustment tabs own their listeners
+    enabled: activeTab === "biochem",
   });
-
-  const [activeTab, setActiveTab] = useState("biochem");
   
   const [criticalModalOpen, setCriticalModalOpen] = useState(false);
   const [criticalPatient, setCriticalPatient] = useState(null);

@@ -238,11 +238,12 @@ export function startEngineeringTelemetry() {
 
     const syncListeners = () => {
       safeRun(() => {
-        import("../../performance/performanceStore.js")
+        import("./listenerWatch.js")
           .then((m) => {
-            const list = m.getState?.()?.listeners || [];
-            const active = list.filter((l) => l.state === "Active").length;
+            const active = m.getActiveListenerCount?.() ?? 0;
             EngTelemetry.setActiveListeners(active);
+            const cost = m.getListenerCostSummary?.();
+            if (cost) EngTelemetry.setListenerCost(cost);
           })
           .catch(() => {});
       }, "eng.syncListeners");

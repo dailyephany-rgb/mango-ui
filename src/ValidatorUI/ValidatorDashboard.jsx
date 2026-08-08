@@ -39,10 +39,6 @@ function getActiveCollection(
 ) {
   if (activeMainTab === "biochem")
     return activeSubTab === "hormones" ? "hormones_main" : "biochemistry_register";
-  if (activeMainTab === "backup")
-    return activeSubTab === "hormoneBackup" || activeSubTab === "hormones"
-      ? "hormones_backup"
-      : "biochem_backup";
   if (activeMainTab === "coag") return "coagulation_register";
   if (activeMainTab === "haem") return "haematology_register";
   if (activeMainTab === "backroom") {
@@ -236,7 +232,7 @@ export default function ValidatorDashboard() {
 
       <EngComponent name="Filters" type="Layout" parent="Validator.jsx">
       <div className="tab-container">
-        {["biochem", "backup", "coag", "haem", "backroom"].map((tab) => (
+        {["biochem", "coag", "haem", "backroom"].map((tab) => (
           <button
             key={tab}
             className={`tab-btn ${activeMainTab === tab ? "active" : ""}`}
@@ -260,23 +256,6 @@ export default function ValidatorDashboard() {
             onClick={() => setActiveSubTab("hormones")}
           >
             Hormones — Main
-          </button>
-        </div>
-      )}
-
-      {activeMainTab === "backup" && (
-        <div className="sub-tabs">
-          <button
-            className={`tab-btn ${activeSubTab === "main" ? "active" : ""}`}
-            onClick={() => setActiveSubTab("main")}
-          >
-            Biochem Backup
-          </button>
-          <button
-            className={`tab-btn ${activeSubTab === "hormones" ? "active" : ""}`}
-            onClick={() => setActiveSubTab("hormones")}
-          >
-            Hormones Backup
           </button>
         </div>
       )}
@@ -345,8 +324,6 @@ function getTitle(main, sub, backroom, bloodSub) {
     return sub === "hormones"
       ? "Hormones — Main Analyzer"
       : "Biochemistry — Main Analyzer";
-  if (main === "backup")
-    return sub === "hormones" ? "Hormones — Backup" : "Biochemistry — Backup";
   if (main === "coag") return "Coagulation Register";
   if (main === "haem") return "Haematology Register";
   if (main === "backroom") {

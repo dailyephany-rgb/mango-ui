@@ -105,33 +105,36 @@ export default function BloodGroupRegister() {
     const startTs = Timestamp.fromDate(start);
     const endTs = Timestamp.fromDate(endExclusive);
 
-    const testingQuery = query(
-      collection(db, "bloodgroup_testing_register"),
-      where("timePrinted", ">=", startTs),
-      where("timePrinted", "<", endTs),
-      orderBy("timePrinted", "asc")
-    );
+    // Only listen to the active tab collection — pause the other to avoid stacking
+    if (activeTab === "testing") {
+      const testingQuery = query(
+        collection(db, "bloodgroup_testing_register"),
+        where("timePrinted", ">=", startTs),
+        where("timePrinted", "<", endTs),
+        orderBy("timePrinted", "asc")
+      );
+      const unsubTesting = onSnapshot(
+        testingQuery,
+        (snap) => {
+          const data = {};
+          snap.docs.forEach((d) => {
+            data[d.id] = d.data();
+          });
+          setTestingDocs(data);
+        },
+        (err) => {
+          console.error("[BloodGroup] testing_register timePrinted query failed:", err);
+        }
+      );
+      return () => unsubTesting();
+    }
+
     const retestingQuery = query(
       collection(db, "bloodgroup_retesting_register"),
       where("timePrinted", ">=", startTs),
       where("timePrinted", "<", endTs),
       orderBy("timePrinted", "asc")
     );
-
-    const unsubTesting = onSnapshot(
-      testingQuery,
-      (snap) => {
-        const data = {};
-        snap.docs.forEach((d) => {
-          data[d.id] = d.data();
-        });
-        setTestingDocs(data);
-      },
-      (err) => {
-        console.error("[BloodGroup] testing_register timePrinted query failed:", err);
-      }
-    );
-
     const unsubRetesting = onSnapshot(
       retestingQuery,
       (snap) => {
@@ -145,12 +148,8 @@ export default function BloodGroupRegister() {
         console.error("[BloodGroup] retesting_register timePrinted query failed:", err);
       }
     );
-
-    return () => {
-      unsubTesting();
-      unsubRetesting();
-    };
-  }, [dateFrom, dateTo]);
+    return () => unsubRetesting();
+  }, [dateFrom, dateTo, activeTab]);
 
   const allMergedData = useMemo(() => {
     const bloodRows = masterEntries.filter(e =>

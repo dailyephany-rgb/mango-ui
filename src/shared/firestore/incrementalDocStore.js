@@ -123,6 +123,24 @@ function emitMetrics(stats) {
   } catch {
     /* ignore */
   }
+  try {
+    import("../../engineering/telemetry/EngTelemetry.js").then((m) => {
+      m.EngTelemetry?.trackListener?.({
+        action: "merge",
+        event: "listener_merge",
+        collection: stats.label || "unknown",
+        durationMs: stats.durationMs,
+        docCount: stats.mapSize,
+        changeCount:
+          (stats.added || 0) + (stats.modified || 0) + (stats.removed || 0),
+        mergeMs: stats.durationMs,
+        firstSnapshot: !!stats.initial,
+        subsequentSnapshot: !stats.initial,
+      });
+    }).catch(() => {});
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Compare mapped master rows by timePrinted (asc), matching orderBy. */

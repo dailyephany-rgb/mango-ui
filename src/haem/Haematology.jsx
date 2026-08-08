@@ -58,6 +58,7 @@ export default function Haematology() {
     masterDeptKey: "Haematology",
     dateFrom,
     dateTo,
+    enabled: activeTab === "register",
     getDeptDocKey: (_data, docId) => docId,
     criticalBelongsToDept: (data, dept) =>
       String(data.dept).toLowerCase() === String(dept).toLowerCase(),

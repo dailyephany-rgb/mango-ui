@@ -51,6 +51,8 @@ const logout = () => {
     setSourceFilter,
   } = useRegisterFilters();
 
+  const [activeTab, setActiveTab] = useState("tests");
+
   const {
     masterEntries,
     deptDocs: coagDocs,
@@ -64,11 +66,10 @@ const logout = () => {
     masterDeptKey: "Coagulation",
     dateFrom,
     dateTo,
+    enabled: activeTab === "tests",
     criticalBelongsToDept: (data, dept) =>
       String(data.dept).toLowerCase() === String(dept).toLowerCase(),
   });
-
-  const [activeTab, setActiveTab] = useState("tests");
   const [criticalModalOpen, setCriticalModalOpen] = useState(false);
   const [criticalPatient, setCriticalPatient] = useState(null);
 

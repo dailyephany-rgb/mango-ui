@@ -1,20 +1,14 @@
 /**
- * Shared Engineering Firebase security rules MERGE FRAGMENT for vasundhara-4c6e5.
+ * Dedicated Engineering Firestore rules for project `mango-engineering`.
+ * Deploy ONLY to mango-engineering — never to clinical vasundhara-4c6e5.
  *
- * DO NOT deploy this file alone — it would wipe clinical rules.
- * Use: npm run eng:ops-deploy  (fetches live rules, merges this fragment, deploys)
- *
- * Clinical impact: NONE — eng_* prefix only.
- *
- * Retention: client delete allowed ONLY when expireAt is in the past
- * (stamped by eng writers). Fresh eng_* docs cannot be wiped.
+ * Clinical impact: NONE (separate GCP project).
  */
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ===== BEGIN ENG MERGE BLOCK (mango-ui) =====
     function isEngCol(col) {
       return col.matches('eng_.*');
     }
@@ -30,16 +24,18 @@ service cloud.firestore {
         && request.time > resource.data.expireAt;
     }
 
+    // Default deny anything that is not eng_*
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
     match /{col}/{docId} {
       allow read: if isEngCol(col);
 
       allow create, update: if isEngCol(col) && hasEngWriteSchema();
 
-      // Retention-only deletes: past expireAt. Blocks wipe of live telemetry.
+      // Retention-only deletes (past expireAt)
       allow delete: if isEngCol(col) && engExpired();
     }
-    // ===== END ENG MERGE BLOCK (mango-ui) =====
-
-    // Keep all existing clinical match rules below / above as they are today.
   }
 }

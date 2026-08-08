@@ -37,12 +37,15 @@ import {
   setListenerRecreate,
   markListenerFirstSnapshot,
   markListenerTimeout,
+  markListenerUpdate,
   unregisterListenerWatch,
   resolveOpenReason,
   readListenReasonAnnotation,
   getWaitingCount,
   getHungCount,
   getLoadingPages,
+  getActiveListenerCount,
+  getListenerCostSummary,
 } from "../../engineering/telemetry/listenerWatch.js";
 
 let listenerSeq = 0;
@@ -82,6 +85,8 @@ function syncWaitHeartbeat() {
       hungLoads: getHungCount(),
       loadingPages: getLoadingPages(),
     });
+    EngTelemetry.setActiveListeners(getActiveListenerCount());
+    EngTelemetry.setListenerCost(getListenerCostSummary());
   }, "eng.wait.hb");
 }
 
@@ -436,6 +441,7 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
             constraints,
             queryKey: `${ctx.page}:${collection}:listen`,
             firstSnapshot: true,
+            changeCount: added + modified + removed,
           });
           if (pendingRetry) {
             EngTelemetry.trackListenerRetry({
@@ -452,19 +458,24 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
         }, "eng.snap.first");
       }
     } else {
+      const changeCount = added + modified + removed;
+      const payloadBytes =
+        eng && changeCount > 0 ? estimatePayloadBytes(snap) : null;
+      markListenerUpdate(id, {
+        docCount,
+        payloadBytes,
+        changeCount,
+      });
       if (perf) {
         recordRead({
           collection,
-          docCount:
-            added + modified + removed > 0
-              ? added + modified + removed
-              : docCount,
+          docCount: changeCount > 0 ? changeCount : docCount,
           source: "snapshot_update",
         });
         recordQuery({
           collection,
           durationMs: now() - t0,
-          docCount: added + modified + removed,
+          docCount: changeCount,
           kind: "snapshot_incremental",
           queryKey: `${ctx.page}:${collection}:listen`,
         });
@@ -474,10 +485,11 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
         const every = snapshotEvery();
         if (snapshotSample % every === 0) {
           safeRun(() => {
+            const cost = getListenerCostSummary();
             EngTelemetry.trackQuery({
               collection,
               durationMs: now() - t0,
-              docCount: added + modified + removed,
+              docCount: changeCount,
               kind: "snapshot_incremental",
               queryKey: `${ctx.page}:${collection}:listen`,
               constraints,
@@ -489,12 +501,17 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
               listenerId: id,
               docCount,
               durationMs: now() - t0,
+              payloadBytes,
+              changeCount,
               subsequentSnapshot: true,
               queryKey: `${ctx.page}:${collection}:listen`,
               constraints,
+              updatesPerMin: cost.updatesPerMin,
+              avgIntervalMs: cost.avgIntervalMs,
             });
           }, "eng.snap.inc");
         }
+        syncWaitHeartbeat();
       }
     }
 

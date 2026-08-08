@@ -3,6 +3,7 @@ import { db } from "../../firebaseConfig.js";
 import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrintedQuery.js";
 import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPaint.js";
 import { trackedOnSnapshot as onSnapshot } from "../../shared/firestore/trackedFirestore.js";
+import { subscribeSharedMasterRegister } from "../../shared/firestore/subscribeSharedOnSnapshot.js";
 import { withOwnerSourceControl } from "./withOwnerSourceControl.js";
 // IMPORT the JSON file
 import testTimingsData from "../data/test_timings.json";
@@ -503,7 +504,7 @@ return tests.some(test => canonSet.has(test));
     });
   };
 
-  const unsub1 = onSnapshot(masterRef, (s) => { mCache = s.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
+  const unsub1 = subscribeSharedMasterRegister(dateRange, (s) => { mCache = s.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
   const unsub2 = onSnapshot(outsourceRef, (s) => { oCache = s.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
 
   return withOwnerSourceControl(

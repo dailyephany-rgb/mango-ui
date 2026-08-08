@@ -517,6 +517,15 @@ export function DevicesPage() {
             Listeners: {selected.activeListeners ?? "—"} active · waiting{" "}
             {selected.waitingListeners ?? 0} · hung {selected.hungLoads ?? 0}
             {selected.retryCount != null ? ` · retries ${selected.retryCount}` : ""}
+            {selected.listenerDocSum != null
+              ? ` · docs ${selected.listenerDocSum}`
+              : ""}
+            {selected.listenerPayloadBytesSum != null
+              ? ` · ~${Math.round(selected.listenerPayloadBytesSum / 1024)} KB`
+              : ""}
+            {selected.listenerAvgMergeMs != null
+              ? ` · merge ${Math.round(selected.listenerAvgMergeMs)} ms`
+              : ""}
             {Array.isArray(selected.loadingPages) && selected.loadingPages.length ? (
               <>
                 {" "}
@@ -907,9 +916,20 @@ export function ListenersPage() {
     );
     const p95Snap =
       snapLoads.count > 0 ? snapLoads.p95 : dailyMax > 0 ? dailyMax : null;
+    const payloadSum = rows.reduce((a, r) => a + (r.payloadBytesSum || 0), 0);
+    const docSum = rows.reduce((a, r) => a + (r.firstSnapshotDocSum || 0), 0);
+    const changeSum = rows.reduce((a, r) => a + (r.changeCountSum || 0), 0);
+    const mergeCount = rows.reduce((a, r) => a + (r.mergeMsCount || 0), 0);
+    const mergeSum = rows.reduce((a, r) => a + (r.mergeMsSum || 0), 0);
+    const liveDocSum = sumFleet(devices, "listenerDocSum");
+    const liveBytes = sumFleet(devices, "listenerPayloadBytesSum");
+    const liveUpdates = sumFleet(devices, "listenerUpdatesPerMin");
     return {
       waiting: sumFleet(devices, "waitingListeners"),
       active: sumFleet(devices, "activeListeners"),
+      liveDocSum,
+      liveBytes,
+      liveUpdates,
       timeouts10: rows.reduce((a, r) => a + (r.timeouts10 || 0), 0),
       timeouts30: rows.reduce((a, r) => a + (r.timeouts30 || 0), 0),
       recreates: rows.reduce((a, r) => a + (r.recreates || 0), 0),
@@ -919,23 +939,52 @@ export function ListenersPage() {
       avgFirstSnap: dailyAvg,
       p95FirstSnap: p95Snap,
       slowestFirstSnap: dailyMax > 0 ? dailyMax : snapLoads.slowest,
+      payloadSum,
+      docSum,
+      changeSum,
+      avgMergeMs: mergeCount > 0 ? mergeSum / mergeCount : null,
     };
   }, [rows, devices, pageLoads]);
+
+  const fmtBytes = (n) => {
+    if (n == null || !Number.isFinite(n)) return "—";
+    if (n < 1024) return `${Math.round(n)} B`;
+    if (n < 1048576) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / 1048576).toFixed(2)} MB`;
+  };
 
   return (
     <>
       <div className="eng-header">
         <h1>Listeners</h1>
-        <div className="meta">{range.label}</div>
+        <div className="meta">
+          {range.label} · active = live tracked Firestore streams
+        </div>
       </div>
       <div className="eng-grid">
         <div className="eng-card">
           <div className="label">Active (fleet)</div>
           <div className="value">{fleetStats.active}</div>
+          <div className="sub">sum of device heartbeats</div>
         </div>
         <div className="eng-card">
           <div className="label">Waiting (fleet)</div>
           <div className="value">{fleetStats.waiting}</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Live docs held</div>
+          <div className="value">{fleetStats.liveDocSum}</div>
+          <div className="sub">sum lastDocCount across open streams</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Live payload est.</div>
+          <div className="value">{fmtBytes(fleetStats.liveBytes)}</div>
+          <div className="sub">sampled snapshot bytes</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Updating streams</div>
+          <div className="value">{fleetStats.liveUpdates ?? 0}</div>
+          <div className="sub">streams with update in last 60s</div>
         </div>
         <div className="eng-card">
           <div className="label">Timeouts 10s / 30s</div>
@@ -969,12 +1018,31 @@ export function ListenersPage() {
           </div>
         </div>
         <div className="eng-card">
+          <div className="label">Period doc seed</div>
+          <div className="value">{fleetStats.docSum}</div>
+          <div className="sub">first-snapshot docs sum</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Period payload</div>
+          <div className="value">{fmtBytes(fleetStats.payloadSum)}</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Period changes</div>
+          <div className="value">{fleetStats.changeSum}</div>
+          <div className="sub">incremental docChanges count</div>
+        </div>
+        <div className="eng-card">
+          <div className="label">Avg merge</div>
+          <div className="value">{fmtMs(fleetStats.avgMergeMs)}</div>
+          <div className="sub">incrementalDocStore apply</div>
+        </div>
+        <div className="eng-card">
           <div className="label">Slowest first snapshot</div>
           <div className="value">{fmtMs(fleetStats.slowestFirstSnap)}</div>
         </div>
       </div>
       <div className="eng-panel">
-        <h2>Daily churn</h2>
+        <h2>Daily churn + cost</h2>
         {!rows.length ? (
           <EmptyHint configured={configured} loading={loading} />
         ) : (
@@ -987,6 +1055,7 @@ export function ListenersPage() {
                 <th>Opens</th>
                 <th>Closes</th>
                 <th>Snapshots</th>
+                <th>Changes</th>
                 <th>Reconnects</th>
                 <th>Errors</th>
                 <th>T10</th>
@@ -996,6 +1065,9 @@ export function ListenersPage() {
                 <th>Avg1st</th>
                 <th>Max1st</th>
                 <th>MaxDocs</th>
+                <th>Payload max</th>
+                <th>Avg merge</th>
+                <th>Avg interval</th>
                 <th>Reasons</th>
                 <th>Last docs</th>
               </tr>
@@ -1011,6 +1083,7 @@ export function ListenersPage() {
                   <td>{r.opens || 0}</td>
                   <td>{r.closes || 0}</td>
                   <td>{r.snapshots || 0}</td>
+                  <td>{r.changeCountSum || 0}</td>
                   <td>{r.reconnects || 0}</td>
                   <td>{r.errors || 0}</td>
                   <td>{r.timeouts10 || 0}</td>
@@ -1020,6 +1093,23 @@ export function ListenersPage() {
                   <td>{fmtMs(rowAvgFirstSnap(r))}</td>
                   <td>{fmtMs(r.firstSnapshotMaxMs)}</td>
                   <td>{r.firstSnapshotMaxDocs ?? "—"}</td>
+                  <td>{fmtBytes(r.payloadBytesMax)}</td>
+                  <td>
+                    {fmtMs(
+                      r.avgMergeMs ??
+                        (r.mergeMsCount
+                          ? r.mergeMsSum / r.mergeMsCount
+                          : null)
+                    )}
+                  </td>
+                  <td>
+                    {fmtMs(
+                      r.avgIntervalMs ??
+                        (r.intervalCount
+                          ? r.intervalSumMs / r.intervalCount
+                          : null)
+                    )}
+                  </td>
                   <td
                     className="eng-muted"
                     style={{ fontSize: "0.72rem", maxWidth: 140 }}

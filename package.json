@@ -9,7 +9,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "dev:owner": "vite --open index_owner.html",
-    "eng:login": "firebase-tools login --reauth",
+    "eng:login": "npx firebase-tools login --reauth",
+    "eng:pull-config": "node scripts/eng-pull-config.mjs",
+    "eng:deploy": "node scripts/eng-deploy.mjs",
+    "eng:deploy:dry": "node scripts/eng-deploy.mjs --dry-run",
     "eng:ops-deploy": "node scripts/eng-ops-deploy.mjs",
     "eng:ops-deploy:dry": "node scripts/eng-ops-deploy.mjs --dry-run",
     "eng:ops-deploy:indexes": "node scripts/eng-ops-deploy.mjs --indexes-only"

@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "vasundhara-4c6e5"
+    "default": "mango-engineering",
+    "engineering": "mango-engineering",
+    "clinical": "vasundhara-4c6e5"
   }
 }

@@ -349,8 +349,12 @@ function trackListener(payload = {}) {
       operation: payload.operation || payload.action || "snapshot",
       listenerId: payload.listenerId || null,
       docCount: payload.docCount ?? null,
+      changeCount: payload.changeCount ?? null,
       durationMs,
       payloadBytes: payload.payloadBytes ?? null,
+      mergeMs: payload.mergeMs ?? null,
+      avgIntervalMs: payload.avgIntervalMs ?? null,
+      updatesPerMin: payload.updatesPerMin ?? null,
       reason: payload.reason || null,
       recreated: payload.recreated || false,
       queryKey: payload.queryKey || null,
@@ -626,6 +630,23 @@ function setActiveListeners(n) {
 }
 
 /**
+ * Observer-only listener cost rollup for device heartbeat / fleet Health.
+ * @param {{ activeCount?: number, docSum?: number, payloadBytesSum?: number, updateCount?: number, avgIntervalMs?: number|null, updatesPerMin?: number|null, avgMergeMs?: number|null }} cost
+ */
+function setListenerCost(cost = {}) {
+  safeRun(() => {
+    setHeartbeatContext({
+      listenerDocSum: cost.docSum ?? null,
+      listenerPayloadBytesSum: cost.payloadBytesSum ?? null,
+      listenerUpdateCount: cost.updateCount ?? null,
+      listenerAvgIntervalMs: cost.avgIntervalMs ?? null,
+      listenerUpdatesPerMin: cost.updatesPerMin ?? null,
+      listenerAvgMergeMs: cost.avgMergeMs ?? null,
+    });
+  }, "eng.listeners.cost");
+}
+
+/**
  * Observer-only wait-state for heartbeat / fleet Health.
  * @param {{ waitingListeners?: number, hungLoads?: number, loadingPages?: string[], retries?: number }} partial
  */
@@ -664,6 +685,7 @@ export const EngTelemetry = {
   flush,
   shutdown,
   setActiveListeners,
+  setListenerCost,
   setListenerWaitState,
   componentMount,
   componentRender,

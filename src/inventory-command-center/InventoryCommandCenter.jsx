@@ -7,7 +7,10 @@ import {
   orderBy,
   Timestamp
 } from "firebase/firestore";
-import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFirestore.js";
+import {
+  trackedOnSnapshot as onSnapshot,
+  trackedGetDocs as getDocs,
+} from "../shared/firestore/trackedFirestore.js";
 
 import { db } from "../firebaseConfig.js";
 import {
@@ -119,15 +122,15 @@ const InventoryCommandCenter = () => {
     return () => unsub();
   }, [needsLive]);
 
-  // Consumed history — status + consumedAt range
+  // Consumed history — one-shot getDocs (not realtime)
   useEffect(() => {
     if (!needsConsumed) {
       setLoadingConsumed(false);
       return undefined;
     }
 
+    let cancelled = false;
     dateGen.current += 1;
-    const reason = dateGen.current === 1 ? "page_load" : "date_change";
     const consumedKey = `icc:consumed:${fromDate}:${toDate}`;
     const hadCache = paintOrClear(setInventoryLogs, consumedKey);
     setLoadingConsumed(!hadCache);
@@ -145,101 +148,110 @@ const InventoryCommandCenter = () => {
       where("consumedAt", "<", Timestamp.fromDate(endExclusive)),
       orderBy("consumedAt", "desc")
     );
-    annotateListenReason(consumedQ, reason);
-    const unsub = onSnapshot(
-      consumedQ,
-      (snap) => {
+
+    getDocs(consumedQ)
+      .then((snap) => {
+        if (cancelled) return;
         const next = mapDocs(snap);
         setInventoryLogs(next);
         setCache(consumedKey, next, SESSION_QUERY_TTL_MS);
         setLoadingConsumed(false);
-      },
-      (err) => {
+      })
+      .catch((err) => {
+        if (cancelled) return;
         console.error(
           "[ICC] consumed inventory_logs failed — check index (status + consumedAt):",
           err
         );
         setInventoryLogs([]);
         setLoadingConsumed(false);
-      }
-    );
-    return () => unsub();
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [needsConsumed, fromDate, toDate]);
 
-  // QC & Calibration — timestamp range (history)
+  // QC & Calibration — one-shot getDocs (history)
   useEffect(() => {
     if (!needsQC) {
       setLoadingQC(false);
       return undefined;
     }
 
-    const reason = "date_change";
+    let cancelled = false;
     const qcKey = `icc:qc:${fromDate}:${toDate}`;
     const calKey = `icc:calibration:${fromDate}:${toDate}`;
     const hadQc = paintOrClear(setQCLogs, qcKey);
     const hadCal = paintOrClear(setCalibrationLogs, calKey);
     setLoadingQC(!(hadQc && hadCal));
 
-    const unsubs = [];
     const qcQ = scopedTimestampRangeQuery("qc_logs", "timestamp", dateRange);
     const calQ = scopedTimestampRangeQuery(
       "calibration_logs",
       "timestamp",
       dateRange
     );
+
+    const jobs = [];
     if (qcQ) {
-      annotateListenReason(qcQ, reason);
-      unsubs.push(
-        onSnapshot(
-          qcQ,
-          (snap) => {
+      jobs.push(
+        getDocs(qcQ)
+          .then((snap) => {
+            if (cancelled) return;
             const next = mapDocs(snap);
             setQCLogs(next);
             setCache(qcKey, next, SESSION_QUERY_TTL_MS);
-            setLoadingQC(false);
-          },
-          (err) => {
+          })
+          .catch((err) => {
+            if (cancelled) return;
             console.error("[ICC] qc_logs timestamp query failed:", err);
             setQCLogs([]);
-            setLoadingQC(false);
-          }
-        )
+          })
       );
     }
     if (calQ) {
-      annotateListenReason(calQ, reason);
-      unsubs.push(
-        onSnapshot(
-          calQ,
-          (snap) => {
+      jobs.push(
+        getDocs(calQ)
+          .then((snap) => {
+            if (cancelled) return;
             const next = mapDocs(snap);
             setCalibrationLogs(next);
             setCache(calKey, next, SESSION_QUERY_TTL_MS);
-            setLoadingQC(false);
-          },
-          (err) => {
+          })
+          .catch((err) => {
+            if (cancelled) return;
             console.error(
               "[ICC] calibration_logs timestamp query failed:",
               err
             );
             setCalibrationLogs([]);
-            setLoadingQC(false);
-          }
-        )
+          })
       );
     }
-    if (!qcQ && !calQ) setLoadingQC(false);
-    return () => unsubs.forEach((u) => u());
+
+    if (!jobs.length) {
+      setLoadingQC(false);
+      return undefined;
+    }
+
+    Promise.all(jobs).finally(() => {
+      if (!cancelled) setLoadingQC(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [needsQC, fromDate, toDate]);
 
-  // Consumption ledger — Ledger + Cost. Persists across Ledger↔Cost.
+  // Consumption ledger — Ledger + Cost. One-shot getDocs.
   useEffect(() => {
     if (!needsLedger) {
       setLoadingLedger(false);
       return undefined;
     }
 
-    const reason = "date_change";
+    let cancelled = false;
     const ledgerKey = `icc:ledger:${fromDate}:${toDate}`;
     const hadCache = paintOrClear(setLedgerEntries, ledgerKey);
     setLoadingLedger(!hadCache);
@@ -252,36 +264,38 @@ const InventoryCommandCenter = () => {
       setLoadingLedger(false);
       return undefined;
     }
-    annotateListenReason(ledgerQ, reason);
 
-    const unsub = onSnapshot(
-      ledgerQ,
-      (snap) => {
+    getDocs(ledgerQ)
+      .then((snap) => {
+        if (cancelled) return;
         const next = mapDocs(snap);
         setLedgerEntries(next);
         setCache(ledgerKey, next, SESSION_QUERY_TTL_MS);
         setLoadingLedger(false);
-      },
-      (err) => {
+      })
+      .catch((err) => {
+        if (cancelled) return;
         console.error(
           "[ICC] consumption_ledger timestamp query failed:",
           err
         );
         setLedgerEntries([]);
         setLoadingLedger(false);
-      }
-    );
-    return () => unsub();
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [needsLedger, fromDate, toDate]);
 
-  // Combo ledger — Ledger tab only
+  // Combo ledger — Ledger tab only. One-shot getDocs.
   useEffect(() => {
     if (!needsCombo) {
       setLoadingCombo(false);
       return undefined;
     }
 
-    const reason = "date_change";
+    let cancelled = false;
     const comboKey = `icc:comboLedger:${fromDate}:${toDate}`;
     const hadCache = paintOrClear(setComboLedgerEntries, comboKey);
     setLoadingCombo(!hadCache);
@@ -294,26 +308,28 @@ const InventoryCommandCenter = () => {
       setLoadingCombo(false);
       return undefined;
     }
-    annotateListenReason(comboQ, reason);
 
-    const unsub = onSnapshot(
-      comboQ,
-      (snap) => {
+    getDocs(comboQ)
+      .then((snap) => {
+        if (cancelled) return;
         const next = mapDocs(snap);
         setComboLedgerEntries(next);
         setCache(comboKey, next, SESSION_QUERY_TTL_MS);
         setLoadingCombo(false);
-      },
-      (err) => {
+      })
+      .catch((err) => {
+        if (cancelled) return;
         console.error(
           "[ICC] combo_consumption_ledger timestamp query failed:",
           err
         );
         setComboLedgerEntries([]);
         setLoadingCombo(false);
-      }
-    );
-    return () => unsub();
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [needsCombo, fromDate, toDate]);
 
   const dateProps = { fromDate, toDate, setFromDate, setToDate };

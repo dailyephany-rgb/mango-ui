@@ -7,6 +7,7 @@ import { db } from "../../firebaseConfig.js";
 import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrintedQuery.js";
 import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPaint.js";
 import { trackedOnSnapshot as onSnapshot } from "../../shared/firestore/trackedFirestore.js";
+import { subscribeSharedMasterRegister } from "../../shared/firestore/subscribeSharedOnSnapshot.js";
 import { withOwnerSourceControl } from "./withOwnerSourceControl.js";
 import testTimings from "../data/test_timings.json";
 
@@ -285,7 +286,7 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
     });
   };
 
-  const unsubMaster = onSnapshot(masterRef, (snap) => { masterRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
+  const unsubMaster = subscribeSharedMasterRegister(dateRange, (snap) => { masterRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
   const unsubESR = onSnapshot(esrRef, (snap) => { 
     esrRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
     console.log("DEBUG: Raw ESR documents from Firestore:", esrRows.length, esrRows);

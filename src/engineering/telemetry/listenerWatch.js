@@ -20,6 +20,15 @@
  *   timeout10: boolean,
  *   timeout30: boolean,
  *   recreate: (() => void) | null,
+ *   updateCount: number,
+ *   changeCountSum: number,
+ *   lastUpdateAt: number | null,
+ *   lastIntervalMs: number | null,
+ *   intervalSumMs: number,
+ *   intervalCount: number,
+ *   mergeMsSum: number,
+ *   mergeMsCount: number,
+ *   lastMergeMs: number | null,
  * }>} */
 const active = new Map();
 
@@ -52,6 +61,59 @@ function closeKey(page, collection) {
 export function subscribeListenerWatch(fn) {
   subscribers.add(fn);
   return () => subscribers.delete(fn);
+}
+
+export function getActiveListenerCount() {
+  return active.size;
+}
+
+/**
+ * Live cost rollup across open tracked listeners (observer-only).
+ * @returns {{
+ *   activeCount: number,
+ *   docSum: number,
+ *   payloadBytesSum: number,
+ *   updateCount: number,
+ *   avgIntervalMs: number | null,
+ *   updatesPerMin: number | null,
+ *   avgMergeMs: number | null,
+ * }}
+ */
+export function getListenerCostSummary() {
+  let docSum = 0;
+  let payloadBytesSum = 0;
+  let updateCount = 0;
+  let intervalSum = 0;
+  let intervalCount = 0;
+  let mergeSum = 0;
+  let mergeCount = 0;
+  const now = Date.now();
+  let recentUpdates = 0;
+  for (const e of active.values()) {
+    if (e.docCount != null) docSum += e.docCount;
+    if (e.payloadBytes != null) payloadBytesSum += e.payloadBytes;
+    updateCount += e.updateCount || 0;
+    if (e.intervalSumMs && e.intervalCount) {
+      intervalSum += e.intervalSumMs;
+      intervalCount += e.intervalCount;
+    }
+    if (e.mergeMsSum && e.mergeMsCount) {
+      mergeSum += e.mergeMsSum;
+      mergeCount += e.mergeMsCount;
+    }
+    if (e.lastUpdateAt && now - e.lastUpdateAt < 60_000) {
+      recentUpdates += 1;
+    }
+  }
+  return {
+    activeCount: active.size,
+    docSum,
+    payloadBytesSum,
+    updateCount,
+    avgIntervalMs: intervalCount > 0 ? Math.round(intervalSum / intervalCount) : null,
+    updatesPerMin: recentUpdates > 0 ? recentUpdates : null,
+    avgMergeMs: mergeCount > 0 ? Math.round(mergeSum / mergeCount) : null,
+  };
 }
 
 export function getWaitingListeners() {
@@ -122,6 +184,15 @@ export function registerListenerWatch(entry) {
     timeout10: false,
     timeout30: false,
     waiting: true,
+    updateCount: 0,
+    changeCountSum: 0,
+    lastUpdateAt: null,
+    lastIntervalMs: null,
+    intervalSumMs: 0,
+    intervalCount: 0,
+    mergeMsSum: 0,
+    mergeMsCount: 0,
+    lastMergeMs: null,
     ...entry,
   });
   notify();
@@ -133,7 +204,7 @@ export function setListenerRecreate(id, recreate) {
   e.recreate = recreate;
 }
 
-export function markListenerFirstSnapshot(id, { docCount, payloadBytes, durationMs }) {
+export function markListenerFirstSnapshot(id, { docCount, payloadBytes, durationMs, mergeMs }) {
   const e = active.get(id);
   if (!e) return;
   e.waiting = false;
@@ -141,6 +212,39 @@ export function markListenerFirstSnapshot(id, { docCount, payloadBytes, duration
   e.docCount = docCount ?? null;
   e.payloadBytes = payloadBytes ?? null;
   e.durationMs = durationMs ?? null;
+  e.updateCount = (e.updateCount || 0) + 1;
+  e.lastUpdateAt = e.firstAt;
+  if (mergeMs != null && Number.isFinite(mergeMs)) {
+    e.lastMergeMs = mergeMs;
+    e.mergeMsSum = (e.mergeMsSum || 0) + mergeMs;
+    e.mergeMsCount = (e.mergeMsCount || 0) + 1;
+  }
+  notify();
+}
+
+/**
+ * Incremental update cost (docs / bytes / interval / merge).
+ */
+export function markListenerUpdate(id, { docCount, payloadBytes, changeCount, mergeMs } = {}) {
+  const e = active.get(id);
+  if (!e) return;
+  const now = Date.now();
+  if (e.lastUpdateAt != null) {
+    const interval = now - e.lastUpdateAt;
+    e.lastIntervalMs = interval;
+    e.intervalSumMs = (e.intervalSumMs || 0) + interval;
+    e.intervalCount = (e.intervalCount || 0) + 1;
+  }
+  e.lastUpdateAt = now;
+  e.updateCount = (e.updateCount || 0) + 1;
+  if (docCount != null) e.docCount = docCount;
+  if (payloadBytes != null) e.payloadBytes = payloadBytes;
+  if (changeCount != null) e.changeCountSum = (e.changeCountSum || 0) + changeCount;
+  if (mergeMs != null && Number.isFinite(mergeMs)) {
+    e.lastMergeMs = mergeMs;
+    e.mergeMsSum = (e.mergeMsSum || 0) + mergeMs;
+    e.mergeMsCount = (e.mergeMsCount || 0) + 1;
+  }
   notify();
 }
 
