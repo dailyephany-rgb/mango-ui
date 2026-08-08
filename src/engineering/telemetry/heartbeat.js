@@ -4,7 +4,7 @@
  */
 
 import { doc, setDoc, serverTimestamp, increment } from "firebase/firestore";
-import { getEngDb } from "../firebaseEngConfig.js";
+import { getEngDb, isEngDbSafe } from "../firebaseEngConfig.js";
 import {
   ENG_COLLECTIONS,
   ENG_BUILD_ID,
@@ -53,7 +53,7 @@ export function sendHeartbeat() {
   safeRun(() => {
     if (!isEngTelemetryEnabled()) return;
     const db = getEngDb();
-    if (!db) return;
+    if (!db || !isEngDbSafe(db)) return;
 
     const deviceId = getDeviceId();
     const label = getDeviceLabel();

@@ -1,6 +1,6 @@
 
 
-import React, { createContext, useState } from "react";
+import React, { createContext, useMemo, useState } from "react";
 
 export const OwnerContext = createContext();
 
@@ -14,15 +14,18 @@ export function OwnerProvider({ children }) {
 
   const [source, setSource] = useState("All");
 
+  const value = useMemo(
+    () => ({
+      dateRange,
+      setDateRange,
+      source,
+      setSource,
+    }),
+    [dateRange, source]
+  );
+
   return (
-    <OwnerContext.Provider
-      value={{
-        dateRange,
-        setDateRange,
-        source,
-        setSource
-      }}
-    >
+    <OwnerContext.Provider value={value}>
       {children}
     </OwnerContext.Provider>
   );

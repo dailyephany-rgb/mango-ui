@@ -9,6 +9,7 @@ import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPa
 import { trackedOnSnapshot as onSnapshot } from "../../shared/firestore/trackedFirestore.js";
 import { subscribeSharedMasterRegister } from "../../shared/firestore/subscribeSharedOnSnapshot.js";
 import { withOwnerSourceControl } from "./withOwnerSourceControl.js";
+import { createDebouncedPublish } from "./createDebouncedPublish.js";
 
 import testTimings from "../data/test_timings.json";
 import backroomRouting from "../../backroom_routing.json";
@@ -283,7 +284,7 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
   let masterRows = []; 
   let rapidRows = [];
 
-  const publish = () => {
+  const runPublish = () => {
     const { filteredMaster, filteredRapid } = applyFilters(masterRows, rapidRows);
     const merged = mergeDeptRows(filteredRapid);
     onDataLive({
@@ -303,6 +304,8 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
     });
   };
 
+  const { publish, publishNow, cancel } = createDebouncedPublish(runPublish, 75);
+
   const unsubMaster = subscribeSharedMasterRegister(dateRange, (snap) => { 
     masterRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); 
     publish(); 
@@ -314,14 +317,12 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
   });
 
   return withOwnerSourceControl(
-    () => {
-      unsubMaster?.();
-      unsubRapid?.();
-    },
+    () => { cancel(); unsubMaster?.();
+      unsubRapid?.(); },
     {
       getSource: () => currentSource,
       setSource: (next) => { currentSource = next; },
-      publish,
+      publish: publishNow,
       setSourceKey,
     }
   );

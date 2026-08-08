@@ -64,6 +64,11 @@ h2 {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
+.validator-table-scroll {
+  max-height: min(70vh, 720px);
+  overflow: auto;
+}
+
 .validator-table-title {
   font-size: 1.1rem;
   font-weight: 600;

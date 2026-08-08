@@ -9,6 +9,7 @@ import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPa
 import { trackedOnSnapshot as onSnapshot } from "../../shared/firestore/trackedFirestore.js";
 import { subscribeSharedMasterRegister } from "../../shared/firestore/subscribeSharedOnSnapshot.js";
 import { withOwnerSourceControl } from "./withOwnerSourceControl.js";
+import { createDebouncedPublish } from "./createDebouncedPublish.js";
 import testTimings from "../data/test_timings.json";
 
 /* ====================== DATE UTILS ====================== */
@@ -502,7 +503,7 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
   
   let masterRows = []; let hormonesRows = [];
 
-  const publish = () => {
+  const runPublish = () => {
     // UPDATED: Using T00:00:00 to ensure filtering is based on IST (Local Time)
     const from = dateRange?.from ? new Date(dateRange.from + "T00:00:00") : null;
     const to = dateRange?.to ? new Date(dateRange.to + "T23:59:59") : null;
@@ -543,15 +544,17 @@ export function subscribeOverview({ onData, source = "All", dateRange }) {
     });
   };
 
+  const { publish, publishNow, cancel } = createDebouncedPublish(runPublish, 75);
+
   const unsubMaster = subscribeSharedMasterRegister(dateRange, (snap) => { masterRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
   const unsubHormones = onSnapshot(hormonesRef, (snap) => { hormonesRows = snap.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
 
   return withOwnerSourceControl(
-    () => { unsubMaster?.(); unsubHormones?.(); },
+    () => { cancel(); unsubMaster?.(); unsubHormones?.(); },
     {
       getSource: () => currentSource,
       setSource: (next) => { currentSource = next; },
-      publish,
+      publish: publishNow,
       setSourceKey,
     }
   );

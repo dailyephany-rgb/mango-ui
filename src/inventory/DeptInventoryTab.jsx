@@ -19,6 +19,147 @@ import {
 
 import "./DeptInventory.css";
 
+const BIOCHEM_REAGENT_NAMES = [
+  "A1C SLIDES - 250 SLIDES",
+  "ALBUMIN/5 PACK/90 SLIDES",
+  "ALKP/5 PACK/300SLIDES",
+  "TOT BILIRUBIN/5 PACK/300 SLIDES",
+  "BUBC/5 PACK/300 SLIDES (DIRECT AND INDIRECT BILIRUBIN)",
+  "GLUCOSE/5 PACK/300 SLIDES",
+  "BUN/5 PACK/300 SLIDES",
+  "CALCIUM/5 PACK/300 SLIDES",
+  "CL/5 PACK/250 SLIDES",
+  "CHOLESTROL /5 PACK/300 SLIDES",
+  "CREATININE/5 PACK/300 SLIDES",
+  "CRP/5 PACK/90 SLIDES",
+  "DIRECT LDL/5 PACK/90 SLIDES",
+  "GGT/5 PACK/250 SLIDES",
+  "HDL/5 PACK/90 SLIDES",
+  "LDH/5 PACK/250 SLIDES",
+  "PHOSPHORUS/5 PACK/300 SLIDES",
+  "POTASSIUM/K+/5 PACK/250 SLIDES",
+  "AST/5 PACK/300 SLIDES",
+  "ALT/5 PACK/300 SLIDES",
+  "SODIUM/Na+/5 PACK/250 SLIDES",
+  "IRON/5 PACK/90 SLIDES",
+  "TOTAL PROTEIN/5 PACK/90 SLIDES",
+  "TRIGLYCERIDES/5 PACK/90 SLIDES",
+  "URIC ACID/5 PACK/300 SLIDES",
+  "DTIBC REAGENT BOX/ 300 TEST",
+].map((n) => n.toUpperCase());
+
+const BIOCHEM_CONTROL_SET = new Set(
+  [
+    "ASSAYED CHEMISTRY CONTROL-1 (BIO RAD)",
+    "ASSAYED CHEMISTRY CONTROL-2 (BIO RAD)",
+    "CRP PERF VERIFIER I",
+    "CRP PERF VERIFIER II",
+    "KIT DIABETES LIQ MP MAS I",
+    "KIT DIABETES LIQ MP MAS II",
+  ].map((n) => n.toUpperCase())
+);
+
+const BIOCHEM_CALIBRATOR_NAMES = [
+  "Vitros Cal-01 Total",
+  "VITROS CALIBRATOR KIT 2",
+  "CHEMISTRY CALIBRATOR",
+].map((n) => n.toUpperCase());
+
+const HORMONE_REAGENT_NAMES = [
+  "TOTAL PSA 100 WELLS",
+  "ECI HCV 100 WELLS",
+  "HS TROP REAGENT 100 WELLS",
+  "HS TROPONIN I REAGENT 100 WELLS",
+  "VITROS HBSAG / 100 WELLS",
+  "TOT B-hCG / 100 WELLS",
+  "VITROS HBSAG / 100 WELLS",
+  "VITR HIV CMBO RGT PK (NONUS 100 WELLS)",
+  "FERRITIN/ 100 WELLS",
+  "25 OH VITAMIN D / TOTAL 100",
+  "B12 100 WELLS",
+  "PROGESTERONE/ 100 WELLS",
+  "ESTRADIOL / 100 WELLS",
+  "PROLACTIN / 100 WELLS",
+  "LH/ 100 WELLS",
+  "FREE T4 / 100 WELLS",
+  "TOT T3 / 100 WELLS",
+  "TOT T4 / 100 WELLS",
+  "TSH3 REAGENT/ 100 WELLS",
+].map((n) => n.toUpperCase());
+
+const HORMONE_CONTROL_SET = new Set(
+  [
+    "IMMUNOASSAY PLUS CONTROL 3*4",
+    "ECI HIV I&II CONTROL",
+    "ECI HBSAG CONTROL",
+    "ECI HCV CONTROL",
+  ].map((n) => n.toUpperCase())
+);
+
+const HORMONE_CALIBRATOR_NAMES = [
+  "TOT B-HCG CAL II BX/3 SET",
+  "ESTRADIOL CAL BOX",
+  "FERRITIN CAL BOX/3 SET",
+  "FSH CALIBRATOR BOX 1 SET",
+  "FREE T4 CAL BOX",
+  "VITROS HIV CMBO CALIB",
+  "VITROS HBSAG ES CAL",
+  "LH CALIBRATOR BOX/ 1 SET",
+  "PROLACTIN CALIBRATOR BOX/ 1 SET",
+  "PROGESTERONE CALIBRATOR BOX SET 3",
+  "TOT T3 Cal box/ 1 set",
+  "TOT 4 Cal box/ 1 set",
+  "TSH CALIBRATOR BOX 1 SET",
+  "FOLATE CALIBRATOR BOX 1 SET",
+  "B12 CALIBRATOR BOX 1 SET",
+  "25 OH VITAMIN D TOTAL CAL",
+].map((n) => n.toUpperCase());
+
+const BIOCHEM_CONSUMABLE_NAMES = [
+  "VITROS CUVETTE BOX",
+  "VITROS SAMPLE CUP",
+  "VITROS MICROTIPS",
+  "VITROS VARSA TIP",
+  "VITROS ERF",
+  "VITROS IWF",
+  "VITROS SR",
+  "VITROS MAINTAINANCE PACK",
+  "VITROS DECICENT PACK",
+  "VITROS HUMIDITY PACK",
+  "VITROS UWR",
+].map((n) => n.toUpperCase());
+
+function categorizeDeptInventoryItem(item) {
+  const name = item.reagentName?.toUpperCase().trim() || "";
+
+  let category = "Other";
+  let isControl = false;
+  let isCalibrator = false;
+  let isConsumable = false;
+
+  if (BIOCHEM_REAGENT_NAMES.some((bn) => name.includes(bn))) {
+    category = "Biochem";
+  } else if (BIOCHEM_CONTROL_SET.has(name)) {
+    category = "Biochem";
+    isControl = true;
+  } else if (BIOCHEM_CALIBRATOR_NAMES.some((bc) => name.includes(bc))) {
+    category = "Biochem";
+    isCalibrator = true;
+  } else if (HORMONE_REAGENT_NAMES.some((hn) => name.includes(hn))) {
+    category = "Hormones";
+  } else if (HORMONE_CONTROL_SET.has(name)) {
+    category = "Hormones";
+    isControl = true;
+  } else if (HORMONE_CALIBRATOR_NAMES.some((hc) => name.includes(hc))) {
+    category = "Hormones";
+    isCalibrator = true;
+  } else if (BIOCHEM_CONSUMABLE_NAMES.some((c) => name.includes(c))) {
+    category = "Biochem";
+    isConsumable = true;
+  }
+
+  return { ...item, category, isControl, isCalibrator, isConsumable };
+}
 
 export default function DeptInventoryTab() {
   const [inventory, setInventory] = useState([]);
@@ -64,132 +205,8 @@ export default function DeptInventoryTab() {
     const unsub = subscribeInventoryByMachines(
       INVENTORY_MACHINES.deptMain,
       (logs) => {
-      const categorized = logs.map(item => {
-        const name = item.reagentName?.toUpperCase().trim();
-
-        
-        const biochemNames = [
-          "A1C SLIDES - 250 SLIDES",
-          "ALBUMIN/5 PACK/90 SLIDES", 
-          "ALKP/5 PACK/300SLIDES",
-          "TOT BILIRUBIN/5 PACK/300 SLIDES",
-          "BUBC/5 PACK/300 SLIDES (DIRECT AND INDIRECT BILIRUBIN)",
-          "GLUCOSE/5 PACK/300 SLIDES",
-          "BUN/5 PACK/300 SLIDES",
-          "CALCIUM/5 PACK/300 SLIDES",
-          "CL/5 PACK/250 SLIDES",
-          "CHOLESTROL /5 PACK/300 SLIDES",
-          "CREATININE/5 PACK/300 SLIDES",
-          "CRP/5 PACK/90 SLIDES",
-          "DIRECT LDL/5 PACK/90 SLIDES",
-          "GGT/5 PACK/250 SLIDES",
-          "HDL/5 PACK/90 SLIDES",
-          "LDH/5 PACK/250 SLIDES",
-          "PHOSPHORUS/5 PACK/300 SLIDES",
-          "POTASSIUM/K+/5 PACK/250 SLIDES",
-          "AST/5 PACK/300 SLIDES",
-          "ALT/5 PACK/300 SLIDES",
-          "SODIUM/Na+/5 PACK/250 SLIDES",
-          "IRON/5 PACK/90 SLIDES",
-          "TOTAL PROTEIN/5 PACK/90 SLIDES",
-          "TRIGLYCERIDES/5 PACK/90 SLIDES",
-          "URIC ACID/5 PACK/300 SLIDES",
-          "DTIBC REAGENT BOX/ 300 TEST"
-        ].map(n => n.toUpperCase());
-
-        const biochemControls = [
-          "ASSAYED CHEMISTRY CONTROL-1 (BIO RAD)", "ASSAYED CHEMISTRY CONTROL-2 (BIO RAD)",
-          "CRP PERF VERIFIER I", "CRP PERF VERIFIER II", "KIT DIABETES LIQ MP MAS I",
-          "KIT DIABETES LIQ MP MAS II"
-        ].map(n => n.toUpperCase());
-
-        const biochemCalibrators = ["Vitros Cal-01 Total", "VITROS CALIBRATOR KIT 2", "CHEMISTRY CALIBRATOR"].map(n => n.toUpperCase());
-
-        const hormoneNames = [
-          "TOTAL PSA 100 WELLS",
-          "ECI HCV 100 WELLS",
-          "HS TROP REAGENT 100 WELLS",
-          "HS TROPONIN I REAGENT 100 WELLS",
-          "VITROS HBSAG / 100 WELLS",
-          "TOT B-hCG / 100 WELLS",
-          "VITROS HBSAG / 100 WELLS",
-          "VITR HIV CMBO RGT PK (NONUS 100 WELLS)",
-          "FERRITIN/ 100 WELLS",
-          "25 OH VITAMIN D / TOTAL 100",
-          "B12 100 WELLS",
-          "PROGESTERONE/ 100 WELLS",
-          "ESTRADIOL / 100 WELLS",
-          "PROLACTIN / 100 WELLS",
-          "LH/ 100 WELLS",
-          "FREE T4 / 100 WELLS",
-          "TOT T3 / 100 WELLS",
-          "TOT T4 / 100 WELLS",
-          "TSH3 REAGENT/ 100 WELLS"
-        ].map(n => n.toUpperCase());
-
-        const hormoneControls = ["IMMUNOASSAY PLUS CONTROL 3*4", "ECI HIV I&II CONTROL", "ECI HBSAG CONTROL", "ECI HCV CONTROL"].map(n => n.toUpperCase());
-        
-        const hormoneCalibrators = [
-          "TOT B-HCG CAL II BX/3 SET", "ESTRADIOL CAL BOX", "FERRITIN CAL BOX/3 SET",
-          "FSH CALIBRATOR BOX 1 SET", "FREE T4 CAL BOX", "VITROS HIV CMBO CALIB",
-          "VITROS HBSAG ES CAL", "LH CALIBRATOR BOX/ 1 SET", "PROLACTIN CALIBRATOR BOX/ 1 SET",
-          "PROGESTERONE CALIBRATOR BOX SET 3", "TOT T3 Cal box/ 1 set", "TOT 4 Cal box/ 1 set",
-          "TSH CALIBRATOR BOX 1 SET", "FOLATE CALIBRATOR BOX 1 SET", "B12 CALIBRATOR BOX 1 SET",
-          "25 OH VITAMIN D TOTAL CAL"
-        ].map(n => n.toUpperCase());
-
-        const biochemConsumables = [
-          "VITROS CUVETTE BOX",
-          "VITROS SAMPLE CUP",
-          "VITROS MICROTIPS",
-          "VITROS VARSA TIP",
-          "VITROS ERF",
-          "VITROS IWF",
-          "VITROS SR",
-          "VITROS MAINTAINANCE PACK",
-          "VITROS DECICENT PACK",
-          "VITROS HUMIDITY PACK",
-          "VITROS UWR"].map(n => n.toUpperCase());
-
-        let category = "Other";
-        let isControl = false;
-        let isCalibrator = false;
-        let isConsumable = false;
-
-        if (biochemNames.some(bn => name.includes(bn))) {
-          category = "Biochem";
-        } else if (biochemControls.some(bc => name === bc)) {
-          category = "Biochem";
-          isControl = true;
-        } else if (biochemCalibrators.some(bc => name.includes(bc))) {
-          category = "Biochem";
-          isCalibrator = true;
-        } else if (hormoneNames.some(hn => name.includes(hn))) {
-          category = "Hormones";
-        } else if (hormoneControls.some(hc => name === hc)) {
-          category = "Hormones";
-          isControl = true;
-        } else if (hormoneCalibrators.some(hc => name.includes(hc))) {
-          category = "Hormones";
-          isCalibrator = true;
-        } else if (biochemConsumables.some(c => name.includes(c))) {
-            category = "Biochem";
-            isConsumable = true;
-        }
-
-        if (item.reagentName?.includes("BUBC")) {
-          console.log(
-            "BUBC DEBUG:",
-            item.reagentName,
-            "CATEGORY:",
-            category,
-            "STATUS:",
-            item.status
-          );
-        }
-        return { ...item, category, isControl, isCalibrator, isConsumable};
-      });
-      setInventory(categorized);
+        const categorized = logs.map(categorizeDeptInventoryItem);
+        setInventory(categorized);
       }
     );
     return () => unsub();

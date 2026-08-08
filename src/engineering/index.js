@@ -20,6 +20,7 @@ export { scheduleFlush, flushNow, flushViaBeacon } from "./flush.js";
 export { resetEngineeringTelemetry } from "./bootstrap.js";
 export {
   getEngDb,
+  isEngDbSafe,
   isEngFirebaseConfigured,
   getEngProjectId,
   getEngDatabaseId,

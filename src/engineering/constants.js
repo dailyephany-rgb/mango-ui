@@ -62,7 +62,7 @@ export const ENG_AGG_RETENTION_DAYS = 90;
 export const ENG_SAMPLE_RETENTION_DAYS = 30;
 export const ENG_ERROR_RETENTION_DAYS = 60;
 
-/** Engineering Firestore collection names (eng_* prefix — safe on shared clinical project) */
+/** Engineering Firestore collection names — mango-engineering project only (never clinical) */
 export const ENG_COLLECTIONS = {
   devices: "eng_devices",
   deviceStatus: "eng_device_status",

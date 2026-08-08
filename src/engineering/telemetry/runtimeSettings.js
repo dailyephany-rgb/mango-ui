@@ -4,7 +4,7 @@
  */
 
 import { doc, getDoc } from "firebase/firestore";
-import { getEngDb } from "../firebaseEngConfig.js";
+import { getEngDb, isEngDbSafe } from "../firebaseEngConfig.js";
 import {
   ENG_COLLECTIONS,
   HEARTBEAT_VISIBLE_MS,
@@ -89,7 +89,7 @@ export async function refreshRuntimeSettings(opts = {}) {
     if (!opts.force && now - lastFetchAt < 60_000) return getRuntimeSettings();
     lastFetchAt = now;
     const db = getEngDb();
-    if (!db) return getRuntimeSettings();
+    if (!db || !isEngDbSafe(db)) return getRuntimeSettings();
     const snap = await getDoc(doc(db, ENG_COLLECTIONS.settings, "global"));
     if (!snap.exists()) return getRuntimeSettings();
     const d = snap.data() || {};

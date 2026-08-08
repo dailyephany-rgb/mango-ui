@@ -5,6 +5,7 @@ import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPa
 import { trackedOnSnapshot as onSnapshot } from "../../shared/firestore/trackedFirestore.js";
 import { subscribeSharedMasterRegister } from "../../shared/firestore/subscribeSharedOnSnapshot.js";
 import { withOwnerSourceControl } from "./withOwnerSourceControl.js";
+import { createDebouncedPublish } from "./createDebouncedPublish.js";
 // IMPORT the JSON file
 import testTimingsData from "../data/test_timings.json";
 import OUTSOURCE_ROUTING from "../../Outsource.json";
@@ -426,7 +427,7 @@ export function subscribeOverview({ onData, dateRange, source, activeRegister, t
     );
   let mCache = [], oCache = [];
 
-  const publish = () => {
+  const runPublish = () => {
     // UPDATE: STRICT MIDNIGHT IST STRINGS
     const from = dateRange?.from ? new Date(dateRange.from + "T00:00:00") : null;
     const to = dateRange?.to ? new Date(dateRange.to + "T23:59:59") : null;
@@ -504,15 +505,17 @@ return tests.some(test => canonSet.has(test));
     });
   };
 
+  const { publish, publishNow, cancel } = createDebouncedPublish(runPublish, 75);
+
   const unsub1 = subscribeSharedMasterRegister(dateRange, (s) => { mCache = s.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
   const unsub2 = onSnapshot(outsourceRef, (s) => { oCache = s.docs.map(d => ({ id: d.id, ...d.data() })); publish(); });
 
   return withOwnerSourceControl(
-    () => { unsub1(); unsub2(); },
+    () => { cancel(); unsub1(); unsub2(); },
     {
       getSource: () => currentSource,
       setSource: (next) => { currentSource = next; },
-      publish,
+      publish: publishNow,
       setSourceKey,
     }
   );

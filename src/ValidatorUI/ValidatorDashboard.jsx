@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import "./ValidatorDashboard.css";
 import {
   collection,
@@ -198,18 +198,20 @@ export default function ValidatorDashboard() {
     }
   };
 
-  const currentData = rawData.filter((item) => {
+  const currentData = useMemo(() => {
     const s = searchTerm.toLowerCase().trim();
-    if (!s) return true;
+    if (!s) return rawData;
 
-    const matchesReg = String(item.regNo || "").toLowerCase().includes(s);
-    const matchesDiag = String(item.diagnosticNo || item.accessionNo || "")
-      .toLowerCase()
-      .includes(s);
-    const matchesName = String(item.name || "").toLowerCase().includes(s);
+    return rawData.filter((item) => {
+      const matchesReg = String(item.regNo || "").toLowerCase().includes(s);
+      const matchesDiag = String(item.diagnosticNo || item.accessionNo || "")
+        .toLowerCase()
+        .includes(s);
+      const matchesName = String(item.name || "").toLowerCase().includes(s);
 
-    return matchesReg || matchesDiag || matchesName;
-  });
+      return matchesReg || matchesDiag || matchesName;
+    });
+  }, [rawData, searchTerm]);
 
   return (
     <EngComponent name="Validator.jsx" type="Page" parent={null}>

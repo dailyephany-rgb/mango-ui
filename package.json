@@ -15,7 +15,8 @@
     "eng:deploy:dry": "node scripts/eng-deploy.mjs --dry-run",
     "eng:ops-deploy": "node scripts/eng-ops-deploy.mjs",
     "eng:ops-deploy:dry": "node scripts/eng-ops-deploy.mjs --dry-run",
-    "eng:ops-deploy:indexes": "node scripts/eng-ops-deploy.mjs --indexes-only"
+    "eng:ops-deploy:indexes": "node scripts/eng-ops-deploy.mjs --indexes-only",
+    "clinical:deploy-rules": "node scripts/clinical-deploy-rules.mjs"
   },
   "dependencies": {
     "@fullcalendar/interaction": "^6.1.20",

@@ -6,7 +6,7 @@ import {
   serverTimestamp,
   writeBatch
 } from "firebase/firestore";
-import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFirestore.js";
+import { trackedGetDocs as getDocs } from "../shared/firestore/trackedFirestore.js";
 
 import { db } from "../firebaseConfig";
 import { setStaticConfig } from "../shared/cache/staticConfigCache.js";
@@ -53,24 +53,36 @@ const hormoneTests = [
   "PSA", 
 ];
 
+function mapAdjustmentSnap(snap) {
+  const data = {};
+  snap.forEach((docSnap) => {
+    data[docSnap.id] = docSnap.data();
+  });
+  return data;
+}
+
 export default function InventoryAdjustmentTab() {
   const [adjustments, setAdjustments] = useState({});
   const [pendingChanges, setPendingChanges] = useState({});
+
+  // Config collection (doc id = testName). Rarely changes — one-shot getDocs
+  // is enough. Local save merges into state so this tab's UX stays identical.
   useEffect(() => {
-    const unsub = onSnapshot(
-      collection(db, "inventory_adjustments"),
-      (snap) => {
-        const data = {};
-
-        snap.forEach((docSnap) => {
-          data[docSnap.id] = docSnap.data();
-        });
-
-        setAdjustments(data);
-      }
-    );
-
-    return () => unsub();
+    let cancelled = false;
+    getDocs(collection(db, "inventory_adjustments"))
+      .then((snap) => {
+        if (cancelled) return;
+        setAdjustments(mapAdjustmentSnap(snap));
+      })
+      .catch((err) => {
+        console.error(
+          "[InventoryAdjustment] inventory_adjustments getDocs failed:",
+          err
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleAnalyzerChange = (
@@ -130,6 +142,19 @@ export default function InventoryAdjustmentTab() {
             analyzer,
           });
         }
+
+        // Mirror prior onSnapshot UX after local save (no live listener).
+        setAdjustments((prev) => {
+          const next = { ...prev };
+          for (const [testName, analyzer] of updates) {
+            next[testName] = {
+              ...(next[testName] || {}),
+              testName,
+              analyzer,
+            };
+          }
+          return next;
+        });
         
 
 

@@ -11,7 +11,11 @@ import {
   serverTimestamp,
   increment,
 } from "firebase/firestore";
-import { getEngDb, isEngFirebaseConfigured } from "../firebaseEngConfig.js";
+import {
+  getEngDb,
+  isEngFirebaseConfigured,
+  isEngDbSafe,
+} from "../firebaseEngConfig.js";
 import { ENG_COLLECTIONS } from "../constants.js";
 import {
   drainEvents,
@@ -165,7 +169,7 @@ export async function flushNow(opts = {}) {
     if (!events.length) return;
 
     const db = getEngDb();
-    if (!db || !isEngFirebaseConfigured()) {
+    if (!db || !isEngFirebaseConfigured() || !isEngDbSafe(db)) {
       for (const e of events) pushEvent(e);
       return;
     }
@@ -187,7 +191,7 @@ export async function flushNow(opts = {}) {
 
 async function deliverEvents(events) {
   const db = getEngDb();
-  if (!db) throw new Error("eng-db-missing");
+  if (!db || !isEngDbSafe(db)) throw new Error("eng-db-missing-or-unsafe");
   const deviceId = getDeviceId();
   const deviceLabel = getDeviceLabel() || null;
   const byDomain = groupBy(events, (e) => e.domain || "misc");

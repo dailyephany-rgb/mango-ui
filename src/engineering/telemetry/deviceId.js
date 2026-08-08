@@ -190,11 +190,11 @@ export function setDeviceLabel(label) {
  */
 export async function publishDeviceLabel(label) {
   try {
-    const { getEngDb } = await import("../firebaseEngConfig.js");
+    const { getEngDb, isEngDbSafe } = await import("../firebaseEngConfig.js");
     const { ENG_COLLECTIONS } = await import("../constants.js");
     const { doc, setDoc, serverTimestamp } = await import("firebase/firestore");
     const db = getEngDb();
-    if (!db) return;
+    if (!db || !isEngDbSafe(db)) return;
     const deviceId = getDeviceId();
     const normalized =
       normalizeDeviceLabel(label) || String(label || "").trim() || null;

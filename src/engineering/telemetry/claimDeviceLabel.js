@@ -13,7 +13,7 @@ import {
   limit,
   query,
 } from "firebase/firestore";
-import { getEngDb } from "../firebaseEngConfig.js";
+import { getEngDb, isEngDbSafe } from "../firebaseEngConfig.js";
 import { ENG_COLLECTIONS } from "../constants.js";
 import { normalizeDeviceLabel } from "./deviceId.js";
 
@@ -26,7 +26,7 @@ const COUNTER_DOC = "device_label_counters";
 export async function claimNextDeviceLabel(prefix) {
   const kind = normalizeDeviceLabel(prefix) || "desktop";
   const db = getEngDb();
-  if (!db) return null;
+  if (!db || !isEngDbSafe(db)) return null;
 
   // Scan outside the transaction (Firestore txs cannot do collection queries).
   let floor = 0;

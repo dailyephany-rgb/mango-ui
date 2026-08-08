@@ -26,7 +26,7 @@ export default function VirtualizedTableBody({
   renderRow,
   estimateRowHeight = DEFAULT_ROW_HEIGHT,
   overscan = DEFAULT_OVERSCAN,
-  scrollParentSelector = ".table-wrapper, .haem-table-wrapper, .table-card, .dept-table-wrapper",
+  scrollParentSelector = ".table-wrapper, .haem-table-wrapper, .table-card, .dept-table-wrapper, .validator-table-scroll",
   columnCount = 16,
 }) {
   const [range, setRange] = useState({ start: 0, end: VIRTUALIZE_MIN_ROWS });
@@ -59,10 +59,12 @@ export default function VirtualizedTableBody({
     setTbodyEl(node);
   }, []);
 
+  const itemCount = items?.length || 0;
+
   useEffect(() => {
-    if (!tbodyEl || !items?.length) return undefined;
-    if (items.length < VIRTUALIZE_MIN_ROWS) {
-      setRange({ start: 0, end: items.length });
+    if (!tbodyEl || !itemCount) return undefined;
+    if (itemCount < VIRTUALIZE_MIN_ROWS) {
+      setRange({ start: 0, end: itemCount });
       return undefined;
     }
 
@@ -79,16 +81,13 @@ export default function VirtualizedTableBody({
         viewH = window.innerHeight;
       } else {
         const parent = /** @type {HTMLElement} */ (scrollParent);
-        const parentRect = parent.getBoundingClientRect();
-        const bodyRect = tbodyEl.getBoundingClientRect();
-        viewTop = parent.scrollTop + (bodyRect.top - parentRect.top);
-        // When tbody is below sticky thead, viewTop relative to tbody content:
+        // Sticky thead: window by parent scrollTop / clientHeight
         viewTop = parent.scrollTop;
         viewH = parent.clientHeight;
       }
       const start = Math.max(0, Math.floor(viewTop / rowH) - overscan);
       const end = Math.min(
-        items.length,
+        itemCount,
         Math.ceil((viewTop + viewH) / rowH) + overscan
       );
       setRange((prev) =>
@@ -104,7 +103,7 @@ export default function VirtualizedTableBody({
       target.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
     };
-  }, [tbodyEl, items.length, estimateRowHeight, overscan, findScrollParent, items]);
+  }, [tbodyEl, itemCount, estimateRowHeight, overscan, findScrollParent]);
 
   const useVirtual = (items?.length || 0) >= VIRTUALIZE_MIN_ROWS;
 

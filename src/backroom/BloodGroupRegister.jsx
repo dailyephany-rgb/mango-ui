@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, memo } from "react";
 import { db } from "../firebaseConfig";
 import {
   collection,
@@ -28,6 +28,11 @@ import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPat
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useScopedMasterEntries } from "../shared/hooks/useScopedMasterEntries.js";
+import { useStableCallback } from "../shared/hooks/useStableCallback.js";
+import {
+  arePatientRowEqual,
+  DEPT_REGISTER_ROW_FIELDS,
+} from "../shared/utils/arePatientRowEqual.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
 
 
@@ -377,8 +382,15 @@ export default function BloodGroupRegister() {
     });
   }, [activeEntries, regSearch, sourceFilter, dateFrom, dateTo]);
 
-  const bloodGroups = ["A", "B", "AB", "O"];
-  const rhFactors = ["Positive", "Negative"];
+  const onChange = useStableCallback((tab, key, field, value) => {
+    handleChange(tab, key, field, value);
+  });
+  const onScan = useStableCallback((tab, entry, value) => {
+    handleScan(tab, entry, value);
+  });
+  const onSave = useStableCallback((tab, entry) => {
+    handleSave(tab, entry);
+  });
 
   return (
     <div className="register-section">
@@ -430,70 +442,15 @@ export default function BloodGroupRegister() {
             items={filteredEntries}
             columnCount={12}
             renderRow={(e) => (
-              <tr key={`${e.compositeKey}_${activeTab}`} className={e.saved === "Yes" ? "row-green" : e.scanned === "Yes" ? "row-yellow" : ""}>
-                <td className="sticky-col" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
-                <td className="sticky-col" style={{ color: "#475569" }}>{e.diagnosticNo}</td>
-                <td className="sticky-col">{e.name}</td>
-                <td>{e.age}</td>
-                <td>{e.gender}</td>
-                <td>{e.source}</td>
-                <td>
-                  <select
-                    value={e.bloodGroup}
-                    disabled={e.scanned !== "Yes" || e.saved === "Yes"}
-                    onChange={(ev) =>
-                      handleChange(
-                        activeTab,
-                        e.compositeKey,
-                        "bloodGroup",
-                        ev.target.value
-                      )
-                    }
-                  >
-               
-                    <option value="">Select</option>
-                    {bloodGroups.map((bg) => <option key={bg}>{bg}</option>)}
-                  </select>
-                </td>
-                <td>
-                  <select
-                    value={e.rhFactor}
-                    disabled={e.scanned !== "Yes" || e.saved === "Yes"}
-                    onChange={(ev) => handleChange(activeTab, e.compositeKey, "rhFactor", ev.target.value)}
-                  >
-                    <option value="">Select</option>
-                    {rhFactors.map((rh) => <option key={rh}>{rh}</option>)}
-                  </select>
-                </td>
-                <td>{e.result}</td>
-                <td>
-                  <select
-                    value={e.scanned}
-                    disabled={e.saved === "Yes"}
-                    onChange={(ev) =>
-                      handleScan(activeTab, e, ev.target.value)
-                    }
-                  >
-                    <option value="No">No</option>
-                    <option value="Yes">Yes</option>
-                  </select>
-                </td>
-
-                 <td
-              style={{
-                minWidth: "130px",
-                fontWeight: "600",
-                color: "#1e3a8a"
-              }}
-            >
-              {e.savedBy || "—"}
-            </td>
-                <td>
-                  <button className="save-btn" disabled={e.saved === "Yes" || saving} onClick={() => handleSave(activeTab, e)}>
-                    Save
-                  </button>
-                </td>
-              </tr>
+              <BloodGroupRegisterRow
+                key={`${e.compositeKey}_${activeTab}`}
+                patient={e}
+                activeTab={activeTab}
+                saving={saving}
+                onChange={onChange}
+                onScan={onScan}
+                onSave={onSave}
+              />
             )}
           />
         </table>
@@ -501,3 +458,88 @@ export default function BloodGroupRegister() {
     </div>
   );
 }
+
+const BLOOD_GROUPS = ["A", "B", "AB", "O"];
+const RH_FACTORS = ["Positive", "Negative"];
+
+const BloodGroupRegisterRow = memo(function BloodGroupRegisterRow({
+  patient: e,
+  activeTab,
+  saving,
+  onChange,
+  onScan,
+  onSave,
+}) {
+  return (
+    <tr
+      className={
+        e.saved === "Yes" ? "row-green" : e.scanned === "Yes" ? "row-yellow" : ""
+      }
+    >
+      <td
+        className="sticky-col"
+        style={e.urgent ? { borderLeft: "4px solid red" } : {}}
+      >
+        {e.regNo}
+      </td>
+      <td className="sticky-col" style={{ color: "#475569" }}>
+        {e.diagnosticNo}
+      </td>
+      <td className="sticky-col">{e.name}</td>
+      <td>{e.age}</td>
+      <td>{e.gender}</td>
+      <td>{e.source}</td>
+      <td>
+        <select
+          value={e.bloodGroup}
+          disabled={e.scanned !== "Yes" || e.saved === "Yes"}
+          onChange={(ev) =>
+            onChange(activeTab, e.compositeKey, "bloodGroup", ev.target.value)
+          }
+        >
+          <option value="">Select</option>
+          {BLOOD_GROUPS.map((bg) => (
+            <option key={bg}>{bg}</option>
+          ))}
+        </select>
+      </td>
+      <td>
+        <select
+          value={e.rhFactor}
+          disabled={e.scanned !== "Yes" || e.saved === "Yes"}
+          onChange={(ev) =>
+            onChange(activeTab, e.compositeKey, "rhFactor", ev.target.value)
+          }
+        >
+          <option value="">Select</option>
+          {RH_FACTORS.map((rh) => (
+            <option key={rh}>{rh}</option>
+          ))}
+        </select>
+      </td>
+      <td>{e.result}</td>
+      <td>
+        <select
+          value={e.scanned}
+          disabled={e.saved === "Yes"}
+          onChange={(ev) => onScan(activeTab, e, ev.target.value)}
+        >
+          <option value="No">No</option>
+          <option value="Yes">Yes</option>
+        </select>
+      </td>
+      <td style={{ minWidth: "130px", fontWeight: "600", color: "#1e3a8a" }}>
+        {e.savedBy || "—"}
+      </td>
+      <td>
+        <button
+          className="save-btn"
+          disabled={e.saved === "Yes" || saving}
+          onClick={() => onSave(activeTab, e)}
+        >
+          Save
+        </button>
+      </td>
+    </tr>
+  );
+}, arePatientRowEqual(DEPT_REGISTER_ROW_FIELDS));

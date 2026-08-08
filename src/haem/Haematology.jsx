@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, lazy, Suspense } from "react";
+import React, { useState, useMemo, lazy, Suspense, memo } from "react";
 import "./Haematology.css";
 import { db } from "../firebaseConfig.js";
 import {
@@ -23,8 +23,13 @@ import {
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
+import { useStableCallback } from "../shared/hooks/useStableCallback.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
+import {
+  arePatientRowEqual,
+  DEPT_REGISTER_ROW_FIELDS,
+} from "../shared/utils/arePatientRowEqual.js";
 import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 const HaemInventoryTab = lazy(() => import("../inventory/HaemInventoryTab.jsx"));
@@ -149,6 +154,12 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
         compositeKey,
         accessionNo: diagnosticNo,
         canonicalTests,
+        testsDisplay: canonicalTests.length
+          ? canonicalTests.map((s) => s.toUpperCase()).join(", ")
+          : "—",
+        hasHaemogram: canonicalTests.some((t) => t.includes("haemogram")),
+        hasHb: canonicalTests.some((t) => t.includes("hb haemoglobin")),
+        hasLbc: canonicalTests.some((t) => t.includes("lamellar body count")),
         source: normalizeSource(entry.source || entry.category),
         scanned: currentScanned,
         scannedTime: localScanTime ??savedData.scannedTime ?? null,
@@ -384,6 +395,19 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
     [patients, regSearch, sourceFilter, dateFrom, dateTo]
   );
 
+  const onScan = useStableCallback((patient, value) => {
+    handleScan(patient, value);
+  });
+  const onMachine = useStableCallback((compositeKey, value) => {
+    handleMachineSelection(compositeKey, value);
+  });
+  const onCritical = useStableCallback((patient) => {
+    triggerCritical(patient);
+  });
+  const onSave = useStableCallback((compositeKey) => {
+    handleSave(compositeKey);
+  });
+
   if (loading) return <p>Loading Haematology data...</p>;
 
   return (
@@ -490,122 +514,18 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
                 <VirtualizedTableBody
                   items={filteredPatients}
                   columnCount={16}
-                  renderRow={(p) => {
-                      const regKey = p.compositeKey;
-                      const selCanon = p.canonicalTests;
-                     
-                      const isSaved = p.status === "saved";
-                      const isScanned = p.scanned === "Yes";
-                      const isCriticalReported = criticalReportedSet.has(regKey);
-                      const isPendingCritical = !!criticalParams[regKey];
-
-                      const isCriticalRed =
-                        isCriticalReported ||
-                        isPendingCritical ||
-                        (isScanned && !isSaved);
-
-                      const rowClass = isSaved ? "row-saved" : isScanned ? "row-scanned" : "";
-
-
-                      return (
-                        <tr key={p.compositeKey} className={rowClass}>
-                          <td className="sticky-col" style={p.urgent ? { borderLeft: "4px solid red" } : {}}>{p.regNo}</td>
-                          <td className="sticky-col">{p.diagnosticNo || p.accessionNo}</td>
-                          <td className="sticky-col">{p.name}</td>
-                          <td>{p.age} {p.ageUnit ? `(${p.ageUnit})` : ""}</td>
-                          <td>{p.gender}</td>
-                          <td>{p.source}</td>
-                          <td>{selCanon.length ? selCanon.map((s) => s.toUpperCase()).join(", ") : "—"}</td>
-                          <td>{selCanon.some((t) => t.includes("haemogram")) ? "✅" : "—"}</td>
-                          <td>{selCanon.some((t) => t.includes("hb haemoglobin")) ? "✅" : "—"}</td>
-                          <td>{selCanon.some((t) => t.includes("lamellar body count")) ? "✅" : "—"}</td>
-                          <td>
-                            <select value={isScanned ? "Yes" : "No"} disabled={isSaved} 
-                            onChange={(e) => handleScan(p, e.target.value)}>
-                              <option value="No">No</option>
-                              <option value="Yes">Yes</option>
-                            </select>
-                          </td>
-
-                          <td>
-                            <select
-                              value={p.machine}
-                              disabled={isSaved}
-                              onChange={(e) =>
-                                handleMachineSelection(
-                                  p.compositeKey,
-                                  e.target.value
-                                )
-                              }
-                            >
-                              <option value="5-part">
-                                5-Part
-                              </option>
-
-                              <option value="3-part">
-                                3-Part
-                              </option>
-                            </select>
-                          </td>
-
-
-                          <td style={{ textAlign: 'center' }}>
-                           
-                          {(isCriticalReported ||
-                              isPendingCritical) && (
-                              <span
-                                style={{
-                                  color: "red",
-                                  fontWeight: "bold",
-                                  fontSize: "10px"
-                                }}
-                              >
-                                CRITICAL <br />
-                                {isCriticalReported
-                                  ? "REPORTED"
-                                  : "PENDING SAVE"}
-                              </span>
-                            )}
-                          </td>
-                          <td
-                          style={{
-                            minWidth: "130px",
-                            fontWeight: "600",
-                            color: "#1e3a8a"
-                          }}
-                        >
-                          {p.savedBy || "—"}
-                        </td>
-
-
-                        <td>
-                          <button
-                            onClick={() => triggerCritical(p)}
-                            disabled={
-                              isCriticalReported ||
-                              isPendingCritical ||
-                              isSaved ||
-                              !isScanned
-                            }
-                            className={`critical-btn ${
-                              !isCriticalRed ? "critical-btn-green" : ""
-                            }`}
-                          >
-                            {isCriticalReported
-                              ? "Critical Reported"
-                              : isPendingCritical
-                              ? "Critical Pending"
-                              : "Critical"}
-                          </button>
-                        </td>
-                          <td>
-                            
-                            <button className="save-btn" 
-                            disabled={isSaved || !isScanned} onClick={() => handleSave(p.compositeKey)}>Save</button>
-                          </td>
-                        </tr>
-                      );
-                  }}
+                  renderRow={(p) => (
+                    <HaemRegisterRow
+                      key={p.compositeKey}
+                      patient={p}
+                      isCriticalReported={criticalReportedSet.has(p.compositeKey)}
+                      isPendingCritical={!!criticalParams[p.compositeKey]}
+                      onScan={onScan}
+                      onMachine={onMachine}
+                      onCritical={onCritical}
+                      onSave={onSave}
+                    />
+                  )}
                 />
                 )}
               </table>
@@ -638,3 +558,98 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
     </EngComponent>
         );
       }
+
+const HaemRegisterRow = memo(function HaemRegisterRow({
+  patient: p,
+  isCriticalReported,
+  isPendingCritical,
+  onScan,
+  onMachine,
+  onCritical,
+  onSave,
+}) {
+  const isSaved = p.status === "saved";
+  const isScanned = p.scanned === "Yes";
+  const isCriticalRed =
+    isCriticalReported || isPendingCritical || (isScanned && !isSaved);
+  const rowClass = isSaved ? "row-saved" : isScanned ? "row-scanned" : "";
+
+  return (
+    <tr className={rowClass}>
+      <td
+        className="sticky-col"
+        style={p.urgent ? { borderLeft: "4px solid red" } : {}}
+      >
+        {p.regNo}
+      </td>
+      <td className="sticky-col">{p.diagnosticNo || p.accessionNo}</td>
+      <td className="sticky-col">{p.name}</td>
+      <td>
+        {p.age} {p.ageUnit ? `(${p.ageUnit})` : ""}
+      </td>
+      <td>{p.gender}</td>
+      <td>{p.source}</td>
+      <td>{p.testsDisplay || "—"}</td>
+      <td>{p.hasHaemogram ? "✅" : "—"}</td>
+      <td>{p.hasHb ? "✅" : "—"}</td>
+      <td>{p.hasLbc ? "✅" : "—"}</td>
+      <td>
+        <select
+          value={isScanned ? "Yes" : "No"}
+          disabled={isSaved}
+          onChange={(e) => onScan(p, e.target.value)}
+        >
+          <option value="No">No</option>
+          <option value="Yes">Yes</option>
+        </select>
+      </td>
+      <td>
+        <select
+          value={p.machine}
+          disabled={isSaved}
+          onChange={(e) => onMachine(p.compositeKey, e.target.value)}
+        >
+          <option value="5-part">5-Part</option>
+          <option value="3-part">3-Part</option>
+        </select>
+      </td>
+      <td style={{ textAlign: "center" }}>
+        {(isCriticalReported || isPendingCritical) && (
+          <span
+            style={{ color: "red", fontWeight: "bold", fontSize: "10px" }}
+          >
+            CRITICAL <br />
+            {isCriticalReported ? "REPORTED" : "PENDING SAVE"}
+          </span>
+        )}
+      </td>
+      <td style={{ minWidth: "130px", fontWeight: "600", color: "#1e3a8a" }}>
+        {p.savedBy || "—"}
+      </td>
+      <td>
+        <button
+          onClick={() => onCritical(p)}
+          disabled={
+            isCriticalReported || isPendingCritical || isSaved || !isScanned
+          }
+          className={`critical-btn ${!isCriticalRed ? "critical-btn-green" : ""}`}
+        >
+          {isCriticalReported
+            ? "Critical Reported"
+            : isPendingCritical
+            ? "Critical Pending"
+            : "Critical"}
+        </button>
+      </td>
+      <td>
+        <button
+          className="save-btn"
+          disabled={isSaved || !isScanned}
+          onClick={() => onSave(p.compositeKey)}
+        >
+          Save
+        </button>
+      </td>
+    </tr>
+  );
+}, arePatientRowEqual(DEPT_REGISTER_ROW_FIELDS));

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, memo } from "react";
 import "./BiochemistryMain.css";
 import { db } from "../firebaseConfig.js";
 import {
@@ -24,10 +24,15 @@ import { getTestName } from "../shared/utils/tests.js";
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
+import { useStableCallback } from "../shared/hooks/useStableCallback.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
 import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
 import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
+import {
+  arePatientRowEqual,
+  DEPT_REGISTER_ROW_FIELDS,
+} from "../shared/utils/arePatientRowEqual.js";
 
 
 
@@ -104,6 +109,11 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
 
       const isSaved = savedSet.has(compositeKey);
       const currentScanned = localScan ?? savedData.scanned ?? "No";
+      const testsDisplay =
+        entry.selectedTests
+          ?.filter((t) => hormoneTests.includes(getTestName(t)))
+          .map((t) => getTestName(t))
+          .join(", ") || "—";
 
       return {
         ...entry,
@@ -115,6 +125,7 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
         urgent: entry.urgent || false,
         timePrinted: savedData.timePrinted || entry.timePrinted || null,
         timeCollected: savedData.timeCollected || entry.timeCollected || null,
+        testsDisplay,
       };
     });
   }, [masterEntries, deptDocs, localScans, savedSet, hormoneTests]);
@@ -320,6 +331,16 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
     [patients, regSearch, sourceFilter, dateFrom, dateTo]
   );
 
+  const onScan = useStableCallback((patient, value) => {
+    handleScan(patient, value);
+  });
+  const onCritical = useStableCallback((patient) => {
+    triggerCritical(patient);
+  });
+  const onSave = useStableCallback((patient) => {
+    handleSave(patient);
+  });
+
   if (loading) return <div>Loading...</div>;
 
   return (
@@ -362,84 +383,17 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
               <VirtualizedTableBody
                 items={filteredPatients}
                 columnCount={13}
-                renderRow={(p) => {
-                  const isSaved = p.status === "saved";
-                  const isScanned = p.scanned === "Yes";
-                  const regKey = p.compositeKey;
-                  const isCriticalReported = criticalReportedSet.has(regKey);
-
-                  const isPendingCritical = !!criticalParams[regKey];
-
-                  const isCriticalRed =
-                    isCriticalReported ||
-                    isPendingCritical ||
-                    (isScanned && !isSaved);
-                  return (
-                    <tr key={p.compositeKey} className={isSaved ? "row-green" : isScanned ? "row-yellow" : "row-normal"}>
-                      <td style={p.urgent ? { borderLeft: "4px solid red" } : {}}>
-                        {p.regNo || "—"}
-                      </td>
-                      <td>{p.diagnosticNo || "—"}</td>
-                      <td>{p.name || "—"}</td>
-                      <td>{p.age || "—"}</td>
-                      <td>{p.gender || "-"}</td>
-                      <td>{p.source || "—"}</td>
-                      <td>{p.category || "—"}</td>
-                      <td>{p.selectedTests?.filter((t) => hormoneTests.includes(getTestName(t))).map((t) => getTestName(t)).join(", ") || "—"}</td>
-                      <td>
-                         <select
-                            value={isScanned ? "Yes" : "No"}
-                            onChange={(e) => handleScan(p, e.target.value)}
-                            disabled={isSaved}
-                          >
-                          <option value="No">No</option>
-                          <option value="Yes">Yes</option>
-                        </select>
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        {isCriticalReported && (
-                          <span style={{ color: 'red', fontWeight: 'bold', fontSize: '10px' }}>
-                            CRITICAL {isSaved ? "REPORTED" : "PENDING SAVE"}
-                          </span>
-                        )}
-                      </td>
-                      <td
-                        style={{
-                          minWidth: "130px",
-                          fontWeight: "600",
-                          color: "#1e3a8a"
-                        }}
-                      >
-                        {p.savedBy || "—"}
-                      </td>
-                      <td>
-                        
-                      <button
-                      onClick={() => triggerCritical(p)}
-                      disabled={
-                        isCriticalReported ||
-                        isPendingCritical ||
-                        isSaved ||
-                        !isScanned
-                      }
-                      className={`critical-btn ${
-                        !isCriticalRed ? "critical-btn-green" : ""
-                      }`}
-                    >
-                      {isCriticalReported
-                        ? "Critical Reported"
-                        : isPendingCritical
-                        ? "Critical Pending"
-                        : "Critical"}
-                    </button>
-
-                      </td>
-                      <td>
-                        <button className="save-btn" onClick={() => handleSave(p)} disabled={isSaved || !isScanned}>💾 Save</button>
-                      </td>
-                    </tr>
-                  );
-                }}
+                renderRow={(p) => (
+                  <HormonesRegisterRow
+                    key={p.compositeKey}
+                    patient={p}
+                    isCriticalReported={criticalReportedSet.has(p.compositeKey)}
+                    isPendingCritical={!!criticalParams[p.compositeKey]}
+                    onScan={onScan}
+                    onCritical={onCritical}
+                    onSave={onSave}
+                  />
+                )}
               />
             </table>
           </div>
@@ -465,3 +419,80 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
         </div>
       );
     }
+
+const HormonesRegisterRow = memo(function HormonesRegisterRow({
+  patient: p,
+  isCriticalReported,
+  isPendingCritical,
+  onScan,
+  onCritical,
+  onSave,
+}) {
+  const isSaved = p.status === "saved";
+  const isScanned = p.scanned === "Yes";
+  const isCriticalRed =
+    isCriticalReported || isPendingCritical || (isScanned && !isSaved);
+
+  return (
+    <tr
+      className={
+        isSaved ? "row-green" : isScanned ? "row-yellow" : "row-normal"
+      }
+    >
+      <td style={p.urgent ? { borderLeft: "4px solid red" } : {}}>
+        {p.regNo || "—"}
+      </td>
+      <td>{p.diagnosticNo || "—"}</td>
+      <td>{p.name || "—"}</td>
+      <td>{p.age || "—"}</td>
+      <td>{p.gender || "-"}</td>
+      <td>{p.source || "—"}</td>
+      <td>{p.category || "—"}</td>
+      <td>{p.testsDisplay || "—"}</td>
+      <td>
+        <select
+          value={isScanned ? "Yes" : "No"}
+          onChange={(e) => onScan(p, e.target.value)}
+          disabled={isSaved}
+        >
+          <option value="No">No</option>
+          <option value="Yes">Yes</option>
+        </select>
+      </td>
+      <td style={{ textAlign: "center" }}>
+        {isCriticalReported && (
+          <span style={{ color: "red", fontWeight: "bold", fontSize: "10px" }}>
+            CRITICAL {isSaved ? "REPORTED" : "PENDING SAVE"}
+          </span>
+        )}
+      </td>
+      <td style={{ minWidth: "130px", fontWeight: "600", color: "#1e3a8a" }}>
+        {p.savedBy || "—"}
+      </td>
+      <td>
+        <button
+          onClick={() => onCritical(p)}
+          disabled={
+            isCriticalReported || isPendingCritical || isSaved || !isScanned
+          }
+          className={`critical-btn ${!isCriticalRed ? "critical-btn-green" : ""}`}
+        >
+          {isCriticalReported
+            ? "Critical Reported"
+            : isPendingCritical
+            ? "Critical Pending"
+            : "Critical"}
+        </button>
+      </td>
+      <td>
+        <button
+          className="save-btn"
+          onClick={() => onSave(p)}
+          disabled={isSaved || !isScanned}
+        >
+          💾 Save
+        </button>
+      </td>
+    </tr>
+  );
+}, arePatientRowEqual(DEPT_REGISTER_ROW_FIELDS));

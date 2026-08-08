@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, lazy, Suspense } from "react";
+import React, { useState, useMemo, lazy, Suspense, memo } from "react";
 import "./CoagulationMain.css";
 import { db } from "../firebaseConfig.js";
 import {
@@ -21,8 +21,13 @@ import { getTestName } from "../shared/utils/tests.js";
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
+import { useStableCallback } from "../shared/hooks/useStableCallback.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
+import {
+  arePatientRowEqual,
+  DEPT_REGISTER_ROW_FIELDS,
+} from "../shared/utils/arePatientRowEqual.js";
 import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 const CoagulationInventory = lazy(() =>
@@ -123,53 +128,6 @@ const logout = () => {
     return arr.map(getTestName).filter((nm) => isCoagTestName(nm));
   };
 
-  const getRequiredFields = (tests) => {
-    const req = {};
-    const testNames = tests.map((t) => t.toUpperCase());
-    const isProfile = testNames.some((t) => t.includes("COAGULATION PROFILE"));
-    if (
-      isProfile ||
-      testNames.some((t) => t.includes("PT-INR") || t.includes("PROTHOMBIN"))
-    ) {
-      req.pt = true;
-      req.inr = true;
-    }
-    if (isProfile || testNames.some((t) => t.includes("APTT"))) req.aptt = true;
-    if (
-      isProfile ||
-      testNames.some((t) => t.includes("(B.T.)") || t.includes("BLEEDING TIME"))
-    )
-      req.bt = true;
-    if (
-      isProfile ||
-      testNames.some((t) => t.includes("(C.T.)") || t.includes("CLOTTING TIME"))
-    )
-      req.ct = true;
-    return req;
-  };
-
-  const areRequiredFieldsFilled = (patient, required) => {
-    return Object.entries(required).every(([field, needed]) => {
-      if (!needed) return true;
-  
-      const value = patient[field];
-  
-      if (field === "bt" || field === "ct") {
-        return (
-          value &&
-          value.toString().trim() !== "" &&
-          value !== "MM:SS"
-        );
-      }
-  
-      return (
-        value !== undefined &&
-        value !== null &&
-        value.toString().trim() !== ""
-      );
-    });
-  };
-
   const patients = useMemo(() => {
     const filteredMaster = masterEntries.filter((entry) => {
       const arr =
@@ -183,6 +141,7 @@ const logout = () => {
       const currentScanned = localScan ?? saved.scanned ?? "No";
       const localResult = localResults[compositeKey] || {};
       const isSaved = savedSet.has(compositeKey);
+      const relevantTests = getRelevantCoagTests(entry);
       return {
         ...entry,
         ...saved,
@@ -202,6 +161,8 @@ const logout = () => {
         pt: localResult.pt ?? saved.pt ?? saved.PT ?? "",
         inr: localResult.inr ?? saved.inr ?? saved.INR ?? "",
         aptt: localResult.aptt ?? saved.aptt ?? saved.APTT ?? "",
+        relevantTests,
+        relevantTestsKey: relevantTests.join("|"),
       };
     });
   }, [masterEntries, coagDocs, localScans, localResults, savedSet]);
@@ -492,6 +453,45 @@ const logout = () => {
     [patients, regSearch, sourceFilter, dateFrom, dateTo]
   );
 
+  const onScan = useStableCallback(async (patient, value) => {
+    const key = patient.compositeKey;
+    const now = new Date().toISOString();
+    setLocalScans((prev) => ({ ...prev, [key]: value }));
+    setLocalScanTimes((prev) => ({
+      ...prev,
+      [key]: value === "Yes" ? now : null,
+    }));
+    try {
+      await updateDoc(doc(db, "report_details", key), {
+        [`routineReportsScanned.${CURRENT_DEPT}`]: value === "Yes",
+      });
+    } catch (err) {
+      console.error("Failed to update scan status:", err);
+    }
+  });
+  const onResultField = useStableCallback((compositeKey, field, value) => {
+    setCoagDocs((prev) => ({
+      ...prev,
+      [compositeKey]: { ...(prev[compositeKey] || {}), [field]: value },
+    }));
+    setLocalResults((prev) => ({
+      ...prev,
+      [compositeKey]: { ...(prev[compositeKey] || {}), [field]: value },
+    }));
+  });
+  const onBTCT = useStableCallback((e, patient, field) => {
+    handleBTCTChange(e, patient, field);
+  });
+  const onFocusField = useStableCallback((e) => {
+    handleFocus(e);
+  });
+  const onCritical = useStableCallback((patient) => {
+    triggerCritical(patient);
+  });
+  const onSave = useStableCallback((patient) => {
+    handleSave(patient);
+  });
+
   const tabBtnStyle = (isActive) => ({
     padding: "8px 25px",
     borderRadius: "6px",
@@ -631,198 +631,20 @@ const logout = () => {
               <VirtualizedTableBody
                 items={filteredPatients}
                 columnCount={17}
-                renderRow={(p) => {
-                  const relevant = getRelevantCoagTests(p);
-                  const key = p.compositeKey;
-                  const isSaved = p.status === "saved";
-                  const isScanned = p.scanned === "Yes";
-                  const isCriticalReported = criticalReportedSet.has(key);
-                  const isPendingCritical = !!p.pendingCriticalParam;
-
-                  const isCriticalRed =
-                  isCriticalReported ||
-                  isPendingCritical ||
-                  (isScanned && !isSaved);
-
-                  const requiredFields = getRequiredFields(relevant);
-                  const missingRequired = !areRequiredFieldsFilled(
-                    p,
-                    requiredFields
-                  );
-                  const renderField = (field) => {
-                    if (!requiredFields[field]) return <span>–</span>;
-                    const isBTCT = field === "bt" || field === "ct";
-                    const finalDisabled = isSaved || !isScanned;
-                    return (
-                      <input
-                        type="text"
-                        value={p[field] || ""}
-                        disabled={finalDisabled}
-                        onChange={
-                          isBTCT
-                            ? (e) => handleBTCTChange(e, p, field)
-                            : (e) => {
-                              const value = e.target.value;
-                          
-                              setCoagDocs((prev) => ({
-                                ...prev,
-                                [p.compositeKey]: {
-                                  ...(prev[p.compositeKey] || {}),
-                                  [field]: value,
-                                },
-                              }));
-                          
-                              setLocalResults((prev) => ({
-                                ...prev,
-                                [p.compositeKey]: {
-                                  ...(prev[p.compositeKey] || {}),
-                                  [field]: value,
-                                },
-                              }));
-                            }
-                        }
-                        onFocus={isBTCT ? handleFocus : undefined}
-                        placeholder={isBTCT ? "MM:SS" : ""}
-                      />
-                    );
-                  };
-                  return (
-                    <tr
-                      key={p.compositeKey}
-                      className={
-                        isSaved
-                          ? "row-green"
-                          : isScanned
-                          ? "row-yellow"
-                          : "row-normal"
-                      }
-                    >
-                      <td
-                        className="sticky-col"
-                        style={p.urgent ? { borderLeft: "4px solid red" } : {}}
-                      >
-                        {p.regNo || "-"}
-                      </td>
-                      <td className="sticky-col">{p.diagnosticNo || "-"}</td>
-                      <td className="sticky-col col-name">{p.name || "-"}</td>
-                      <td>
-                        {p.age} {p.ageUnit}
-                      </td>
-                      <td>{p.gender || "-"}</td>
-                      <td>{p.source || "-"}</td>
-                      <td className="col-tests">
-                        {relevant.join(", ") || "-"}
-                      </td>
-                      <td>{renderField("bt")}</td>
-                      <td>{renderField("ct")}</td>
-                      <td>{renderField("pt")}</td>
-                      <td>{renderField("inr")}</td>
-                      <td>{renderField("aptt")}</td>
-                      <td>
-                        <select
-                          value={isScanned ? "Yes" : "No"}
-                          disabled={isSaved}
-                         
-                          onChange={async (e) => {
-                            const value = e.target.value;
-                            const now = new Date().toISOString();
-                          
-                            setLocalScans((prev) => ({
-                              ...prev,
-                              [key]: value,
-                            }));
-                          
-                            setLocalScanTimes((prev) => ({
-                              ...prev,
-                              [key]: value === "Yes" ? now : null,
-                            }));
-                          
-                            try {
-                              await updateDoc(
-                                doc(db, "report_details", key),
-                                {
-                                  [`routineReportsScanned.${CURRENT_DEPT}`]:
-                                    value === "Yes",
-                                }
-                              );
-                            } catch (err) {
-                              console.error(
-                                "Failed to update scan status:",
-                                err
-                              );
-                            }
-                          }}
-                        >
-                          <option value="No">No</option>
-                          <option value="Yes">Yes</option>
-                        </select>
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        {(isCriticalReported || isPendingCritical) && (
-                          <span
-                            style={{
-                              color: "red",
-                              fontWeight: "bold",
-                              fontSize: "10px",
-                            }}
-                          >
-                            {isCriticalReported
-                              ? "CRITICAL REPORTED"
-                              : "CRITICAL PENDING SAVE"}
-                          </span>
-                        )}
-                      </td>
-                       <td
-                        style={{
-                          minWidth: "130px",
-                          fontWeight: "600",
-                          color: "#1e3a8a",
-                        }}
-                      >
-                        {p.savedBy || "—"}
-                      </td>
-
-
-                      <td>
-                       
-                       
-                       
-                     <button
-                      onClick={() => triggerCritical(p)}
-                      disabled={
-                        isCriticalReported ||
-                        isPendingCritical ||
-                        isSaved ||
-                        !isScanned ||
-                        missingRequired
-                      }
-                      className={`critical-btn ${
-                        !isCriticalRed ? "critical-btn-green" : ""
-                      }`}
-                    >
-                      {isCriticalReported
-                        ? "Critical Reported"
-                        : isPendingCritical
-                        ? "Critical Pending"
-                        : "Critical"}
-                    </button>
-                       
-
-
-
-                      </td>
-                      <td>
-                        <button
-                          className="save-btn"
-                          disabled={isSaved || !isScanned || missingRequired}
-                          onClick={() => handleSave(p)}
-                        >
-                          💾 Save
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                }}
+                renderRow={(p) => (
+                  <CoagRegisterRow
+                    key={p.compositeKey}
+                    patient={p}
+                    isCriticalReported={criticalReportedSet.has(p.compositeKey)}
+                    isPendingCritical={!!p.pendingCriticalParam}
+                    onScan={onScan}
+                    onResultField={onResultField}
+                    onBTCT={onBTCT}
+                    onFocusField={onFocusField}
+                    onCritical={onCritical}
+                    onSave={onSave}
+                  />
+                )}
               />
             </table>
           </div>
@@ -859,3 +681,163 @@ const logout = () => {
     </EngComponent>
         );
       }
+
+function getRequiredFields(tests) {
+  const req = {};
+  const testNames = tests.map((t) => t.toUpperCase());
+  const isProfile = testNames.some((t) => t.includes("COAGULATION PROFILE"));
+  if (
+    isProfile ||
+    testNames.some((t) => t.includes("PT-INR") || t.includes("PROTHOMBIN"))
+  ) {
+    req.pt = true;
+    req.inr = true;
+  }
+  if (isProfile || testNames.some((t) => t.includes("APTT"))) req.aptt = true;
+  if (
+    isProfile ||
+    testNames.some((t) => t.includes("(B.T.)") || t.includes("BLEEDING TIME"))
+  )
+    req.bt = true;
+  if (
+    isProfile ||
+    testNames.some((t) => t.includes("(C.T.)") || t.includes("CLOTTING TIME"))
+  )
+    req.ct = true;
+  return req;
+}
+
+function areRequiredFieldsFilled(patient, required) {
+  return Object.entries(required).every(([field, needed]) => {
+    if (!needed) return true;
+    const value = patient[field];
+    if (field === "bt" || field === "ct") {
+      return (
+        value && value.toString().trim() !== "" && value !== "MM:SS"
+      );
+    }
+    return (
+      value !== undefined &&
+      value !== null &&
+      value.toString().trim() !== ""
+    );
+  });
+}
+
+const CoagRegisterRow = memo(function CoagRegisterRow({
+  patient: p,
+  isCriticalReported,
+  isPendingCritical,
+  onScan,
+  onResultField,
+  onBTCT,
+  onFocusField,
+  onCritical,
+  onSave,
+}) {
+  const relevant = p.relevantTests || [];
+  const isSaved = p.status === "saved";
+  const isScanned = p.scanned === "Yes";
+  const isCriticalRed =
+    isCriticalReported || isPendingCritical || (isScanned && !isSaved);
+  const requiredFields = getRequiredFields(relevant);
+  const missingRequired = !areRequiredFieldsFilled(p, requiredFields);
+
+  const renderField = (field) => {
+    if (!requiredFields[field]) return <span>–</span>;
+    const isBTCT = field === "bt" || field === "ct";
+    const finalDisabled = isSaved || !isScanned;
+    return (
+      <input
+        type="text"
+        value={p[field] || ""}
+        disabled={finalDisabled}
+        onChange={
+          isBTCT
+            ? (e) => onBTCT(e, p, field)
+            : (e) => onResultField(p.compositeKey, field, e.target.value)
+        }
+        onFocus={isBTCT ? onFocusField : undefined}
+        placeholder={isBTCT ? "MM:SS" : ""}
+      />
+    );
+  };
+
+  return (
+    <tr
+      className={
+        isSaved ? "row-green" : isScanned ? "row-yellow" : "row-normal"
+      }
+    >
+      <td
+        className="sticky-col"
+        style={p.urgent ? { borderLeft: "4px solid red" } : {}}
+      >
+        {p.regNo || "-"}
+      </td>
+      <td className="sticky-col">{p.diagnosticNo || "-"}</td>
+      <td className="sticky-col col-name">{p.name || "-"}</td>
+      <td>
+        {p.age} {p.ageUnit}
+      </td>
+      <td>{p.gender || "-"}</td>
+      <td>{p.source || "-"}</td>
+      <td className="col-tests">{relevant.join(", ") || "-"}</td>
+      <td>{renderField("bt")}</td>
+      <td>{renderField("ct")}</td>
+      <td>{renderField("pt")}</td>
+      <td>{renderField("inr")}</td>
+      <td>{renderField("aptt")}</td>
+      <td>
+        <select
+          value={isScanned ? "Yes" : "No"}
+          disabled={isSaved}
+          onChange={(e) => onScan(p, e.target.value)}
+        >
+          <option value="No">No</option>
+          <option value="Yes">Yes</option>
+        </select>
+      </td>
+      <td style={{ textAlign: "center" }}>
+        {(isCriticalReported || isPendingCritical) && (
+          <span style={{ color: "red", fontWeight: "bold", fontSize: "10px" }}>
+            {isCriticalReported
+              ? "CRITICAL REPORTED"
+              : "CRITICAL PENDING SAVE"}
+          </span>
+        )}
+      </td>
+      <td style={{ minWidth: "130px", fontWeight: "600", color: "#1e3a8a" }}>
+        {p.savedBy || "—"}
+      </td>
+      <td>
+        <button
+          onClick={() => onCritical(p)}
+          disabled={
+            isCriticalReported ||
+            isPendingCritical ||
+            isSaved ||
+            !isScanned ||
+            missingRequired
+          }
+          className={`critical-btn ${!isCriticalRed ? "critical-btn-green" : ""}`}
+        >
+          {isCriticalReported
+            ? "Critical Reported"
+            : isPendingCritical
+            ? "Critical Pending"
+            : "Critical"}
+        </button>
+      </td>
+      <td>
+        <button
+          className="save-btn"
+          disabled={isSaved || !isScanned || missingRequired}
+          onClick={() => onSave(p)}
+        >
+          💾 Save
+        </button>
+      </td>
+    </tr>
+  );
+}, arePatientRowEqual(DEPT_REGISTER_ROW_FIELDS));

@@ -35,12 +35,18 @@ export function filterAndSortRegisterPatients(patients, filters = {}) {
     return true;
   });
 
-  return filtered.sort((a, b) => {
-    if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
-    const dateA = parseEntryDate(a);
-    const dateB = parseEntryDate(b);
-    if (!dateA) return 1;
-    if (!dateB) return -1;
-    return dateA - dateB;
+  // Cache date once per row so sort does not re-parse O(n log n) times.
+  const decorated = filtered.map((p) => {
+    const d = parseEntryDate(p);
+    return { p, urgent: !!p.urgent, dateMs: d ? d.getTime() : null };
   });
+
+  decorated.sort((a, b) => {
+    if (a.urgent !== b.urgent) return a.urgent ? -1 : 1;
+    if (a.dateMs == null) return 1;
+    if (b.dateMs == null) return -1;
+    return a.dateMs - b.dateMs;
+  });
+
+  return decorated.map((d) => d.p);
 }

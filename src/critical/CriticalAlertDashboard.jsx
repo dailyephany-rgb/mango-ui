@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, memo } from "react";
 import { db } from "../firebaseConfig";
 import {
   collection,
@@ -25,6 +25,7 @@ import {
 } from "../shared/utils/dates.js";
 import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 import { annotateListenReason } from "../engineering/telemetry/listenerWatch.js";
+import { useStableCallback } from "../shared/hooks/useStableCallback.js";
 
 /** Known critical_alerts.dept values written by registers (dropdown stays usable when scoped). */
 const CRITICAL_DEPTS = [
@@ -43,7 +44,6 @@ export default function CriticalAlertDashboard() {
   const [loading, setLoading] = useState(true);
   const [commMethods, setCommMethods] = useState({});
   const [reportedTo, setReportedTo] = useState({});
-  const [now, setNow] = useState(new Date());
 
   // 🔹 FILTER STATES
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,12 +52,6 @@ export default function CriticalAlertDashboard() {
   const today = getLocalDateString();
   const [dateFrom, setDateFrom] = useState(today);
   const [dateTo, setDateTo] = useState(today);
- 
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60000);
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     const fromStr = dateFrom || getLocalDateString();
@@ -118,17 +112,20 @@ export default function CriticalAlertDashboard() {
   }, [dateFrom, dateTo, deptFilter]);
 
   // Stable dropdown: known depts + any extras present in the current snapshot
-  const uniqueDepartments = [
-    "All",
-    ...new Set([
-      ...CRITICAL_DEPTS,
-      ...alerts.map((a) => a.dept).filter(Boolean),
-    ]),
-  ].sort((a, b) => {
-    if (a === "All") return -1;
-    if (b === "All") return 1;
-    return String(a).localeCompare(String(b));
-  });
+  const uniqueDepartments = useMemo(() => {
+    const list = [
+      "All",
+      ...new Set([
+        ...CRITICAL_DEPTS,
+        ...alerts.map((a) => a.dept).filter(Boolean),
+      ]),
+    ];
+    return list.sort((a, b) => {
+      if (a === "All") return -1;
+      if (b === "All") return 1;
+      return String(a).localeCompare(String(b));
+    });
+  }, [alerts]);
 
   const getTimeDiff = (flaggedAt, reportedAt) => {
     const start = parseDateField(flaggedAt);
@@ -141,6 +138,13 @@ export default function CriticalAlertDashboard() {
     const mins = diffInMins % 60;
     return `${hours}h ${mins}m`;
   };
+
+  const onReportedToChange = useStableCallback((alertId, value) => {
+    setReportedTo((prev) => ({ ...prev, [alertId]: value }));
+  });
+  const onCommMethodChange = useStableCallback((alertId, value) => {
+    setCommMethods((prev) => ({ ...prev, [alertId]: value }));
+  });
 
   
   const handleMarkDone = async (alert) => {
@@ -226,34 +230,52 @@ export default function CriticalAlertDashboard() {
     }
   };
 
-  const filteredAlerts = alerts
-    .filter((a) => {
-      if (a.status !== "Pending" && a.status !== "Reported") return false;
-      const search = searchQuery.toLowerCase();
-      if (search && !String(a.regNo).toLowerCase().includes(search) && 
-                   !String(a.diagnosticNo).toLowerCase().includes(search)) return false;
+  const onCrossCheck = useStableCallback((alert) => {
+    handleCrossCheck(alert);
+  });
+  const onMarkDone = useStableCallback((alert) => {
+    handleMarkDone(alert);
+  });
 
-      if (deptFilter !== "All" && a.dept !== deptFilter) return false;
-      if (sourceFilter !== "All" && a.source !== sourceFilter) return false;
+  const filteredAlerts = useMemo(() => {
+    const search = searchQuery.toLowerCase();
+    return alerts
+      .filter((a) => {
+        if (a.status !== "Pending" && a.status !== "Reported") return false;
+        if (
+          search &&
+          !String(a.regNo).toLowerCase().includes(search) &&
+          !String(a.diagnosticNo).toLowerCase().includes(search)
+        ) {
+          return false;
+        }
 
-      const pDate = parseDateField(a.timePrinted || a.flaggedAt);
-      if (pDate) {
-        // FIX: Compare using local YYYY-MM-DD for consistency
-        const entryDateStr = toLocalDateString(pDate);
-        
-        if (dateFrom && entryDateStr < dateFrom) return false;
-        if (dateTo && entryDateStr > dateTo) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
+        if (deptFilter !== "All" && a.dept !== deptFilter) return false;
+        if (sourceFilter !== "All" && a.source !== sourceFilter) return false;
+
+        const pDate = parseDateField(a.timePrinted || a.flaggedAt);
+        if (pDate) {
+          const entryDateStr = toLocalDateString(pDate);
+          if (dateFrom && entryDateStr < dateFrom) return false;
+          if (dateTo && entryDateStr > dateTo) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
         const dateA = parseDateField(a.timePrinted || a.flaggedAt) || 0;
         const dateB = parseDateField(b.timePrinted || b.flaggedAt) || 0;
         return dateA - dateB;
-    });
+      });
+  }, [alerts, searchQuery, deptFilter, sourceFilter, dateFrom, dateTo]);
 
-  const pendingCount = filteredAlerts.filter(a => a.status === "Pending").length;
-  const reportedCount = filteredAlerts.filter(a => a.status === "Reported").length;
+  const pendingCount = useMemo(
+    () => filteredAlerts.filter((a) => a.status === "Pending").length,
+    [filteredAlerts]
+  );
+  const reportedCount = useMemo(
+    () => filteredAlerts.filter((a) => a.status === "Reported").length,
+    [filteredAlerts]
+  );
 
   return (
    
@@ -343,136 +365,16 @@ export default function CriticalAlertDashboard() {
           </thead>
           <tbody>
             {filteredAlerts.map((alert) => (
-              <tr 
-                key={alert.id} 
-                className={alert.status === "Reported" ? "row-green" : ""}
-              >
-                <td>{alert.regNo}</td>
-                <td>{alert.diagnosticNo}</td>
-                <td>{alert.name}</td>
-                <td style={{ fontWeight: '600' }}>{alert.dept || "-"}</td>
-                <td>{alert.age}/{alert.gender}</td>
-                <td>{alert.doctor}</td>
-                <td style={{ maxWidth: '150px' }}>{Array.isArray(alert.selectedTests) ? alert.selectedTests.join(", ") : alert.selectedTests}</td>
-
-                <td
-                  style={{
-                    minWidth: "280px",
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                    textAlign: "left",
-                    verticalAlign: "top",
-                    fontWeight: "600",
-                    color: "#dc2626",
-                  }}
-                >
-                  {alert.criticalParameter}
-                </td>
-
-                   <td
-                  style={{
-                    fontWeight: "600",
-                    color: "#1e3a8a"
-                  }}
-                >
-                  {alert.reportedBy || "—"}
-                </td>
-
-                <td>
-                <input
-                  type="text"
-                  value={reportedTo[alert.id] || alert.reportedTo || ""}
-                  placeholder="Doctor / Nurse"
-                  disabled={alert.status === "Reported"}
-                  onChange={(e) =>
-                    setReportedTo({
-                      ...reportedTo,
-                      [alert.id]: e.target.value,
-                    })
-                  }
-                />
-              </td>
-
-
-
-                <td>
-
-                  <select 
-                    value={commMethods[alert.id] || alert.communicatedVia || ""} 
-                    disabled={alert.status === "Reported"}
-                    onChange={(e) => setCommMethods({...commMethods, [alert.id]: e.target.value})}
-                  >
-                    <option value="">Select Method</option>
-                    <option value="WhatsApp">WhatsApp</option>
-                    <option value="Telephone">Telephone</option>
-                  </select>
-                </td>
-
-                <td style={{ fontWeight: 'bold', color: '#059669' }}>
-  {getTimeDiff(alert.flaggedAt, alert.reportedAt)}
-</td>
-
-              <td
-                style={{
-                  fontWeight: "600",
-                  color: "#2563eb"
-                }}
-              >
-                {alert.crossCheckedBy || "—"}
-              </td>
-
-              <td>
-                {alert.crossChecked ? (
-                  <span
-                    style={{
-                      color: "#2563eb",
-                      fontWeight: "bold"
-                    }}
-                  >
-                    ✓ Crosschecked
-                  </span>
-                ) : alert.status === "Reported" ? (
-                 
-                  <button
-                  className="crosscheck-btn"
-                  onClick={() => handleCrossCheck(alert)}
-                >
-                  Cross Check
-                </button>
-                ) : (
-                  <span
-                    style={{
-                      color: "#9ca3af",
-                      fontSize: "12px"
-                    }}
-                  >
-                    Awaiting Report
-                  </span>
-                )}
-              </td>
-
-              <td>
-                {alert.status === "Reported" ? (
-                  <span
-                    style={{
-                      color: "#059669",
-                      fontWeight: "bold"
-                    }}
-                  >
-                    ✓ Reported
-                  </span>
-                ) : (
-                  <button
-                    className="save-btn"
-                    disabled={!commMethods[alert.id]}
-                    onClick={() => handleMarkDone(alert)}
-                  >
-                    Report
-                  </button>
-                )}
-              </td>
-                              
-              </tr>
+              <CriticalAlertRow
+                key={alert.id}
+                alert={alert}
+                reportedToValue={reportedTo[alert.id] || alert.reportedTo || ""}
+                commMethodValue={commMethods[alert.id] || alert.communicatedVia || ""}
+                onReportedToChange={onReportedToChange}
+                onCommMethodChange={onCommMethodChange}
+                onCrossCheck={onCrossCheck}
+                onMarkDone={onMarkDone}
+              />
             ))}
           </tbody>
         </table>
@@ -482,3 +384,144 @@ export default function CriticalAlertDashboard() {
     </EngComponent>
   );
 }
+
+function criticalTimeDiff(flaggedAt, reportedAt) {
+  const start = parseDateField(flaggedAt);
+  const end = parseDateField(reportedAt);
+  if (!start || !end) return "-";
+  const diffInMins = Math.floor((end - start) / (1000 * 60));
+  if (diffInMins < 60) return `${diffInMins}m`;
+  const hours = Math.floor(diffInMins / 60);
+  const mins = diffInMins % 60;
+  return `${hours}h ${mins}m`;
+}
+
+const CriticalAlertRow = memo(function CriticalAlertRow({
+  alert,
+  reportedToValue,
+  commMethodValue,
+  onReportedToChange,
+  onCommMethodChange,
+  onCrossCheck,
+  onMarkDone,
+}) {
+  return (
+    <tr className={alert.status === "Reported" ? "row-green" : ""}>
+      <td>{alert.regNo}</td>
+      <td>{alert.diagnosticNo}</td>
+      <td>{alert.name}</td>
+      <td style={{ fontWeight: "600" }}>{alert.dept || "-"}</td>
+      <td>
+        {alert.age}/{alert.gender}
+      </td>
+      <td>{alert.doctor}</td>
+      <td style={{ maxWidth: "150px" }}>
+        {Array.isArray(alert.selectedTests)
+          ? alert.selectedTests.join(", ")
+          : alert.selectedTests}
+      </td>
+      <td
+        style={{
+          minWidth: "280px",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+          textAlign: "left",
+          verticalAlign: "top",
+          fontWeight: "600",
+          color: "#dc2626",
+        }}
+      >
+        {alert.criticalParameter}
+      </td>
+      <td style={{ fontWeight: "600", color: "#1e3a8a" }}>
+        {alert.reportedBy || "—"}
+      </td>
+      <td>
+        <input
+          type="text"
+          value={reportedToValue}
+          placeholder="Doctor / Nurse"
+          disabled={alert.status === "Reported"}
+          onChange={(e) => onReportedToChange(alert.id, e.target.value)}
+        />
+      </td>
+      <td>
+        <select
+          value={commMethodValue}
+          disabled={alert.status === "Reported"}
+          onChange={(e) => onCommMethodChange(alert.id, e.target.value)}
+        >
+          <option value="">Select Method</option>
+          <option value="WhatsApp">WhatsApp</option>
+          <option value="Telephone">Telephone</option>
+        </select>
+      </td>
+      <td style={{ fontWeight: "bold", color: "#059669" }}>
+        {criticalTimeDiff(alert.flaggedAt, alert.reportedAt)}
+      </td>
+      <td style={{ fontWeight: "600", color: "#2563eb" }}>
+        {alert.crossCheckedBy || "—"}
+      </td>
+      <td>
+        {alert.crossChecked ? (
+          <span style={{ color: "#2563eb", fontWeight: "bold" }}>
+            ✓ Crosschecked
+          </span>
+        ) : alert.status === "Reported" ? (
+          <button
+            className="crosscheck-btn"
+            onClick={() => onCrossCheck(alert)}
+          >
+            Cross Check
+          </button>
+        ) : (
+          <span style={{ color: "#9ca3af", fontSize: "12px" }}>
+            Awaiting Report
+          </span>
+        )}
+      </td>
+      <td>
+        {alert.status === "Reported" ? (
+          <span style={{ color: "#059669", fontWeight: "bold" }}>
+            ✓ Reported
+          </span>
+        ) : (
+          <button
+            className="save-btn"
+            disabled={!commMethodValue}
+            onClick={() => onMarkDone(alert)}
+          >
+            Report
+          </button>
+        )}
+      </td>
+    </tr>
+  );
+}, (prev, next) => {
+  if (prev.reportedToValue !== next.reportedToValue) return false;
+  if (prev.commMethodValue !== next.commMethodValue) return false;
+  if (prev.onReportedToChange !== next.onReportedToChange) return false;
+  if (prev.onCommMethodChange !== next.onCommMethodChange) return false;
+  if (prev.onCrossCheck !== next.onCrossCheck) return false;
+  if (prev.onMarkDone !== next.onMarkDone) return false;
+  const a = prev.alert;
+  const b = next.alert;
+  return (
+    a.id === b.id &&
+    a.status === b.status &&
+    a.regNo === b.regNo &&
+    a.diagnosticNo === b.diagnosticNo &&
+    a.name === b.name &&
+    a.dept === b.dept &&
+    a.age === b.age &&
+    a.gender === b.gender &&
+    a.doctor === b.doctor &&
+    a.criticalParameter === b.criticalParameter &&
+    a.reportedBy === b.reportedBy &&
+    a.crossChecked === b.crossChecked &&
+    a.crossCheckedBy === b.crossCheckedBy &&
+    a.flaggedAt === b.flaggedAt &&
+    a.reportedAt === b.reportedAt &&
+    a.selectedTests === b.selectedTests
+  );
+});

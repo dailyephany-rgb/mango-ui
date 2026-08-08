@@ -19,7 +19,7 @@ import {
   limit,
   Timestamp,
 } from "firebase/firestore";
-import { getEngDb } from "../firebaseEngConfig.js";
+import { getEngDb, isEngDbSafe } from "../firebaseEngConfig.js";
 import {
   ENG_COLLECTIONS,
   ENG_AGG_RETENTION_DAYS,
@@ -68,7 +68,7 @@ function expireAtMs(data) {
 export async function runEngRetention(opts = {}) {
   const result = { deleted: 0, scanned: 0, stamped: 0, denied: 0 };
   const db = getEngDb();
-  if (!db) return result;
+  if (!db || !isEngDbSafe(db)) return result;
 
   const settings = getRuntimeSettings();
   const retention = settings.retentionDays ?? ENG_AGG_RETENTION_DAYS;
