@@ -16,6 +16,7 @@ import {
   downloadCsv,
   dayKeyFromTs,
 } from "./perfViews.js";
+import { LoadIdCell } from "./LoadIdCell.jsx";
 
 function DeviceName({ id }) {
   const { formatDeviceName } = useEngFilters();
@@ -46,6 +47,7 @@ function statusPill(status, mounted) {
 
 function cellMs(mounted, v) {
   if (!mounted) return "Not Mounted";
+  if (v == null || Number.isNaN(v)) return "—";
   return fmtMs(v);
 }
 
@@ -97,7 +99,10 @@ export function ComponentsPage() {
             </select>
           </label>
           <p className="eng-muted" style={{ margin: 0, fontSize: "0.75rem" }}>
-            Linked to Timeline via loadId. Lazy tabs show Not Mounted until opened.
+            Load ID matches Timeline for the same page open. Click an ID to copy.
+            Mount/Ready come from EngComponent timing (works in production). Snapshot
+            fills when that component owns the first Firestore answer. Lazy tabs stay
+            Not Mounted until opened.
           </p>
           <button
             type="button"
@@ -179,12 +184,8 @@ export function ComponentsPage() {
                       </td>
                       <td>{r.department || "—"}</td>
                       <td>{r.page || "—"}</td>
-                      <td
-                        className="eng-muted"
-                        style={{ fontSize: "0.75rem" }}
-                        title={id}
-                      >
-                        {String(id).slice(0, 18)}…
+                      <td>
+                        <LoadIdCell loadId={r.loadId} id={r.id} />
                       </td>
                       <td>
                         {mountedN}/{comps.length || "—"} mounted

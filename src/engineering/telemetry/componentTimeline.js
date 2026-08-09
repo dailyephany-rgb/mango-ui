@@ -113,7 +113,7 @@ export function getFsAttribution() {
 }
 
 /**
- * @param {{ name: string, type?: string, parent?: string | null, moduleId?: string | null }} spec
+ * @param {{ name: string, type?: string, parent?: string | null, moduleId?: string | null, mountMs?: number | null }} spec
  */
 export function markComponentMount(spec) {
   try {
@@ -133,6 +133,14 @@ export function markComponentMount(spec) {
     row.moduleId = resolvedModule;
     row.mountedAt = Math.round(t0 - sessionStartedAt);
     row.status = "mounting";
+    // Production-safe: React.Profiler onRender is a no-op in prod builds.
+    // Callers pass mountMs from useLayoutEffect elapsed time.
+    if (typeof spec.mountMs === "number" && Number.isFinite(spec.mountMs)) {
+      const ms = Math.max(0, Math.round(spec.mountMs));
+      if (row.mountMs == null) row.mountMs = ms;
+      if (row.renderMs == null) row.renderMs = ms;
+      recomputeReady(row);
+    }
     if (!activeStack.includes(spec.name)) activeStack.push(spec.name);
     mounted.set(spec.name, row);
   } catch {

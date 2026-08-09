@@ -205,7 +205,8 @@ export function startEngineeringTelemetry() {
       installLongTaskHook();
       capturePageLoad();
     } else if (identity.page === "Engineering") {
-      // Synthetic page_load so eng_components share a loadId with Timeline (no clinical impact).
+      // Synthetic page_load so eng_components share a loadId with Timeline.
+      // Delay long enough for EngComponent useLayoutEffect timings to land.
       setTimeout(() => {
         safeRun(() => {
           EngTelemetry.trackPageLoad({
@@ -219,7 +220,14 @@ export function startEngineeringTelemetry() {
           EngTelemetry.pushComponentBreakdown();
           scheduleFlush({ force: true });
         }, "eng.comp.engShell");
-      }, 1500);
+      }, 2000);
+      // Second pass: catch Active Tab / lazy children that mount after first flush.
+      setTimeout(() => {
+        safeRun(() => {
+          EngTelemetry.pushComponentBreakdown();
+          scheduleFlush({ force: true });
+        }, "eng.comp.engShell.late");
+      }, 4500);
     }
 
     const onLeave = () => {

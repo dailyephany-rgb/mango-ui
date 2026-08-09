@@ -6,6 +6,11 @@
 import { doc, setDoc, serverTimestamp, increment } from "firebase/firestore";
 import { getEngDb, isEngDbSafe } from "../firebaseEngConfig.js";
 import {
+  noteEngWriteError,
+  noteEngWriteOk,
+  shouldSkipEngWrite,
+} from "./engWriteHealth.js";
+import {
   ENG_COLLECTIONS,
   ENG_BUILD_ID,
   DEVICE_ONLINE_MS,
@@ -52,6 +57,7 @@ function loadLevel(listeners, memoryMB) {
 export function sendHeartbeat() {
   safeRun(() => {
     if (!isEngTelemetryEnabled()) return;
+    if (shouldSkipEngWrite()) return;
     const db = getEngDb();
     if (!db || !isEngDbSafe(db)) return;
 
@@ -112,9 +118,14 @@ export function sendHeartbeat() {
       clientTs: now,
     };
 
-    void setDoc(doc(db, ENG_COLLECTIONS.deviceStatus, deviceId), payload, {
-      merge: true,
-    }).catch(() => {});
+    const trackWrite = (p) =>
+      p.then(() => noteEngWriteOk()).catch((err) => noteEngWriteError(err));
+
+    void trackWrite(
+      setDoc(doc(db, ENG_COLLECTIONS.deviceStatus, deviceId), payload, {
+        merge: true,
+      })
+    );
 
     const deviceDoc = {
       deviceId,
@@ -138,13 +149,16 @@ export function sendHeartbeat() {
     } catch {
       /* ignore */
     }
-    void setDoc(doc(db, ENG_COLLECTIONS.devices, deviceId), deviceDoc, {
-      merge: true,
-    }).catch(() => {});
+    void trackWrite(
+      setDoc(doc(db, ENG_COLLECTIONS.devices, deviceId), deviceDoc, {
+        merge: true,
+      })
+    );
 
     const hk = hourKey(now);
     const hid = `${hk}_${deviceId}`.replace(/[^a-zA-Z0-9_-]/g, "_");
-    void setDoc(
+    void trackWrite(
+      setDoc(
       doc(db, ENG_COLLECTIONS.heartbeatHourly, hid),
       {
         hour: hk,
@@ -164,7 +178,8 @@ export function sendHeartbeat() {
         updatedAt: serverTimestamp(),
       },
       { merge: true }
-    ).catch(() => {});
+      )
+    );
 
     // Optional minute-grain history when debugSampling=true (EDS)
     if (settings.debugSampling) {

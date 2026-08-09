@@ -19,6 +19,7 @@ import {
   dayKeyFromTs,
 } from "./perfViews.js";
 import { WaterfallPanel } from "./WaterfallPanel.jsx";
+import { LoadIdCell } from "./LoadIdCell.jsx";
 
 function DeviceName({ id, label: _rowLabel }) {
   const { formatDeviceName } = useEngFilters();
@@ -167,8 +168,8 @@ export function TimelinePage() {
             </select>
           </label>
           <p className="eng-muted" style={{ margin: 0, fontSize: "0.75rem" }}>
-            Reconnects and timeouts are daily aggregates from eng_listener_daily (day
-            timestamp).
+            Load ID links this row to Components (same page open). Click an ID to
+            copy. Reconnects/timeouts are daily aggregates from eng_listener_daily.
           </p>
           <button
             type="button"
@@ -179,6 +180,7 @@ export function TimelinePage() {
                 timeline.map((e) => ({
                   time: fmtTs(e._ts),
                   kind: e._kind,
+                  loadId: e.loadId || e.id || "",
                   deviceId: e.deviceId,
                   department: e.department,
                   page: e.page,
@@ -210,6 +212,7 @@ export function TimelinePage() {
               <tr>
                 {[
                   ["ts", "Time"],
+                  ["loadId", "Load ID"],
                   ["deviceId", "Device"],
                   ["department", "Department"],
                   ["page", "Page"],
@@ -250,6 +253,9 @@ export function TimelinePage() {
                     >
                       <td>{fmtTs(r.ts)}</td>
                       <td>
+                        <LoadIdCell loadId={r.loadId} id={r.id} />
+                      </td>
+                      <td>
                         <DeviceName id={r.deviceId} label={r.label} />
                       </td>
                       <td>{r.department || "—"}</td>
@@ -280,8 +286,19 @@ export function TimelinePage() {
                     </tr>
                     {open && (
                       <tr>
-                        <td colSpan={13}>
-                          <WaterfallPanel load={r} />
+                        <td colSpan={14}>
+                          <div style={{ padding: "0.35rem 0 0.5rem" }}>
+                            <p
+                              className="eng-muted"
+                              style={{ fontSize: "0.8rem", margin: "0 0 0.5rem" }}
+                            >
+                              Load ID{" "}
+                              <code>{r.loadId || r.id || "—"}</code>
+                              {" · "}
+                              match on Components with the same Load ID
+                            </p>
+                            <WaterfallPanel load={r} />
+                          </div>
                         </td>
                       </tr>
                     )}

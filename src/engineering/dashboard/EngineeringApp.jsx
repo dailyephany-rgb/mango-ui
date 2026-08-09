@@ -27,6 +27,7 @@ import { TimelinePage } from "./TimelinePage.jsx";
 import { ComponentsPage } from "./ComponentsPage.jsx";
 import { FirestoreByComponentPage } from "./FirestoreByComponentPage.jsx";
 import { EngComponent } from "../ui/EngComponent.jsx";
+import { EngWriteHealthBanner } from "./EngWriteHealthBanner.jsx";
 import "./Engineering.css";
 
 const NAV = [
@@ -81,6 +82,7 @@ export default function EngineeringApp() {
               ))}
             </nav>
             <main className="eng-main">
+              <EngWriteHealthBanner />
               {showFilters && (
                 <EngComponent name="Filter Bar" type="Layout" parent="Dashboard Shell">
                   <GlobalFilterBar />

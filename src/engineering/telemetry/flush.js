@@ -16,6 +16,11 @@ import {
   isEngFirebaseConfigured,
   isEngDbSafe,
 } from "../firebaseEngConfig.js";
+import {
+  noteEngWriteError,
+  noteEngWriteOk,
+  shouldSkipEngWrite,
+} from "./engWriteHealth.js";
 import { ENG_COLLECTIONS } from "../constants.js";
 import {
   drainEvents,
@@ -161,6 +166,7 @@ function enqueueRetry(events) {
 export async function flushNow(opts = {}) {
   if (flushing && !opts.force) return;
   if (!isEngTelemetryEnabled()) return;
+  if (shouldSkipEngWrite() && !opts.force) return;
   flushing = true;
   try {
     const spilled = loadSpill();
@@ -178,7 +184,9 @@ export async function flushNow(opts = {}) {
     try {
       await deliverEvents(events);
       clearSpill();
-    } catch {
+      noteEngWriteOk();
+    } catch (err) {
+      noteEngWriteError(err);
       replaceSpill(events);
       enqueueRetry(events);
     }
