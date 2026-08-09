@@ -1,6 +1,12 @@
 
 import React, { useEffect, useState, useContext } from "react";
-import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import {
+  OwnerPageShell,
+  OwnerFilters,
+  OwnerKPIs,
+  OwnerDelays,
+  OwnerStaff
+} from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "../owner/OwnerContext.jsx";
 import DateSourceFilter from "../owner/components/DateSourceFilter";
 import KPIBlocks from "../owner/components/KPIBlocksOutsource";
@@ -304,7 +310,7 @@ export default function OwnerOutsourcePage() {
   ]);
 
   return (
-    <EngComponent name="OwnerOutsource" type="Page" parent={null} moduleId="OwnerOutsource">
+    <OwnerPageShell page="OwnerOutsource" moduleId="OwnerOutsource">
     <div className="owner-root">
       <header className="owner-header">
         <h1>Outsource Lab Analytics</h1>
@@ -353,15 +359,19 @@ export default function OwnerOutsourcePage() {
 
       </header>
 
+      <OwnerFilters page="OwnerOutsource">
       <DateSourceFilter />
-      <KPIBlocks kpis={data.kpis} />
+      </OwnerFilters>
+      <OwnerKPIs page="OwnerOutsource">
+        <KPIBlocks kpis={data.kpis} />
+      </OwnerKPIs>
 
       {/* OVERVIEW TAB */}
   
       {activeSubTab === "overview" && (
-  <>
+<>
 
-    <OwnerChartsSection>
+            <OwnerChartsSection engPage="OwnerOutsource" engName="Charts">
       <div className="chart-card">
         <h3>Counts Bar</h3>
 
@@ -445,6 +455,7 @@ export default function OwnerOutsourcePage() {
 
      {/* DELAYS TAB */}
 {activeSubTab === "delays" && (
+  <OwnerDelays page="OwnerOutsource">
   <>
 
     <div
@@ -533,10 +544,10 @@ export default function OwnerOutsourcePage() {
             />
           </div>
           </OwnerChartsSection></>
+          </OwnerDelays>
           )}
 
     
-
       {/* TIME BRICKS TAB */}
       {activeSubTab === "timebricks" && (
         <OwnerChartsSection style={{ display: 'block' }}>
@@ -558,6 +569,7 @@ export default function OwnerOutsourcePage() {
 
     {/* STAFF TAB */}
 {activeSubTab === "staff" && (
+  <OwnerStaff page="OwnerOutsource">
   <>
     <div
       style={{
@@ -609,6 +621,7 @@ export default function OwnerOutsourcePage() {
       </div>
     </OwnerChartsSection>
   </>
+  </OwnerStaff>
 )}
 
       <PatientListModal 
@@ -617,6 +630,6 @@ export default function OwnerOutsourcePage() {
         patients={modalData} 
       />
     </div>
-    </EngComponent>
+    </OwnerPageShell>
   );
 }

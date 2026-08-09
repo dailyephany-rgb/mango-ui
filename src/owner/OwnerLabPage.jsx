@@ -2,7 +2,11 @@
 
 
 import React, { useEffect, useState, useContext } from "react";
-import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import {
+  OwnerPageShell,
+  OwnerFilters,
+  OwnerKPIs
+} from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "../owner/OwnerContext.jsx";
 
 import DateSourceFilter from "../owner/components/DateSourceFilter";
@@ -66,7 +70,7 @@ export default function OwnerLabPage() {
   const violators = data.violators || [];
 
   return (
-    <EngComponent name="OwnerLab" type="Page" parent={null} moduleId="OwnerLab">
+    <OwnerPageShell page="OwnerInsideLab" moduleId="OwnerLab">
     <div className="owner-root">
       <header className="owner-header">
         <h1>Inside Lab Analytics</h1>
@@ -95,11 +99,15 @@ export default function OwnerLabPage() {
         </div>
       </header>
 
+      <OwnerFilters page="OwnerInsideLab">
       <DateSourceFilter />
-      <KPIBlocks kpis={data.kpis} />
+      </OwnerFilters>
+      <OwnerKPIs page="OwnerInsideLab">
+        <KPIBlocks kpis={data.kpis} />
+      </OwnerKPIs>
 
       {activeSubTab === "overview" && (
-        <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerInsideLab" engName="Charts">
           <div className="chart-card">
             <h3>Counts Bar</h3>
             <div style={{ height: "250px" }}>
@@ -116,7 +124,7 @@ export default function OwnerLabPage() {
       )}
 
       {activeSubTab === "delays" && (
-        <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerInsideLab" engName="Delays">
           <div className="chart-card">
             <h3>Delay Histogram</h3>
             <div style={{ height: "220px" }}>
@@ -160,7 +168,7 @@ export default function OwnerLabPage() {
 
             {/* STAFF ANALYTICS TAB */}
       {activeSubTab === "staff" && (
-        <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerInsideLab" engName="Staff Analytics">
           <div
             className="chart-card full-width"
             style={{ minHeight: "480px" }}
@@ -184,6 +192,6 @@ export default function OwnerLabPage() {
         }))} 
       />
     </div>
-    </EngComponent>
+    </OwnerPageShell>
   );
 }

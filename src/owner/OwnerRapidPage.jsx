@@ -2,7 +2,12 @@
 
 // src/owner_ui/OwnerRapidPage.jsx
 import React, { useEffect, useMemo, useState, useContext, Suspense } from "react";
-import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import {
+  OwnerPageShell,
+  OwnerFilters,
+  OwnerKPIs,
+  OwnerDelays
+} from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "../owner/OwnerContext.jsx";
 
 import DateSourceFilter from "../owner/components/DateSourceFilter";
@@ -225,7 +230,7 @@ export default function OwnerRapidPage() {
   );
 
   return (
-    <EngComponent name="OwnerRapid" type="Page" parent={null} moduleId="OwnerRapid">
+    <OwnerPageShell page="OwnerRapid" moduleId="OwnerRapid">
     <div className="owner-root">
       <header className="owner-header">
         <h1>Rapid Card — Analytics</h1>
@@ -242,7 +247,7 @@ export default function OwnerRapidPage() {
         </div>
 
         {activeTab === "staff" && (
-            <div
+        <div
               className="tab-buttons"
               style={{
                 marginTop: 12,
@@ -270,24 +275,30 @@ export default function OwnerRapidPage() {
                 </button>
               ))}
             </div>
-          )}
+          
+        )}
+
 
 
       </header>
 
+      <OwnerFilters page="OwnerRapid">
       <DateSourceFilter />
+      </OwnerFilters>
 
         {activeTab !== "staff" && (
+          <OwnerKPIs page="OwnerRapid">
           <KPIBlocks
             overview={
               overviewForKPI
             }
             kpis={kpis || {}}
           />
+          </OwnerKPIs>
         )}
 
       {activeTab === "overview" && (
-        <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerRapid" engName="Charts">
           <div className="chart-card">
             <h3>Counts Bar</h3>
             <CountsBar counts={countsForBar} />
@@ -417,6 +428,7 @@ export default function OwnerRapidPage() {
       )}
 
 {activeTab === "delays" && (
+        <OwnerDelays page="OwnerRapid">
   <OwnerChartsSection>
     <div className="chart-card">
 
@@ -483,6 +495,8 @@ export default function OwnerRapidPage() {
           <DelayTable violators={violators} stage={delayStage}/>
           </div>
         </OwnerChartsSection>
+      
+        </OwnerDelays>
       )}
 
 {activeTab === "timebricks" && (
@@ -547,7 +561,7 @@ export default function OwnerRapidPage() {
 )}
 
 {activeTab === "staff" && (
-  <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerRapid" engName="Staff Analytics">
 
     {staffTab === "testing" && (
       <>
@@ -679,7 +693,7 @@ export default function OwnerRapidPage() {
         )}
 
       </OwnerChartsSection>
-    )}
+      )}
 
       <PatientListModal 
         open={openModal} 
@@ -834,6 +848,6 @@ export default function OwnerRapidPage() {
   </Suspense>
   )}
     </div>
-    </EngComponent>
+    </OwnerPageShell>
   );
 }

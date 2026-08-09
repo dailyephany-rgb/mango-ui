@@ -1,7 +1,12 @@
 
 
 import React, { useContext, useEffect, useMemo, useState, Suspense } from "react";
-import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import {
+  OwnerPageShell,
+  OwnerFilters,
+  OwnerKPIs,
+  OwnerDelays
+} from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "./OwnerContext.jsx";
 
 import DateSourceFilter from "./components/DateSourceFilter";
@@ -235,7 +240,7 @@ export default function OwnerBiochem() {
   
 
   return (
-    <EngComponent name="OwnerBiochem" type="Page" parent={null} moduleId="OwnerBiochem">
+    <OwnerPageShell page="OwnerBiochem" moduleId="OwnerBiochem">
     <div className="owner-root">
       <header className="owner-header">
         <h1>Biochemistry — Analytics</h1>
@@ -266,22 +271,26 @@ export default function OwnerBiochem() {
           </button>
         ))}
       </div>
-          )}
+      )}
 
 
       </header>
 
+      <OwnerFilters page="OwnerBiochem">
       <DateSourceFilter />
+      </OwnerFilters>
 
       {activeTab !== "staff" && (
+        <OwnerKPIs page="OwnerBiochem">
         <KPIBlocks
           overview={overviewForKPI}
           kpis={kpis || {}}
         />
+        </OwnerKPIs>
       )}
 
       {activeTab === "overview" && (
-        <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerBiochem" engName="Charts">
           <div className="chart-card">
             <h3>Counts Bar</h3>
             <CountsBar counts={countsForBar} />
@@ -404,6 +413,7 @@ export default function OwnerBiochem() {
       )}
 
 {activeTab === "delays" && (
+        <OwnerDelays page="OwnerBiochem">
   <>
     <div
       style={{
@@ -460,7 +470,9 @@ export default function OwnerBiochem() {
       </div>
     </OwnerChartsSection>
   </>
-)}
+
+        </OwnerDelays>
+      )}
         {activeTab === "timebricks" && (
         <>
           <div
@@ -513,7 +525,7 @@ export default function OwnerBiochem() {
 
         
         {activeTab === "staff" && (
-          <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerBiochem" engName="Staff Analytics">
 
             {staffTab === "testing" && (
               <>
@@ -620,7 +632,7 @@ export default function OwnerBiochem() {
         )}
 
             </OwnerChartsSection>
-          )}
+      )}
 
               
           <PatientListModal
@@ -784,7 +796,7 @@ export default function OwnerBiochem() {
 
     </div>
 
-    </EngComponent>
+    </OwnerPageShell>
   );
 }
 

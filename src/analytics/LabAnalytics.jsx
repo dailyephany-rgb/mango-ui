@@ -310,6 +310,7 @@ if (activeColl === "biochemistry_combo") {
       <div className="header-section">
         <h1>{DEPARTMENTS.find(d => d.id === activeColl)?.label} Analytics</h1>
         
+        <EngComponent name="Filters" type="Layout" parent="LabAnalytics">
         <div className="filter-controls">
           <div className="filter-row">
             <div className="input-group">
@@ -434,8 +435,10 @@ if (activeColl === "biochemistry_combo") {
 
 
         </div>
+        </EngComponent>
       </div>
 
+      <EngComponent name="Counts Grid" type="Charts" parent="LabAnalytics">
       <div className="analytics-grid">
         {displayStats.length > 0 ? (
           displayStats.map(([test, count]) => (
@@ -449,6 +452,7 @@ if (activeColl === "biochemistry_combo") {
           <div className="no-results">No tests found matching "{testSearch}"</div>
         )}
       </div>
+      </EngComponent>
     </div>
     </EngComponent>
   );

@@ -1,7 +1,12 @@
 
 // src/owner/OwnerBloodGroupPage.jsx
 import React, { useEffect, useMemo, useState, useContext, Suspense } from "react";
-import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import {
+  OwnerPageShell,
+  OwnerFilters,
+  OwnerKPIs,
+  OwnerDelays
+} from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "./OwnerContext.jsx";
 import DateSourceFilter from "./components/DateSourceFilter";
 
@@ -217,13 +222,11 @@ export default function OwnerBloodGroupPage() {
   ]);
 
 
+  const pageName =
+    mode === "testing" ? "OwnerBloodGroupTesting" : "OwnerBloodGroupRetesting";
+
   return (
-    <EngComponent
-      name={mode === "testing" ? "OwnerBloodGroupTesting" : "OwnerBloodGroupRetesting"}
-      type="Page"
-      parent={null}
-      moduleId={mode === "testing" ? "OwnerBloodGroupTesting" : "OwnerBloodGroupRetesting"}
-    >
+    <OwnerPageShell page="OwnerBloodGroup" moduleId={pageName}>
     <div className="owner-root">
       <header className="owner-header">
         <h1>Blood Group — Analytics</h1>
@@ -291,13 +294,19 @@ export default function OwnerBloodGroupPage() {
 
       </header>
 
-      <DateSourceFilter />
+      <OwnerFilters page="OwnerBloodGroup">
+        <DateSourceFilter />
+      </OwnerFilters>
       
       {/* 🟢 Uses your specialized Blood Group KPI block (No Critical Card) */}
-      {activeTab !== "staff" && (<KPIBlocks_BloodGroup kpis={fetchedKpis || {}} /> )}
+      {activeTab !== "staff" && (
+        <OwnerKPIs page="OwnerBloodGroup">
+          <KPIBlocks_BloodGroup kpis={fetchedKpis || {}} />
+        </OwnerKPIs>
+      )}
 
       {activeTab === "overview" && (
-        <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerBloodGroup" engName="Charts">
          
          <div className="chart-card">
   <h3>Counts Bar</h3>
@@ -435,6 +444,7 @@ export default function OwnerBloodGroupPage() {
 
 
 {activeTab === "delays" && (
+  <OwnerDelays page="OwnerBloodGroup">
   <>
    <div
         style={{
@@ -510,6 +520,7 @@ export default function OwnerBloodGroupPage() {
       </div>
     </OwnerChartsSection>
   </>
+  </OwnerDelays>
 )}
 
 {activeTab === "timebricks" && (
@@ -578,7 +589,7 @@ export default function OwnerBloodGroupPage() {
 )}
 
 {activeTab === "staff" && (
-  <OwnerChartsSection>
+  <OwnerChartsSection engPage="OwnerBloodGroup" engName="Staff Analytics">
 
     {staffTab === "testing" && (
       <>
@@ -863,6 +874,6 @@ export default function OwnerBloodGroupPage() {
       </Suspense>
     )}
     </div>
-    </EngComponent>
+    </OwnerPageShell>
   );
 }

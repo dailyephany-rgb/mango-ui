@@ -1,7 +1,12 @@
 
 
 import React, { useContext, useEffect, useMemo, useState, Suspense } from "react";
-import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import {
+  OwnerPageShell,
+  OwnerFilters,
+  OwnerKPIs,
+  OwnerDelays
+} from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "./OwnerContext.jsx";
 
 import DateSourceFilter from "./components/DateSourceFilter";
@@ -209,7 +214,7 @@ export default function OwnerHormones() {
     );
 
   return (
-    <EngComponent name="OwnerHormones" type="Page" parent={null} moduleId="OwnerHormones">
+    <OwnerPageShell page="OwnerHormones" moduleId="OwnerHormones">
     <div className="owner-root">
       <header className="owner-header">
         <h1>Hormones — Analytics</h1>
@@ -227,7 +232,7 @@ export default function OwnerHormones() {
       </div>
 
         {activeTab === "staff" && (
-    <div className="tab-buttons" style={{ marginTop: 12 }}>
+        <div className="tab-buttons" style={{ marginTop: 12 }}>
       {["testing", "validated", "entered"].map((t) => (
         <button
           key={t}
@@ -238,17 +243,21 @@ export default function OwnerHormones() {
         </button>
       ))}
     </div>
-  )}
+      )}
 
       </header>
 
       
 
+      <OwnerFilters page="OwnerHormones">
       <DateSourceFilter />
-      {activeTab !== "staff" && (<KPIBlocks overview={overviewForKPI}
-          kpis={kpis || {}} /> )}
+      </OwnerFilters>
+      {activeTab !== "staff" && (<OwnerKPIs page="OwnerHormones">
+        <KPIBlocks overview={overviewForKPI}
+          kpis={kpis || {}} />
+      </OwnerKPIs> )}
       {activeTab === "overview" && (
-        <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerHormones" engName="Charts">
           <div className="chart-card">
             <h3>Counts Bar</h3>
             <CountsBar counts={countsForBar} />
@@ -373,6 +382,7 @@ export default function OwnerHormones() {
       )}
 
 {activeTab === "delays" && (
+        <OwnerDelays page="OwnerHormones">
   <OwnerChartsSection>
     <div className="chart-card">
       <div
@@ -439,6 +449,8 @@ export default function OwnerHormones() {
                       <DelayTable violators={violators}stage={delayStage} />
           </div>
         </OwnerChartsSection>
+      
+        </OwnerDelays>
       )}
 
 {activeTab === "timebricks" && (
@@ -493,7 +505,7 @@ export default function OwnerHormones() {
    
 {activeTab ===
   "staff" && (
-  <OwnerChartsSection>
+  <OwnerChartsSection engPage="OwnerHormones" engName="Staff Analytics">
     {staffTab ===
       "testing" && (
       <>
@@ -820,7 +832,7 @@ export default function OwnerHormones() {
       
 
 
-    </EngComponent>
+    </OwnerPageShell>
   );
 }
 

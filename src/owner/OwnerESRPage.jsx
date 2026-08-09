@@ -5,7 +5,12 @@
 // ------------------------------------------------------
 
 import React, { useContext, useEffect, useMemo, useState, Suspense } from "react";
-import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import {
+  OwnerPageShell,
+  OwnerFilters,
+  OwnerKPIs,
+  OwnerDelays
+} from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "../owner/OwnerContext.jsx";
 
 import DateSourceFilter from "../owner/components/DateSourceFilter";
@@ -237,7 +242,7 @@ export default function OwnerESRPage() {
   );
 
   return (
-    <EngComponent name="OwnerESR" type="Page" parent={null} moduleId="OwnerESR">
+    <OwnerPageShell page="OwnerESR" moduleId="OwnerESR">
     <div className="owner-root">
       <header className="owner-header">
         <h1>ESR — Analytics</h1>
@@ -254,7 +259,7 @@ export default function OwnerESRPage() {
         </div>
 
         {activeTab === "staff" && (
-            <div
+        <div
               className="tab-buttons"
               style={{
                 marginTop: 12,
@@ -282,23 +287,29 @@ export default function OwnerESRPage() {
                 </button>
                     ))}
                   </div>
-                )}
+                
+        )}
+
 
                 </header>
 
-                <DateSourceFilter />
+                <OwnerFilters page="OwnerESR">
+      <DateSourceFilter />
+      </OwnerFilters>
 
                 {activeTab !== "staff" && (
+                  <OwnerKPIs page="OwnerESR">
                   <KPIBlocks
                     overview={
                       overviewForKPI
                     }
                     kpis={kpis || {}}
                   />
+                  </OwnerKPIs>
                 )}
 
                 {activeTab === "overview" && (
-                  <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerESR" engName="Charts">
                     <div className="chart-card">
                       <h3>Counts Bar</h3>
                       <CountsBar counts={countsForBar} />
@@ -431,6 +442,7 @@ export default function OwnerESRPage() {
       )}
 
 {activeTab === "delays" && (
+        <OwnerDelays page="OwnerESR">
   <OwnerChartsSection>
     <div className="chart-card">
 
@@ -499,6 +511,8 @@ export default function OwnerESRPage() {
           <DelayTable violators={violators} stage={delayStage}/>
           </div>
         </OwnerChartsSection>
+      
+        </OwnerDelays>
       )}
 
 {activeTab === "timebricks" && (
@@ -558,7 +572,7 @@ export default function OwnerESRPage() {
 )}
 
 {activeTab === "staff" && (
-  <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerESR" engName="Staff Analytics">
 
     {staffTab === "testing" && (
       <>
@@ -839,6 +853,6 @@ export default function OwnerESRPage() {
              </Suspense>
       )}
     </div>
-    </EngComponent>
+    </OwnerPageShell>
   );
 }

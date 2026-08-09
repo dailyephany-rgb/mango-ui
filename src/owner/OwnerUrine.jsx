@@ -2,7 +2,12 @@
 
 // src/owner_ui/OwnerUrinePage.jsx
 import React, { useEffect, useMemo, useState, useContext, Suspense } from "react";
-import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import {
+  OwnerPageShell,
+  OwnerFilters,
+  OwnerKPIs,
+  OwnerDelays
+} from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "../owner/OwnerContext.jsx";
 
 import DateSourceFilter from "../owner/components/DateSourceFilter";
@@ -235,7 +240,7 @@ export default function OwnerUrinePage() {
 
 
   return (
-    <EngComponent name="OwnerUrine" type="Page" parent={null} moduleId="OwnerUrine">
+    <OwnerPageShell page="OwnerUrine" moduleId="OwnerUrine">
     <div className="owner-root">
       <header className="owner-header">
         <h1>Urine Examination — Analytics</h1>
@@ -251,7 +256,7 @@ export default function OwnerUrinePage() {
           ))}
         </div>
         {activeTab === "staff" && (
-  <div
+        <div
     className="tab-buttons"
     style={{
       marginTop: 12,
@@ -278,23 +283,29 @@ export default function OwnerUrinePage() {
       </button>
     ))}
   </div>
-)}
+
+        )}
+
 
 
       </header>
 
+      <OwnerFilters page="OwnerUrine">
       <DateSourceFilter />
+      </OwnerFilters>
       
       {/* 🟢 Correct Keys (Critical, TAT, etc.) now pass through to KPIBlocks */}
       {activeTab !== "staff" && (
+        <OwnerKPIs page="OwnerUrine">
         <KPIBlocks
           overview={overviewForKPI}
           kpis={kpis || {}}
         />
+        </OwnerKPIs>
       )}
 
       {activeTab === "overview" && (
-        <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerUrine" engName="Charts">
           <div className="chart-card">
             <h3>Counts Bar</h3>
             <CountsBar counts={countsForBar} />
@@ -425,6 +436,7 @@ export default function OwnerUrinePage() {
       )}
 
 {activeTab === "delays" && (
+        <OwnerDelays page="OwnerUrine">
   <OwnerChartsSection>
     <div className="chart-card">
 
@@ -491,6 +503,8 @@ export default function OwnerUrinePage() {
           <DelayTable violators={violators} stage={delayStage}/>
           </div>
         </OwnerChartsSection>
+      
+        </OwnerDelays>
       )}
 
 {activeTab === "timebricks" && (
@@ -555,7 +569,7 @@ export default function OwnerUrinePage() {
 )}
 
 {activeTab === "staff" && (
-  <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerUrine" engName="Staff Analytics">
 
     {staffTab === "testing" && (
       <>
@@ -685,7 +699,7 @@ export default function OwnerUrinePage() {
     )}
 
   </OwnerChartsSection>
-)}
+      )}
 
       <PatientListModal 
         open={openModal} 
@@ -839,6 +853,6 @@ export default function OwnerUrinePage() {
 </Suspense>
 )}    
     </div>
-    </EngComponent>
+    </OwnerPageShell>
   );
 }

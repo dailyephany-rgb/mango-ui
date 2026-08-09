@@ -6,7 +6,12 @@
 // ------------------------------------------------------
 
 import React, { useEffect, useMemo, useState, useContext, Suspense } from "react";
-import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import {
+  OwnerPageShell,
+  OwnerFilters,
+  OwnerKPIs,
+  OwnerDelays
+} from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "./OwnerContext.jsx";
 
 import DateSourceFilter from "./components/DateSourceFilter";
@@ -224,7 +229,7 @@ export default function OwnerCoagPage() {
 
 
   return (
-    <EngComponent name="OwnerCoag" type="Page" parent={null} moduleId="OwnerCoag">
+    <OwnerPageShell page="OwnerCoag" moduleId="OwnerCoag">
     <div className="owner-root">
       <header className="owner-header">
         <h1>Coagulation — Analytics</h1>
@@ -291,21 +296,27 @@ export default function OwnerCoagPage() {
             </button>
           ))}
         </div>
-      )}
+      
+        )}
+
 
       </header>
 
+      <OwnerFilters page="OwnerCoag">
       <DateSourceFilter />
+      </OwnerFilters>
 
       {activeTab !== "staff" && (
+        <OwnerKPIs page="OwnerCoag">
         <KPIBlocks
           overview={overviewForKPI}
           kpis={finalKpis}
         />
+        </OwnerKPIs>
       )}
 
       {activeTab === "overview" && (
-        <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerCoag" engName="Charts">
           <div className="chart-card">
             <h3>Counts Bar</h3>
             <CountsBar counts={countsForBar} />
@@ -435,6 +446,7 @@ export default function OwnerCoagPage() {
       )}
 
 {activeTab === "delays" && (
+        <OwnerDelays page="OwnerCoag">
   <OwnerChartsSection>
     <div className="chart-card">
 
@@ -498,6 +510,8 @@ export default function OwnerCoagPage() {
             <DelayTable violators={violators} />
           </div>
         </OwnerChartsSection>
+      
+        </OwnerDelays>
       )}
 
       
@@ -558,7 +572,7 @@ export default function OwnerCoagPage() {
 )}
 
 {activeTab === "staff" && (
-  <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerCoag" engName="Staff Analytics">
 
     {staffTab === "testing" && (
       <>
@@ -855,6 +869,6 @@ export default function OwnerCoagPage() {
       </Suspense>
       )}
     </div>
-    </EngComponent>
+    </OwnerPageShell>
   );
 }

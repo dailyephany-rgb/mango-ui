@@ -27,12 +27,18 @@ body,
   background: var(--eng-bg);
   color: var(--eng-text);
   font-family: var(--eng-font);
+  overflow-x: hidden;
 }
 
 .eng-app {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  /* minmax(0, 1fr) prevents wide tables from blowing out the main column
+     and painting under / past the sidebar (classic CSS grid min-size:auto bug). */
+  grid-template-columns: 220px minmax(0, 1fr);
   min-height: 100vh;
+  width: 100%;
+  max-width: 100vw;
+  overflow: hidden;
 }
 
 .eng-nav {
@@ -42,6 +48,9 @@ body,
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .eng-brand {
@@ -88,6 +97,8 @@ body,
 .eng-main {
   padding: 1.25rem 1.5rem 2rem;
   overflow: auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .eng-filter-bar {
@@ -195,6 +206,7 @@ body,
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 0.75rem;
   margin-bottom: 1.25rem;
+  min-width: 0;
 }
 
 .eng-card {
@@ -202,6 +214,8 @@ body,
   border: 1px solid var(--eng-border);
   border-radius: 10px;
   padding: 0.9rem 1rem;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .eng-card .label {
@@ -224,12 +238,32 @@ body,
   margin-top: 0.25rem;
 }
 
+.eng-dept-grid {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.eng-dept-card .eng-dept-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eng-dept-card .eng-dept-spark {
+  margin-top: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
 .eng-panel {
   background: var(--eng-panel);
   border: 1px solid var(--eng-border);
   border-radius: 10px;
   padding: 1rem;
   margin-bottom: 1rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .eng-panel h2 {
@@ -238,10 +272,25 @@ body,
   font-weight: 600;
 }
 
+/* Scroll wide tables inside the panel instead of blowing out the shell. */
+.eng-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
 .eng-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.85rem;
+}
+
+.eng-table-scroll > .eng-table {
+  width: max-content;
+  min-width: 100%;
 }
 
 .eng-table th,
@@ -258,6 +307,17 @@ body,
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.eng-table td {
+  white-space: nowrap;
+}
+
+.eng-table td.eng-cell-wrap {
+  white-space: normal;
+  max-width: 160px;
+  word-break: break-word;
 }
 
 .eng-table tr:hover td {
@@ -472,14 +532,69 @@ body,
   align-items: flex-end;
   gap: 2px;
   height: 48px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .eng-spark span {
-  flex: 1;
-  min-width: 3px;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 12px;
   background: var(--eng-accent);
   border-radius: 2px 2px 0 0;
   opacity: 0.85;
+}
+
+.eng-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  align-items: flex-end;
+}
+
+.eng-toolbar label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--eng-muted);
+  margin: 0;
+}
+
+.eng-toolbar select,
+.eng-toolbar input {
+  appearance: none;
+  border: 1px solid var(--eng-border);
+  background: var(--eng-bg);
+  color: var(--eng-text);
+  border-radius: 6px;
+  padding: 0.4rem 0.5rem;
+  font: inherit;
+  font-size: 0.8rem;
+  text-transform: none;
+  letter-spacing: normal;
+  width: auto;
+  min-width: 140px;
+  max-width: 220px;
+}
+
+.eng-toolbar .eng-toolbar-hint {
+  flex: 1 1 200px;
+  margin: 0;
+  font-size: 0.75rem;
+  min-width: 0;
+}
+
+.eng-toolbar .eng-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-left: auto;
 }
 
 .eng-regressed {
@@ -493,13 +608,15 @@ body,
 
 @media (max-width: 800px) {
   .eng-app {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    overflow: auto;
   }
   .eng-nav {
     flex-direction: row;
     flex-wrap: wrap;
     border-right: 0;
     border-bottom: 1px solid var(--eng-border);
+    max-height: none;
   }
   .eng-brand {
     width: 100%;

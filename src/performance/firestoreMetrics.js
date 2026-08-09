@@ -51,28 +51,30 @@ export function resolvePageIdentity() {
 
   // Include Vite rollup short names (/coag, /haem, /biochem) — without these,
   // pathname "coag" was stored as page "coag" and never showed as Coagulation on Timeline.
+  // Owner *pages* use department "Owner" so Departments → Owner aggregates all owner_* tabs
+  // (clinical register pages keep Biochemistry / Haematology / …).
   const map = [
     [
       /^(?:index_)?biochem(?:istry)?(?:\.html)?$|owner_biochem/,
       {
         page: p.includes("owner") ? "OwnerBiochem" : "Biochemistry",
-        department: "Biochemistry",
+        department: p.includes("owner") ? "Owner" : "Biochemistry",
         bucket: p.includes("owner") ? "Owner" : "Department Register",
       },
     ],
     [
       /^(?:index_)?haem(?:atology)?(?:\.html)?$|owner_haem/,
       {
-        page: "Haematology",
-        department: "Haematology",
+        page: p.includes("owner") ? "OwnerHaem" : "Haematology",
+        department: p.includes("owner") ? "Owner" : "Haematology",
         bucket: p.includes("owner") ? "Owner" : "Department Register",
       },
     ],
     [
       /^(?:index_)?coag(?:ulation)?(?:\.html)?$|owner_coag/,
       {
-        page: "Coagulation",
-        department: "Coagulation",
+        page: p.includes("owner") ? "OwnerCoag" : "Coagulation",
+        department: p.includes("owner") ? "Owner" : "Coagulation",
         bucket: p.includes("owner") ? "Owner" : "Department Register",
       },
     ],
@@ -80,7 +82,7 @@ export function resolvePageIdentity() {
       /hormones|owner_hormones/,
       {
         page: p.includes("owner") ? "OwnerHormones" : "Hormones",
-        department: "Hormones",
+        department: p.includes("owner") ? "Owner" : "Hormones",
         bucket: p.includes("owner") ? "Owner" : "Department Register",
       },
     ],
@@ -92,13 +94,13 @@ export function resolvePageIdentity() {
     [/master_admin/, { page: "MasterAdmin", department: "Admin", bucket: "Other" }],
     [/analytics/, { page: "LabAnalytics", department: "Analytics", bucket: "Analytics" }],
     [/index_owner\.html|main_owner\.jsx/, { page: "OwnerWorkflow", department: "Owner", bucket: "Owner" }],
-    [/owner_urine|index_owner_urine/, { page: "OwnerUrine", department: "Urine", bucket: "Owner" }],
-    [/owner_esr/, { page: "OwnerESR", department: "ESR", bucket: "Owner" }],
-    [/owner_serology/, { page: "OwnerSerology", department: "Serology", bucket: "Owner" }],
-    [/owner_rapid/, { page: "OwnerRapid", department: "RapidCard", bucket: "Owner" }],
-    [/owner_blood/, { page: "OwnerBloodGroup", department: "BloodGroup", bucket: "Owner" }],
-    [/owner_outsource/, { page: "OwnerOutsource", department: "Outsource", bucket: "Owner" }],
-    [/owner_lab/, { page: "OwnerInsideLab", department: "InsideLab", bucket: "Owner" }],
+    [/owner_urine|index_owner_urine/, { page: "OwnerUrine", department: "Owner", bucket: "Owner" }],
+    [/owner_esr/, { page: "OwnerESR", department: "Owner", bucket: "Owner" }],
+    [/owner_serology/, { page: "OwnerSerology", department: "Owner", bucket: "Owner" }],
+    [/owner_rapid/, { page: "OwnerRapid", department: "Owner", bucket: "Owner" }],
+    [/owner_blood/, { page: "OwnerBloodGroup", department: "Owner", bucket: "Owner" }],
+    [/owner_outsource/, { page: "OwnerOutsource", department: "Owner", bucket: "Owner" }],
+    [/owner_lab/, { page: "OwnerInsideLab", department: "Owner", bucket: "Owner" }],
     [/index_inside_lab|inside_lab/, { page: "InsideLab", department: "InsideLab", bucket: "Department Register" }],
     [/index_outsource|outsource/, { page: "Outsource", department: "Outsource", bucket: "Department Register" }],
     [/index_backup|backup/, { page: "Backup", department: "Backup", bucket: "Department Register" }],

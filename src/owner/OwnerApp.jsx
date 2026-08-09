@@ -59,6 +59,7 @@ export default function OwnerApp() {
 
   if (loading) {
     return (
+      <EngComponent name="OwnerApp.jsx" type="Page" parent={null} moduleId="OwnerApp">
       <div className="owner-root">
         <div
           style={{
@@ -71,6 +72,7 @@ export default function OwnerApp() {
           Loading Workflow Analytics...
         </div>
       </div>
+      </EngComponent>
     );
   }
 

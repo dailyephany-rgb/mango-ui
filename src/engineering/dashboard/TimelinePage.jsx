@@ -144,8 +144,8 @@ export function TimelinePage() {
         </div>
       </div>
 
-      <div className="eng-panel eng-form">
-        <div className="eng-actions" style={{ alignItems: "flex-end" }}>
+      <div className="eng-panel">
+        <div className="eng-toolbar">
           <label>
             Page
             <select value={pageOnly} onChange={(e) => setPageOnly(e.target.value)}>
@@ -167,34 +167,36 @@ export function TimelinePage() {
               <option value="timeouts">Listener timeouts</option>
             </select>
           </label>
-          <p className="eng-muted" style={{ margin: 0, fontSize: "0.75rem" }}>
+          <p className="eng-muted eng-toolbar-hint">
             Load ID links this row to Components (same page open). Click an ID to
             copy. Reconnects/timeouts are daily aggregates from eng_listener_daily.
           </p>
-          <button
-            type="button"
-            className="eng-btn"
-            onClick={() =>
-              downloadCsv(
-                `eng-timeline-${dayKeyFromTs()}.csv`,
-                timeline.map((e) => ({
-                  time: fmtTs(e._ts),
-                  kind: e._kind,
-                  loadId: e.loadId || e.id || "",
-                  deviceId: e.deviceId,
-                  department: e.department,
-                  page: e.page,
-                  buildId: e.buildId,
-                  totalMs: e.totalMs,
-                  interactiveMs: e.interactiveMs,
-                  firstSnapshotMs: e.firstSnapshotMs,
-                  label: e._label,
-                }))
-              )
-            }
-          >
-            Export CSV
-          </button>
+          <div className="eng-toolbar-actions">
+            <button
+              type="button"
+              className="eng-btn"
+              onClick={() =>
+                downloadCsv(
+                  `eng-timeline-${dayKeyFromTs()}.csv`,
+                  timeline.map((e) => ({
+                    time: fmtTs(e._ts),
+                    kind: e._kind,
+                    loadId: e.loadId || e.id || "",
+                    deviceId: e.deviceId,
+                    department: e.department,
+                    page: e.page,
+                    buildId: e.buildId,
+                    totalMs: e.totalMs,
+                    interactiveMs: e.interactiveMs,
+                    firstSnapshotMs: e.firstSnapshotMs,
+                    label: e._label,
+                  }))
+                )
+              }
+            >
+              Export CSV
+            </button>
+          </div>
         </div>
       </div>
 
@@ -207,6 +209,7 @@ export function TimelinePage() {
             label="No page-load samples in the selected filter range"
           />
         ) : (
+          <div className="eng-table-scroll">
           <table className="eng-table">
             <thead>
               <tr>
@@ -286,7 +289,7 @@ export function TimelinePage() {
                     </tr>
                     {open && (
                       <tr>
-                        <td colSpan={14}>
+                        <td colSpan={14} className="eng-cell-wrap">
                           <div style={{ padding: "0.35rem 0 0.5rem" }}>
                             <p
                               className="eng-muted"
@@ -307,11 +310,13 @@ export function TimelinePage() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
       <div className="eng-panel">
         <h2>Mixed flight log</h2>
+        <div className="eng-table-scroll">
         <table className="eng-table">
           <thead>
             <tr>
@@ -331,11 +336,12 @@ export function TimelinePage() {
                   <DeviceName id={e.deviceId} label={e.label} />
                 </td>
                 <td>{e.department || "—"}</td>
-                <td>{e._label}</td>
+                <td className="eng-cell-wrap">{e._label}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </>
   );

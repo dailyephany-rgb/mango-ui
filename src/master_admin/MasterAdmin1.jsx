@@ -10,6 +10,7 @@ import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFire
 import * as XLSX from "xlsx"; // Import SheetJS
 import "./MasterAdmin.css";
 import { MASTER_ADMIN_DEPARTMENTS } from "../shared/config/collections.js";
+import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 const DEPARTMENTS = MASTER_ADMIN_DEPARTMENTS;
 
@@ -406,6 +407,7 @@ if (mappedLabNames && mappedLabNames.length > 0) {
   };
 
   return (
+    <EngComponent name="MasterAdmin" type="Page" parent={null} moduleId="MasterAdmin1">
     <div className="master-container">
       <div className="header-bar">
         <h2>📋 Lab Admin Panel — Management View</h2>
@@ -419,6 +421,7 @@ if (mappedLabNames && mappedLabNames.length > 0) {
       </div>
 
       {isCompareView ? (
+        <EngComponent name="Compare View" type="Tables" parent="MasterAdmin">
         <div className="filter-bar" style={{ borderLeft: "5px solid #2563eb", flexDirection: "column", alignItems: "flex-start" }}>
            <h3>Reconciliation Tool (Accession No ↔ Diagnostic No)</h3>
            <div style={{ display: "flex", gap: "20px", marginBottom: "15px" }}>
@@ -501,8 +504,10 @@ if (mappedLabNames && mappedLabNames.length > 0) {
              </div>
            )}
         </div>
+        </EngComponent>
       ) : (
         <>
+          <EngComponent name="Filters" type="Layout" parent="MasterAdmin">
           <div className="filter-bar">
             <div className="filter-left">
               <input type="text" placeholder="Search Reg or Diag No..." value={searchReg} onChange={(e) => setSearchReg(e.target.value)} />
@@ -524,7 +529,9 @@ if (mappedLabNames && mappedLabNames.length > 0) {
               ))}
             </div>
           </div>
+          </EngComponent>
 
+          <EngComponent name="Register Table" type="Tables" parent="MasterAdmin">
           <div className="table-wrapper">
             <table className="master-table">
               <thead>
@@ -577,8 +584,10 @@ if (mappedLabNames && mappedLabNames.length > 0) {
               </tbody>
             </table>
           </div>
+          </EngComponent>
         </>
       )}
     </div>
+    </EngComponent>
   );
 }

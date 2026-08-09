@@ -1,9 +1,10 @@
 
-import React, { useState, Suspense, lazy } from "react";
+import React, { useState, Suspense, lazy, useEffect } from "react";
 import "./Backroom.css";
 
 import UserMenu from "../auth/UserMenu";
 import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import { EngTelemetry } from "../engineering/telemetry/EngTelemetry.js";
 
 const ESRRegister = lazy(() => import("./ESRRegister.jsx"));
 const BloodGroupRegister = lazy(() => import("./BloodGroupRegister.jsx"));
@@ -17,6 +18,13 @@ const BackroomInventoryTab = lazy(() =>
 export default function BackroomMain() {
 
   const [activeTab, setActiveTab] = useState("esr");
+
+  useEffect(() => {
+    EngTelemetry.setContext({
+      page: "Backroom",
+      department: "Backroom",
+    });
+  }, []);
 
   const renderActiveTab = () => {
 

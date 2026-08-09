@@ -790,27 +790,51 @@ export function DepartmentsPage() {
       {!cards.length && (
         <EmptyHint configured={configured} loading={loading} />
       )}
-      <div className="eng-grid">
+      <div className="eng-grid eng-dept-grid">
         {cards.map((c) => (
-          <div className="eng-card" key={c.name} style={{ minWidth: 260 }}>
+          <div className="eng-card eng-dept-card" key={c.name}>
             <div className="label">{c.name}</div>
             <div className="value">{fmtMs(c.periodAvg ?? c.lifetimeAvg)}</div>
-            <div className="sub">average load in selected range</div>
-            <div className="sub" style={{ marginTop: "0.5rem" }}>
+            <div className="sub eng-dept-line">
+              {c.periodCount
+                ? "average load in selected range"
+                : c.lifetimeAvg != null
+                  ? "no loads in range · showing lifetime avg"
+                  : "average load in selected range"}
+            </div>
+            <div
+              className="sub eng-dept-line"
+              style={{ marginTop: "0.5rem" }}
+              title={
+                c.last ? `${fmtTs(c.last.ts)} · ${c.last.page}` : undefined
+              }
+            >
               Last: {c.last ? `${fmtTs(c.last.ts)} · ${c.last.page}` : "—"}
             </div>
-            <div className="sub">
+            <div
+              className="sub eng-dept-line"
+              title={`Period: ${c.periodCount} loads · fast ${fmtMs(c.stats.fastest)} · slow ${fmtMs(c.stats.slowest)} · p95 ${fmtMs(c.stats.p95)}${c.errorCount ? ` · ${c.errorCount} errors` : ""}`}
+            >
               Period: {c.periodCount} loads · fast {fmtMs(c.stats.fastest)} · slow{" "}
               {fmtMs(c.stats.slowest)} · p95 {fmtMs(c.stats.p95)}
               {c.errorCount ? ` · ${c.errorCount} errors` : ""}
             </div>
-            <div className="sub">
+            <div
+              className="sub eng-dept-line"
+              title={
+                c.active.length
+                  ? c.active
+                      .map((d) => d.label || d.deviceId || "")
+                      .join(", ")
+                  : undefined
+              }
+            >
               Active devices:{" "}
               {c.active.length
                 ? c.active.map((d) => d.label || (d.deviceId || "").slice(0, 6)).join(", ")
                 : "none"}
             </div>
-            <div style={{ marginTop: "0.5rem" }}>
+            <div className="eng-dept-spark">
               <div className="sub">Load timeline (range)</div>
               <Sparkline series={c.timeline} />
             </div>
@@ -1046,6 +1070,7 @@ export function ListenersPage() {
         {!rows.length ? (
           <EmptyHint configured={configured} loading={loading} />
         ) : (
+          <div className="eng-table-scroll">
           <table className="eng-table">
             <thead>
               <tr>
@@ -1111,8 +1136,8 @@ export function ListenersPage() {
                     )}
                   </td>
                   <td
-                    className="eng-muted"
-                    style={{ fontSize: "0.72rem", maxWidth: 140 }}
+                    className="eng-muted eng-cell-wrap"
+                    style={{ fontSize: "0.72rem" }}
                     title={formatListenerReasons(r)}
                   >
                     {formatListenerReasons(r)}
@@ -1122,6 +1147,7 @@ export function ListenersPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </>

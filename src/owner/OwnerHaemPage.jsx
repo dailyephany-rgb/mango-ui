@@ -1,6 +1,11 @@
 
 import React, { useEffect, useMemo, useState, useContext, Suspense } from "react";
-import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import {
+  OwnerPageShell,
+  OwnerFilters,
+  OwnerKPIs,
+  OwnerDelays
+} from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "./OwnerContext.jsx";
 
 import DateSourceFilter from "./components/DateSourceFilter";
@@ -223,7 +228,7 @@ export default function OwnerHaemPage() {
   );
 
   return (
-    <EngComponent name="OwnerHaem" type="Page" parent={null} moduleId="OwnerHaem">
+    <OwnerPageShell page="OwnerHaem" moduleId="OwnerHaem">
     <div className="owner-root">
       <header className="owner-header">
         <h1>Haematology — Analytics</h1>
@@ -239,7 +244,7 @@ export default function OwnerHaemPage() {
           ))}
         </div>
                 {activeTab === "staff" && (
-          <div
+        <div
             className="tab-buttons"
             style={{
               marginTop: 12,
@@ -250,25 +255,31 @@ export default function OwnerHaemPage() {
               </button>
               ))}
             </div>
-          )}
+          
+        )}
+
 
         </header>
 
-        <DateSourceFilter />
+        <OwnerFilters page="OwnerHaem">
+      <DateSourceFilter />
+      </OwnerFilters>
 
             {activeTab !==
               "staff" && (
-              <KPIBlocks
+              <OwnerKPIs page="OwnerHaem">
+        <KPIBlocks
                 overview={
                   overviewForKPI
                 }
                 kpis={kpis || {}}
               />
+      </OwnerKPIs>
             )}
 
 
       {activeTab === "overview" && (
-        <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerHaem" engName="Charts">
           <div className="chart-card"><CountsBar counts={countsForBar} /></div>
         
           <div className="chart-card">
@@ -396,6 +407,7 @@ export default function OwnerHaemPage() {
       )}
 
 {activeTab === "delays" && (
+        <OwnerDelays page="OwnerHaem">
   <OwnerChartsSection>
     <div className="chart-card">
 
@@ -459,6 +471,8 @@ export default function OwnerHaemPage() {
           <DelayTable violators={violators} stage={delayStage}/>
             </div>
         </OwnerChartsSection>
+      
+        </OwnerDelays>
       )}
 
 {activeTab === "timebricks" && (
@@ -515,7 +529,7 @@ export default function OwnerHaemPage() {
 )}
 
 {activeTab === "staff" && (
-  <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerHaem" engName="Staff Analytics">
 
     {staffTab === "testing" && (
       <>
@@ -645,7 +659,7 @@ export default function OwnerHaemPage() {
         )}
 
       </OwnerChartsSection>
-    )}
+      )}
 
       <PatientListModal open={openModal} onClose={() => setOpenModal(false)} patients={modalData} />
 
@@ -810,6 +824,6 @@ export default function OwnerHaemPage() {
       </Suspense>
     )}
     </div>
-    </EngComponent>
+    </OwnerPageShell>
   );
 }

@@ -2,7 +2,12 @@
 
 // src/owner/OwnerSerology.jsx
 import React, { useEffect, useMemo, useState, useContext, Suspense } from "react";
-import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import {
+  OwnerPageShell,
+  OwnerFilters,
+  OwnerKPIs,
+  OwnerDelays
+} from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "./OwnerContext.jsx";
 
 import DateSourceFilter from "./components/DateSourceFilter";
@@ -272,7 +277,7 @@ export default function OwnerSerologyPage() {
       }, [stageFilter, testTimings]);
 
         return (
-          <EngComponent name="OwnerSerology" type="Page" parent={null} moduleId="OwnerSerology">
+          <OwnerPageShell page="OwnerSerology" moduleId="OwnerSerology">
           <div className="owner-root">
             <header className="owner-header">
               <h1>Serology — Analytics</h1>
@@ -302,7 +307,7 @@ export default function OwnerSerologyPage() {
       </div>
 
       {activeTab === "staff" && (
-  <div
+        <div
     className="tab-buttons"
     style={{
       marginTop: 12,
@@ -330,20 +335,26 @@ export default function OwnerSerologyPage() {
       </button>
     ))}
   </div>
-)}
+
+        )}
+
 
       </header>
 
+      <OwnerFilters page="OwnerSerology">
       <DateSourceFilter />
+      </OwnerFilters>
       
               {activeTab !== "staff" && (
+          <OwnerKPIs page="OwnerSerology">
           <KPIBlocks
             overview={overviewForKPI}
             kpis={finalKpis || {}}
           />
+          </OwnerKPIs>
         )}
       {activeTab === "overview" && (
-        <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerSerology" engName="Charts">
           <div className="chart-card">
             <h3>Counts Bar</h3>
             <CountsBar counts={countsForBar} />
@@ -473,6 +484,7 @@ export default function OwnerSerologyPage() {
       )}
 
 {activeTab === "delays" && (
+        <OwnerDelays page="OwnerSerology">
   <OwnerChartsSection>
     <div className="chart-card">
 
@@ -540,6 +552,8 @@ export default function OwnerSerologyPage() {
           <DelayTable violators={violators} stage={delayStage}/>
           </div>
         </OwnerChartsSection>
+      
+        </OwnerDelays>
       )}
 
 {activeTab === "timebricks" && (
@@ -604,7 +618,7 @@ export default function OwnerSerologyPage() {
            
 
 {activeTab === "staff" && (
-  <OwnerChartsSection>
+        <OwnerChartsSection engPage="OwnerSerology" engName="Staff Analytics">
 
     {staffTab === "testing" && (
       <>
@@ -734,7 +748,7 @@ export default function OwnerSerologyPage() {
     )}
 
   </OwnerChartsSection>
-)}
+      )}
 
       <PatientListModal 
         open={openModal} 
@@ -882,6 +896,6 @@ export default function OwnerSerologyPage() {
 
     </div>
 
-    </EngComponent>
+    </OwnerPageShell>
   );
 }

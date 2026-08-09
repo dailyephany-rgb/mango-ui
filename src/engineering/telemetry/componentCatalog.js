@@ -69,6 +69,17 @@ export const COMPONENT_CATALOG = {
     { name: "Filters", type: "Layout", parent: "Critical Dashboard" },
     { name: "Alerts Table", type: "Tables", parent: "Critical Dashboard" },
   ],
+  MasterAdmin: [
+    { name: "MasterAdmin", type: "Page", parent: null },
+    { name: "Filters", type: "Layout", parent: "MasterAdmin" },
+    { name: "Register Table", type: "Tables", parent: "MasterAdmin" },
+    { name: "Compare View", type: "Tables", parent: "MasterAdmin" },
+  ],
+  LabAnalytics: [
+    { name: "LabAnalytics", type: "Page", parent: null },
+    { name: "Filters", type: "Layout", parent: "LabAnalytics" },
+    { name: "Counts Grid", type: "Charts", parent: "LabAnalytics" },
+  ],
   Inventory: [
     { name: "Inventory Intake", type: "Page", parent: null },
     { name: "Bill Form", type: "Forms", parent: "Inventory Intake" },
@@ -101,6 +112,8 @@ export function catalogForPage(page) {
       { name: "Filters", type: "Layout", parent: page },
       { name: "KPIs", type: "Charts", parent: page },
       { name: "Charts", type: "Charts", parent: page },
+      { name: "Delays", type: "Charts", parent: page },
+      { name: "Staff Analytics", type: "Charts", parent: page },
     ];
   }
   return [{ name: page, type: "Page", parent: null }];

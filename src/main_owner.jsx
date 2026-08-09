@@ -7,6 +7,7 @@ import { OwnerProvider } from "./owner/OwnerContext.jsx";
 import OwnerApp from "./owner/OwnerApp.jsx";
 import "./owner/OwnerUI.css";
 import "./mango.css";
+import "./firebaseConfig.js";
 
 console.log("OWNER MAIN ENTRY LOADED!");
 
