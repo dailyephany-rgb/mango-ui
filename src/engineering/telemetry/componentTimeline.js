@@ -131,8 +131,13 @@ export function markComponentMount(spec) {
     row.type = spec.type || row.type;
     row.parent = spec.parent !== undefined ? spec.parent : row.parent;
     row.moduleId = resolvedModule;
-    row.mountedAt = Math.round(t0 - sessionStartedAt);
-    row.status = "mounting";
+    // Keep first mount time — remounts (Suspense / tab return) must not rewrite chronology.
+    if (row.mountedAt == null) {
+      row.mountedAt = Math.round(t0 - sessionStartedAt);
+    }
+    if (row.status === "not_mounted" || !prev) {
+      row.status = "mounting";
+    }
     // Production-safe: React.Profiler onRender is a no-op in prod builds.
     // Callers pass mountMs from useLayoutEffect elapsed time.
     if (typeof spec.mountMs === "number" && Number.isFinite(spec.mountMs)) {

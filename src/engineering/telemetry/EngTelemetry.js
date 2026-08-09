@@ -68,6 +68,10 @@ let prevHeap = null;
 let prevHeapAt = null;
 /** First snapshot may arrive before async/late init — stash until init applies it. */
 let pendingFirstSnapshotMs = null;
+/** Stable ts for eng_components doc (same loadId) — avoid Time column jumping on tab flushes. */
+let componentsDocTs = null;
+/** Debounce lazy-tab breakdown writes */
+let breakdownFlushTimer = null;
 
 function base() {
   const label = getDeviceLabel() || undefined;
@@ -117,6 +121,11 @@ function init(opts = {}) {
     }
     if (!enabled()) return;
     initialized = true;
+    componentsDocTs = null;
+    if (breakdownFlushTimer) {
+      clearTimeout(breakdownFlushTimer);
+      breakdownFlushTimer = null;
+    }
     const deviceId = opts.deviceId || getDeviceId();
     const sessionId = getOrCreateSessionId(deviceId);
     context = {
@@ -245,6 +254,7 @@ function trackPageLoad(timings = {}) {
       domain: "pages",
       ...merged,
     });
+    if (componentsDocTs == null) componentsDocTs = Date.now();
     // One eng_components doc per page load (same loadId)
     pushComponentBreakdown({
       totalMs: merged.totalMs ?? null,
@@ -264,12 +274,14 @@ function pushComponentBreakdown(extra = {}) {
   safeRun(() => {
     if (!enabled() || !initialized) return;
     const lid = ensureLoadId();
+    if (componentsDocTs == null) componentsDocTs = Date.now();
     const components = buildComponentBreakdown();
     pushEvent({
       ...base(),
       domain: "components",
       loadId: lid,
-      ts: Date.now(),
+      // Keep first timestamp so Components "Time" does not jump on every tab mount.
+      ts: componentsDocTs,
       totalMs: extra.totalMs ?? context.lastPageLoadMs ?? null,
       hung: extra.hung || false,
       components,
@@ -277,14 +289,23 @@ function pushComponentBreakdown(extra = {}) {
   }, "eng.components.push");
 }
 
+function scheduleBreakdownFlush() {
+  if (breakdownFlushTimer) clearTimeout(breakdownFlushTimer);
+  breakdownFlushTimer = setTimeout(() => {
+    breakdownFlushTimer = null;
+    pushComponentBreakdown();
+    scheduleFlush({ force: true });
+  }, 800);
+}
+
 function componentMount(spec) {
   safeRun(() => {
     if (!enabled() || !initialized) return;
     markComponentMount(spec);
     // Lazy tabs after page load — refresh eng_components for same loadId
+    // (debounced so Suspense/tab switches do not thrash Firestore + UI).
     if (context.lastPageLoadMs != null) {
-      pushComponentBreakdown();
-      scheduleFlush({ force: true });
+      scheduleBreakdownFlush();
     }
   }, "eng.comp.mount");
 }
@@ -554,7 +575,10 @@ function shutdown() {
     if (flushTimer) clearInterval(flushTimer);
     if (memoryTimer) clearInterval(memoryTimer);
     if (networkTimer) clearInterval(networkTimer);
+    if (breakdownFlushTimer) clearTimeout(breakdownFlushTimer);
     flushTimer = memoryTimer = networkTimer = null;
+    breakdownFlushTimer = null;
+    componentsDocTs = null;
     resetComponentSession();
     initialized = false;
   }, "eng.shutdown");

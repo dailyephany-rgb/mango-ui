@@ -1076,24 +1076,33 @@ async function flushComponents(db, events, deviceId, deviceLabel) {
   }
   const writes = [...byLoad.entries()].map(([loadId, e]) => {
     const ts = e.ts || Date.now();
-    const time = buildTimeFields(ts);
     const components = Array.isArray(e.components) ? e.components : [];
     const meta = metaFromEvent({ ...e, ts }, deviceId, deviceLabel);
-    return setDoc(
-      doc(db, ENG_COLLECTIONS.components, loadId),
-      {
-        ...meta,
-        ...time,
-        loadId,
-        ts,
-        totalMs: e.totalMs ?? null,
-        hung: !!e.hung,
-        components,
-        updatedAt: serverTimestamp(),
-        expireAt: expireAtForCollection(ENG_COLLECTIONS.components, ts),
-      },
-      { merge: true }
-    );
+    // Preserve first-seen ts on merge so Components "Time" stays stable when
+    // lazy tabs refresh the same loadId breakdown.
+    return getDoc(doc(db, ENG_COLLECTIONS.components, loadId)).then((snap) => {
+      const existingTs = snap.exists() ? snap.data()?.ts : null;
+      const keepTs =
+        existingTs != null && Number.isFinite(Number(existingTs))
+          ? Number(existingTs)
+          : ts;
+      const keepTime = buildTimeFields(keepTs);
+      return setDoc(
+        doc(db, ENG_COLLECTIONS.components, loadId),
+        {
+          ...meta,
+          ...keepTime,
+          loadId,
+          ts: keepTs,
+          totalMs: e.totalMs ?? null,
+          hung: !!e.hung,
+          components,
+          updatedAt: serverTimestamp(),
+          expireAt: expireAtForCollection(ENG_COLLECTIONS.components, keepTs),
+        },
+        { merge: true }
+      );
+    });
   });
   await Promise.all(writes);
 }

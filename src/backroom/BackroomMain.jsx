@@ -15,8 +15,17 @@ const BackroomInventoryTab = lazy(() =>
   import("../inventory/BackroomInventoryTab.jsx")
 );
 
-export default function BackroomMain() {
+function TabPanel({ name, children }) {
+  // Suspense MUST be inside EngComponent. If EngComponent is inside Suspense,
+  // lazy chunk load unmounts the boundary → mount/unmount churn + Timeline thrash.
+  return (
+    <EngComponent name={name} type="Tables" parent="Backroom.jsx">
+      <Suspense fallback={<p>Loading…</p>}>{children}</Suspense>
+    </EngComponent>
+  );
+}
 
+export default function BackroomMain() {
   const [activeTab, setActiveTab] = useState("esr");
 
   useEffect(() => {
@@ -27,135 +36,110 @@ export default function BackroomMain() {
   }, []);
 
   const renderActiveTab = () => {
-
     switch (activeTab) {
-
       case "esr":
         return (
-          <EngComponent name="ESR" type="Tables" parent="Backroom.jsx">
+          <TabPanel name="ESR">
             <ESRRegister />
-          </EngComponent>
+          </TabPanel>
         );
-
       case "blood":
         return (
-          <EngComponent name="Blood Group" type="Tables" parent="Backroom.jsx">
+          <TabPanel name="Blood Group">
             <BloodGroupRegister />
-          </EngComponent>
+          </TabPanel>
         );
-
       case "serology":
         return (
-          <EngComponent name="Serology" type="Tables" parent="Backroom.jsx">
+          <TabPanel name="Serology">
             <SerologyRegister />
-          </EngComponent>
+          </TabPanel>
         );
-
       case "rapid":
         return (
-          <EngComponent name="Rapid Card" type="Tables" parent="Backroom.jsx">
+          <TabPanel name="Rapid Card">
             <RapidCardRegister />
-          </EngComponent>
+          </TabPanel>
         );
-
       case "urine":
         return (
-          <EngComponent name="Urine" type="Tables" parent="Backroom.jsx">
+          <TabPanel name="Urine">
             <UrineAnalysisRegister />
-          </EngComponent>
+          </TabPanel>
         );
-
       case "inventory":
         return (
-          <EngComponent name="Inventory Tab" type="Tables" parent="Backroom.jsx">
+          <TabPanel name="Inventory Tab">
             <BackroomInventoryTab />
-          </EngComponent>
+          </TabPanel>
         );
-
       default:
         return (
-          <EngComponent name="ESR" type="Tables" parent="Backroom.jsx">
+          <TabPanel name="ESR">
             <ESRRegister />
-          </EngComponent>
+          </TabPanel>
         );
     }
   };
 
   return (
     <EngComponent name="Backroom.jsx" type="Page" parent={null}>
-    <div className="backroom-container">
-
-      {/* Header */}
-      <EngComponent name="Toolbar" type="Layout" parent="Backroom.jsx">
+      <div className="backroom-container">
+        <EngComponent name="Toolbar" type="Layout" parent="Backroom.jsx">
           <div
-          className="header-bar"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center"
-          }}
-        >
-          <h2>Backroom Registers Dashboard</h2>
+            className="header-bar"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <h2>Backroom Registers Dashboard</h2>
+            <UserMenu />
+          </div>
+        </EngComponent>
 
-          <UserMenu />
+        <div className="tab-container">
+          <button
+            className={`tab-btn ${activeTab === "esr" ? "active" : ""}`}
+            onClick={() => setActiveTab("esr")}
+          >
+            ESR Register
+          </button>
+          <button
+            className={`tab-btn ${activeTab === "blood" ? "active" : ""}`}
+            onClick={() => setActiveTab("blood")}
+          >
+            Blood Group & Rh Type
+          </button>
+          <button
+            className={`tab-btn ${activeTab === "serology" ? "active" : ""}`}
+            onClick={() => setActiveTab("serology")}
+          >
+            Serology Register
+          </button>
+          <button
+            className={`tab-btn ${activeTab === "rapid" ? "active" : ""}`}
+            onClick={() => setActiveTab("rapid")}
+          >
+            Rapid Card Register
+          </button>
+          <button
+            className={`tab-btn ${activeTab === "urine" ? "active" : ""}`}
+            onClick={() => setActiveTab("urine")}
+          >
+            Urine Analysis Register
+          </button>
+          <button
+            className={`tab-btn ${activeTab === "inventory" ? "active" : ""}`}
+            onClick={() => setActiveTab("inventory")}
+          >
+            Inventory
+          </button>
         </div>
-      </EngComponent>
 
-      {/* Tabs */}
-      <div className="tab-container">
-
-        <button
-          className={`tab-btn ${activeTab === "esr" ? "active" : ""}`}
-          onClick={() => setActiveTab("esr")}
-        >
-          ESR Register
-        </button>
-
-        <button
-          className={`tab-btn ${activeTab === "blood" ? "active" : ""}`}
-          onClick={() => setActiveTab("blood")}
-        >
-          Blood Group & Rh Type
-        </button>
-
-        <button
-          className={`tab-btn ${activeTab === "serology" ? "active" : ""}`}
-          onClick={() => setActiveTab("serology")}
-        >
-          Serology Register
-        </button>
-
-        <button
-          className={`tab-btn ${activeTab === "rapid" ? "active" : ""}`}
-          onClick={() => setActiveTab("rapid")}
-        >
-          Rapid Card Register
-        </button>
-
-        <button
-          className={`tab-btn ${activeTab === "urine" ? "active" : ""}`}
-          onClick={() => setActiveTab("urine")}
-        >
-          Urine Analysis Register
-        </button>
-
-        <button
-          className={`tab-btn ${activeTab === "inventory" ? "active" : ""}`}
-          onClick={() => setActiveTab("inventory")}
-        >
-          Inventory
-        </button>
-
+        <div className="register-content">{renderActiveTab()}</div>
       </div>
-
-      {/* Register Content */}
-      <div className="register-content">
-        <Suspense fallback={<p>Loading…</p>}>
-          {renderActiveTab()}
-        </Suspense>
-      </div>
-
-    </div>
     </EngComponent>
   );
 }
