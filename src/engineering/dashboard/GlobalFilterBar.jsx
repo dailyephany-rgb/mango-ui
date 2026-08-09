@@ -8,7 +8,7 @@ import {
   ALL_TIME_AGG_DAYS,
   ALL_TIME_SAMPLE_DAYS,
 } from "./engFilters.js";
-import SafeDateInput from "../shared/components/SafeDateInput.jsx";
+import SafeDateInput from "../../shared/components/SafeDateInput.jsx";
 
 export function GlobalFilterBar() {
   const {

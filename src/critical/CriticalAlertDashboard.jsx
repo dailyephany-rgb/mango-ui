@@ -158,7 +158,6 @@ export default function CriticalAlertDashboard() {
         status: "Reported",
         communicatedVia: method,
         reportedAt: serverTimestamp(),
-        reportedAt: serverTimestamp(),
       });
 
       const docPDF = new jsPDF();
