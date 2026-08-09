@@ -1054,6 +1054,12 @@ async function flushPages(db, events, deviceId, deviceLabel = null) {
             ? e.hung
             : e.firstSnapshotMs == null && e.totalMs != null,
         incomplete: !!e.incomplete && !e.hung,
+        finalState: e.finalState ?? null,
+        classification: e.classification ?? null,
+        finalReason: e.finalReason ?? null,
+        online: e.online ?? null,
+        visible: e.visible ?? null,
+        waitingListeners: e.waitingListeners ?? null,
         kind: (() => {
           const hung =
             typeof e.hung === "boolean"

@@ -47,6 +47,20 @@ import {
   getActiveListenerCount,
   getListenerCostSummary,
 } from "../../engineering/telemetry/listenerWatch.js";
+import {
+  isFirestoreInternalAssertion,
+  isLikelyNetworkFirestoreError,
+  recoveryBackoffMs,
+  maxAutoRetries,
+  installListenerRecoveryHooks,
+} from "./listenerRecovery.js";
+
+// Once per page: assertion + online recovery hooks (safe no-op if already installed).
+try {
+  installListenerRecoveryHooks();
+} catch {
+  /* ignore */
+}
 
 let listenerSeq = 0;
 let snapshotSample = 0;
@@ -222,7 +236,12 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
   let t10 = null;
   /** @type {ReturnType<typeof setTimeout> | null} */
   let t30 = null;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let autoRetryTimer = null;
   let pendingRetry = reason === "retry";
+  let autoRetryCount = 0;
+  /** Assigned after recreate() is defined — auto-retry calls this. */
+  let recreate = () => {};
 
   const clearTimers = () => {
     if (t10) {
@@ -233,6 +252,52 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
       clearTimeout(t30);
       t30 = null;
     }
+    if (autoRetryTimer) {
+      clearTimeout(autoRetryTimer);
+      autoRetryTimer = null;
+    }
+  };
+
+  const scheduleAutoRetry = (cause) => {
+    if (closed || !first) return;
+    if (autoRetryCount >= maxAutoRetries()) {
+      if (eng) {
+        safeRun(() => {
+          EngTelemetry.trackListenerRetry({
+            action: "retry_failed",
+            event: "retry_exhausted",
+            collection,
+            listenerId: id,
+            reason: "retry",
+            docCount: autoRetryCount,
+            cause: String(cause || "unknown").slice(0, 80),
+          });
+        }, "eng.snap.retryExhaust");
+      }
+      return;
+    }
+    if (autoRetryTimer) return;
+    autoRetryCount += 1;
+    const delay = recoveryBackoffMs(autoRetryCount);
+    if (eng) {
+      safeRun(() => {
+        EngTelemetry.trackListenerRetry({
+          action: "retry",
+          event: "auto_retry_scheduled",
+          collection,
+          listenerId: id,
+          reason: "retry",
+          durationMs: delay,
+          docCount: autoRetryCount,
+          cause: String(cause || "unknown").slice(0, 80),
+        });
+      }, "eng.snap.autoSched");
+    }
+    autoRetryTimer = setTimeout(() => {
+      autoRetryTimer = null;
+      if (closed || !first) return;
+      recreate();
+    }, delay);
   };
 
   const armTimers = () => {
@@ -278,6 +343,8 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
           }
         }, "eng.snap.t30");
         syncWaitHeartbeat();
+        // Bounded auto-recover: tear down + same query (never stack listeners).
+        scheduleAutoRetry("timeout_30");
       }
     }, TIMEOUT_30_MS);
   };
@@ -335,12 +402,16 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
     }
     if (eng) {
       safeRun(() => {
+        const assertion = isFirestoreInternalAssertion(err);
         EngTelemetry.trackListener({
           action: "error",
           collection,
           listenerId: id,
           error: err?.message || err,
           reason,
+          errorType: assertion
+            ? "FIRESTORE_INTERNAL_ASSERTION"
+            : "firestore_listener_error",
         });
         EngTelemetry.trackQuery({
           collection,
@@ -351,12 +422,19 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
           queryKey: `${ctx.page}:${collection}:listen`,
         });
         EngTelemetry.trackError({
-          source: "firestore",
+          source: assertion ? "firestore.internal_assertion" : "firestore",
           message: err?.message || String(err),
           stack: err?.stack || "",
-          name: err?.name,
+          name: assertion
+            ? "FIRESTORE_INTERNAL_ASSERTION"
+            : err?.name,
         });
       }, "eng.snap.err");
+    }
+    if (isLikelyNetworkFirestoreError(err) || isFirestoreInternalAssertion(err)) {
+      scheduleAutoRetry(
+        isFirestoreInternalAssertion(err) ? "internal_assertion" : "listener_error"
+      );
     }
   };
 
@@ -557,8 +635,8 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
 
   attach();
 
-  /** User retry: drop and re-attach the SAME query/callbacks (no browser reload). */
-  const recreate = () => {
+  /** User/auto retry: drop and re-attach the SAME query/callbacks (no browser reload). */
+  recreate = () => {
     if (closed) return;
     try {
       unsubInner();

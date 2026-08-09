@@ -19,12 +19,17 @@ import {
   localDayEndExclusive,
 } from "../utils/dates.js";
 import { annotateListenReason } from "../../engineering/telemetry/listenerWatch.js";
+import { subscribeListenerRecovery } from "../firestore/listenerRecovery.js";
 
 /**
  * Shared master + department + critical_alerts subscriptions.
  *
+ * Readiness (first useful snapshot):
+ *   `loading` clears when master_register first snapshot arrives.
+ *   dept + critical hydrate asynchronously and do NOT block the table shell.
+ *
  * Snapshot processing is incremental (docChanges) after the first seed.
- * Firestore remains the only source of truth.
+ * Firestore remains the only source of truth. Clinical write paths unchanged.
  */
 export function useMasterDeptSnapshots({
   deptCollection,
@@ -46,7 +51,18 @@ export function useMasterDeptSnapshots({
   const [savedSet, setSavedSet] = useState(new Set());
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
   const [loading, setLoading] = useState(true);
+  const [deptReady, setDeptReady] = useState(false);
+  const [criticalReady, setCriticalReady] = useState(false);
+  const [masterError, setMasterError] = useState(null);
+  const [recoverGen, setRecoverGen] = useState(0);
   const listenGenRef = useRef(0);
+
+  // Online / assertion recovery → remount triad exactly once per nudge.
+  useEffect(() => {
+    return subscribeListenerRecovery(() => {
+      setRecoverGen((n) => n + 1);
+    });
+  }, []);
 
   useEffect(() => {
     const clearState = () => {
@@ -55,6 +71,9 @@ export function useMasterDeptSnapshots({
       setSavedSet(new Set());
       setCriticalReportedSet(new Set());
       setLoading(false);
+      setDeptReady(false);
+      setCriticalReady(false);
+      setMasterError(null);
     };
 
     if (!enabled) {
@@ -78,7 +97,11 @@ export function useMasterDeptSnapshots({
     const isFirstListen = listenGenRef.current === 0;
     listenGenRef.current += 1;
     if (isFirstListen) setLoading(true);
-    const listenReason = isFirstListen ? "page_load" : "deps_change";
+    setDeptReady(false);
+    setCriticalReady(false);
+    setMasterError(null);
+    const listenReason =
+      recoverGen > 0 ? "retry" : isFirstListen ? "page_load" : "deps_change";
 
     const startTs = Timestamp.fromDate(start);
     const endTs = Timestamp.fromDate(endExclusive);
@@ -89,11 +112,9 @@ export function useMasterDeptSnapshots({
       label: "master_register",
     });
 
-    // Firestore id → { key, data }; public deptDocs keyed by business key
     const deptById = new Map();
     let deptSeeded = false;
 
-    // Firestore id → critical business key
     const criticalById = new Map();
     let criticalSeeded = false;
 
@@ -120,7 +141,9 @@ export function useMasterDeptSnapshots({
             setMasterEntries(result.values);
           });
         }
+        // FIRST USEFUL SNAPSHOT — table usable; dept/critical may still hydrate.
         setLoading(false);
+        setMasterError(null);
       },
       (err) => {
         console.error(
@@ -128,6 +151,7 @@ export function useMasterDeptSnapshots({
           err
         );
         setLoading(false);
+        setMasterError(err?.message || String(err));
       }
     );
 
@@ -154,6 +178,7 @@ export function useMasterDeptSnapshots({
       startTransition(() => {
         setDeptDocs(docsMap);
         setSavedSet(sSet);
+        setDeptReady(true);
       });
     };
 
@@ -198,12 +223,9 @@ export function useMasterDeptSnapshots({
           if (change.type === "added" || change.type === "modified") {
             const data = change.doc.data();
             const key = getDeptDocKey(data, change.doc.id);
-            const prev = deptById.get(change.doc.id);
-            // If business key changed on modify, old key drops when we rebuild maps
             deptById.set(change.doc.id, { key, data });
             if (change.type === "added") stats.added += 1;
             else stats.modified += 1;
-            void prev;
           } else if (change.type === "removed") {
             deptById.delete(change.doc.id);
             stats.removed += 1;
@@ -241,6 +263,7 @@ export function useMasterDeptSnapshots({
       }
       startTransition(() => {
         setCriticalReportedSet(cSet);
+        setCriticalReady(true);
       });
     };
 
@@ -293,9 +316,17 @@ export function useMasterDeptSnapshots({
       unsubDept();
       unsubCritical();
     };
-    // Intentional: stable callbacks from call site; re-subscribe on date/dept/collection/enabled.
+    // Intentional: stable callbacks from call site; re-subscribe on date/dept/collection/enabled/recover.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deptCollection, currentDept, masterDeptKey, dateFrom, dateTo, enabled]);
+  }, [
+    deptCollection,
+    currentDept,
+    masterDeptKey,
+    dateFrom,
+    dateTo,
+    enabled,
+    recoverGen,
+  ]);
 
   return {
     masterEntries,
@@ -306,6 +337,10 @@ export function useMasterDeptSnapshots({
     criticalReportedSet,
     loading,
     setLoading,
+    /** Secondary hydration — do not gate primary table on these. */
+    deptReady,
+    criticalReady,
+    masterError,
   };
 }
 

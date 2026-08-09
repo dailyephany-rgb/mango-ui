@@ -12,6 +12,10 @@ import { safeRun } from "./safeRun.js";
 import { ENG_BUILD_ID } from "../constants.js";
 import { refreshRuntimeSettings } from "./runtimeSettings.js";
 import { getWaitingListeners } from "./listenerWatch.js";
+import {
+  classifyPageLoadOutcome,
+  installListenerRecoveryHooks,
+} from "../../shared/firestore/listenerRecovery.js";
 
 let started = false;
 /** @type {null | (() => void)} */
@@ -173,23 +177,40 @@ function capturePageLoad() {
           waitingN > 0 &&
           (reason === "timeout15" || waitedMs >= 10_000)
         ) {
-          // Still waiting after hung threshold → real hung.
           hung = true;
         } else if (reason === "timeout15" && waitingN === 0) {
-          // No tracked listener waited — don't fake a Firestore hang.
           hung = false;
           incomplete = false;
         } else {
-          // Leave/hide before data — not proven hung.
           incomplete = true;
         }
       }
+      const online =
+        typeof navigator !== "undefined" ? navigator.onLine : null;
+      const outcome = classifyPageLoadOutcome({
+        snap,
+        hung,
+        incomplete,
+        timedOut,
+        waitingN,
+        reason,
+        online,
+      });
+      hung = outcome.classification === "HUNG";
+      incomplete = outcome.classification === "INCOMPLETE";
       const domComplete = nav.domCompleteMs ?? performance.now();
       timings.interactiveMs = hung || incomplete
         ? null
         : Math.max(domComplete, snap || 0);
       timings.hung = hung;
       timings.incomplete = incomplete;
+      timings.finalState = outcome.finalState;
+      timings.classification = outcome.classification;
+      timings.finalReason = outcome.finalReason;
+      timings.online = online;
+      timings.visible =
+        typeof document !== "undefined" ? document.visibilityState : null;
+      timings.waitingListeners = waitingN;
       timings.totalMs = Math.max(
         timings.interactiveMs || 0,
         performance.now(),
@@ -239,6 +260,12 @@ export function startEngineeringTelemetry() {
 
   safeRun(() => {
     if (!isEngTelemetryEnabled()) return;
+
+    try {
+      installListenerRecoveryHooks();
+    } catch {
+      /* ignore */
+    }
 
     const identity = resolvePageIdentity();
     let user = null;

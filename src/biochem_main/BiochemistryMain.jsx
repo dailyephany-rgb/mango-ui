@@ -74,6 +74,8 @@ export default function BiochemistryMain() {
     savedSet,
     criticalReportedSet,
     loading,
+    criticalReady,
+    masterError,
   } = useMasterDeptSnapshots({
     deptCollection: "biochemistry_register",
     currentDept: CURRENT_DEPT,
@@ -450,6 +452,16 @@ export default function BiochemistryMain() {
             type="Tables"
             parent="Biochemistry.jsx"
           >
+          {masterError ? (
+            <p style={{ color: "#b91c1c", marginBottom: 8 }}>
+              Live data error — retrying automatically. {String(masterError).slice(0, 120)}
+            </p>
+          ) : null}
+          {!criticalReady ? (
+            <p style={{ color: "#64748b", fontSize: 13, marginBottom: 8 }}>
+              Loading critical flags…
+            </p>
+          ) : null}
           <div className="table-wrapper">
             <table className="dept-table">
               <thead>

@@ -62,6 +62,8 @@ export default function Haematology() {
     savedSet,
     criticalReportedSet,
     loading,
+    criticalReady,
+    masterError,
   } = useMasterDeptSnapshots({
     deptCollection: "haematology_register",
     currentDept: CURRENT_DEPT,
@@ -477,6 +479,16 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
             type="Tables"
             parent="Haematology.jsx"
           >
+          {masterError ? (
+            <p style={{ color: "#b91c1c", marginBottom: 8 }}>
+              Live data error — retrying automatically. {String(masterError).slice(0, 120)}
+            </p>
+          ) : null}
+          {!criticalReady ? (
+            <p style={{ color: "#64748b", fontSize: 13, marginBottom: 8 }}>
+              Loading critical flags…
+            </p>
+          ) : null}
           <div className="table-card">
             <div className="haem-table-wrapper">
               <table className="haem-table">

@@ -1,0 +1,192 @@
+time,kind,loadId,deviceId,department,page,buildId,totalMs,interactiveMs,firstSnapshotMs,label
+"09/08/2026, 23:57:45",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786300063530,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Engineering,Engineering,dev,3052,3052,,Engineering load
+"09/08/2026, 22:20:55",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786294255036,f3865457-284b-48b5-85da-e95ca4ff6cb6,Biochemistry,Biochemistry,dev,787.6999999880791,68.5,68.5,Biochemistry load
+"09/08/2026, 22:17:25",page_load,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d_1786294037024,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d,Registration,Mango,dev,9344,,,Mango load
+"09/08/2026, 20:35:24",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786287924517,f3865457-284b-48b5-85da-e95ca4ff6cb6,Validator,Validator,dev,642.5999999940395,74.90000000596046,74.90000000596046,Validator load
+"09/08/2026, 20:33:13",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786287792351,f3865457-284b-48b5-85da-e95ca4ff6cb6,Backroom,Backroom,dev,1011.0999999940395,131.09999999403954,131.09999999403954,Backroom load
+"09/08/2026, 20:31:57",page_load,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d_1786287715746,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d,Backroom,Backroom,dev,1702,659,659,Backroom load
+"09/08/2026, 20:25:15",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786287314875,f3865457-284b-48b5-85da-e95ca4ff6cb6,Validator,Validator,dev,593.5,75.5,75.5,Validator load
+"09/08/2026, 20:23:40",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786287220187,f3865457-284b-48b5-85da-e95ca4ff6cb6,Coagulation,Coagulation,dev,722.5,195.20000000298023,195.20000000298023,Coagulation load
+"09/08/2026, 20:23:12",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786287191989,f3865457-284b-48b5-85da-e95ca4ff6cb6,Haematology,Haematology,dev,768.2999999970198,199.1000000089407,199.1000000089407,Haematology load
+"09/08/2026, 20:20:58",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786287057530,f3865457-284b-48b5-85da-e95ca4ff6cb6,Biochemistry,Biochemistry,dev,787,187.5,187.5,Biochemistry load
+"09/08/2026, 20:12:01",page_load,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d_1786286516123,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d,Registration,Mango,dev,6206,857,857,Mango load
+"09/08/2026, 20:10:53",page_load,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d_1786286449101,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d,Registration,Mango,dev,4651,711,711,Mango load
+"09/08/2026, 20:10:12",page_load,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d_1786286410452,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d,Backroom,Backroom,dev,1945,784,784,Backroom load
+"09/08/2026, 17:18:54",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786276134506,f3865457-284b-48b5-85da-e95ca4ff6cb6,Validator,Validator,dev,434.1000000089407,47.20000000298023,47.20000000298023,Validator load
+"09/08/2026, 17:18:43",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786276123556,f3865457-284b-48b5-85da-e95ca4ff6cb6,Validator,Validator,dev,589.1999999880791,101.79999999701977,101.79999999701977,Validator load
+"09/08/2026, 17:17:57",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786276075879,f3865457-284b-48b5-85da-e95ca4ff6cb6,Registration,Mango,dev,2475.7999999970198,51.70000000298023,51.70000000298023,Mango load
+"09/08/2026, 17:17:23",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786276042720,f3865457-284b-48b5-85da-e95ca4ff6cb6,Validator,Validator,dev,541.4000000059605,120,120,Validator load
+"09/08/2026, 17:17:16",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786276035446,f3865457-284b-48b5-85da-e95ca4ff6cb6,Validator,Validator,dev,1092.2000000029802,784.5999999940395,784.5999999940395,Validator load
+"09/08/2026, 17:03:03",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786275182852,cc7d1a36-1d12-4637-8600-589cc3e066d7,Validator,Validator,dev,545,87,87,Validator load
+"09/08/2026, 17:02:54",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786275173985,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,1176,,,Biochemistry load
+"09/08/2026, 16:37:02",page_load,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d_1786273620570,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d,Outsource,Outsource,dev,2100,910,910,Outsource load
+"09/08/2026, 16:30:09",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786273206051,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,4261,,,Biochemistry load
+"09/08/2026, 16:15:20",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786272320189,cc7d1a36-1d12-4637-8600-589cc3e066d7,Validator,Validator,dev,670,82,82,Validator load
+"09/08/2026, 16:12:00",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786272119617,07cb97b9-c5c9-4296-9d64-5f76b4752937,Validator,Validator,dev,563,90,90,Validator load
+"09/08/2026, 16:09:18",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786271958598,07cb97b9-c5c9-4296-9d64-5f76b4752937,Coagulation,Coagulation,dev,444,33,33,Coagulation load
+"09/08/2026, 16:08:39",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786271918878,07cb97b9-c5c9-4296-9d64-5f76b4752937,Haematology,Haematology,dev,1520,55,55,Haematology load
+"09/08/2026, 16:08:21",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786271900655,07cb97b9-c5c9-4296-9d64-5f76b4752937,Coagulation,Coagulation,dev,732,140,140,Coagulation load
+"09/08/2026, 16:07:57",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786271875999,07cb97b9-c5c9-4296-9d64-5f76b4752937,Coagulation,Coagulation,dev,2706,,,Coagulation load
+"09/08/2026, 15:32:21",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786269739242,181be9ea-14eb-4c98-822a-465398d3b24f,InsideLab,InsideLab,dev,2434.899999976158,108.69999992847443,108.69999992847443,InsideLab load
+"09/08/2026, 15:27:07",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786269425895,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Haematology,Haematology,dev,3474.199999999255,643.8000000007451,643.8000000007451,Haematology load
+"09/08/2026, 15:03:28",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786268006481,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,3209,1069.9000000003725,1069.9000000003725,Validator load
+"09/08/2026, 14:59:02",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786267740512,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,3158.7999999988824,1137,1137,Validator load
+"09/08/2026, 14:52:24",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786267329020,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,15956.400000000373,,,Validator load
+"09/08/2026, 14:50:26",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786267216320,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Registration,Mango,dev,12963,2581,2581,Mango load
+"09/08/2026, 14:49:44",error,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786262237016,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Registration,Mango,dev,,,,"FIRESTORE (12.4.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b815) CONTEXT: {""Pc"":""Error: FIRESTORE (12.4.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b7de) CONTEXT: {\""batchId\"":#}\n    at ff (https://mango-ui.vercel.app/assets/EngTelemetry--3l-WCbT.js:473:273)\n    at q (https://mango-ui.vercel.app/assets/EngTelemetry--3l-WCbT.js:473:361)\n    at https://mango-ui.vercel.app/assets/EngTelemetry--3l-WCbT.js:#:172\n    at https://mango-ui.vercel.app/assets/EngTelemetry--3l-WCbT.js:6"
+"09/08/2026, 14:49:11",error,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786262237016,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Registration,Mango,dev,,,,"Uncaught Error: FIRESTORE (12.4.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b815) CONTEXT: {""Pc"":""Error: FIRESTORE (12.4.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b7de) CONTEXT: {\""batchId\"":#}\n    at ff (https://mango-ui.vercel.app/assets/EngTelemetry--3l-WCbT.js:473:273)\n    at q (https://mango-ui.vercel.app/assets/EngTelemetry--3l-WCbT.js:473:361)\n    at https://mango-ui.vercel.app/assets/EngTelemetry--3l-WCbT.js:#:172\n    at https://mango-ui.vercel.app/assets/EngTelemet"
+"09/08/2026, 14:48:20",error,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786262237016,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Registration,Mango,dev,,,,"FIRESTORE (12.4.0) INTERNAL ASSERTION FAILED: Unexpected state (ID: b7de) CONTEXT: {""batchId"":#}"
+"09/08/2026, 14:46:55",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786267000522,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,15893.800000000745,,,Validator load
+"09/08/2026, 14:43:32",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786266797302,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,15826,,,Validator load
+"09/08/2026, 14:37:03",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786266408441,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,16070.60000000149,,,Validator load
+"09/08/2026, 14:35:36",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786266333544,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Haematology,Haematology,dev,4116.5,1902.2000000011176,1902.2000000011176,Haematology load
+"09/08/2026, 14:34:23",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786266263098,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,2005.199999999255,679.3999999985099,679.3999999985099,Validator load
+"09/08/2026, 14:31:38",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786266083497,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Haematology,Haematology,dev,16299.099999999627,,,Haematology load
+"09/08/2026, 14:30:33",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786266028396,f3865457-284b-48b5-85da-e95ca4ff6cb6,Registration,Mango,dev,4954.70000000298,,,Mango load
+"09/08/2026, 14:21:36",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786265494793,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,2679.2999999998137,846.9000000003725,846.9000000003725,Validator load
+"09/08/2026, 14:15:00",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786265098919,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,2557.7000000001863,496.79999999981374,496.79999999981374,Validator load
+"09/08/2026, 13:53:09",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786263785145,07cb97b9-c5c9-4296-9d64-5f76b4752937,Haematology,Haematology,dev,4436,,,Haematology load
+"09/08/2026, 13:47:35",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786263454840,07cb97b9-c5c9-4296-9d64-5f76b4752937,Validator,Validator,dev,829.0000000000001,31.000000000000114,31.000000000000114,Validator load
+"09/08/2026, 13:47:22",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786263442247,07cb97b9-c5c9-4296-9d64-5f76b4752937,Validator,Validator,dev,355,10,10,Validator load
+"09/08/2026, 13:46:41",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786263401395,07cb97b9-c5c9-4296-9d64-5f76b4752937,Coagulation,Coagulation,dev,533,172.99999999999997,172.99999999999997,Coagulation load
+"09/08/2026, 13:46:30",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786263389944,07cb97b9-c5c9-4296-9d64-5f76b4752937,Coagulation,Coagulation,dev,353,42,42,Coagulation load
+"09/08/2026, 13:46:26",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786263386409,07cb97b9-c5c9-4296-9d64-5f76b4752937,Haematology,Haematology,dev,454,82,82,Haematology load
+"09/08/2026, 13:45:53",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786263352519,07cb97b9-c5c9-4296-9d64-5f76b4752937,Coagulation,Coagulation,dev,1283,,,Coagulation load
+"09/08/2026, 13:44:33",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786263258099,07cb97b9-c5c9-4296-9d64-5f76b4752937,Haematology,Haematology,dev,15243,,,Haematology load
+"09/08/2026, 13:43:54",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786263229467,07cb97b9-c5c9-4296-9d64-5f76b4752937,Haematology,Haematology,dev,5072,,,Haematology load
+"09/08/2026, 13:42:53",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786263170060,07cb97b9-c5c9-4296-9d64-5f76b4752937,Haematology,Haematology,dev,3482,,,Haematology load
+"09/08/2026, 13:42:36",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786263155247,07cb97b9-c5c9-4296-9d64-5f76b4752937,Coagulation,Coagulation,dev,2149,,,Coagulation load
+"09/08/2026, 13:37:52",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786262872361,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Biochemistry,Biochemistry,dev,1355.7999997138977,100.5,100.5,Biochemistry load
+"09/08/2026, 13:35:29",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786262727453,181be9ea-14eb-4c98-822a-465398d3b24f,Validator,Validator,dev,2309.600000023842,232.39999997615814,232.39999997615814,Validator load
+"09/08/2026, 13:27:32",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786262237016,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Registration,Mango,dev,17586,0,,Mango load
+"09/08/2026, 13:15:39",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786261537889,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,3824.7000000001863,1052.5999999996275,1052.5999999996275,Validator load
+"09/08/2026, 13:15:33",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786261533038,cc7d1a36-1d12-4637-8600-589cc3e066d7,Validator,Validator,dev,751,246,246,Validator load
+"09/08/2026, 13:12:08",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786261328359,cc7d1a36-1d12-4637-8600-589cc3e066d7,Validator,Validator,dev,524,71,71,Validator load
+"09/08/2026, 13:12:00",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786261312759,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,8140.000000000001,,,Biochemistry load
+"09/08/2026, 13:11:52",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786261304087,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,8763,,,Biochemistry load
+"09/08/2026, 13:11:09",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786261269329,181be9ea-14eb-4c98-822a-465398d3b24f,Validator,Validator,dev,879.6000000238419,40.200000047683716,40.200000047683716,Validator load
+"09/08/2026, 13:11:03",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786261248261,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,15349,,,Biochemistry load
+"09/08/2026, 13:09:42",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786261181514,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,3705.399999999907,644.8000000002794,644.8000000002794,Validator load
+"09/08/2026, 12:49:31",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786259956335,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,15340,,,Biochemistry load
+"09/08/2026, 12:47:39",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786259844334,07cb97b9-c5c9-4296-9d64-5f76b4752937,Haematology,Haematology,dev,15139.000000000002,,,Haematology load
+"09/08/2026, 12:46:43",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786259788972,07cb97b9-c5c9-4296-9d64-5f76b4752937,Haematology,Haematology,dev,15442,,,Haematology load
+"09/08/2026, 12:46:28",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786259779696,07cb97b9-c5c9-4296-9d64-5f76b4752937,Haematology,Haematology,dev,11410,,,Haematology load
+"09/08/2026, 12:46:03",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786259748831,07cb97b9-c5c9-4296-9d64-5f76b4752937,Haematology,Haematology,dev,18694,,,Haematology load
+"09/08/2026, 12:45:06",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786259705832,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,2150.2000000001863,589.7000000001863,589.7000000001863,Validator load
+"09/08/2026, 12:34:14",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786259053926,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,1380.0000000000002,76,76,Biochemistry load
+"09/08/2026, 12:31:23",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786258883612,cc7d1a36-1d12-4637-8600-589cc3e066d7,Validator,Validator,dev,1195,31.000000000000114,31.000000000000114,Validator load
+"09/08/2026, 12:31:13",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786258858843,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,15942.300000000047,,,Validator load
+"09/08/2026, 12:23:21",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786258401487,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,726,72,72,Biochemistry load
+"09/08/2026, 12:19:41",page_load,3ac022a4-eaa3-4128-ab45-6ea79221d4e2_1786258179536,3ac022a4-eaa3-4128-ab45-6ea79221d4e2,Validator,Validator,dev,3180,1926,1926,Validator load
+"09/08/2026, 12:19:29",page_load,3ac022a4-eaa3-4128-ab45-6ea79221d4e2_1786258165899,3ac022a4-eaa3-4128-ab45-6ea79221d4e2,Validator,Validator,dev,4909,,,Validator load
+"09/08/2026, 12:11:06",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786257665692,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,754,63,63,Biochemistry load
+"09/08/2026, 12:08:18",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786257496450,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Engineering,Engineering,dev,3398,3398,,Engineering load
+"09/08/2026, 12:07:35",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786257448838,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,6419.000000000001,,,Biochemistry load
+"09/08/2026, 12:06:50",page_load,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786257394633,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Registration,Mango,dev,17904.100000000006,,,Mango load
+"09/08/2026, 12:06:05",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786257364725,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,865,43,43,Biochemistry load
+"09/08/2026, 12:06:03",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786257362362,cc7d1a36-1d12-4637-8600-589cc3e066d7,Validator,Validator,dev,1660.0000000000002,936,936,Validator load
+"09/08/2026, 12:04:35",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786257273796,181be9ea-14eb-4c98-822a-465398d3b24f,Backroom,Backroom,dev,2285.600000023842,653.1000000238419,653.1000000238419,Backroom load
+"09/08/2026, 11:52:12",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786256532091,07cb97b9-c5c9-4296-9d64-5f76b4752937,Validator,Validator,dev,652,205,205,Validator load
+"09/08/2026, 11:52:01",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786256520750,07cb97b9-c5c9-4296-9d64-5f76b4752937,Coagulation,Coagulation,dev,713,18,18,Coagulation load
+"09/08/2026, 11:50:45",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786256444802,07cb97b9-c5c9-4296-9d64-5f76b4752937,Coagulation,Coagulation,dev,518,125,125,Coagulation load
+"09/08/2026, 11:50:38",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786256438019,181be9ea-14eb-4c98-822a-465398d3b24f,InsideLab,InsideLab,dev,1124,37,37,InsideLab load
+"09/08/2026, 11:50:31",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786256431496,07cb97b9-c5c9-4296-9d64-5f76b4752937,Coagulation,Coagulation,dev,549,63,63,Coagulation load
+"09/08/2026, 11:50:28",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786256427704,181be9ea-14eb-4c98-822a-465398d3b24f,Backroom,Backroom,dev,966.8000000715256,60.89999997615814,60.89999997615814,Backroom load
+"09/08/2026, 11:50:26",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786256426422,07cb97b9-c5c9-4296-9d64-5f76b4752937,Haematology,Haematology,dev,575.0000000000001,118,118,Haematology load
+"09/08/2026, 11:50:25",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786256425100,181be9ea-14eb-4c98-822a-465398d3b24f,Validator,Validator,dev,1087.8000000715256,189.60000002384186,189.60000002384186,Validator load
+"09/08/2026, 11:50:18",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786256417658,181be9ea-14eb-4c98-822a-465398d3b24f,Backroom,Backroom,dev,1063.0999999046326,67.60000002384186,67.60000002384186,Backroom load
+"09/08/2026, 11:50:14",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786256414137,181be9ea-14eb-4c98-822a-465398d3b24f,Outsource,Outsource,dev,1085.6000000238419,73.69999992847443,73.69999992847443,Outsource load
+"09/08/2026, 11:50:05",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786256405190,181be9ea-14eb-4c98-822a-465398d3b24f,Backroom,Backroom,dev,1010.6000000238419,54,54,Backroom load
+"09/08/2026, 11:50:02",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786256401535,181be9ea-14eb-4c98-822a-465398d3b24f,Backroom,Backroom,dev,953.6000000238419,62.89999997615814,62.89999997615814,Backroom load
+"09/08/2026, 11:49:53",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786256392639,181be9ea-14eb-4c98-822a-465398d3b24f,Backroom,Backroom,dev,972.9000000953674,88.70000004768372,88.70000004768372,Backroom load
+"09/08/2026, 11:46:23",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786256183153,181be9ea-14eb-4c98-822a-465398d3b24f,Backroom,Backroom,dev,2163.899999976158,83.89999997615814,83.89999997615814,Backroom load
+"09/08/2026, 11:34:56",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786255481612,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,16274.999999999998,,,Biochemistry load
+"09/08/2026, 11:31:43",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786255297227,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,6704,,,Biochemistry load
+"09/08/2026, 11:30:03",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786255188638,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,15530.000000000002,,,Biochemistry load
+"09/08/2026, 11:28:17",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786255095767,cc7d1a36-1d12-4637-8600-589cc3e066d7,Validator,Validator,dev,1737,,,Validator load
+"09/08/2026, 11:28:03",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786255081216,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,2580,,,Biochemistry load
+"09/08/2026, 11:19:01",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786254526801,f3865457-284b-48b5-85da-e95ca4ff6cb6,Registration,Mango,dev,15845.5,0,,Mango load
+"09/08/2026, 11:13:45",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786254213839,cc7d1a36-1d12-4637-8600-589cc3e066d7,Registration,Mango,dev,12412,83,83,Mango load
+"09/08/2026, 11:12:42",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786254162134,cc7d1a36-1d12-4637-8600-589cc3e066d7,Validator,Validator,dev,469,36.99999999999997,36.99999999999997,Validator load
+"09/08/2026, 11:12:39",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786254158559,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,782,346,346,Biochemistry load
+"09/08/2026, 11:12:36",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786254156170,07cb97b9-c5c9-4296-9d64-5f76b4752937,Haematology,Haematology,dev,453,55,55,Haematology load
+"09/08/2026, 11:12:26",page_load,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786254142939,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,7272,49.99999999999909,49.99999999999909,Biochemistry load
+"09/08/2026, 11:12:20",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786254140328,07cb97b9-c5c9-4296-9d64-5f76b4752937,Coagulation,Coagulation,dev,1201,200,200,Coagulation load
+"09/08/2026, 11:12:13",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786254132590,07cb97b9-c5c9-4296-9d64-5f76b4752937,Biochemistry,Biochemistry,dev,1151,200.9999999999999,200.9999999999999,Biochemistry load
+"09/08/2026, 11:11:40",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786254098870,07cb97b9-c5c9-4296-9d64-5f76b4752937,Haematology,Haematology,dev,2444,993.9999999999998,993.9999999999998,Haematology load
+"09/08/2026, 11:11:24",page_load,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786254082594,07cb97b9-c5c9-4296-9d64-5f76b4752937,Validator,Validator,dev,3237,2043,2043,Validator load
+"09/08/2026, 11:09:57",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786253982517,f3865457-284b-48b5-85da-e95ca4ff6cb6,Registration,Mango,dev,15233.40000000596,0,,Mango load
+"09/08/2026, 11:08:23",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786253902568,181be9ea-14eb-4c98-822a-465398d3b24f,Validator,Validator,dev,1379.2999999523163,274,274,Validator load
+"09/08/2026, 11:07:27",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786253832322,f3865457-284b-48b5-85da-e95ca4ff6cb6,Registration,Mango,dev,16345.70000000298,0,,Mango load
+"09/08/2026, 10:51:55",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786252915258,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Owner,OwnerWorkflow,dev,1120.2999997138977,61,61,OwnerWorkflow load
+"09/08/2026, 10:51:23",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786252880817,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Engineering,Engineering,dev,3085,3085,,Engineering load
+"09/08/2026, 10:35:33",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786251932292,181be9ea-14eb-4c98-822a-465398d3b24f,Backroom,Backroom,dev,1799.1000000238419,,,Backroom load
+"09/08/2026, 10:22:39",page_load,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d_1786251158614,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d,Validator,Validator,dev,984,96,96,Validator load
+"09/08/2026, 10:22:17",page_load,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d_1786251136505,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d,Validator,Validator,dev,1524,,,Validator load
+"09/08/2026, 10:21:49",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786251108490,181be9ea-14eb-4c98-822a-465398d3b24f,Backroom,Backroom,dev,1528.2999999523163,50.89999997615814,50.89999997615814,Backroom load
+"09/08/2026, 10:17:32",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786250850083,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Engineering,Engineering,dev,3059,3059,,Engineering load
+"09/08/2026, 09:48:00",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786249080130,181be9ea-14eb-4c98-822a-465398d3b24f,InsideLab,InsideLab,dev,1635.6000000238419,,,InsideLab load
+"09/08/2026, 09:47:50",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786249069929,181be9ea-14eb-4c98-822a-465398d3b24f,Backroom,Backroom,dev,1464.5,,,Backroom load
+"09/08/2026, 09:47:45",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786249064844,181be9ea-14eb-4c98-822a-465398d3b24f,Validator,Validator,dev,1475.5999999046326,,,Validator load
+"09/08/2026, 09:47:35",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786249054174,181be9ea-14eb-4c98-822a-465398d3b24f,Backroom,Backroom,dev,1432.6000000238419,356.10000002384186,356.10000002384186,Backroom load
+"09/08/2026, 09:47:30",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786249049876,181be9ea-14eb-4c98-822a-465398d3b24f,Outsource,Outsource,dev,1415.2000000476837,321.7000000476837,321.7000000476837,Outsource load
+"09/08/2026, 09:47:19",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786249038619,181be9ea-14eb-4c98-822a-465398d3b24f,Backroom,Backroom,dev,1243.1000000238419,,,Backroom load
+"09/08/2026, 09:47:12",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786249032122,181be9ea-14eb-4c98-822a-465398d3b24f,Backroom,Backroom,dev,1311.4000000953674,328,328,Backroom load
+"09/08/2026, 09:46:53",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786249012972,181be9ea-14eb-4c98-822a-465398d3b24f,Backroom,Backroom,dev,1848.7999999523163,,,Backroom load
+"09/08/2026, 09:46:43",page_load,181be9ea-14eb-4c98-822a-465398d3b24f_1786249002530,181be9ea-14eb-4c98-822a-465398d3b24f,Registration,Mango,dev,3678,,,Mango load
+"09/08/2026, 09:34:57",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786248296218,f3865457-284b-48b5-85da-e95ca4ff6cb6,Registration,Mango,dev,1094.7000000029802,,,Mango load
+"09/08/2026, 09:34:24",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786248263169,f3865457-284b-48b5-85da-e95ca4ff6cb6,Registration,Mango,dev,1308,,,Mango load
+"09/08/2026, 09:21:44",page_load,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786247503314,f3865457-284b-48b5-85da-e95ca4ff6cb6,Registration,Mango,dev,1803.7999999970198,,,Mango load
+"09/08/2026, 09:17:17",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786247237295,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Owner,OwnerRapid,dev,2556.800000190735,59.09999990463257,59.09999990463257,OwnerRapid load
+"09/08/2026, 09:13:45",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786247025486,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Owner,OwnerBiochem,dev,1364,99.90000009536743,99.90000009536743,OwnerBiochem load
+"09/08/2026, 09:11:55",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246913902,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Owner,OwnerHormones,dev,2151.5,60,60,OwnerHormones load
+"09/08/2026, 09:10:05",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246805503,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Owner,OwnerUrine,dev,1311.4000000953674,57.90000009536743,57.90000009536743,OwnerUrine load
+"09/08/2026, 09:09:51",error,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246655100,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Owner,OwnerUrine,dev,,,,Failed to fetch dynamically imported module: https://mango-ui.vercel.app/assets/DelayHistogram-Co8asGkB.js
+"09/08/2026, 09:08:55",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246733855,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Engineering,Engineering,dev,3526,3526,,Engineering load
+"09/08/2026, 09:07:35",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246655100,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Owner,OwnerUrine,dev,1294.6999998092651,75.5,75.5,OwnerUrine load
+"09/08/2026, 09:07:08",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246626105,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Engineering,Engineering,dev,3163,3163,,Engineering load
+"09/08/2026, 09:06:48",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246607741,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Analytics,LabAnalytics,dev,1598.2999997138977,151.59999990463257,151.59999990463257,LabAnalytics load
+"09/08/2026, 09:06:14",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246574095,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Owner,OwnerCoag,dev,1163.2000002861023,44.80000019073486,44.80000019073486,OwnerCoag load
+"09/08/2026, 09:06:08",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246567900,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Owner,OwnerWorkflow,dev,1148.4000000953674,51,51,OwnerWorkflow load
+"09/08/2026, 09:05:52",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246552028,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,InsideLab,InsideLab,dev,1231.4000000953674,62.09999990463257,62.09999990463257,InsideLab load
+"09/08/2026, 09:05:33",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246533186,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Outsource,Outsource,dev,1350,67.40000009536743,67.40000009536743,Outsource load
+"09/08/2026, 09:01:13",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246272944,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Backroom,Backroom,dev,1444.6999998092651,121,121,Backroom load
+"09/08/2026, 09:01:00",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246260143,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Coagulation,Coagulation,dev,1123.8000001907349,46.80000019073486,46.80000019073486,Coagulation load
+"09/08/2026, 09:00:44",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246243913,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Haematology,Haematology,dev,1174.3000001907349,42,42,Haematology load
+"09/08/2026, 08:59:36",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246175997,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Biochemistry,Biochemistry,dev,1838.6999998092651,45.200000286102295,45.200000286102295,Biochemistry load
+"09/08/2026, 08:58:08",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246087147,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Biochemistry,Biochemistry,dev,1700.5999999046326,,,Biochemistry load
+"09/08/2026, 08:58:07",error,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786245992619,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Coagulation,Coagulation,dev,,,,Uncaught FirebaseError: Firebase: No Firebase App '[DEFAULT]' has been created - call initializeApp() first (app/no-app).
+"09/08/2026, 08:57:42",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246061101,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Haematology,Haematology,dev,1757.7999997138977,,,Haematology load
+"09/08/2026, 08:56:49",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246008210,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Coagulation,Coagulation,dev,1204.9000000953674,,,Coagulation load
+"09/08/2026, 08:56:33",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786245992619,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Coagulation,Coagulation,dev,1981.8000001907349,,,Coagulation load
+"09/08/2026, 08:56:15",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786245973849,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Engineering,Engineering,dev,5775,5775,,Engineering load
+"09/08/2026, 08:54:18",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786245858684,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Haematology,Haematology,dev,998.3000001907349,681.6000003814697,84.5,Haematology load
+"09/08/2026, 08:51:39",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786245697202,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Engineering,Engineering,dev,2845,2845,,Engineering load
+"09/08/2026, 08:47:54",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786245469874,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Registration,Mango,dev,5990.39999961853,883,52,Mango load
+"09/08/2026, 08:39:56",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786244994240,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Haematology,Haematology,dev,2806.199999809265,1710.1999998092651,1710.1999998092651,Haematology load
+"09/08/2026, 05:30:00",timeout,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786271958598,07cb97b9-c5c9-4296-9d64-5f76b4752937,Coagulation,Coagulation,dev,,,,critical_alerts timeouts 10s×207 30s×82
+"09/08/2026, 05:30:00",timeout,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786272119617,07cb97b9-c5c9-4296-9d64-5f76b4752937,Validator,Validator,dev,,,,haematology_register timeouts 10s×209 30s×84
+"09/08/2026, 05:30:00",timeout,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786271958598,07cb97b9-c5c9-4296-9d64-5f76b4752937,Coagulation,Coagulation,dev,,,,master_register timeouts 10s×207 30s×82
+"09/08/2026, 05:30:00",timeout,07cb97b9-c5c9-4296-9d64-5f76b4752937_1786263258099,07cb97b9-c5c9-4296-9d64-5f76b4752937,Haematology,Haematology,dev,,,,page_load timeouts 10s×0 30s×59
+"09/08/2026, 05:30:00",timeout,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786246087147,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Biochemistry,Biochemistry,dev,,,,page_load timeouts 10s×0 30s×1582
+"09/08/2026, 05:30:00",timeout,181be9ea-14eb-4c98-822a-465398d3b24f_1786249080130,181be9ea-14eb-4c98-822a-465398d3b24f,InsideLab,InsideLab,dev,,,,page_load timeouts 10s×0 30s×342
+"09/08/2026, 05:30:00",timeout,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d_1786251136505,9e0bbaf8-dd53-4975-aa14-7ebe2a20418d,Validator,Validator,dev,,,,page_load timeouts 10s×0 30s×3
+"09/08/2026, 05:30:00",timeout,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786275173985,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,,,,biochemistry_register timeouts 10s×5836 30s×4455
+"09/08/2026, 05:30:00",timeout,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786275173985,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,,,,critical_alerts timeouts 10s×2150 30s×1267
+"09/08/2026, 05:30:00",timeout,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786273206051,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,,,,hormones_main timeouts 10s×190 30s×736
+"09/08/2026, 05:30:00",timeout,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786275173985,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,,,,master_register timeouts 10s×2124 30s×1267
+"09/08/2026, 05:30:00",timeout,cc7d1a36-1d12-4637-8600-589cc3e066d7_1786261248261,cc7d1a36-1d12-4637-8600-589cc3e066d7,Biochemistry,Biochemistry,dev,,,,page_load timeouts 10s×0 30s×1571
+"09/08/2026, 05:30:00",timeout,f3865457-284b-48b5-85da-e95ca4ff6cb6_1786248296218,f3865457-284b-48b5-85da-e95ca4ff6cb6,Registration,Mango,dev,,,,page_load timeouts 10s×0 30s×2348
+"09/08/2026, 05:30:00",timeout,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786268006481,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,,,,biochemistry_register timeouts 10s×254 30s×0
+"09/08/2026, 05:30:00",timeout,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786265494793,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,,,,bloodgroup_testing_register timeouts 10s×27 30s×0
+"09/08/2026, 05:30:00",timeout,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786267329020,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,,,,coagulation_register timeouts 10s×62 30s×0
+"09/08/2026, 05:30:00",timeout,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786269425895,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Haematology,Haematology,dev,,,,critical_alerts timeouts 10s×276 30s×144
+"09/08/2026, 05:30:00",timeout,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786268006481,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,,,,esr_register timeouts 10s×140 30s×140
+"09/08/2026, 05:30:00",timeout,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786269425895,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Haematology,Haematology,dev,,,,haematology_register timeouts 10s×269 30s×60
+"09/08/2026, 05:30:00",timeout,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786267740512,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,,,,hormones_main timeouts 10s×6 30s×1
+"09/08/2026, 05:30:00",timeout,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786269425895,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Haematology,Haematology,dev,,,,master_register timeouts 10s×170 30s×57
+"09/08/2026, 05:30:00",timeout,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786267329020,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Validator,Validator,dev,,,,page_load timeouts 10s×0 30s×356
+"09/08/2026, 05:30:00",timeout,fb25b33c-7388-44ab-9596-9ec7c18f2c9d_1786267216320,fb25b33c-7388-44ab-9596-9ec7c18f2c9d,Registration,Mango,dev,,,,report_details timeouts 10s×15 30s×3
+"09/08/2026, 00:12:48",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786214568171,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,BloodGroup,OwnerBloodGroup,dev,1485,1007.5,244.2999997138977,OwnerBloodGroup load
+"09/08/2026, 00:12:40",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786214560301,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Biochemistry,Biochemistry,dev,1301.2000002861023,890.8000001907349,177,Biochemistry load
+"09/08/2026, 00:12:35",page_load,12c0ac54-a6bc-4daa-ae68-4de2c3af029d_1786214553781,12c0ac54-a6bc-4daa-ae68-4de2c3af029d,Owner,OwnerWorkflow,dev,2701.9000000953674,1320.7999997138977,1249.8999996185303,OwnerWorkflow load

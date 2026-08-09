@@ -1,6 +1,7 @@
 /**
- * Non-blocking first-snapshot watchdog (N6).
+ * Non-blocking first-snapshot / connectivity watchdog (N6).
  * Observer UX only — Retry recreates waiting tracked listeners, never reloads.
+ * Does not change clinical queries or write paths.
  */
 
 import React, { useEffect, useState } from "react";
@@ -12,17 +13,38 @@ import {
 } from "../telemetry/listenerWatch.js";
 import { EngTelemetry } from "../telemetry/EngTelemetry.js";
 import { isEngTelemetryEnabled } from "../telemetry/killSwitch.js";
+import { subscribeListenerRecovery } from "../../shared/firestore/listenerRecovery.js";
 
 export default function FirstSnapshotWatchdog() {
   const [tick, setTick] = useState(0);
   const [retrying, setRetrying] = useState(false);
+  const [online, setOnline] = useState(
+    typeof navigator !== "undefined" ? navigator.onLine !== false : true
+  );
+  const [recoveryHint, setRecoveryHint] = useState("");
 
   useEffect(() => {
     const unsub = subscribeListenerWatch(() => setTick((n) => n + 1));
     const iv = setInterval(() => setTick((n) => n + 1), 1000);
+    const onOnline = () => {
+      setOnline(true);
+      setRecoveryHint("online");
+      setTimeout(() => setRecoveryHint(""), 2500);
+    };
+    const onOffline = () => setOnline(false);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    const unsubRec = subscribeListenerRecovery((reason) => {
+      setRecoveryHint(String(reason || "recovery"));
+      setTick((n) => n + 1);
+      setTimeout(() => setRecoveryHint(""), 4000);
+    });
     return () => {
       unsub();
       clearInterval(iv);
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+      unsubRec();
     };
   }, []);
 
@@ -31,20 +53,22 @@ export default function FirstSnapshotWatchdog() {
   if (!isEngTelemetryEnabled()) return null;
 
   const waiting = getWaitingListeners();
-  if (!waiting.length) return null;
-
   const any30 = waiting.some((w) => w.timeout30) || getHungCount() > 0;
   const any10 = waiting.some((w) => w.timeout10);
-  if (!any10 && !any30) return null;
+  const showOffline = !online;
+  const showWaiting = waiting.length > 0 && (any10 || any30);
 
-  const oldest = waiting.reduce(
-    (a, b) => (a.startedAt <= b.startedAt ? a : b),
-    waiting[0]
-  );
-  const waitedSec = Math.max(
-    0,
-    Math.round((Date.now() - (oldest?.startedAt || Date.now())) / 1000)
-  );
+  if (!showOffline && !showWaiting && !recoveryHint) return null;
+
+  const oldest = waiting.length
+    ? waiting.reduce(
+        (a, b) => (a.startedAt <= b.startedAt ? a : b),
+        waiting[0]
+      )
+    : null;
+  const waitedSec = oldest
+    ? Math.max(0, Math.round((Date.now() - (oldest.startedAt || Date.now())) / 1000))
+    : 0;
   const collections = [...new Set(waiting.map((w) => w.collection))].join(", ");
 
   const onRetry = () => {
@@ -72,19 +96,20 @@ export default function FirstSnapshotWatchdog() {
     }
   };
 
+  const severe = showOffline || any30;
   const banner = {
     position: "fixed",
     left: 12,
     right: 12,
-    top: any30 ? 12 : undefined,
-    bottom: any30 ? undefined : 12,
+    top: severe ? 12 : undefined,
+    bottom: severe ? undefined : 12,
     zIndex: 99999,
     maxWidth: 560,
     margin: "0 auto",
     padding: "14px 16px",
     borderRadius: 12,
-    border: any30 ? "2px solid #b91c1c" : "1px solid #cbd5e1",
-    background: any30 ? "#fef2f2" : "#fff",
+    border: severe ? "2px solid #b91c1c" : "1px solid #cbd5e1",
+    background: severe ? "#fef2f2" : "#fff",
     color: "#0f172a",
     fontFamily:
       'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
@@ -101,42 +126,66 @@ export default function FirstSnapshotWatchdog() {
       data-mango-eng-watchdog="1"
     >
       <div style={{ fontWeight: 800, marginBottom: 6, fontSize: 16 }}>
-        {any30
-          ? "Firestore still not responding"
-          : "Still loading…"}
+        {showOffline
+          ? "You appear offline"
+          : any30
+            ? "Firestore still not responding"
+            : recoveryHint
+              ? "Reconnecting…"
+              : "Still loading…"}
       </div>
       <div style={{ color: "#334155", marginBottom: 10 }}>
-        Waiting on <strong>{waiting.length}</strong> listener
-        {waiting.length === 1 ? "" : "s"}
-        {collections ? ` (${collections})` : ""} · {waitedSec}s
-        {any30 ? (
+        {showOffline ? (
           <>
-            <br />
-            React already started, but the first snapshot never arrived (common
-            on iPad Wi‑Fi). Tap Retry to re-open listeners — no page reload.
+            Live data will resume when the network returns. Listeners will
+            re-subscribe automatically — no page reload needed.
           </>
-        ) : null}
+        ) : (
+          <>
+            {waiting.length > 0 ? (
+              <>
+                Waiting on <strong>{waiting.length}</strong> listener
+                {waiting.length === 1 ? "" : "s"}
+                {collections ? ` (${collections})` : ""} · {waitedSec}s
+              </>
+            ) : (
+              <>Recovery in progress ({recoveryHint || "retry"}).</>
+            )}
+            {any30 ? (
+              <>
+                <br />
+                React already started, but the first snapshot never arrived
+                (common on iPad Wi‑Fi). Tap Retry to re-open listeners — no page
+                reload.
+              </>
+            ) : null}
+          </>
+        )}
       </div>
-      {(any30 || waitedSec >= 20) && (
+      {(any30 || waitedSec >= 20 || showOffline) && (
         <button
           type="button"
           onClick={onRetry}
-          disabled={retrying}
+          disabled={retrying || showOffline}
           style={{
             padding: "12px 18px",
             borderRadius: 10,
             border: "none",
-            background: retrying ? "#94a3b8" : "#b91c1c",
+            background: retrying || showOffline ? "#94a3b8" : "#b91c1c",
             color: "#fff",
             fontWeight: 700,
             fontSize: 16,
             minHeight: 48,
             width: "100%",
             maxWidth: 280,
-            cursor: retrying ? "default" : "pointer",
+            cursor: retrying || showOffline ? "default" : "pointer",
           }}
         >
-          {retrying ? "Retrying listeners…" : "Retry listeners"}
+          {retrying
+            ? "Retrying listeners…"
+            : showOffline
+              ? "Waiting for network…"
+              : "Retry listeners"}
         </button>
       )}
     </div>
