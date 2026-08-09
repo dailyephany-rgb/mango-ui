@@ -12,6 +12,7 @@ import * as XLSX from "xlsx"; // Import SheetJS
 import "./MasterAdmin.css";
 import { MASTER_ADMIN_DEPARTMENTS } from "../shared/config/collections.js";
 import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import SafeDateInput from "../shared/components/SafeDateInput.jsx";
 
 const DEPARTMENTS = MASTER_ADMIN_DEPARTMENTS;
 
@@ -532,9 +533,9 @@ if (mappedLabNames && mappedLabNames.length > 0) {
               <input type="text" placeholder="Search Reg or Diag No..." value={searchReg} onChange={(e) => setSearchReg(e.target.value)} />
               <label>Date Filter (Printed):</label>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+                <SafeDateInput aria-label="Date from" value={dateFrom} onChange={(v) => v && setDateFrom(v)} />
                 <span>to</span>
-                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+                <SafeDateInput aria-label="Date to" value={dateTo} onChange={(v) => v && setDateTo(v)} />
               </div>
             </div>
             <div className="source-buttons">

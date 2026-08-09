@@ -30,6 +30,7 @@ import {
   markComponentFirstSnapshot,
   markComponentPhase,
   buildComponentBreakdown,
+  finalizeComponentStatuses,
   resetComponentSession,
   getFsAttribution,
 } from "./componentTimeline.js";
@@ -42,7 +43,7 @@ import {
   TELEMETRY_VERSION,
 } from "./metadata.js";
 
-/** @type {{ deviceId: string, buildId: string, page: string, department: string, user: string | null, reactStrictDev: boolean, lastFirstSnapshotMs: number | null, lastPageLoadMs: number | null, loadId: string | null, sessionId: string | null, platform: string, browser: string | null }} */
+/** @type {{ deviceId: string, buildId: string, page: string, department: string, user: string | null, reactStrictDev: boolean, lastFirstSnapshotMs: number | null, lastPageLoadMs: number | null, lastPageHung: boolean | null, lastPageIncomplete: boolean | null, loadId: string | null, sessionId: string | null, platform: string, browser: string | null }} */
 let context = {
   deviceId: "",
   buildId: ENG_BUILD_ID,
@@ -52,6 +53,8 @@ let context = {
   reactStrictDev: false,
   lastFirstSnapshotMs: null,
   lastPageLoadMs: null,
+  lastPageHung: null,
+  lastPageIncomplete: null,
   loadId: null,
   sessionId: null,
   platform: "unknown",
@@ -142,6 +145,8 @@ function init(opts = {}) {
       browser: detectBrowser(),
       lastFirstSnapshotMs: null,
       lastPageLoadMs: null,
+      lastPageHung: null,
+      lastPageIncomplete: null,
     };
     const lid = ensureLoadId();
     startComponentSession({
@@ -245,10 +250,21 @@ function trackPageLoad(timings = {}) {
         timings.firstSnapshotMs ?? context.lastFirstSnapshotMs ?? null,
       loadId: lid,
     };
+    const hung = !!merged.hung;
+    const incomplete = !!merged.incomplete && !hung;
+    merged.hung = hung;
+    merged.incomplete = incomplete;
     if (merged.totalMs != null) {
       context.lastPageLoadMs = merged.totalMs;
       setHeartbeatContext({ lastPageLoadMs: merged.totalMs });
     }
+    context.lastPageHung = hung;
+    context.lastPageIncomplete = incomplete;
+    finalizeComponentStatuses({
+      hung,
+      incomplete,
+      pageHasSnapshot: merged.firstSnapshotMs != null,
+    });
     pushEvent({
       ...base(),
       domain: "pages",
@@ -258,7 +274,8 @@ function trackPageLoad(timings = {}) {
     // One eng_components doc per page load (same loadId)
     pushComponentBreakdown({
       totalMs: merged.totalMs ?? null,
-      hung: !!merged.hung,
+      hung,
+      incomplete,
     });
     // Push samples promptly so Engineering Timeline sees new rows without
     // waiting for the 60s interval / Engineering Refresh.
@@ -275,6 +292,20 @@ function pushComponentBreakdown(extra = {}) {
     if (!enabled() || !initialized) return;
     const lid = ensureLoadId();
     if (componentsDocTs == null) componentsDocTs = Date.now();
+    const hung =
+      typeof extra.hung === "boolean" ? extra.hung : !!context.lastPageHung;
+    const incomplete =
+      typeof extra.incomplete === "boolean"
+        ? extra.incomplete
+        : !!context.lastPageIncomplete;
+    // Late lazy-tab flushes must not wipe hung / must re-apply status rules.
+    if (context.lastPageLoadMs != null) {
+      finalizeComponentStatuses({
+        hung,
+        incomplete,
+        pageHasSnapshot: context.lastFirstSnapshotMs != null,
+      });
+    }
     const components = buildComponentBreakdown();
     pushEvent({
       ...base(),
@@ -283,7 +314,8 @@ function pushComponentBreakdown(extra = {}) {
       // Keep first timestamp so Components "Time" does not jump on every tab mount.
       ts: componentsDocTs,
       totalMs: extra.totalMs ?? context.lastPageLoadMs ?? null,
-      hung: extra.hung || false,
+      hung,
+      incomplete,
       components,
     });
   }, "eng.components.push");

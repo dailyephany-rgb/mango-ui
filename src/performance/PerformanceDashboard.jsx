@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { PerformanceProvider, usePerf } from "./PerformanceContext.jsx";
 import { loadBand, PAGE_LOAD_SLOW_MS } from "./pageLoadBands.js";
+import SafeDateInput from "../shared/components/SafeDateInput.jsx";
 import "./Performance.css";
 
 function ms(n) {
@@ -263,18 +264,18 @@ function DashboardInner() {
         <div className="perf-actions">
           <label className="perf-date">
             From
-            <input
-              type="date"
+            <SafeDateInput
+              aria-label="Date from"
               value={p.dateFrom}
-              onChange={(e) => p.setDateFrom(e.target.value)}
+              onChange={(v) => v && p.setDateFrom(v)}
             />
           </label>
           <label className="perf-date">
             To
-            <input
-              type="date"
+            <SafeDateInput
+              aria-label="Date to"
               value={p.dateTo}
-              onChange={(e) => p.setDateTo(e.target.value)}
+              onChange={(v) => v && p.setDateTo(v)}
             />
           </label>
           <button type="button" onClick={p.resetDatesToToday}>

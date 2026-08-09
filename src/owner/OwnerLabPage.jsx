@@ -5,7 +5,9 @@ import React, { useEffect, useState, useContext } from "react";
 import {
   OwnerPageShell,
   OwnerFilters,
-  OwnerKPIs
+  OwnerKPIs,
+  useVisitedTabs,
+  OwnerTabPanel
 } from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "../owner/OwnerContext.jsx";
 
@@ -39,6 +41,7 @@ export default function OwnerLabPage() {
   
   const [activeReg, setActiveReg] = useState("FnacRegister");
   const [activeSubTab, setActiveSubTab] = useState("overview");
+  const visitedTabs = useVisitedTabs(activeSubTab);
   const [data, setData] = useState({
     unifiedRows: [],
     kpis: {},
@@ -106,7 +109,8 @@ export default function OwnerLabPage() {
         <KPIBlocks kpis={data.kpis} />
       </OwnerKPIs>
 
-      {activeSubTab === "overview" && (
+      {visitedTabs.overview && (
+        <OwnerTabPanel active={activeSubTab === "overview"}>
         <OwnerChartsSection engPage="OwnerInsideLab" engName="Charts">
           <div className="chart-card">
             <h3>Counts Bar</h3>
@@ -121,9 +125,11 @@ export default function OwnerLabPage() {
             </div>
           </div>
         </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
-      {activeSubTab === "delays" && (
+      {visitedTabs.delays && (
+        <OwnerTabPanel active={activeSubTab === "delays"}>
         <OwnerChartsSection engPage="OwnerInsideLab" engName="Delays">
           <div className="chart-card">
             <h3>Delay Histogram</h3>
@@ -144,9 +150,11 @@ export default function OwnerLabPage() {
             <DelayTable violators={violators} />
           </div>
         </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
-      {activeSubTab === "timebricks" && (
+      {visitedTabs.timebricks && (
+        <OwnerTabPanel active={activeSubTab === "timebricks"}>
         <OwnerChartsSection>
           <div className="chart-card full-width">
             <h3>Time Bricks Chart</h3>
@@ -163,11 +171,13 @@ export default function OwnerLabPage() {
             </div>
           </div>
         </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
 
             {/* STAFF ANALYTICS TAB */}
-      {activeSubTab === "staff" && (
+      {visitedTabs.staff && (
+        <OwnerTabPanel active={activeSubTab === "staff"}>
         <OwnerChartsSection engPage="OwnerInsideLab" engName="Staff Analytics">
           <div
             className="chart-card full-width"
@@ -180,6 +190,7 @@ export default function OwnerLabPage() {
             />
           </div>
         </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
       <PatientListModal 

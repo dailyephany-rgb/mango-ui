@@ -10,7 +10,9 @@ import {
   OwnerPageShell,
   OwnerFilters,
   OwnerKPIs,
-  OwnerDelays
+  OwnerDelays,
+  useVisitedTabs,
+  OwnerTabPanel
 } from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "./OwnerContext.jsx";
 
@@ -56,6 +58,7 @@ export default function OwnerCoagPage() {
   const [openModal, setOpenModal] = useState(false);
   const [modalData, setModalData] = useState([]);
   const [activeTab, setActiveTab] = useState("overview");
+  const visitedTabs = useVisitedTabs(activeTab);
   const [staffTab, setStaffTab] = useState("testing");
   const [staffAnalytics, setStaffAnalytics] = useState(null);
   const [stageFilter, setStageFilter] = useState("turnaround");
@@ -313,7 +316,8 @@ export default function OwnerCoagPage() {
         />
         </OwnerKPIs>
 
-      {activeTab === "overview" && (
+      {visitedTabs.overview && (
+        <OwnerTabPanel active={activeTab === "overview"}>
         <OwnerChartsSection engPage="OwnerCoag" engName="Charts">
           <div className="chart-card">
             <h3>Counts Bar</h3>
@@ -441,9 +445,11 @@ export default function OwnerCoagPage() {
             />
           </div>
         </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
-{activeTab === "delays" && (
+{visitedTabs.delays && (
+        <OwnerTabPanel active={activeTab === "delays"}>
         <OwnerDelays page="OwnerCoag">
   <OwnerChartsSection>
     <div className="chart-card">
@@ -510,10 +516,12 @@ export default function OwnerCoagPage() {
         </OwnerChartsSection>
       
         </OwnerDelays>
+              </OwnerTabPanel>
       )}
 
       
-{activeTab === "timebricks" && (
+{visitedTabs.timebricks && (
+        <OwnerTabPanel active={activeTab === "timebricks"}>
   <>
     <div
       style={{
@@ -567,9 +575,11 @@ export default function OwnerCoagPage() {
       </div>
     </OwnerChartsSection>
   </>
-)}
+        </OwnerTabPanel>
+      )}
 
-{activeTab === "staff" && (
+{visitedTabs.staff && (
+        <OwnerTabPanel active={activeTab === "staff"}>
         <OwnerChartsSection engPage="OwnerCoag" engName="Staff Analytics">
 
     {staffTab === "testing" && (
@@ -702,6 +712,7 @@ export default function OwnerCoagPage() {
           )}
 
         </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
       <PatientListModal open={openModal} onClose={() => setOpenModal(false)} patients={modalData} />

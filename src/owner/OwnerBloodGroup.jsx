@@ -5,7 +5,9 @@ import {
   OwnerPageShell,
   OwnerFilters,
   OwnerKPIs,
-  OwnerDelays
+  OwnerDelays,
+  useVisitedTabs,
+  OwnerTabPanel
 } from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "./OwnerContext.jsx";
 import DateSourceFilter from "./components/DateSourceFilter";
@@ -37,6 +39,7 @@ export default function OwnerBloodGroupPage() {
   // 1. Unified State
   const [mode, setMode] = useState("testing"); 
   const [activeTab, setActiveTab] = useState("overview");
+  const visitedTabs = useVisitedTabs(activeTab);
   const [staffTab,setStaffTab] = useState("testing");
   const [staffAnalytics,setStaffAnalytics] = useState(null);
   const [rawRows, setRawRows] = useState([]);
@@ -303,7 +306,8 @@ export default function OwnerBloodGroupPage() {
           <KPIBlocks_BloodGroup kpis={fetchedKpis || {}} />
         </OwnerKPIs>
 
-      {activeTab === "overview" && (
+      {visitedTabs.overview && (
+        <OwnerTabPanel active={activeTab === "overview"}>
         <OwnerChartsSection engPage="OwnerBloodGroup" engName="Charts">
          
          <div className="chart-card">
@@ -438,10 +442,12 @@ export default function OwnerBloodGroupPage() {
   />
 </div>
         </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
 
-{activeTab === "delays" && (
+{visitedTabs.delays && (
+        <OwnerTabPanel active={activeTab === "delays"}>
   <OwnerDelays page="OwnerBloodGroup">
   <>
    <div
@@ -519,9 +525,11 @@ export default function OwnerBloodGroupPage() {
     </OwnerChartsSection>
   </>
   </OwnerDelays>
-)}
+        </OwnerTabPanel>
+      )}
 
-{activeTab === "timebricks" && (
+{visitedTabs.timebricks && (
+        <OwnerTabPanel active={activeTab === "timebricks"}>
   <OwnerChartsSection>
     <div className="chart-card full-width">
 
@@ -584,9 +592,11 @@ export default function OwnerBloodGroupPage() {
 
     </div>
   </OwnerChartsSection>
-)}
+        </OwnerTabPanel>
+      )}
 
-{activeTab === "staff" && (
+{visitedTabs.staff && (
+        <OwnerTabPanel active={activeTab === "staff"}>
   <OwnerChartsSection engPage="OwnerBloodGroup" engName="Staff Analytics">
 
     {staffTab === "testing" && (
@@ -720,7 +730,8 @@ export default function OwnerBloodGroupPage() {
           )}
 
       </OwnerChartsSection>
-    )}
+            </OwnerTabPanel>
+      )}
 
       <PatientListModal open={openModal} onClose={() => setOpenModal(false)} patients={modalData} />
       {chartExpanded && (

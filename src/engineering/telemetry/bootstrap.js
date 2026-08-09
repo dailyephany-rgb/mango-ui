@@ -11,6 +11,7 @@ import { spillToSession } from "./buffer.js";
 import { safeRun } from "./safeRun.js";
 import { ENG_BUILD_ID } from "../constants.js";
 import { refreshRuntimeSettings } from "./runtimeSettings.js";
+import { getWaitingListeners } from "./listenerWatch.js";
 
 let started = false;
 /** @type {null | (() => void)} */
@@ -125,18 +126,70 @@ function capturePageLoad() {
     }
 
     let finalized = false;
-    const finish = () => {
+    /** @type {ReturnType<typeof setInterval> | null} */
+    let poll = null;
+
+    const listenerWaitState = () => {
+      try {
+        const waiting = getWaitingListeners() || [];
+        return {
+          waitingN: waiting.length,
+          timedOut: waiting.some((w) => w.timeout10 || w.timeout30),
+        };
+      } catch {
+        return { waitingN: 0, timedOut: false };
+      }
+    };
+
+    /**
+     * @param {"load"|"timeout15"|"leave"|"snap"} reason
+     */
+    const finish = (reason = "load") => {
       if (finalized) return;
+      const snapNow = EngTelemetry.getFirstSnapshotMs();
+      const { waitingN, timedOut } = listenerWaitState();
+
+      // Happy-path early finalize only after snapshot — never mark hung at load+800
+      // while Firestore is still outstanding (was the main false-hung source).
+      if (reason === "load" && snapNow == null) {
+        return;
+      }
+
       finalized = true;
-      timings.firstSnapshotMs = EngTelemetry.getFirstSnapshotMs();
-      const domComplete = nav.domCompleteMs ?? performance.now();
+      if (poll) {
+        clearInterval(poll);
+        poll = null;
+      }
+
+      timings.firstSnapshotMs = snapNow;
       const snap = timings.firstSnapshotMs;
-      const hung = snap == null;
-      // When Firestore never answers, don't pretend Interactive happened at DOM complete
-      timings.interactiveMs = hung
+      const waitedMs = performance.now();
+      let hung = false;
+      let incomplete = false;
+      if (snap == null) {
+        if (timedOut) {
+          hung = true;
+        } else if (
+          waitingN > 0 &&
+          (reason === "timeout15" || waitedMs >= 10_000)
+        ) {
+          // Still waiting after hung threshold → real hung.
+          hung = true;
+        } else if (reason === "timeout15" && waitingN === 0) {
+          // No tracked listener waited — don't fake a Firestore hang.
+          hung = false;
+          incomplete = false;
+        } else {
+          // Leave/hide before data — not proven hung.
+          incomplete = true;
+        }
+      }
+      const domComplete = nav.domCompleteMs ?? performance.now();
+      timings.interactiveMs = hung || incomplete
         ? null
-        : Math.max(domComplete, snap);
+        : Math.max(domComplete, snap || 0);
       timings.hung = hung;
+      timings.incomplete = incomplete;
       timings.totalMs = Math.max(
         timings.interactiveMs || 0,
         performance.now(),
@@ -157,18 +210,26 @@ function capturePageLoad() {
     };
 
     // So pagehide can finalize before Timeline flush (tab switch).
-    finalizePageLoad = finish;
+    finalizePageLoad = () => finish("leave");
 
-    window.addEventListener("load", () => setTimeout(finish, 800));
-    setTimeout(finish, 15000);
+    window.addEventListener("load", () => setTimeout(() => finish("load"), 800));
+    setTimeout(() => finish("timeout15"), 15000);
 
-    const poll = setInterval(() => {
+    poll = setInterval(() => {
       if (EngTelemetry.getFirstSnapshotMs() != null) {
-        clearInterval(poll);
-        setTimeout(finish, 200);
+        if (poll) {
+          clearInterval(poll);
+          poll = null;
+        }
+        setTimeout(() => finish("snap"), 200);
       }
     }, 100);
-    setTimeout(() => clearInterval(poll), 16000);
+    setTimeout(() => {
+      if (poll) {
+        clearInterval(poll);
+        poll = null;
+      }
+    }, 16000);
   }, "eng.pageLoadCapture");
 }
 
@@ -217,6 +278,7 @@ export function startEngineeringTelemetry() {
           EngTelemetry.trackPageLoad({
             totalMs: Math.round(performance.now()),
             hung: false,
+            incomplete: false,
             firstPaintMs: null,
             firstRenderMs: null,
             firstSnapshotMs: null,

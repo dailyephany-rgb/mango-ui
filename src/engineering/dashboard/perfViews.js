@@ -38,6 +38,8 @@ export function buildWaterfall(load) {
   const snap = load.firstSnapshotMs ?? null;
   const interactive = load.interactiveMs ?? null;
   const total = load.totalMs ?? null;
+  const incomplete = load.incomplete === true && load.hung !== true;
+  const hung = load.hung === true || (snap == null && total != null && !incomplete && load.hung !== false);
 
   const stages = [
     { id: "nav", label: "Navigation Start", atMs: 0, durationMs: 0 },
@@ -66,7 +68,11 @@ export function buildWaterfall(load) {
           : snap,
       note:
         snap == null
-          ? "Never arrived — listeners still waiting or WebChannel hung (iPad Wi‑Fi pattern)"
+          ? incomplete
+            ? "No snapshot before leave/hide — not counted as hung"
+            : hung
+              ? "Never arrived — listeners timed out or waited past hung threshold"
+              : "Never arrived — listeners still waiting or WebChannel hung (iPad Wi‑Fi pattern)"
           : undefined,
     },
     {
@@ -90,7 +96,9 @@ export function buildWaterfall(load) {
               : interactive,
       note:
         snap == null
-          ? "Not reached — blocked on first Firestore snapshot"
+          ? incomplete
+            ? "Not reached — page left before first snapshot"
+            : "Not reached — blocked on first Firestore snapshot"
           : undefined,
     },
     {
@@ -105,7 +113,9 @@ export function buildWaterfall(load) {
             : total,
       note:
         snap == null
-          ? "Timer finalized without snapshot (hung load)"
+          ? incomplete
+            ? "Finalized early (incomplete) — not a proven hung load"
+            : "Timer finalized without snapshot (hung load)"
           : undefined,
     },
   ];
@@ -120,8 +130,16 @@ export function buildWaterfall(load) {
 }
 
 export function loadStatus(load, slowMs = 2000) {
-  // No first snapshot = Firestore never answered (iPad hang pattern)
-  if (load.hung || (load.totalMs != null && load.firstSnapshotMs == null)) {
+  // Explicit flags win — flush used to force hung whenever snapshot was null.
+  if (load.hung === true) return "hung";
+  if (load.incomplete === true) return "incomplete";
+  // Legacy samples (no hung/incomplete boolean): null snapshot + total → hung
+  if (
+    load.hung == null &&
+    load.incomplete == null &&
+    load.totalMs != null &&
+    load.firstSnapshotMs == null
+  ) {
     return "hung";
   }
   const t = load.totalMs;

@@ -12,6 +12,7 @@ import {
   setDoc,
 } from "firebase/firestore";
 import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFirestore.js";
+import SafeDateInput from "../shared/components/SafeDateInput.jsx";
 import {
   getLocalDateString,
   localDayStart,
@@ -117,9 +118,9 @@ export default function MasterView_Table() {
         <div className="filter-left">
           <input type="text" placeholder="Search Reg or Diag No..." value={searchReg} onChange={(e) => setSearchReg(e.target.value)} />
           <label>Date:</label>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <SafeDateInput aria-label="Date from" value={dateFrom} onChange={(v) => v && setDateFrom(v)} />
           <span>to</span>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          <SafeDateInput aria-label="Date to" value={dateTo} onChange={(v) => v && setDateTo(v)} />
         </div>
         <div className="source-buttons">
           {["OPD", "IPD", "Third Floor", "All"].map((src) => (

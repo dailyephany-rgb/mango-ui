@@ -31,6 +31,10 @@ import {
   DEPT_REGISTER_ROW_FIELDS,
 } from "../shared/utils/arePatientRowEqual.js";
 import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import {
+  useVisitedTabs,
+  StickyTabPanel,
+} from "../shared/hooks/useVisitedTabs.jsx";
 
 const HaemInventoryTab = lazy(() => import("../inventory/HaemInventoryTab.jsx"));
 
@@ -39,6 +43,7 @@ const CURRENT_DEPT = "Haematology";
 
 export default function Haematology() {
   const [activeTab, setActiveTab] = useState("register");
+  const visitedTabs = useVisitedTabs(activeTab, "register");
 
   const {
     regSearch,
@@ -448,13 +453,8 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
   <UserMenu />
 </div>
 
-      {activeTab === "inventory" ? (
-        <EngComponent name="Inventory Tab" type="Tables" parent="Haematology.jsx">
-        <Suspense fallback={<p>Loading Inventory…</p>}>
-          <HaemInventoryTab />
-        </Suspense>
-        </EngComponent>
-      ) : (
+      {visitedTabs.register && (
+        <StickyTabPanel active={activeTab === "register"}>
         <>
           <EngComponent name="Filter Bar" type="Layout" parent="Haematology.jsx">
           <RegisterFilterBar
@@ -535,6 +535,17 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
           </EngComponent>
           )}
         </>
+        </StickyTabPanel>
+      )}
+
+      {visitedTabs.inventory && (
+        <StickyTabPanel active={activeTab === "inventory"}>
+        <EngComponent name="Inventory Tab" type="Tables" parent="Haematology.jsx">
+        <Suspense fallback={<p>Loading Inventory…</p>}>
+          <HaemInventoryTab />
+        </Suspense>
+        </EngComponent>
+        </StickyTabPanel>
       )}
 
             {criticalModalOpen && (

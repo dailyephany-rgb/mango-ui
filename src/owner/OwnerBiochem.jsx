@@ -5,7 +5,9 @@ import {
   OwnerPageShell,
   OwnerFilters,
   OwnerKPIs,
-  OwnerDelays
+  OwnerDelays,
+  useVisitedTabs,
+  OwnerTabPanel
 } from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "./OwnerContext.jsx";
 
@@ -38,6 +40,7 @@ export default function OwnerBiochem() {
   const { dateRange, source } = useContext(OwnerContext);
 
   const [activeTab, setActiveTab] = useState("overview");
+  const visitedTabs = useVisitedTabs(activeTab);
   const [staffTab, setStaffTab] = useState("testing");
 
   const [rawRows, setRawRows] = useState([]);
@@ -287,7 +290,8 @@ export default function OwnerBiochem() {
         />
         </OwnerKPIs>
 
-      {activeTab === "overview" && (
+      {visitedTabs.overview && (
+        <OwnerTabPanel active={activeTab === "overview"}>
         <OwnerChartsSection engPage="OwnerBiochem" engName="Charts">
           <div className="chart-card">
             <h3>Counts Bar</h3>
@@ -408,9 +412,11 @@ export default function OwnerBiochem() {
             />
         </div>
         </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
-{activeTab === "delays" && (
+{visitedTabs.delays && (
+        <OwnerTabPanel active={activeTab === "delays"}>
         <OwnerDelays page="OwnerBiochem">
   <>
     <div
@@ -470,8 +476,10 @@ export default function OwnerBiochem() {
   </>
 
         </OwnerDelays>
+              </OwnerTabPanel>
       )}
-        {activeTab === "timebricks" && (
+        {visitedTabs.timebricks && (
+        <OwnerTabPanel active={activeTab === "timebricks"}>
         <>
           <div
             style={{
@@ -518,11 +526,13 @@ export default function OwnerBiochem() {
             </div>
           </OwnerChartsSection>
         </>
+              </OwnerTabPanel>
       )}
       
 
         
-        {activeTab === "staff" && (
+        {visitedTabs.staff && (
+        <OwnerTabPanel active={activeTab === "staff"}>
         <OwnerChartsSection engPage="OwnerBiochem" engName="Staff Analytics">
 
             {staffTab === "testing" && (
@@ -630,6 +640,7 @@ export default function OwnerBiochem() {
         )}
 
             </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
               

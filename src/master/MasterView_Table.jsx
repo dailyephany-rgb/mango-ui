@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import { useMasterRegisterSnapshots } from "../shared/hooks/useMasterRegisterSnapshots.js";
 import { useStableCallback } from "../shared/hooks/useStableCallback.js";
+import SafeDateInput from "../shared/components/SafeDateInput.jsx";
 
 const MasterRegisterRow = memo(function MasterRegisterRow({
   entry: e,
@@ -196,9 +197,9 @@ export default function MasterView_Table() {
         <div className="filter-left">
           <input type="text" placeholder="Search Reg or Diag No..." value={searchReg} onChange={(e) => setSearchReg(e.target.value)} />
           <label>Date:</label>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <SafeDateInput aria-label="Date from" value={dateFrom} onChange={(v) => v && setDateFrom(v)} />
           <span>to</span>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          <SafeDateInput aria-label="Date to" value={dateTo} onChange={(v) => v && setDateTo(v)} />
         </div>
         <div className="source-buttons">
           {["OPD", "IPD", "Third Floor", "All"].map((src) => (

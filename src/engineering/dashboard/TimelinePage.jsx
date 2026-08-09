@@ -278,9 +278,11 @@ export function TimelinePage() {
                               ? "online"
                               : st === "slow"
                                 ? "stale"
-                                : st === "hung"
-                                  ? "offline"
-                                  : "offline"
+                                : st === "incomplete"
+                                  ? "stale"
+                                  : st === "hung"
+                                    ? "offline"
+                                    : "offline"
                           }`}
                         >
                           {st}

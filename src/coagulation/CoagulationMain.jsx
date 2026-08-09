@@ -30,6 +30,10 @@ import {
   DEPT_REGISTER_ROW_FIELDS,
 } from "../shared/utils/arePatientRowEqual.js";
 import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import {
+  useVisitedTabs,
+  StickyTabPanel,
+} from "../shared/hooks/useVisitedTabs.jsx";
 
 const CoagulationInventory = lazy(() =>
   import("../inventory/CoagulationInventoryTab")
@@ -66,6 +70,7 @@ const logout = () => {
   } = useRegisterFilters();
 
   const [activeTab, setActiveTab] = useState("tests");
+  const visitedTabs = useVisitedTabs(activeTab, "tests");
 
   const {
     masterEntries,
@@ -591,7 +596,8 @@ const logout = () => {
 </div>
      </EngComponent>
 
-      {activeTab === "tests" ? (
+      {visitedTabs.tests && (
+        <StickyTabPanel active={activeTab === "tests"}>
         <>
           <h2 className="dept-header">Coagulation Department</h2>
           <EngComponent name="Filter Bar" type="Layout" parent="Coagulation.jsx">
@@ -661,13 +667,18 @@ const logout = () => {
           </EngComponent>
           )}
         </>
-            ) : (
+        </StickyTabPanel>
+      )}
+
+      {visitedTabs.inventory && (
+        <StickyTabPanel active={activeTab === "inventory"}>
               <EngComponent name="Inventory Tab" type="Tables" parent="Coagulation.jsx">
               <Suspense fallback={<p>Loading Inventory…</p>}>
                 <CoagulationInventory />
               </Suspense>
               </EngComponent>
-            )}
+        </StickyTabPanel>
+      )}
       
             {criticalModalOpen && (
       <EngComponent name="Critical Alerts" type="Dialogs" parent="Coagulation.jsx">

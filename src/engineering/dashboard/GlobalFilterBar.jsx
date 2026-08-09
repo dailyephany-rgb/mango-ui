@@ -8,6 +8,7 @@ import {
   ALL_TIME_AGG_DAYS,
   ALL_TIME_SAMPLE_DAYS,
 } from "./engFilters.js";
+import SafeDateInput from "../shared/components/SafeDateInput.jsx";
 
 export function GlobalFilterBar() {
   const {
@@ -81,18 +82,18 @@ export function GlobalFilterBar() {
           <>
             <label>
               Start date
-              <input
-                type="date"
+              <SafeDateInput
+                aria-label="Start date"
                 value={filters.startDate}
-                onChange={(e) => setFilters({ startDate: e.target.value })}
+                onChange={(v) => v && setFilters({ startDate: v })}
               />
             </label>
             <label>
               End date
-              <input
-                type="date"
+              <SafeDateInput
+                aria-label="End date"
                 value={filters.endDate}
-                onChange={(e) => setFilters({ endDate: e.target.value })}
+                onChange={(v) => v && setFilters({ endDate: v })}
               />
             </label>
           </>

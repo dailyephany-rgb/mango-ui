@@ -5,7 +5,9 @@ import {
   OwnerFilters,
   OwnerKPIs,
   OwnerDelays,
-  OwnerStaff
+  OwnerStaff,
+  useVisitedTabs,
+  OwnerTabPanel
 } from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "../owner/OwnerContext.jsx";
 import DateSourceFilter from "../owner/components/DateSourceFilter";
@@ -38,6 +40,7 @@ export default function OwnerOutsourcePage() {
   const { dateRange, source } = useContext(OwnerContext); 
   const [activeReg, setActiveReg] = useState("SterlingRegister");
   const [activeSubTab, setActiveSubTab] = useState("overview");
+  const visitedTabs = useVisitedTabs(activeSubTab);
   const [selectedDelayStage,setSelectedDelayStage] = useState("turnaround");
   const [selectedStaffStage, setSelectedStaffStage] =
   useState("collectedBy");
@@ -368,7 +371,8 @@ export default function OwnerOutsourcePage() {
 
       {/* OVERVIEW TAB */}
   
-      {activeSubTab === "overview" && (
+      {visitedTabs.overview && (
+        <OwnerTabPanel active={activeSubTab === "overview"}>
 <>
 
             <OwnerChartsSection engPage="OwnerOutsource" engName="Charts">
@@ -450,11 +454,13 @@ export default function OwnerOutsourcePage() {
 
     </OwnerChartsSection>
   </>
-)}
+        </OwnerTabPanel>
+      )}
 
 
      {/* DELAYS TAB */}
-{activeSubTab === "delays" && (
+{visitedTabs.delays && (
+        <OwnerTabPanel active={activeSubTab === "delays"}>
   <OwnerDelays page="OwnerOutsource">
   <>
 
@@ -545,11 +551,13 @@ export default function OwnerOutsourcePage() {
           </div>
           </OwnerChartsSection></>
           </OwnerDelays>
-          )}
+                  </OwnerTabPanel>
+      )}
 
     
       {/* TIME BRICKS TAB */}
-      {activeSubTab === "timebricks" && (
+      {visitedTabs.timebricks && (
+        <OwnerTabPanel active={activeSubTab === "timebricks"}>
         <OwnerChartsSection style={{ display: 'block' }}>
           <div className="chart-card full-width" style={{ padding: '20px', minHeight: 'unset' }}>
             <h3 style={{ marginBottom: '15px' }}>Time Bricks Chart</h3>
@@ -565,10 +573,12 @@ export default function OwnerOutsourcePage() {
             />
           </div>
         </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
     {/* STAFF TAB */}
-{activeSubTab === "staff" && (
+{visitedTabs.staff && (
+        <OwnerTabPanel active={activeSubTab === "staff"}>
   <OwnerStaff page="OwnerOutsource">
   <>
     <div
@@ -622,7 +632,8 @@ export default function OwnerOutsourcePage() {
     </OwnerChartsSection>
   </>
   </OwnerStaff>
-)}
+        </OwnerTabPanel>
+      )}
 
       <PatientListModal 
         open={openModal} 

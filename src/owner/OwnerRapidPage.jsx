@@ -6,7 +6,9 @@ import {
   OwnerPageShell,
   OwnerFilters,
   OwnerKPIs,
-  OwnerDelays
+  OwnerDelays,
+  useVisitedTabs,
+  OwnerTabPanel
 } from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "../owner/OwnerContext.jsx";
 
@@ -42,6 +44,7 @@ export default function OwnerRapidPage() {
   const [testTimings, setTestTimings] = useState({});
   
   const [activeTab, setActiveTab] = useState("overview");
+  const visitedTabs = useVisitedTabs(activeTab);
   const [staffTab, setStaffTab] = useState("testing");
   const [staffAnalytics, setStaffAnalytics] = useState(null);
   const [openModal, setOpenModal] = useState(false);
@@ -295,7 +298,8 @@ export default function OwnerRapidPage() {
           />
           </OwnerKPIs>
 
-      {activeTab === "overview" && (
+      {visitedTabs.overview && (
+        <OwnerTabPanel active={activeTab === "overview"}>
         <OwnerChartsSection engPage="OwnerRapid" engName="Charts">
           <div className="chart-card">
             <h3>Counts Bar</h3>
@@ -423,9 +427,11 @@ export default function OwnerRapidPage() {
 
 
         </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
-{activeTab === "delays" && (
+{visitedTabs.delays && (
+        <OwnerTabPanel active={activeTab === "delays"}>
         <OwnerDelays page="OwnerRapid">
   <OwnerChartsSection>
     <div className="chart-card">
@@ -495,9 +501,11 @@ export default function OwnerRapidPage() {
         </OwnerChartsSection>
       
         </OwnerDelays>
+              </OwnerTabPanel>
       )}
 
-{activeTab === "timebricks" && (
+{visitedTabs.timebricks && (
+        <OwnerTabPanel active={activeTab === "timebricks"}>
   <OwnerChartsSection>
     <div className="chart-card full-width">
 
@@ -556,9 +564,11 @@ export default function OwnerRapidPage() {
 
     </div>
   </OwnerChartsSection>
-)}
+        </OwnerTabPanel>
+      )}
 
-{activeTab === "staff" && (
+{visitedTabs.staff && (
+        <OwnerTabPanel active={activeTab === "staff"}>
         <OwnerChartsSection engPage="OwnerRapid" engName="Staff Analytics">
 
     {staffTab === "testing" && (
@@ -691,6 +701,7 @@ export default function OwnerRapidPage() {
         )}
 
       </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
       <PatientListModal 

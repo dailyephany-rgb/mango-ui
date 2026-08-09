@@ -3,9 +3,15 @@
  * Keeps Catalog names stable: Filters / KPIs / Charts / Delays / Staff Analytics.
  */
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { EngComponent } from "../../engineering/ui/EngComponent.jsx";
 import { EngTelemetry } from "../../engineering/telemetry/EngTelemetry.js";
+import {
+  useVisitedTabs,
+  StickyTabPanel,
+} from "../../shared/hooks/useVisitedTabs.jsx";
+
+export { useVisitedTabs, StickyTabPanel as OwnerTabPanel };
 
 /** Pin Timeline/Departments identity to Owner for all owner_* pages. */
 export function useOwnerEngContext(page) {
@@ -49,26 +55,6 @@ export function OwnerKPIs({ page, children, hidden = false }) {
         {children}
       </div>
     </EngComponent>
-  );
-}
-
-/** Keep tab Eng panels mounted after first open — hide inactive instead of unmounting. */
-export function useVisitedTabs(activeTab, initialTab = "overview") {
-  const [visited, setVisited] = useState(() => ({ [initialTab]: true }));
-  useEffect(() => {
-    setVisited((v) => (v[activeTab] ? v : { ...v, [activeTab]: true }));
-  }, [activeTab]);
-  return visited;
-}
-
-export function OwnerTabPanel({ active, children }) {
-  return (
-    <div
-      style={{ display: active ? undefined : "none" }}
-      aria-hidden={!active || undefined}
-    >
-      {children}
-    </div>
   );
 }
 

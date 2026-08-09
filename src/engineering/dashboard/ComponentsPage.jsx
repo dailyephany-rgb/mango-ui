@@ -41,7 +41,12 @@ function statusPill(status, mounted) {
     return <span className="pill stale">Not Mounted</span>;
   }
   if (status === "hung") return <span className="pill offline">hung</span>;
-  if (status === "mounting") return <span className="pill stale">mounting</span>;
+  if (status === "incomplete") {
+    return <span className="pill stale">incomplete</span>;
+  }
+  if (status === "mounting" || status === "mounted") {
+    return <span className="pill stale">waiting</span>;
+  }
   return <span className="pill online">ok</span>;
 }
 
@@ -101,7 +106,8 @@ export function ComponentsPage() {
           <p className="eng-muted" style={{ margin: 0, fontSize: "0.75rem" }}>
             Load ID matches Timeline for the same page open. Click an ID to copy.
             Mount/Ready come from EngComponent timing (works in production). Snapshot
-            fills when that component owns the first Firestore answer. Lazy tabs stay
+            fills when that component owns the first Firestore answer. Data slots stay
+            waiting until snapshot (or hung/incomplete on finalize). Lazy tabs stay
             Not Mounted until opened.
           </p>
           <button
@@ -193,9 +199,15 @@ export function ComponentsPage() {
                       <td>{fmtMs(r.totalMs)}</td>
                       <td>
                         <span
-                          className={`pill ${r.hung ? "offline" : "online"}`}
+                          className={`pill ${
+                            r.hung
+                              ? "offline"
+                              : r.incomplete
+                                ? "stale"
+                                : "online"
+                          }`}
                         >
-                          {r.hung ? "hung" : "ok"}
+                          {r.hung ? "hung" : r.incomplete ? "incomplete" : "ok"}
                         </span>
                       </td>
                     </tr>

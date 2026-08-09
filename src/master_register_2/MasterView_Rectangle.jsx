@@ -17,6 +17,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFirestore.js";
+import SafeDateInput from "../shared/components/SafeDateInput.jsx";
 
 import "./MasterView_Rectangle.css";
 import UserMenu from "../auth/UserMenu";
@@ -1003,16 +1004,16 @@ const specialCompleted =
         />
 
         <label>Date:</label>
-        <input
-          type="date"
+        <SafeDateInput
+          aria-label="Date from"
           value={fromDate}
-          onChange={(e) => setFromDate(e.target.value)}
+          onChange={(v) => v && setFromDate(v)}
         />
         <span>to</span>
-        <input
-          type="date"
+        <SafeDateInput
+          aria-label="Date to"
           value={toDate}
-          onChange={(e) => setToDate(e.target.value)}
+          onChange={(v) => v && setToDate(v)}
         />
 
         <div className="filter-bottom-row">

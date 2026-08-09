@@ -1049,9 +1049,20 @@ async function flushPages(db, events, deviceId, deviceLabel = null) {
         firstSnapshotMs: e.firstSnapshotMs ?? null,
         interactiveMs: e.interactiveMs ?? null,
         totalMs: e.totalMs ?? null,
-        hung: e.hung || (e.firstSnapshotMs == null && e.totalMs != null),
-        kind:
-          e.hung || e.firstSnapshotMs == null ? "page_load_hung" : "page_load",
+        hung:
+          typeof e.hung === "boolean"
+            ? e.hung
+            : e.firstSnapshotMs == null && e.totalMs != null,
+        incomplete: !!e.incomplete && !e.hung,
+        kind: (() => {
+          const hung =
+            typeof e.hung === "boolean"
+              ? e.hung
+              : e.firstSnapshotMs == null && e.totalMs != null;
+          if (hung) return "page_load_hung";
+          if (e.incomplete) return "page_load_incomplete";
+          return "page_load";
+        })(),
         updatedAt: serverTimestamp(),
         expireAt: expireAtForCollection(ENG_COLLECTIONS.pageLoads, ts),
       },
@@ -1096,6 +1107,7 @@ async function flushComponents(db, events, deviceId, deviceLabel) {
           ts: keepTs,
           totalMs: e.totalMs ?? null,
           hung: !!e.hung,
+          incomplete: !!e.incomplete && !e.hung,
           components,
           updatedAt: serverTimestamp(),
           expireAt: expireAtForCollection(ENG_COLLECTIONS.components, keepTs),

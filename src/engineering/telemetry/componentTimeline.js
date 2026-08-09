@@ -247,7 +247,28 @@ export function markComponentUnmount(name) {
   }
 }
 
+/** Page / Tables / Data slots are expected to wait on Firestore. */
+export function expectsFirestoreSnapshot(type) {
+  return type === "Page" || type === "Tables" || type === "Data";
+}
+
 function recomputeReady(row) {
+  const expects = expectsFirestoreSnapshot(row.type);
+  // Mount-only must NOT mark data slots "ok" — that caused Timeline hung
+  // vs Components ok mismatches (shell up, snapshot never arrived).
+  if (
+    expects &&
+    row.firstSnapshotMs == null &&
+    row.status !== "hung" &&
+    row.status !== "incomplete"
+  ) {
+    if (row.mounted) row.status = "mounting";
+    // Ready stays empty until snapshot (or finalize marks hung/incomplete).
+    row.readyMs = null;
+    if (row.mountMs != null) row.totalMs = row.mountMs;
+    return;
+  }
+
   const parts = [
     row.mountMs,
     row.renderMs,
@@ -261,7 +282,68 @@ function recomputeReady(row) {
   const ready = Math.max(...parts);
   row.readyMs = ready;
   row.totalMs = ready;
-  if (row.mounted && row.status !== "hung") row.status = "ok";
+  if (row.mounted && row.status !== "hung" && row.status !== "incomplete") {
+    row.status = "ok";
+  }
+}
+
+/**
+ * Align component statuses with page-load outcome before flush.
+ * @param {{ hung?: boolean, incomplete?: boolean, pageHasSnapshot?: boolean }} outcome
+ */
+export function finalizeComponentStatuses(outcome = {}) {
+  try {
+    const pageHung = !!outcome.hung;
+    const incomplete = !!outcome.incomplete;
+    const pageHasSnapshot = !!outcome.pageHasSnapshot;
+    for (const row of mounted.values()) {
+      if (!row.mounted) continue;
+      if (!expectsFirestoreSnapshot(row.type)) {
+        // Layout / charts — mount is enough.
+        if (row.status !== "hung" && row.status !== "incomplete") {
+          const parts = [row.mountMs, row.renderMs].filter(
+            (n) => typeof n === "number"
+          );
+          if (parts.length) {
+            row.readyMs = Math.max(...parts);
+            row.totalMs = row.readyMs;
+          }
+          row.status = "ok";
+        }
+        continue;
+      }
+      if (row.firstSnapshotMs != null) {
+        row.status = "ok";
+        recomputeReady(row);
+        continue;
+      }
+      if (pageHung) {
+        row.status = "hung";
+        row.readyMs = null;
+        if (row.totalMs == null && row.mountMs != null) row.totalMs = row.mountMs;
+        continue;
+      }
+      if (incomplete) {
+        row.status = "incomplete";
+        row.readyMs = null;
+        if (row.totalMs == null && row.mountMs != null) row.totalMs = row.mountMs;
+        continue;
+      }
+      // Page got a snapshot attributed to a sibling — this slot mounted fine.
+      if (pageHasSnapshot) {
+        row.status = "ok";
+        const parts = [row.mountMs, row.renderMs].filter(
+          (n) => typeof n === "number"
+        );
+        if (parts.length) {
+          row.readyMs = Math.max(...parts);
+          row.totalMs = row.readyMs;
+        }
+      }
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
 /**
@@ -301,7 +383,13 @@ export function buildComponentBreakdown() {
       virtualRenderMs: r.mounted ? r.virtualRenderMs : null,
       readyMs: r.mounted ? r.readyMs : null,
       totalMs: r.mounted ? r.totalMs : null,
-      status: r.mounted ? r.status || "ok" : "not_mounted",
+      status: r.mounted
+        ? r.status && r.status !== "not_mounted"
+          ? r.status
+          : expectsFirestoreSnapshot(r.type)
+            ? "mounting"
+            : "ok"
+        : "not_mounted",
       mountedAt: r.mounted ? r.mountedAt : null,
     }));
   } catch {

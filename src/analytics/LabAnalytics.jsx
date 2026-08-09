@@ -13,6 +13,7 @@ import {
   SESSION_QUERY_TTL_MS,
 } from "../shared/cache/sessionQueryCache.js";
 import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import SafeDateInput from "../shared/components/SafeDateInput.jsx";
 
 const DEPARTMENTS = [
   { id: "biochemistry_register", label: "Biochemistry" },
@@ -315,11 +316,11 @@ if (activeColl === "biochemistry_combo") {
           <div className="filter-row">
             <div className="input-group">
               <label>From</label>
-              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              <SafeDateInput aria-label="Date from" value={dateFrom} onChange={(v) => v && setDateFrom(v)} />
             </div>
             <div className="input-group">
               <label>To</label>
-              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+              <SafeDateInput aria-label="Date to" value={dateTo} onChange={(v) => v && setDateTo(v)} />
             </div>
             <div className="input-group search-box">
               <label>Filter by Test Name</label>

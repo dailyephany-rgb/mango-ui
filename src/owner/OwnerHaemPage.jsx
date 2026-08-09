@@ -4,7 +4,9 @@ import {
   OwnerPageShell,
   OwnerFilters,
   OwnerKPIs,
-  OwnerDelays
+  OwnerDelays,
+  useVisitedTabs,
+  OwnerTabPanel
 } from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "./OwnerContext.jsx";
 
@@ -40,6 +42,7 @@ export default function OwnerHaemPage() {
   const [testTimings, setTestTimings] = useState({});
   
   const [activeTab, setActiveTab] = useState("overview");
+  const visitedTabs = useVisitedTabs(activeTab);
   const [staffTab, setStaffTab] = useState("testing");
   const [staffAnalytics, setStaffAnalytics] = useState(null);
   const [openModal, setOpenModal] = useState(false);
@@ -275,7 +278,8 @@ export default function OwnerHaemPage() {
       </OwnerKPIs>
 
 
-      {activeTab === "overview" && (
+      {visitedTabs.overview && (
+        <OwnerTabPanel active={activeTab === "overview"}>
         <OwnerChartsSection engPage="OwnerHaem" engName="Charts">
           <div className="chart-card"><CountsBar counts={countsForBar} /></div>
         
@@ -401,9 +405,11 @@ export default function OwnerHaemPage() {
           />
         </div>
         </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
-{activeTab === "delays" && (
+{visitedTabs.delays && (
+        <OwnerTabPanel active={activeTab === "delays"}>
         <OwnerDelays page="OwnerHaem">
   <OwnerChartsSection>
     <div className="chart-card">
@@ -470,9 +476,11 @@ export default function OwnerHaemPage() {
         </OwnerChartsSection>
       
         </OwnerDelays>
+              </OwnerTabPanel>
       )}
 
-{activeTab === "timebricks" && (
+{visitedTabs.timebricks && (
+        <OwnerTabPanel active={activeTab === "timebricks"}>
   <>
     <div
       style={{
@@ -523,9 +531,11 @@ export default function OwnerHaemPage() {
       </div>
     </OwnerChartsSection>
   </>
-)}
+        </OwnerTabPanel>
+      )}
 
-{activeTab === "staff" && (
+{visitedTabs.staff && (
+        <OwnerTabPanel active={activeTab === "staff"}>
         <OwnerChartsSection engPage="OwnerHaem" engName="Staff Analytics">
 
     {staffTab === "testing" && (
@@ -656,6 +666,7 @@ export default function OwnerHaemPage() {
         )}
 
       </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
       <PatientListModal open={openModal} onClose={() => setOpenModal(false)} patients={modalData} />

@@ -9,7 +9,9 @@ import {
   OwnerPageShell,
   OwnerFilters,
   OwnerKPIs,
-  OwnerDelays
+  OwnerDelays,
+  useVisitedTabs,
+  OwnerTabPanel
 } from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "../owner/OwnerContext.jsx";
 
@@ -45,6 +47,7 @@ export default function OwnerESRPage() {
   const [testTimings, setTestTimings] = useState({}); 
 
   const [activeTab, setActiveTab] = useState("overview");
+  const visitedTabs = useVisitedTabs(activeTab);
   const [staffTab, setStaffTab] = useState("testing");
   const [staffAnalytics, setStaffAnalytics] = useState(null);
 
@@ -306,7 +309,8 @@ export default function OwnerESRPage() {
                   />
                   </OwnerKPIs>
 
-                {activeTab === "overview" && (
+                {visitedTabs.overview && (
+        <OwnerTabPanel active={activeTab === "overview"}>
         <OwnerChartsSection engPage="OwnerESR" engName="Charts">
                     <div className="chart-card">
                       <h3>Counts Bar</h3>
@@ -437,9 +441,11 @@ export default function OwnerESRPage() {
 
 
         </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
-{activeTab === "delays" && (
+{visitedTabs.delays && (
+        <OwnerTabPanel active={activeTab === "delays"}>
         <OwnerDelays page="OwnerESR">
   <OwnerChartsSection>
     <div className="chart-card">
@@ -511,9 +517,11 @@ export default function OwnerESRPage() {
         </OwnerChartsSection>
       
         </OwnerDelays>
+              </OwnerTabPanel>
       )}
 
-{activeTab === "timebricks" && (
+{visitedTabs.timebricks && (
+        <OwnerTabPanel active={activeTab === "timebricks"}>
   <>
     <div
       style={{
@@ -567,9 +575,11 @@ export default function OwnerESRPage() {
       </div>
     </OwnerChartsSection>
   </>
-)}
+        </OwnerTabPanel>
+      )}
 
-{activeTab === "staff" && (
+{visitedTabs.staff && (
+        <OwnerTabPanel active={activeTab === "staff"}>
         <OwnerChartsSection engPage="OwnerESR" engName="Staff Analytics">
 
     {staffTab === "testing" && (
@@ -702,6 +712,7 @@ export default function OwnerESRPage() {
           )}
 
         </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
       <PatientListModal

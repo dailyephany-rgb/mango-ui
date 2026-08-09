@@ -6,7 +6,9 @@ import {
   OwnerPageShell,
   OwnerFilters,
   OwnerKPIs,
-  OwnerDelays
+  OwnerDelays,
+  useVisitedTabs,
+  OwnerTabPanel
 } from "./eng/OwnerEngBlocks.jsx";
 import { OwnerContext } from "./OwnerContext.jsx";
 
@@ -46,6 +48,7 @@ export default function OwnerSerologyPage() {
   const [openModal, setOpenModal] = useState(false);
   const [modalData, setModalData] = useState([]);
   const [activeTab, setActiveTab] = useState("overview");
+  const visitedTabs = useVisitedTabs(activeTab);
   const [staffTab, setStaffTab] = useState("testing");
   const [ staffAnalytics,setStaffAnalytics,] = useState(null);
   const [stageFilter, setStageFilter] = useState("turnaround");
@@ -351,7 +354,8 @@ export default function OwnerSerologyPage() {
             kpis={finalKpis || {}}
           />
           </OwnerKPIs>
-      {activeTab === "overview" && (
+      {visitedTabs.overview && (
+        <OwnerTabPanel active={activeTab === "overview"}>
         <OwnerChartsSection engPage="OwnerSerology" engName="Charts">
           <div className="chart-card">
             <h3>Counts Bar</h3>
@@ -479,9 +483,11 @@ export default function OwnerSerologyPage() {
     />
   </div>
         </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
-{activeTab === "delays" && (
+{visitedTabs.delays && (
+        <OwnerTabPanel active={activeTab === "delays"}>
         <OwnerDelays page="OwnerSerology">
   <OwnerChartsSection>
     <div className="chart-card">
@@ -552,9 +558,11 @@ export default function OwnerSerologyPage() {
         </OwnerChartsSection>
       
         </OwnerDelays>
+              </OwnerTabPanel>
       )}
 
-{activeTab === "timebricks" && (
+{visitedTabs.timebricks && (
+        <OwnerTabPanel active={activeTab === "timebricks"}>
   <OwnerChartsSection>
     <div className="chart-card full-width">
       <div
@@ -612,10 +620,12 @@ export default function OwnerSerologyPage() {
       </div>
     </div>
   </OwnerChartsSection>
-)}
+        </OwnerTabPanel>
+      )}
            
 
-{activeTab === "staff" && (
+{visitedTabs.staff && (
+        <OwnerTabPanel active={activeTab === "staff"}>
         <OwnerChartsSection engPage="OwnerSerology" engName="Staff Analytics">
 
     {staffTab === "testing" && (
@@ -746,6 +756,7 @@ export default function OwnerSerologyPage() {
     )}
 
   </OwnerChartsSection>
+              </OwnerTabPanel>
       )}
 
       <PatientListModal 

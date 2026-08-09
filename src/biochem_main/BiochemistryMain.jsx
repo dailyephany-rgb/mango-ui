@@ -37,6 +37,10 @@ import {
   DEPT_REGISTER_ROW_FIELDS,
 } from "../shared/utils/arePatientRowEqual.js";
 import { EngComponent } from "../engineering/ui/EngComponent.jsx";
+import {
+  useVisitedTabs,
+  StickyTabPanel,
+} from "../shared/hooks/useVisitedTabs.jsx";
 
 const HormonesMain = lazy(() => import("./HormonesMain.jsx"));
 const DeptInventoryTab = lazy(() =>
@@ -61,6 +65,7 @@ export default function BiochemistryMain() {
   } = useRegisterFilters();
 
   const [activeTab, setActiveTab] = useState("biochem");
+  const visitedTabs = useVisitedTabs(activeTab, "biochem");
 
   const {
     masterEntries,
@@ -418,7 +423,8 @@ export default function BiochemistryMain() {
 </div>
       </EngComponent>
 
-      {activeTab === "biochem" && (
+      {visitedTabs.biochem && (
+      <StickyTabPanel active={activeTab === "biochem"}>
       <div>        
               <h2 className="dept-header">
           Biochemistry Department — Main Analyzer
@@ -485,25 +491,31 @@ export default function BiochemistryMain() {
           </EngComponent>
           )}
       </div>
+      </StickyTabPanel>
       )}
 
-      {activeTab === "hormones" && (
+      {visitedTabs.hormones && (
+        <StickyTabPanel active={activeTab === "hormones"}>
         <EngComponent name="Hormones Tab" type="Page" parent="Biochemistry.jsx">
         <Suspense fallback={<p>Loading Hormones…</p>}>
           <HormonesMain />
         </Suspense>
         </EngComponent>
+        </StickyTabPanel>
       )}
 
-      {activeTab === "inventory" && (
+      {visitedTabs.inventory && (
+        <StickyTabPanel active={activeTab === "inventory"}>
         <EngComponent name="Inventory Tab" type="Tables" parent="Biochemistry.jsx">
         <Suspense fallback={<p>Loading Inventory…</p>}>
           <DeptInventoryTab department="Biochemistry" machineType="Main" />
         </Suspense>
         </EngComponent>
+        </StickyTabPanel>
       )}
 
-      {activeTab === "adjustment" && (
+      {visitedTabs.adjustment && (
+        <StickyTabPanel active={activeTab === "adjustment"}>
         <EngComponent
           name="InventoryAdjustmentTab"
           type="Tables"
@@ -514,6 +526,7 @@ export default function BiochemistryMain() {
           <InventoryAdjustmentTab />
         </Suspense>
         </EngComponent>
+        </StickyTabPanel>
       )}
 
       

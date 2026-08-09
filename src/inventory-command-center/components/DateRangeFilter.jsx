@@ -1,5 +1,6 @@
 
 import React from "react";
+import SafeDateInput from "../../shared/components/SafeDateInput.jsx";
 
 const DateRangeFilter = ({
   fromDate,
@@ -12,20 +13,20 @@ const DateRangeFilter = ({
 
     <>
 
-      <input
-        type="date"
+      <SafeDateInput
+        aria-label="Date from"
         value={fromDate}
-        onChange={(e) =>
-          setFromDate(e.target.value)
-        }
+        onChange={(v) => {
+          if (v) setFromDate(v);
+        }}
       />
 
-      <input
-        type="date"
+      <SafeDateInput
+        aria-label="Date to"
         value={toDate}
-        onChange={(e) =>
-          setToDate(e.target.value)
-        }
+        onChange={(v) => {
+          if (v) setToDate(v);
+        }}
       />
 
     </>
