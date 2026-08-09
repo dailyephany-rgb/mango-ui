@@ -26,6 +26,7 @@ import {
 import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 import { annotateListenReason } from "../engineering/telemetry/listenerWatch.js";
 import { useStableCallback } from "../shared/hooks/useStableCallback.js";
+import SafeDateInput from "../shared/components/SafeDateInput.jsx";
 
 /** Known critical_alerts.dept values written by registers (dropdown stays usable when scoped). */
 const CRITICAL_DEPTS = [
@@ -311,9 +312,17 @@ export default function CriticalAlertDashboard() {
         />
 
         <div className="date-filters">
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <SafeDateInput
+            aria-label="Date from"
+            value={dateFrom}
+            onChange={setDateFrom}
+          />
           <span>to</span>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          <SafeDateInput
+            aria-label="Date to"
+            value={dateTo}
+            onChange={setDateTo}
+          />
         </div>
 
         <select 

@@ -1,9 +1,8 @@
-
-
 // src/owner/components/DateSourceFilter.jsx
 
 import React, { useContext } from "react";
 import { OwnerContext } from "../OwnerContext.jsx";
+import SafeDateInput from "../../shared/components/SafeDateInput.jsx";
 
 export default function DateSourceFilter() {
   const { dateRange, setDateRange, source, setSource } =
@@ -23,24 +22,20 @@ export default function DateSourceFilter() {
       {/* ---- DATE FROM ---- */}
       <div className="filter-item">
         <label>From</label>
-        <input
-          type="date"
+        <SafeDateInput
+          aria-label="From date"
           value={dateRange.from}
-          onChange={(e) =>
-            setDateRange({ ...dateRange, from: e.target.value })
-          }
+          onChange={(from) => setDateRange({ ...dateRange, from })}
         />
       </div>
 
       {/* ---- DATE TO ---- */}
       <div className="filter-item">
         <label>To</label>
-        <input
-          type="date"
+        <SafeDateInput
+          aria-label="To date"
           value={dateRange.to}
-          onChange={(e) =>
-            setDateRange({ ...dateRange, to: e.target.value })
-          }
+          onChange={(to) => setDateRange({ ...dateRange, to })}
         />
       </div>
 

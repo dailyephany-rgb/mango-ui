@@ -1,4 +1,5 @@
 import React from "react";
+import SafeDateInput from "./SafeDateInput.jsx";
 
 const SOURCE_OPTIONS = ["OPD", "IPD", "Third Floor", "All"];
 
@@ -40,16 +41,16 @@ export default function RegisterFilterBar({
         ) : (
           <label>Date:</label>
         )}
-        <input
-          type="date"
+        <SafeDateInput
+          aria-label="Date from"
           value={dateFrom}
-          onChange={(e) => setDateFrom(e.target.value)}
+          onChange={setDateFrom}
         />
         <span>to</span>
-        <input
-          type="date"
+        <SafeDateInput
+          aria-label="Date to"
           value={dateTo}
-          onChange={(e) => setDateTo(e.target.value)}
+          onChange={setDateTo}
         />
       </div>
       <div className={sourceContainerClassName}>

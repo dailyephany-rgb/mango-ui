@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState, memo } from "react";
 import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
 import { useStableCallback } from "../shared/hooks/useStableCallback.js";
+import SafeDateInput from "../shared/components/SafeDateInput.jsx";
 
 const ValidatorTableRow = memo(function ValidatorTableRow({
   item,
@@ -251,9 +252,17 @@ export default function ValidatorTable({
           onChange={(e) => setSearchTerm(e.target.value)}
         />
         <label>Date:</label>
-        <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+        <SafeDateInput
+          aria-label="Date from"
+          value={dateFrom}
+          onChange={setDateFrom}
+        />
         <span>to</span>
-        <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+        <SafeDateInput
+          aria-label="Date to"
+          value={dateTo}
+          onChange={setDateTo}
+        />
 
         <div className="source-buttons">
           {["OPD", "IPD", "Third Floor", "All"].map((src) => (

@@ -39,6 +39,7 @@ import {
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useScopedMasterEntries } from "../shared/hooks/useScopedMasterEntries.js";
+import SafeDateInput from "../shared/components/SafeDateInput.jsx";
 
 export default function OutsourceRegister() {
   const [trackingMap, setTrackingMap] = useState({});
@@ -493,9 +494,17 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
       <div className="filter-bar">
         <input className="reg-search" placeholder="Search Reg or Diag No..." value={regSearch} onChange={(e) => setRegSearch(e.target.value)} />
         <div className="date-filters">
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <SafeDateInput
+            aria-label="Date from"
+            value={dateFrom}
+            onChange={setDateFrom}
+          />
           <span>to</span>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          <SafeDateInput
+            aria-label="Date to"
+            value={dateTo}
+            onChange={setDateTo}
+          />
         </div>
         <div className="source-filters">
           {["OPD", "IPD", "Third Floor", "All"].map((src) => (
