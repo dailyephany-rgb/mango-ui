@@ -1,17 +1,10 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app";
 import {
   initializeFirestore,
   getFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
 } from "firebase/firestore";
-
-// Engineering Operations telemetry → separate Engineering Firebase only.
-// Sync import so init runs before clinical React mounts (async import raced
-// EngComponent / first-snapshot and left Timeline empty until a late flush).
-// Disable: localStorage.setItem("mango.eng.telemetry","0")
-// Failure here must never affect clinical Firebase.
-import "./engineering/telemetry/bootstrap.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBS-JGY1X6GLM7YVXVSJuYvti_utJXMS5I",
@@ -23,13 +16,13 @@ const firebaseConfig = {
   measurementId: "G-H8J28B9B44",
 };
 
-// Ensure only one Firebase app instance (Vite MPA / HMR safe)
-let app;
-if (!getApps().length) {
+// Ensure clinical DEFAULT app exists. Do NOT use getApps().length — eng telemetry
+// may already have created a named mango-engineering app, which is not DEFAULT.
+let app = getApps().find((a) => a.name === "[DEFAULT]");
+if (!app) {
   app = initializeApp(firebaseConfig);
   console.log("🔥 Firebase initialized");
 } else {
-  app = getApp();
   console.log("♻️ Firebase already initialized — using existing app");
 }
 
@@ -55,3 +48,9 @@ export { db };
 // Passive Performance & Diagnostics → local + Firestore collection perf_daily
 // Disable: localStorage.setItem("mango.perf.monitor","0")
 import("./performance/bootstrap.js").catch(() => {});
+
+// Engineering Operations telemetry → separate Engineering Firebase only.
+// Imported after clinical DEFAULT exists (static import is hoisted and would
+// create the eng named app first — safe now that we key off [DEFAULT] above).
+// Disable: localStorage.setItem("mango.eng.telemetry","0")
+import "./engineering/telemetry/bootstrap.js";
