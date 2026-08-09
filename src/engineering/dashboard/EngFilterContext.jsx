@@ -81,6 +81,19 @@ export function EngFilterProvider({ children }) {
     return () => clearInterval(t);
   }, [range.openEnded]);
 
+  // When returning to the Engineering tab, remount eng_* listeners so Timeline
+  // picks up clinical page_loads written while this tab was backgrounded.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") {
+        setRangeTick((n) => n + 1);
+        setRefreshKey((k) => k + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, []);
+
   // Live device labels — Timeline/Devices/filters all share this map.
   // One-shot getDocs left Timeline stuck on old names (mac-3) after rename.
   useEffect(() => {

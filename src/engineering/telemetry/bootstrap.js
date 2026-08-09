@@ -13,6 +13,8 @@ import { ENG_BUILD_ID } from "../constants.js";
 import { refreshRuntimeSettings } from "./runtimeSettings.js";
 
 let started = false;
+/** @type {null | (() => void)} */
+let finalizePageLoad = null;
 
 /**
  * Allow kill-switch re-enable to start again in the same page session.
@@ -154,6 +156,9 @@ function capturePageLoad() {
       }
     };
 
+    // So pagehide can finalize before Timeline flush (tab switch).
+    finalizePageLoad = finish;
+
     window.addEventListener("load", () => setTimeout(finish, 800));
     setTimeout(finish, 15000);
 
@@ -232,6 +237,13 @@ export function startEngineeringTelemetry() {
 
     const onLeave = () => {
       safeRun(() => {
+        // Finalize page_load before flush — otherwise Timeline only sees
+        // Engineering (sync bootstrap) and clinical rows appear after Refresh.
+        try {
+          finalizePageLoad?.();
+        } catch {
+          /* ignore */
+        }
         EngTelemetry.pushComponentBreakdown();
         spillToSession();
         flushViaBeacon();

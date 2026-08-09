@@ -6,6 +6,13 @@ import {
   persistentMultipleTabManager,
 } from "firebase/firestore";
 
+// Engineering Operations telemetry → separate Engineering Firebase only.
+// Sync import so init runs before clinical React mounts (async import raced
+// EngComponent / first-snapshot and left Timeline empty until a late flush).
+// Disable: localStorage.setItem("mango.eng.telemetry","0")
+// Failure here must never affect clinical Firebase.
+import "./engineering/telemetry/bootstrap.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyBS-JGY1X6GLM7YVXVSJuYvti_utJXMS5I",
   authDomain: "vasundhara-4c6e5.firebaseapp.com",
@@ -48,8 +55,3 @@ export { db };
 // Passive Performance & Diagnostics → local + Firestore collection perf_daily
 // Disable: localStorage.setItem("mango.perf.monitor","0")
 import("./performance/bootstrap.js").catch(() => {});
-
-// Engineering Operations telemetry → separate Engineering Firebase only
-// Disable: localStorage.setItem("mango.eng.telemetry","0")
-// Failure here must never affect clinical Firebase.
-import("./engineering/telemetry/bootstrap.js").catch(() => {});

@@ -53,6 +53,8 @@ import {
 import { expireAtForCollection } from "./expireAt.js";
 
 let flushing = false;
+/** When force flush arrives mid-flight, run once more after current finishes. */
+let flushAgain = false;
 /** @type {object[][]} */
 let retryQueue = [];
 let retryTimer = null;
@@ -164,7 +166,11 @@ function enqueueRetry(events) {
  * @param {{ force?: boolean }} [opts]
  */
 export async function flushNow(opts = {}) {
-  if (flushing && !opts.force) return;
+  if (flushing) {
+    // Never run concurrent flushes (race cleared spill / dropped page_loads).
+    if (opts.force) flushAgain = true;
+    return;
+  }
   if (!isEngTelemetryEnabled()) return;
   if (shouldSkipEngWrite() && !opts.force) return;
   flushing = true;
@@ -194,6 +200,10 @@ export async function flushNow(opts = {}) {
     /* swallow */
   } finally {
     flushing = false;
+    if (flushAgain) {
+      flushAgain = false;
+      scheduleFlush({ force: true });
+    }
   }
 }
 

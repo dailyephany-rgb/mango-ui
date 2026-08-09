@@ -39,6 +39,7 @@ export const DEPARTMENT_OPTIONS = [
   { value: "Urine", label: "Urine" },
   { value: "Owner", label: "Owner" },
   { value: "Mango", label: "Mango" },
+  { value: "Engineering", label: "Engineering" },
 ];
 
 export const DEFAULT_FILTERS = {

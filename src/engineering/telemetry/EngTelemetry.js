@@ -66,6 +66,8 @@ let renderSampleCounter = 0;
 let wasOffline = false;
 let prevHeap = null;
 let prevHeapAt = null;
+/** First snapshot may arrive before async/late init — stash until init applies it. */
+let pendingFirstSnapshotMs = null;
 
 function base() {
   const label = getDeviceLabel() || undefined;
@@ -168,6 +170,15 @@ function init(opts = {}) {
           ? String(navigator.userAgent || "").slice(0, 300)
           : null,
     });
+    if (pendingFirstSnapshotMs != null) {
+      const ms = pendingFirstSnapshotMs;
+      pendingFirstSnapshotMs = null;
+      if (context.lastFirstSnapshotMs == null) {
+        context.lastFirstSnapshotMs = ms;
+        setHeartbeatContext({ lastFirstSnapshotMs: ms });
+        markComponentFirstSnapshot(ms);
+      }
+    }
   }, "eng.init");
 }
 
@@ -196,8 +207,14 @@ function setContext(partial = {}) {
  */
 function noteFirstSnapshot(arrivalMs) {
   safeRun(() => {
-    if (!enabled() || !initialized) return;
-    if (context.lastFirstSnapshotMs == null && typeof arrivalMs === "number") {
+    if (!enabled()) return;
+    if (typeof arrivalMs !== "number") return;
+    if (!initialized) {
+      // Clinical listeners can fire before eng bootstrap finishes.
+      if (pendingFirstSnapshotMs == null) pendingFirstSnapshotMs = arrivalMs;
+      return;
+    }
+    if (context.lastFirstSnapshotMs == null) {
       context.lastFirstSnapshotMs = arrivalMs;
       setHeartbeatContext({ lastFirstSnapshotMs: arrivalMs });
       markComponentFirstSnapshot(arrivalMs);
