@@ -72,10 +72,13 @@ export function useMasterDeptSnapshots({
       return undefined;
     }
 
-    setLoading(true);
+    // Only block UI on the true first subscribe. Re-querying on date/filter
+    // changes must NOT set loading — department pages early-return on loading
+    // and that unmounts the date inputs (can't type / picker closes).
+    const isFirstListen = listenGenRef.current === 0;
     listenGenRef.current += 1;
-    const listenReason =
-      listenGenRef.current === 1 ? "page_load" : "deps_change";
+    if (isFirstListen) setLoading(true);
+    const listenReason = isFirstListen ? "page_load" : "deps_change";
 
     const startTs = Timestamp.fromDate(start);
     const endTs = Timestamp.fromDate(endExclusive);

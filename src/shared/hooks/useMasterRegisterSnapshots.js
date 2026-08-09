@@ -40,40 +40,40 @@ export function useMasterRegisterSnapshots({
 
 
   useEffect(() => {
-    setLoading(true);
-   
+    // Keep filter controls mounted across date changes (same pattern as useMasterDeptSnapshots).
+    const isFirstListen = listenGenRef.current === 0;
+    listenGenRef.current += 1;
+    if (isFirstListen) setLoading(true);
+
     const fromStr = dateFrom || getLocalDateString();
     const toStr = dateTo || getLocalDateString();
 
-const start = localDayStart(fromStr);
-const endExclusive = localDayEndExclusive(toStr);
+    const start = localDayStart(fromStr);
+    const endExclusive = localDayEndExclusive(toStr);
 
-if (!start || !endExclusive) {
-  setMasterEntries([]);
-  setLoading(false);
-  return undefined;
-}
+    if (!start || !endExclusive) {
+      setMasterEntries([]);
+      setLoading(false);
+      return undefined;
+    }
 
-listenGenRef.current += 1;
-const listenReason =
-  listenGenRef.current === 1 ? "page_load" : "date_change";
+    const listenReason = isFirstListen ? "page_load" : "date_change";
 
-const startTs = Timestamp.fromDate(start);
-const endTs = Timestamp.fromDate(endExclusive);
+    const startTs = Timestamp.fromDate(start);
+    const endTs = Timestamp.fromDate(endExclusive);
 
+    const masterStore = createIncrementalDocStore({
+      mapDoc: mapMasterDoc,
+      compare: compareByTimePrinted,
+      label: "master_register",
+    });
 
-const masterStore = createIncrementalDocStore({
-  mapDoc: mapMasterDoc,
-  compare: compareByTimePrinted,
-  label: "master_register",
-});
-
-const masterQuery = query(
-  collection(db, "master_register"),
-  where("timePrinted", ">=", startTs),
-  where("timePrinted", "<", endTs),
-  orderBy("timePrinted", "asc")
-);
+    const masterQuery = query(
+      collection(db, "master_register"),
+      where("timePrinted", ">=", startTs),
+      where("timePrinted", "<", endTs),
+      orderBy("timePrinted", "asc")
+    );
 
 
 try {

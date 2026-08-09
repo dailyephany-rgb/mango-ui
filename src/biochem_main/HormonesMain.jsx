@@ -341,17 +341,9 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
     handleSave(patient);
   });
 
-  if (loading) return <div>Loading...</div>;
-
   return (
     <div className="biochem-register-container">
       {/* Tab Switcher for Register vs Inventory */}
-     
-      
-              
-      
-
-
      
         <>
           <h2 className="dept-header">Hormones Department — Main Analyzer</h2>
@@ -367,6 +359,9 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
             setSourceFilter={setSourceFilter}
           />
 
+          {loading ? (
+            <div>Loading...</div>
+          ) : (
           <div className="table-wrapper">
             <table className="dept-table">
               <thead>
@@ -397,6 +392,7 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
               />
             </table>
           </div>
+          )}
         </>
         
           {criticalModalOpen && (

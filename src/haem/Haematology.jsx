@@ -408,8 +408,6 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
     handleSave(compositeKey);
   });
 
-  if (loading) return <p>Loading Haematology data...</p>;
-
   return (
     <EngComponent name="Haematology.jsx" type="Page" parent={null}>
     <div className="haem-container">
@@ -471,6 +469,9 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
           />
           </EngComponent>
 
+          {loading ? (
+            <p>Loading Haematology data...</p>
+          ) : (
           <EngComponent
             name="Patient Register Table"
             type="Tables"
@@ -532,8 +533,9 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
             </div>
           </div>
           </EngComponent>
+          )}
         </>
-            )}
+      )}
 
             {criticalModalOpen && (
       <EngComponent name="Critical Alerts" type="Dialogs" parent="Haematology.jsx">

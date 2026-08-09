@@ -515,8 +515,6 @@ const logout = () => {
     outline: "none",
   });
 
-  if (loading) return <p>Loading Coagulation data...</p>;
-
   return (
     <EngComponent name="Coagulation.jsx" type="Page" parent={null}>
     <div className="coag-container">
@@ -609,6 +607,9 @@ const logout = () => {
           />
           </EngComponent>
 
+          {loading ? (
+            <p>Loading Coagulation data...</p>
+          ) : (
           <EngComponent
             name="Patient Register Table"
             type="Tables"
@@ -658,6 +659,7 @@ const logout = () => {
             </table>
           </div>
           </EngComponent>
+          )}
         </>
             ) : (
               <EngComponent name="Inventory Tab" type="Tables" parent="Coagulation.jsx">

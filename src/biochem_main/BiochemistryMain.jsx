@@ -366,8 +366,6 @@ export default function BiochemistryMain() {
     handleSave(patient);
   });
 
-  if (loading) return <p>Loading Biochemistry data...</p>;
-
   return (
     <EngComponent name="Biochemistry.jsx" type="Page" parent={null}>
     <div className="biochem-register-container">
@@ -438,6 +436,9 @@ export default function BiochemistryMain() {
           />
           </EngComponent>
 
+          {loading ? (
+            <p>Loading Biochemistry data...</p>
+          ) : (
           <EngComponent
             name="Patient Register Table"
             type="Tables"
@@ -482,6 +483,7 @@ export default function BiochemistryMain() {
             </table>
           </div>
           </EngComponent>
+          )}
       </div>
       )}
 
