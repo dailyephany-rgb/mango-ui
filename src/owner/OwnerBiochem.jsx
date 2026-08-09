@@ -280,14 +280,12 @@ export default function OwnerBiochem() {
       <DateSourceFilter />
       </OwnerFilters>
 
-      {activeTab !== "staff" && (
-        <OwnerKPIs page="OwnerBiochem">
+      <OwnerKPIs page="OwnerBiochem" hidden={activeTab === "staff"}>
         <KPIBlocks
           overview={overviewForKPI}
           kpis={kpis || {}}
         />
         </OwnerKPIs>
-      )}
 
       {activeTab === "overview" && (
         <OwnerChartsSection engPage="OwnerBiochem" engName="Charts">

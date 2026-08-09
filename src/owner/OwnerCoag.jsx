@@ -306,14 +306,12 @@ export default function OwnerCoagPage() {
       <DateSourceFilter />
       </OwnerFilters>
 
-      {activeTab !== "staff" && (
-        <OwnerKPIs page="OwnerCoag">
+      <OwnerKPIs page="OwnerCoag" hidden={activeTab === "staff"}>
         <KPIBlocks
           overview={overviewForKPI}
           kpis={finalKpis}
         />
         </OwnerKPIs>
-      )}
 
       {activeTab === "overview" && (
         <OwnerChartsSection engPage="OwnerCoag" engName="Charts">

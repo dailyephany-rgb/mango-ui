@@ -252,10 +252,10 @@ export default function OwnerHormones() {
       <OwnerFilters page="OwnerHormones">
       <DateSourceFilter />
       </OwnerFilters>
-      {activeTab !== "staff" && (<OwnerKPIs page="OwnerHormones">
+      <OwnerKPIs page="OwnerHormones" hidden={activeTab === "staff"}>
         <KPIBlocks overview={overviewForKPI}
           kpis={kpis || {}} />
-      </OwnerKPIs> )}
+      </OwnerKPIs>
       {activeTab === "overview" && (
         <OwnerChartsSection engPage="OwnerHormones" engName="Charts">
           <div className="chart-card">

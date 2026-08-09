@@ -295,14 +295,12 @@ export default function OwnerUrinePage() {
       </OwnerFilters>
       
       {/* 🟢 Correct Keys (Critical, TAT, etc.) now pass through to KPIBlocks */}
-      {activeTab !== "staff" && (
-        <OwnerKPIs page="OwnerUrine">
+      <OwnerKPIs page="OwnerUrine" hidden={activeTab === "staff"}>
         <KPIBlocks
           overview={overviewForKPI}
           kpis={kpis || {}}
         />
         </OwnerKPIs>
-      )}
 
       {activeTab === "overview" && (
         <OwnerChartsSection engPage="OwnerUrine" engName="Charts">

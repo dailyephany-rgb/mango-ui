@@ -297,8 +297,7 @@ export default function OwnerESRPage() {
       <DateSourceFilter />
       </OwnerFilters>
 
-                {activeTab !== "staff" && (
-                  <OwnerKPIs page="OwnerESR">
+                <OwnerKPIs page="OwnerESR" hidden={activeTab === "staff"}>
                   <KPIBlocks
                     overview={
                       overviewForKPI
@@ -306,7 +305,6 @@ export default function OwnerESRPage() {
                     kpis={kpis || {}}
                   />
                   </OwnerKPIs>
-                )}
 
                 {activeTab === "overview" && (
         <OwnerChartsSection engPage="OwnerESR" engName="Charts">

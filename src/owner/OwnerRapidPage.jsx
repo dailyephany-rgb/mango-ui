@@ -286,8 +286,7 @@ export default function OwnerRapidPage() {
       <DateSourceFilter />
       </OwnerFilters>
 
-        {activeTab !== "staff" && (
-          <OwnerKPIs page="OwnerRapid">
+        <OwnerKPIs page="OwnerRapid" hidden={activeTab === "staff"}>
           <KPIBlocks
             overview={
               overviewForKPI
@@ -295,7 +294,6 @@ export default function OwnerRapidPage() {
             kpis={kpis || {}}
           />
           </OwnerKPIs>
-        )}
 
       {activeTab === "overview" && (
         <OwnerChartsSection engPage="OwnerRapid" engName="Charts">

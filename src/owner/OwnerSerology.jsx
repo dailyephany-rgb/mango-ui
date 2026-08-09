@@ -345,14 +345,12 @@ export default function OwnerSerologyPage() {
       <DateSourceFilter />
       </OwnerFilters>
       
-              {activeTab !== "staff" && (
-          <OwnerKPIs page="OwnerSerology">
+              <OwnerKPIs page="OwnerSerology" hidden={activeTab === "staff"}>
           <KPIBlocks
             overview={overviewForKPI}
             kpis={finalKpis || {}}
           />
           </OwnerKPIs>
-        )}
       {activeTab === "overview" && (
         <OwnerChartsSection engPage="OwnerSerology" engName="Charts">
           <div className="chart-card">

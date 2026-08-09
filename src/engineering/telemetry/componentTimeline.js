@@ -114,10 +114,11 @@ export function getFsAttribution() {
 
 /**
  * @param {{ name: string, type?: string, parent?: string | null, moduleId?: string | null, mountMs?: number | null }} spec
+ * @returns {boolean} true if this is the first mount of this name in the page-load session
  */
 export function markComponentMount(spec) {
   try {
-    if (!spec?.name) return;
+    if (!spec?.name) return false;
     const t0 = performance.now();
     const resolvedModule = resolveModuleId(spec.name, {
       page: pageKey,
@@ -126,6 +127,7 @@ export function markComponentMount(spec) {
     });
     moduleByName.set(spec.name, resolvedModule);
     const prev = mounted.get(spec.name);
+    const wasMounted = !!(prev && prev.mounted);
     const row = prev || blankRow(spec.name, spec.type, spec.parent);
     row.mounted = true;
     row.type = spec.type || row.type;
@@ -148,8 +150,9 @@ export function markComponentMount(spec) {
     }
     if (!activeStack.includes(spec.name)) activeStack.push(spec.name);
     mounted.set(spec.name, row);
+    return !wasMounted;
   } catch {
-    /* ignore */
+    return false;
   }
 }
 

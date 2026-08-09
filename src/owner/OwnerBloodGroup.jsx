@@ -299,11 +299,9 @@ export default function OwnerBloodGroupPage() {
       </OwnerFilters>
       
       {/* 🟢 Uses your specialized Blood Group KPI block (No Critical Card) */}
-      {activeTab !== "staff" && (
-        <OwnerKPIs page="OwnerBloodGroup">
+      <OwnerKPIs page="OwnerBloodGroup" hidden={activeTab === "staff"}>
           <KPIBlocks_BloodGroup kpis={fetchedKpis || {}} />
         </OwnerKPIs>
-      )}
 
       {activeTab === "overview" && (
         <OwnerChartsSection engPage="OwnerBloodGroup" engName="Charts">

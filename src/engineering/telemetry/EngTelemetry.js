@@ -301,10 +301,10 @@ function scheduleBreakdownFlush() {
 function componentMount(spec) {
   safeRun(() => {
     if (!enabled() || !initialized) return;
-    markComponentMount(spec);
-    // Lazy tabs after page load — refresh eng_components for same loadId
-    // (debounced so Suspense/tab switches do not thrash Firestore + UI).
-    if (context.lastPageLoadMs != null) {
+    const isFirstMount = markComponentMount(spec);
+    // Lazy tabs / Suspense remounts — only flush when a NEW catalog slot appears.
+    // Remounting Charts↔Staff or loading shells was thrashing Components UI.
+    if (context.lastPageLoadMs != null && isFirstMount) {
       scheduleBreakdownFlush();
     }
   }, "eng.comp.mount");

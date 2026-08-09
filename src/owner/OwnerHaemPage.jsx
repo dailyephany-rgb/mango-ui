@@ -265,9 +265,7 @@ export default function OwnerHaemPage() {
       <DateSourceFilter />
       </OwnerFilters>
 
-            {activeTab !==
-              "staff" && (
-              <OwnerKPIs page="OwnerHaem">
+            <OwnerKPIs page="OwnerHaem" hidden={activeTab === "staff"}>
         <KPIBlocks
                 overview={
                   overviewForKPI
@@ -275,7 +273,6 @@ export default function OwnerHaemPage() {
                 kpis={kpis || {}}
               />
       </OwnerKPIs>
-            )}
 
 
       {activeTab === "overview" && (
