@@ -6,7 +6,6 @@ import testMapping from "./test_mapping.json";
 import { collection, serverTimestamp, setDoc, doc } from "firebase/firestore";
 import { trackedGetDoc as getDoc } from "./shared/firestore/trackedFirestore.js";
 import UserMenu from "./auth/UserMenu";
-import { EngComponent } from "./engineering/ui/EngComponent.jsx";
 
 
 export default function Mango() {
@@ -25,6 +24,55 @@ export default function Mango() {
       test,
     }))
   );
+
+  const doctorOptions = [
+    "Dr. Anil Sharma",
+    "Dr. Renu Makwana",
+    "Dr. Sanjay Makwana",
+    "Dr. Kapil Kumar Raheja",
+    "Dr. Vivek Lakhawat",
+    "Sanjeev Sanghvi",
+    "Dr. Akhil Govil",
+    "Dr. Jitendra Chouhan",
+    "Dr. Jitendra Khetawat",
+    "Dr. Ashish Joshi",
+    "RMO (Redidential Medical Officer)",
+    "Dr. Ashok Bishnoi",
+    "Consultant Gynaecology",
+    "Consultant ART",
+    "Consultant Paediatrician",
+    "Consultant Orthopaedic",
+    "Dr. Vinod Shaily",
+    "Dr. Dabi",
+    "Dr. Saurabh Kuvera",
+    "Dr. Pravesh Vyas",
+    "Dr. Neha Agarwal",
+    "Dr. Jyotsana Sharma",
+    "Dr. Lalit Mohan Rathi",
+    "Dr. Amit Singhvi",
+    "Dr. Consultant Obstretrics",
+  ];
+
+  const normalizeDoctorName = (value) => {
+    return String(value || "")
+      .toLowerCase()
+      .replace(/\bdr\.?\b/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  };
+  
+  const findMatchingDoctor = (qrDoctor) => {
+    if (!qrDoctor) return "";
+  
+    const normalizedQRDoctor = normalizeDoctorName(qrDoctor);
+  
+    return (
+      doctorOptions.find(
+        (doctor) =>
+          normalizeDoctorName(doctor) === normalizedQRDoctor
+      ) || ""
+    );
+  };
 
   const nameRef = useRef();
   const fatherRef = useRef();
@@ -131,10 +179,17 @@ export default function Mango() {
   };
 
   const handleQRScan = (e) => {
-    const scannedText = e.target.value.trim();
+    const scannedText = e.target.value
+    .replace(/\r/g, "")
+    .replace(/\n/g, "")
+    .trim();
+    // Scanner sends the QR data character-by-character.
+    // Do not attempt JSON.parse until the complete JSON object arrives.
+    if (!scannedText.startsWith("{") || !scannedText.endsWith("}")) {
+      return;
+    }
   
     try {
-     
       const qrData = JSON.parse(scannedText);
 
 const qrTests = qrData.tests || qrData.Tests || [];
@@ -183,7 +238,9 @@ const selectedTests = qrTests
         
         phone: qrData.phone || qrData.Phone || "",
         
-        doctor: qrData.doctor || qrData.Doctor || "",
+        doctor: findMatchingDoctor(
+          qrData.doctor || qrData.Doctor
+        ),
         
         category: qrData.category || qrData.Category || "",
         
@@ -510,9 +567,7 @@ const selectedTests = qrTests
         <div className="mango-header-left">  
       <h1>Vasundhara Hospital Limited</h1>
     </div>
-    <EngComponent name="User Menu" type="Layout" parent="Mango">
-      <UserMenu />
-    </EngComponent>
+    <UserMenu />
     </header>
 
       <div className="mango-content">
@@ -524,16 +579,29 @@ const selectedTests = qrTests
               📷 Scan QR
           </button>
 
-                    <input
-              ref={qrInputRef}
-              type="text"
-              onChange={handleQRScan}
-              style={{
-                  position: "absolute",
-                  left: "-9999px",
-                  opacity: 0
-              }}
-          />
+          <textarea
+            ref={qrInputRef}
+            onChange={handleQRScan}
+            onKeyDown={(e) => {
+              // QR scanners behave like keyboards and may send
+              // Enter / Tab characters after or inside the payload.
+              // Never allow those characters to navigate the Mango form.
+              if (e.key === "Enter" || e.key === "Tab") {
+                e.preventDefault();
+              }
+            }}
+            style={{
+              position: "absolute",
+              left: "-9999px",
+              top: "-9999px",
+              width: "1px",
+              height: "1px",
+              opacity: 0,
+              pointerEvents: "none"
+            }}
+          />         
+
+
           <p className="or-text">or</p>
           
           <label>Source</label>

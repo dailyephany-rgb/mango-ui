@@ -25,6 +25,55 @@ export default function Mango() {
     }))
   );
 
+  const doctorOptions = [
+    "Dr. Anil Sharma",
+    "Dr. Renu Makwana",
+    "Dr. Sanjay Makwana",
+    "Dr. Kapil Kumar Raheja",
+    "Dr. Vivek Lakhawat",
+    "Sanjeev Sanghvi",
+    "Dr. Akhil Govil",
+    "Dr. Jitendra Chouhan",
+    "Dr. Jitendra Khetawat",
+    "Dr. Ashish Joshi",
+    "RMO (Redidential Medical Officer)",
+    "Dr. Ashok Bishnoi",
+    "Consultant Gynaecology",
+    "Consultant ART",
+    "Consultant Paediatrician",
+    "Consultant Orthopaedic",
+    "Dr. Vinod Shaily",
+    "Dr. Dabi",
+    "Dr. Saurabh Kuvera",
+    "Dr. Pravesh Vyas",
+    "Dr. Neha Agarwal",
+    "Dr. Jyotsana Sharma",
+    "Dr. Lalit Mohan Rathi",
+    "Dr. Amit Singhvi",
+    "Dr. Consultant Obstretrics",
+  ];
+
+  const normalizeDoctorName = (value) => {
+    return String(value || "")
+      .toLowerCase()
+      .replace(/\bdr\.?\b/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  };
+  
+  const findMatchingDoctor = (qrDoctor) => {
+    if (!qrDoctor) return "";
+  
+    const normalizedQRDoctor = normalizeDoctorName(qrDoctor);
+  
+    return (
+      doctorOptions.find(
+        (doctor) =>
+          normalizeDoctorName(doctor) === normalizedQRDoctor
+      ) || ""
+    );
+  };
+
   const nameRef = useRef();
   const fatherRef = useRef();
   const doctorRef = useRef();
@@ -41,6 +90,8 @@ export default function Mango() {
   const searchRef = useRef();
   const selectedTestsRef = useRef();
   const resultRefs = useRef([]);
+
+  const qrInputRef = useRef();
 
   // Helper for date string - UPDATED TO IST (Asia/Kolkata)
   const getTodayDateStr = () => {
@@ -85,6 +136,10 @@ export default function Mango() {
   }, [focusedIndex]);
 
   useEffect(() => {
+    qrInputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
     const editDataRaw = localStorage.getItem("editPatientData");
     if (editDataRaw) {
       const editData = JSON.parse(editDataRaw);
@@ -111,6 +166,99 @@ export default function Mango() {
     const { name, value } = e.target;
     setErrors((prev) => ({ ...prev, [name]: false }));
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const findDepartment = (testName) => {
+    for (const dept in testMapping) {
+      if (testMapping[dept].includes(testName)) {
+        return dept;
+      }
+    }
+  
+    return null;
+  };
+
+  const handleQRScan = (e) => {
+    const scannedText = e.target.value
+    .replace(/\r/g, "")
+    .replace(/\n/g, "")
+    .trim();
+    // Scanner sends the QR data character-by-character.
+    // Do not attempt JSON.parse until the complete JSON object arrives.
+    if (!scannedText.startsWith("{") || !scannedText.endsWith("}")) {
+      return;
+    }
+  
+    try {
+      const qrData = JSON.parse(scannedText);
+
+const qrTests = qrData.tests || qrData.Tests || [];
+
+const unknownTests = qrTests.filter(
+    test => findDepartment(test) === null
+);
+
+if (unknownTests.length > 0) {
+    alert(
+        `These tests are not mapped:\n\n${unknownTests.join("\n")}`
+    );
+}
+
+const selectedTests = qrTests
+    .map(test => {
+        const dept = findDepartment(test);
+
+        if (!dept) return null;
+
+        return {
+            dept,
+            test
+        };
+    })
+    .filter(Boolean);
+  
+      setFormData(prev => ({
+        ...prev,
+    
+        regNo: qrData.regNo || qrData.RegNo || "",
+        diagnosticNo: qrData.diagnosticNo || qrData.DiagnosticNo || "",
+        
+        source: qrData.source || qrData.Source || "OPD",
+        
+        datePrinted: qrData.datePrinted || qrData.DatePrinted || getTodayDateStr(),
+        timePrinted: qrData.timePrinted || qrData.TimePrinted || "",
+        
+        name: qrData.name || qrData.Name || "",
+        father: qrData.father || qrData.Father || "",
+        
+        age: qrData.age || qrData.Age || "",
+        ageUnit: qrData.ageUnit || qrData.AgeUnit || "years",
+        
+        gender: qrData.gender || qrData.Gender || "M",
+        
+        phone: qrData.phone || qrData.Phone || "",
+        
+        doctor: findMatchingDoctor(
+          qrData.doctor || qrData.Doctor
+        ),
+        
+        category: qrData.category || qrData.Category || "",
+        
+        urgent: qrData.urgent ?? qrData.Urgent ?? false,
+        
+        selectedTests
+    }));
+    
+  
+    } catch (err) {
+      console.error(err);
+      alert("Invalid QR Code");
+    }
+  
+    e.target.value = "";
+    setTimeout(() => {
+      qrInputRef.current?.focus();
+  }, 0);
   };
 
   const handleSearchChange = (e) => {
@@ -416,12 +564,7 @@ export default function Mango() {
   return (
         <div className="mango-container">
         <header className="mango-header">
-        <div className="mango-header-left">
-      <img
-        src="https://upload.wikimedia.org/wikipedia/commons/6/6b/Letter_V.svg"
-        alt="Logo"
-        className="mango-logo"
-      />
+        <div className="mango-header-left">  
       <h1>Vasundhara Hospital Limited</h1>
     </div>
     <UserMenu />
@@ -429,7 +572,36 @@ export default function Mango() {
 
       <div className="mango-content">
         <div className="left-panel">
-          <button className="scan-btn">📷 Scan QR</button>
+              <button
+              className="scan-btn"
+              onClick={() => qrInputRef.current?.focus()}
+          >
+              📷 Scan QR
+          </button>
+
+          <textarea
+            ref={qrInputRef}
+            onChange={handleQRScan}
+            onKeyDown={(e) => {
+              // QR scanners behave like keyboards and may send
+              // Enter / Tab characters after or inside the payload.
+              // Never allow those characters to navigate the Mango form.
+              if (e.key === "Enter" || e.key === "Tab") {
+                e.preventDefault();
+              }
+            }}
+            style={{
+              position: "absolute",
+              left: "-9999px",
+              top: "-9999px",
+              width: "1px",
+              height: "1px",
+              opacity: 0,
+              pointerEvents: "none"
+            }}
+          />         
+
+
           <p className="or-text">or</p>
           
           <label>Source</label>
