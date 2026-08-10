@@ -619,9 +619,13 @@ const qrScanningRef = useRef(false);
         // Our QR payload is complete when the JSON
         // reaches its final closing brace.
         if (data.startsWith("{") && data.endsWith("}")) {
+          console.timeEnd("QR_TOTAL_SCAN_TIME");
+          console.log("QR SCAN COMPLETE");
+          console.log("QR PAYLOAD LENGTH:", data.length);
+        
           qrBufferRef.current = "";
           qrScanningRef.current = false;
-
+        
           processQRData(data);
         }
       }
@@ -645,7 +649,7 @@ const qrScanningRef = useRef(false);
       }
     };
   }, []);
-  
+
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchText(value);
@@ -962,6 +966,10 @@ const qrScanningRef = useRef(false);
               onClick={() => {
                 qrBufferRef.current = "";
                 qrScanningRef.current = true;
+              
+                console.time("QR_TOTAL_SCAN_TIME");
+                console.log("QR SCAN STARTED");
+              
                 qrInputRef.current?.focus();
               }}
           >
