@@ -596,48 +596,56 @@ const qrScanningRef = useRef(false);
   useEffect(() => {
     const handleScannerKeyDown = (e) => {
       if (!qrScanningRef.current) return;
-  
-      // Scanner is active — capture its keystrokes.
+
+      // Scanner is active.
+      // Prevent scanner keystrokes from reaching
+      // Mango inputs or the browser.
       e.preventDefault();
       e.stopPropagation();
-  
+
+      // Enter and Tab are part of the QR payload.
+      // Do NOT finish the scan here.
       if (e.key === "Enter" || e.key === "Tab") {
-        const data = qrBufferRef.current;
-  
-        qrBufferRef.current = "";
-        qrScanningRef.current = false;
-  
-        if (data.trim()) {
-          processQRData(data);
-        }
-  
+        qrBufferRef.current += "\n";
         return;
       }
-  
+
+      // Capture normal scanner characters.
       if (e.key.length === 1) {
         qrBufferRef.current += e.key;
+
+        const data = qrBufferRef.current.trim();
+
+        // Our QR payload is complete when the JSON
+        // reaches its final closing brace.
+        if (data.startsWith("{") && data.endsWith("}")) {
+          qrBufferRef.current = "";
+          qrScanningRef.current = false;
+
+          processQRData(data);
+        }
       }
     };
-  
+
     window.addEventListener(
       "keydown",
       handleScannerKeyDown,
       true
     );
-  
+
     return () => {
       window.removeEventListener(
         "keydown",
         handleScannerKeyDown,
         true
       );
-  
+
       if (qrScanTimerRef.current) {
         clearTimeout(qrScanTimerRef.current);
       }
     };
   }, []);
-
+  
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchText(value);
