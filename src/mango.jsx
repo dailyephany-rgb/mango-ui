@@ -182,112 +182,414 @@ const qrScanningRef = useRef(false);
   };
 
   const processQRData = (rawData) => {
-    const scannedText = String(rawData || "")
-      .replace(/\r/g, "")
-      .replace(/\n/g, "")
-      .replace(/\t/g, "")
-      .trim();
-  
-    if (!scannedText.startsWith("{") || !scannedText.endsWith("}")) {
-      return;
-    }
-  
     try {
-      const qrData = JSON.parse(scannedText);
+      // ---------------------------------------------------------
+      // 1. Clean scanner payload
+      // ---------------------------------------------------------
+      const scannedText = String(rawData || "")
+        .replace(/[\r\n\t]/g, " ")
+        .trim();
   
-      const qrTests = qrData.tests || qrData.Tests || [];
+      if (!scannedText) {
+        console.warn("QR scan was empty.");
+        return;
+      }
   
-      const unknownTests = qrTests.filter(
-        (test) => findDepartment(test) === null
+      // ---------------------------------------------------------
+      // 2. Parse JSON
+      // ---------------------------------------------------------
+      let qrData;
+  
+      try {
+        qrData = JSON.parse(scannedText);
+      } catch (jsonError) {
+        console.error("QR JSON parse failed:", jsonError);
+        console.log("Raw QR data:", scannedText);
+        alert("QR code does not contain valid patient data.");
+        return;
+      }
+  
+      if (!qrData || typeof qrData !== "object" || Array.isArray(qrData)) {
+        alert("Invalid patient QR data.");
+        return;
+      }
+  
+      console.log("RAW QR DATA:", qrData);
+  
+      // ---------------------------------------------------------
+      // 3. Helper: find a value regardless of label formatting
+      //
+      // This allows:
+      // "name"
+      // "Name"
+      // "patientName"
+      // "Patient Name"
+      // "patient_name"
+      // "PATIENT NAME"
+      // ---------------------------------------------------------
+      const normalizeKey = (key) =>
+        String(key || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "");
+  
+      const normalizedQR = {};
+  
+      Object.entries(qrData).forEach(([key, value]) => {
+        normalizedQR[normalizeKey(key)] = value;
+      });
+  
+      const getQRValue = (...possibleKeys) => {
+        for (const key of possibleKeys) {
+          const normalizedKey = normalizeKey(key);
+  
+          if (
+            normalizedQR[normalizedKey] !== undefined &&
+            normalizedQR[normalizedKey] !== null &&
+            normalizedQR[normalizedKey] !== ""
+          ) {
+            return normalizedQR[normalizedKey];
+          }
+        }
+  
+        return "";
+      };
+  
+      // ---------------------------------------------------------
+      // 4. Read every Mango field from the QR
+      // ---------------------------------------------------------
+  
+      const regNo = getQRValue(
+        "regNo",
+        "RegNo",
+        "registrationNo",
+        "registrationNumber",
+        "registration",
+        "Reg. No.",
+        "Reg No"
       );
   
-      if (unknownTests.length > 0) {
-        alert(
-          `These tests are not mapped:\n\n${unknownTests.join("\n")}`
+      const diagnosticNo = getQRValue(
+        "diagnosticNo",
+        "DiagnosticNo",
+        "diagnosticNumber",
+        "diagnostic",
+        "diagnostic no",
+        "Diagnostic No."
+      );
+  
+      const name = getQRValue(
+        "name",
+        "patientName",
+        "patient name",
+        "Patient Name"
+      );
+  
+      const father = getQRValue(
+        "father",
+        "fatherName",
+        "father name",
+        "husband",
+        "husbandName",
+        "father / husband",
+        "Father / Husband"
+      );
+  
+      const age = getQRValue(
+        "age",
+        "patientAge",
+        "patient age"
+      );
+  
+      const ageUnit = getQRValue(
+        "ageUnit",
+        "age unit",
+        "ageUnitType"
+      ) || "years";
+  
+      const genderRaw = getQRValue(
+        "gender",
+        "sex",
+        "patientGender"
+      );
+  
+      const phone = getQRValue(
+        "phone",
+        "phoneNumber",
+        "mobile",
+        "mobileNumber",
+        "contact",
+        "contactNumber"
+      );
+  
+      const doctorRaw = getQRValue(
+        "doctor",
+        "doctorName",
+        "doctor name",
+        "consultant",
+        "consultantName",
+        "doctor / consultant"
+      );
+  
+      const category = getQRValue(
+        "category",
+        "patientCategory",
+        "billingCategory"
+      );
+  
+      const source = getQRValue(
+        "source",
+        "patientSource",
+        "registrationSource"
+      ) || "OPD";
+  
+      const datePrinted = getQRValue(
+        "datePrinted",
+        "date printed",
+        "printedDate",
+        "printDate"
+      ) || getTodayDateStr();
+  
+      const timePrinted = getQRValue(
+        "timePrinted",
+        "time printed",
+        "printedTime",
+        "printTime"
+      );
+  
+      const urgentRaw = getQRValue(
+        "urgent",
+        "isUrgent",
+        "priority"
+      );
+  
+      // ---------------------------------------------------------
+      // 5. Normalize gender
+      // ---------------------------------------------------------
+      let gender = "M";
+  
+      if (genderRaw !== "") {
+        const g = String(genderRaw).trim().toLowerCase();
+  
+        if (
+          g === "f" ||
+          g === "female" ||
+          g === "woman" ||
+          g === "girl"
+        ) {
+          gender = "F";
+        } else if (
+          g === "m" ||
+          g === "male" ||
+          g === "man" ||
+          g === "boy"
+        ) {
+          gender = "M";
+        }
+      }
+  
+      // ---------------------------------------------------------
+      // 6. Normalize age unit
+      // ---------------------------------------------------------
+      let normalizedAgeUnit = "years";
+  
+      const unit = String(ageUnit).trim().toLowerCase();
+  
+      if (unit.startsWith("month")) {
+        normalizedAgeUnit = "months";
+      } else if (unit.startsWith("day")) {
+        normalizedAgeUnit = "days";
+      } else {
+        normalizedAgeUnit = "years";
+      }
+  
+      // ---------------------------------------------------------
+      // 7. Find exact doctor from Mango dropdown
+      // ---------------------------------------------------------
+      const matchedDoctor = findMatchingDoctor(doctorRaw);
+  
+      if (doctorRaw && !matchedDoctor) {
+        console.warn(
+          "QR doctor did not match a Mango doctor:",
+          doctorRaw
         );
       }
   
-      const selectedTests = qrTests
-        .map((test) => {
-          const dept = findDepartment(test);
+      // ---------------------------------------------------------
+      // 8. Read tests
+      //
+      // Supports:
+      // ["CBC", "ESR"]
+      //
+      // and also:
+      // "CBC, ESR"
+      // ---------------------------------------------------------
+      let qrTests = getQRValue(
+        "tests",
+        "test",
+        "selectedTests",
+        "selectedTest",
+        "investigations",
+        "investigation"
+      );
   
-          if (!dept) return null;
+      if (!Array.isArray(qrTests)) {
+        if (typeof qrTests === "string" && qrTests.trim()) {
+          qrTests = qrTests
+            .split(",")
+            .map((test) => test.trim())
+            .filter(Boolean);
+        } else {
+          qrTests = [];
+        }
+      }
   
-          return {
-            dept,
-            test,
-          };
-        })
-        .filter(Boolean);
+      // ---------------------------------------------------------
+      // 9. Match QR tests against test_mapping.json
+      // ---------------------------------------------------------
+      const selectedTests = [];
   
-      setFormData((prev) => ({
-        ...prev,
+      const unknownTests = [];
   
-        regNo: qrData.regNo || qrData.RegNo || "",
-        diagnosticNo: qrData.diagnosticNo || qrData.DiagnosticNo || "",
+      qrTests.forEach((rawTest) => {
+        const testName = String(rawTest || "").trim();
   
-        source: qrData.source || qrData.Source || "OPD",
+        if (!testName) return;
   
-        datePrinted:
-          qrData.datePrinted ||
-          qrData.DatePrinted ||
-          getTodayDateStr(),
+        // First try exact match
+        let matchedTest = allTests.find(
+          (item) =>
+            item.test.toLowerCase() === testName.toLowerCase()
+        );
   
-        timePrinted:
-          qrData.timePrinted ||
-          qrData.TimePrinted ||
-          "",
+        // Then try trimmed whitespace
+        if (!matchedTest) {
+          matchedTest = allTests.find(
+            (item) =>
+              item.test.trim().toLowerCase() ===
+              testName.trim().toLowerCase()
+          );
+        }
   
-        name: qrData.name || qrData.Name || "",
+        if (!matchedTest) {
+          unknownTests.push(testName);
+          return;
+        }
   
-        father:
-          qrData.father ||
-          qrData.Father ||
-          "",
+        selectedTests.push({
+          dept: matchedTest.dept,
+          test: matchedTest.test,
+        });
+      });
   
-        age:
-          qrData.age ||
-          qrData.Age ||
-          "",
+      // Remove duplicate tests
+      const uniqueSelectedTests = selectedTests.filter(
+        (test, index, array) =>
+          index ===
+          array.findIndex(
+            (t) =>
+              t.dept === test.dept &&
+              t.test === test.test
+          )
+      );
   
-        ageUnit:
-          qrData.ageUnit ||
-          qrData.AgeUnit ||
-          "years",
+      if (unknownTests.length > 0) {
+        console.warn(
+          "QR tests not found in test_mapping.json:",
+          unknownTests
+        );
   
-        gender:
-          qrData.gender ||
-          qrData.Gender ||
-          "M",
+        alert(
+          `These QR tests could not be mapped:\n\n${unknownTests.join(
+            "\n"
+          )}`
+        );
+      }
   
-        phone:
-          qrData.phone ||
-          qrData.Phone ||
-          "",
+      // ---------------------------------------------------------
+      // 10. Build the EXACT Mango form object
+      // ---------------------------------------------------------
+      const mappedFormData = {
+        regNo: String(regNo ?? ""),
+        diagnosticNo: String(diagnosticNo ?? ""),
   
-        doctor: findMatchingDoctor(
-          qrData.doctor ||
-          qrData.Doctor
-        ),
+        name: String(name ?? ""),
+        father: String(father ?? ""),
   
-        category:
-          qrData.category ||
-          qrData.Category ||
-          "",
+        age: String(age ?? ""),
+        ageUnit: normalizedAgeUnit,
+        gender,
+  
+        phone: String(phone ?? ""),
+  
+        doctor: matchedDoctor,
+  
+        category: String(category ?? ""),
+        source: String(source ?? ""),
+  
+        datePrinted: String(datePrinted ?? ""),
+        timePrinted: String(timePrinted ?? ""),
   
         urgent:
-          qrData.urgent ??
-          qrData.Urgent ??
-          false,
+          urgentRaw === true ||
+          String(urgentRaw).toLowerCase() === "true" ||
+          String(urgentRaw) === "1",
   
-        selectedTests,
+        selectedTests: uniqueSelectedTests,
+      };
+  
+      // ---------------------------------------------------------
+      // 11. Put everything into React state
+      //
+      // The existing controlled inputs will immediately display
+      // these values exactly as though the user entered them.
+      // ---------------------------------------------------------
+      setFormData((prev) => ({
+        ...prev,
+        ...mappedFormData,
       }));
   
-      console.log("QR successfully processed:", qrData);
+      // Clear validation errors for successfully mapped fields
+      setErrors((prev) => {
+        const next = { ...prev };
   
-    } catch (err) {
-      console.error("QR parse error:", err);
-      alert("Invalid QR Code");
+        Object.keys(mappedFormData).forEach((field) => {
+          if (
+            mappedFormData[field] !== "" &&
+            mappedFormData[field] !== undefined
+          ) {
+            next[field] = false;
+          }
+        });
+  
+        if (uniqueSelectedTests.length > 0) {
+          next.selectedTests = false;
+        }
+  
+        return next;
+      });
+  
+      console.log("=================================");
+      console.log("QR → MANGO MAPPING SUCCESS");
+      console.log("=================================");
+      console.log("Reg No:", mappedFormData.regNo);
+      console.log("Diagnostic No:", mappedFormData.diagnosticNo);
+      console.log("Patient Name:", mappedFormData.name);
+      console.log("Father/Husband:", mappedFormData.father);
+      console.log("Age:", mappedFormData.age);
+      console.log("Age Unit:", mappedFormData.ageUnit);
+      console.log("Gender:", mappedFormData.gender);
+      console.log("Phone:", mappedFormData.phone);
+      console.log("Doctor:", mappedFormData.doctor);
+      console.log("Category:", mappedFormData.category);
+      console.log("Source:", mappedFormData.source);
+      console.log("Date Printed:", mappedFormData.datePrinted);
+      console.log("Time Printed:", mappedFormData.timePrinted);
+      console.log("Tests:", mappedFormData.selectedTests);
+      console.log("=================================");
+  
+    } catch (error) {
+      console.error("QR processing error:", error);
+      alert("Unable to process QR patient data.");
     }
   };
 
@@ -295,26 +597,23 @@ const qrScanningRef = useRef(false);
     const handleScannerKeyDown = (e) => {
       if (!qrScanningRef.current) return;
   
-      // Prevent scanner keystrokes from entering
-      // whichever Mango field currently has focus.
+      // Scanner is active — capture its keystrokes.
       e.preventDefault();
       e.stopPropagation();
   
-      // Scanner sends Enter/Tab when the QR payload is complete.
       if (e.key === "Enter" || e.key === "Tab") {
         const data = qrBufferRef.current;
   
         qrBufferRef.current = "";
         qrScanningRef.current = false;
   
-        if (data) {
+        if (data.trim()) {
           processQRData(data);
         }
   
         return;
       }
   
-      // Capture normal characters from the scanner.
       if (e.key.length === 1) {
         qrBufferRef.current += e.key;
       }
@@ -332,13 +631,12 @@ const qrScanningRef = useRef(false);
         handleScannerKeyDown,
         true
       );
+  
+      if (qrScanTimerRef.current) {
+        clearTimeout(qrScanTimerRef.current);
+      }
     };
   }, []);
-
-
-        
-   
-    
 
   const handleSearchChange = (e) => {
     const value = e.target.value;
