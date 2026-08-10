@@ -53,10 +53,18 @@ export default function Mango() {
     "Dr. Consultant Obstretrics",
   ];
 
+ 
+
   const normalizeDoctorName = (value) => {
     return String(value || "")
       .toLowerCase()
-      .replace(/\bdr\.?\b/g, "")
+      // Remove common doctor/title words
+      .replace(/\bdr\b/g, "")
+      .replace(/\bdoctor\b/g, "")
+      .replace(/\bconsultant\b/g, "")
+      // Remove punctuation
+      .replace(/[.,/()\-_:]/g, " ")
+      // Collapse spaces
       .replace(/\s+/g, " ")
       .trim();
   };
@@ -66,12 +74,30 @@ export default function Mango() {
   
     const normalizedQRDoctor = normalizeDoctorName(qrDoctor);
   
-    return (
-      doctorOptions.find(
-        (doctor) =>
-          normalizeDoctorName(doctor) === normalizedQRDoctor
-      ) || ""
+    if (!normalizedQRDoctor) return "";
+  
+    // First: exact normalized match
+    const exactMatch = doctorOptions.find(
+      (doctor) =>
+        normalizeDoctorName(doctor) === normalizedQRDoctor
     );
+  
+    if (exactMatch) {
+      return exactMatch;
+    }
+  
+    // Second: allow the QR to contain an additional title/
+    // descriptor while still matching the doctor's full name.
+    const fuzzyMatch = doctorOptions.find((doctor) => {
+      const normalizedOption = normalizeDoctorName(doctor);
+  
+      return (
+        normalizedOption.includes(normalizedQRDoctor) ||
+        normalizedQRDoctor.includes(normalizedOption)
+      );
+    });
+  
+    return fuzzyMatch || "";
   };
 
   const nameRef = useRef();
