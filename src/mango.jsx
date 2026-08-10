@@ -1,10 +1,4 @@
 
-Library
-/
-Mango_QR_fixed.jsx
-
-
-
 import React, { useState, useRef, useEffect } from "react";
 import "./mango.css";
 import { db } from "./firebaseConfig.js";
@@ -97,6 +91,11 @@ export default function Mango() {
   const selectedTestsRef = useRef();
   const resultRefs = useRef([]);
 
+  const qrInputRef = useRef();
+const qrBufferRef = useRef("");
+const qrScanTimerRef = useRef(null);
+const qrScanningRef = useRef(false);
+
   // Helper for date string - UPDATED TO IST (Asia/Kolkata)
   const getTodayDateStr = () => {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
@@ -130,13 +129,6 @@ export default function Mango() {
   // NEW: Store the original ID to prevent creating new entries on update
   const [originalId, setOriginalId] = useState(null);
 
-  // QR scanner state.
-  // The scanner behaves like a keyboard, so we capture its keystrokes
-  // globally while scan mode is active instead of relying on a focused
-  // hidden textarea.
-  const [isScanningQR, setIsScanningQR] = useState(false);
-  const qrBufferRef = useRef("");
-
   useEffect(() => {
     if (focusedIndex >= 0 && resultRefs.current[focusedIndex]) {
       resultRefs.current[focusedIndex].scrollIntoView({
@@ -145,6 +137,10 @@ export default function Mango() {
       });
     }
   }, [focusedIndex]);
+
+  useEffect(() => {
+    qrInputRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     const editDataRaw = localStorage.getItem("editPatientData");
@@ -175,242 +171,174 @@ export default function Mango() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Match tests case-insensitively because the hospital/QR source may use
-  // different capitalization or spacing.
   const findDepartment = (testName) => {
-    const normalizedTest = String(testName || "").trim().toLowerCase();
-
     for (const dept in testMapping) {
-      const match = (testMapping[dept] || []).some(
-        (test) => String(test).trim().toLowerCase() === normalizedTest
-      );
-
-      if (match) return dept;
+      if (testMapping[dept].includes(testName)) {
+        return dept;
+      }
     }
-
+  
     return null;
   };
 
-  // Match a value to an existing <select> option without changing the
-  // hospital's canonical spelling stored in Mango.
-  const findMatchingOption = (value, options) => {
-    if (!value) return "";
-
-    const normalizedValue = String(value)
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, " ");
-
-    return (
-      options.find(
-        (option) =>
-          String(option).trim().toLowerCase().replace(/\s+/g, " ") ===
-          normalizedValue
-      ) || ""
-    );
-  };
-
-  const categoryOptions = [
-    "RGHS",
-    "CGHS",
-    "ECHS",
-    "General",
-    "Insurance",
-    "AAI",
-    "CAPF",
-    "Chiranjeevi Swasthiya Bima Yojna",
-    "Food Cooperation Of India",
-    "Health Package",
-    "ICMR",
-    "IIT",
-    "Indian Oil Corporation Of India",
-    "ISRO",
-    "Oil India",
-    "ONGC",
-    "Railways",
-    "RHB",
-    "TPA",
-  ];
-
-  const normalizeQRTime = (value) => {
-    if (!value) return "";
-
-    const raw = String(value).trim();
-
-    // Already in HTML time-input format.
-    if (/^\d{2}:\d{2}$/.test(raw)) return raw;
-
-    // Convert values such as "03:50 PM" to "15:50".
-    const match = raw.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-    if (match) {
-      let hours = Number(match[1]);
-      const minutes = match[2];
-      const period = match[3].toUpperCase();
-
-      if (period === "AM" && hours === 12) hours = 0;
-      if (period === "PM" && hours !== 12) hours += 12;
-
-      return `${String(hours).padStart(2, "0")}:${minutes}`;
+  const processQRData = (rawData) => {
+    const scannedText = String(rawData || "")
+      .replace(/\r/g, "")
+      .replace(/\n/g, "")
+      .replace(/\t/g, "")
+      .trim();
+  
+    if (!scannedText.startsWith("{") || !scannedText.endsWith("}")) {
+      return;
     }
-
-    return "";
-  };
-
-  const processQRData = (qrData) => {
-    const qrTests = Array.isArray(qrData.tests)
-      ? qrData.tests
-      : Array.isArray(qrData.Tests)
-        ? qrData.Tests
-        : [];
-
-    const unknownTests = qrTests.filter(
-      (test) => findDepartment(test) === null
-    );
-
-    if (unknownTests.length > 0) {
-      alert(
-        `These tests are not mapped:\n\n${unknownTests.join("\n")}`
+  
+    try {
+      const qrData = JSON.parse(scannedText);
+  
+      const qrTests = qrData.tests || qrData.Tests || [];
+  
+      const unknownTests = qrTests.filter(
+        (test) => findDepartment(test) === null
       );
+  
+      if (unknownTests.length > 0) {
+        alert(
+          `These tests are not mapped:\n\n${unknownTests.join("\n")}`
+        );
+      }
+  
+      const selectedTests = qrTests
+        .map((test) => {
+          const dept = findDepartment(test);
+  
+          if (!dept) return null;
+  
+          return {
+            dept,
+            test,
+          };
+        })
+        .filter(Boolean);
+  
+      setFormData((prev) => ({
+        ...prev,
+  
+        regNo: qrData.regNo || qrData.RegNo || "",
+        diagnosticNo: qrData.diagnosticNo || qrData.DiagnosticNo || "",
+  
+        source: qrData.source || qrData.Source || "OPD",
+  
+        datePrinted:
+          qrData.datePrinted ||
+          qrData.DatePrinted ||
+          getTodayDateStr(),
+  
+        timePrinted:
+          qrData.timePrinted ||
+          qrData.TimePrinted ||
+          "",
+  
+        name: qrData.name || qrData.Name || "",
+  
+        father:
+          qrData.father ||
+          qrData.Father ||
+          "",
+  
+        age:
+          qrData.age ||
+          qrData.Age ||
+          "",
+  
+        ageUnit:
+          qrData.ageUnit ||
+          qrData.AgeUnit ||
+          "years",
+  
+        gender:
+          qrData.gender ||
+          qrData.Gender ||
+          "M",
+  
+        phone:
+          qrData.phone ||
+          qrData.Phone ||
+          "",
+  
+        doctor: findMatchingDoctor(
+          qrData.doctor ||
+          qrData.Doctor
+        ),
+  
+        category:
+          qrData.category ||
+          qrData.Category ||
+          "",
+  
+        urgent:
+          qrData.urgent ??
+          qrData.Urgent ??
+          false,
+  
+        selectedTests,
+      }));
+  
+      console.log("QR successfully processed:", qrData);
+  
+    } catch (err) {
+      console.error("QR parse error:", err);
+      alert("Invalid QR Code");
     }
-
-    const selectedTests = qrTests
-      .map((test) => {
-        const dept = findDepartment(test);
-
-        if (!dept) return null;
-
-        return {
-          dept,
-          test: String(test).trim(),
-        };
-      })
-      .filter(Boolean);
-
-    const sourceValue = findMatchingOption(
-      qrData.source || qrData.Source,
-      ["OPD", "IPD", "Third Floor"]
-    ) || "OPD";
-
-    const categoryValue = findMatchingOption(
-      qrData.category || qrData.Category,
-      categoryOptions
-    );
-
-    setFormData((prev) => ({
-      ...prev,
-
-      regNo: String(qrData.regNo || qrData.RegNo || "").trim(),
-      diagnosticNo: String(
-        qrData.diagnosticNo || qrData.DiagnosticNo || ""
-      ).trim(),
-
-      source: sourceValue,
-
-      datePrinted:
-        qrData.datePrinted ||
-        qrData.DatePrinted ||
-        getTodayDateStr(),
-
-      timePrinted: normalizeQRTime(
-        qrData.timePrinted || qrData.TimePrinted
-      ),
-
-      name: qrData.name || qrData.Name || "",
-      father: qrData.father || qrData.Father || "",
-
-      age: qrData.age !== undefined && qrData.age !== null
-        ? String(qrData.age)
-        : (qrData.Age !== undefined && qrData.Age !== null
-          ? String(qrData.Age)
-          : ""),
-
-      ageUnit:
-        qrData.ageUnit ||
-        qrData.AgeUnit ||
-        "years",
-
-      gender: String(
-        qrData.gender || qrData.Gender || "M"
-      ).trim().toUpperCase() === "F" ? "F" : "M",
-
-      phone: qrData.phone || qrData.Phone || "",
-
-      // Important: this returns the exact spelling from doctorOptions,
-      // so the <select> gets a valid option rather than raw QR text.
-      doctor: findMatchingDoctor(
-        qrData.doctor || qrData.Doctor
-      ),
-
-      // Important: this returns "General" for QR values such as
-      // "GENERAL", so the category <select> receives a valid option.
-      category: categoryValue,
-
-      urgent:
-        qrData.urgent ??
-        qrData.Urgent ??
-        false,
-
-      selectedTests,
-    }));
-
-    setErrors({});
   };
 
-  // Capture scanner keystrokes at the window level.
-  // This prevents QR data from being typed into whichever Mango field
-  // happens to have focus.
   useEffect(() => {
-    if (!isScanningQR) return;
-
     const handleScannerKeyDown = (e) => {
-      // Scanner is active: never allow its keyboard events to reach
-      // the normal Mango inputs/selects.
+      if (!qrScanningRef.current) return;
+  
+      // Prevent scanner keystrokes from entering
+      // whichever Mango field currently has focus.
       e.preventDefault();
       e.stopPropagation();
-
-      // Some scanners append Enter or Tab after the payload.
-      // We deliberately ignore these so they cannot navigate fields.
+  
+      // Scanner sends Enter/Tab when the QR payload is complete.
       if (e.key === "Enter" || e.key === "Tab") {
+        const data = qrBufferRef.current;
+  
+        qrBufferRef.current = "";
+        qrScanningRef.current = false;
+  
+        if (data) {
+          processQRData(data);
+        }
+  
         return;
       }
-
-      // Start collecting only when the JSON object begins.
-      if (e.key === "{") {
-        qrBufferRef.current = "{";
-        return;
-      }
-
-      // Ignore anything before the opening brace.
-      if (!qrBufferRef.current) return;
-
-      // Add normal scanner characters to the buffer.
+  
+      // Capture normal characters from the scanner.
       if (e.key.length === 1) {
         qrBufferRef.current += e.key;
       }
-
-      // The QR payload is a JSON object, so the closing brace completes it.
-      if (e.key === "}") {
-        const scannedText = qrBufferRef.current.trim();
-        qrBufferRef.current = "";
-
-        try {
-          const qrData = JSON.parse(scannedText);
-          processQRData(qrData);
-        } catch (err) {
-          console.error("QR JSON parse error:", err, scannedText);
-          alert("Invalid QR Code");
-        } finally {
-          setIsScanningQR(false);
-        }
-      }
     };
-
-    window.addEventListener("keydown", handleScannerKeyDown, true);
-
+  
+    window.addEventListener(
+      "keydown",
+      handleScannerKeyDown,
+      true
+    );
+  
     return () => {
-      window.removeEventListener("keydown", handleScannerKeyDown, true);
+      window.removeEventListener(
+        "keydown",
+        handleScannerKeyDown,
+        true
+      );
     };
-  }, [isScanningQR]);
+  }, []);
+
+
+        
+   
+    
 
   const handleSearchChange = (e) => {
     const value = e.target.value;
@@ -727,17 +655,28 @@ export default function Mango() {
               className="scan-btn"
               onClick={() => {
                 qrBufferRef.current = "";
-                setIsScanningQR(true);
+                qrScanningRef.current = true;
+                qrInputRef.current?.focus();
               }}
           >
-              {isScanningQR ? "🔎 Scanning QR..." : "📷 Scan QR"}
+              📷 Scan QR
           </button>
 
-          {isScanningQR && (
-            <p style={{ marginTop: "8px", textAlign: "center", color: "#2563eb", fontWeight: 600 }}>
-              Scan the QR code now. Mango will place each value into the correct field.
-            </p>
-          )}
+                      <textarea
+              ref={qrInputRef}
+              readOnly
+              tabIndex={-1}
+              style={{
+                position: "fixed",
+                left: "-10000px",
+                top: "-10000px",
+                width: "1px",
+                height: "1px",
+                opacity: 0,
+                pointerEvents: "none",
+              }}
+            />
+                
 
 
           <p className="or-text">or</p>
