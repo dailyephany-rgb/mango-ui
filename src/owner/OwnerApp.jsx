@@ -107,6 +107,7 @@ export default function OwnerApp() {
                     engineering: "/engineering.html",
                     analytics: "/analytics.html",
                     master_admin: "/master_admin.html",
+                    sales_data: "/owner_sales.html",
                     performance: "/performance.html",
                   };
 
@@ -139,6 +140,7 @@ export default function OwnerApp() {
                 <option value="engineering">Engineering Operations</option>
                 <option value="analytics">Count Analytics</option>
                 <option value="master_admin">Master Admin</option>
+                <option value="sales_data">Sales Data</option>
                 <option value="performance">Performance & Diagnostics</option>
               </select>
             </header>

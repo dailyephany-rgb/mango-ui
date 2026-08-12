@@ -46,6 +46,7 @@ export default defineConfig({
         owner_bloodgroup: resolve(__dirname, "owner_bloodgroup.html"),
         owner_outsource: resolve(__dirname, "owner_outsource.html"),
         owner_inside_lab: resolve(__dirname, "owner_lab.html"),
+        owner_sales: resolve(__dirname, "owner_sales.html"),
 
 
       },

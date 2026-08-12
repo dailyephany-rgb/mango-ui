@@ -1,0 +1,269 @@
+/* Sales Data — extends Owner UI patterns (OwnerUI.css) */
+
+.sales-root {
+  max-width: 1100px;
+}
+
+.sales-upload h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  color: #0f172a;
+}
+
+.sales-help {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.sales-upload-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.sales-btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid #0b6ef7;
+  background: #0b6ef7;
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.sales-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.sales-meta {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: #334155;
+}
+
+.sales-error {
+  margin: 8px 0 0;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+.sales-warn {
+  margin: 8px 0 0;
+  color: #b45309;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sales-linkish {
+  border: none;
+  background: none;
+  color: #0b6ef7;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  font-size: inherit;
+}
+
+.sales-tabs {
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 14px 0 12px;
+}
+
+.sales-tabs button {
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+.sales-tabs button.sales-tab-complementary.active {
+  background: #93c5fd;
+  border-color: #60a5fa;
+  color: #0f172a;
+}
+
+.sales-tabs button.sales-tab-semen.active {
+  background: #86efac;
+  border-color: #4ade80;
+  color: #14532d;
+}
+
+.sales-tabs button.sales-tab-cghs.active {
+  background: #fde047;
+  border-color: #facc15;
+  color: #713f12;
+}
+
+.sales-tabs button.sales-tab-general.active {
+  background: #f8fafc;
+  border-color: #0b6ef7;
+  color: #0f172a;
+}
+
+.sales-tabs button.sales-tab-darkBlue.active {
+  background: #1e3a8a;
+  border-color: #1e3a8a;
+  color: #fff;
+}
+
+.sales-tabs button.sales-tab-lightOrange.active {
+  background: #fdba74;
+  border-color: #fb923c;
+  color: #7c2d12;
+}
+
+.sales-unclassified-bar {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #9a3412;
+}
+
+.sales-search-bar {
+  align-items: flex-end;
+}
+
+.sales-search-bar input {
+  min-width: 260px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.sales-visible-count {
+  font-size: 12px;
+  color: #64748b;
+  padding-bottom: 8px;
+}
+
+.sales-list {
+  max-height: min(70vh, 720px);
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 8px;
+}
+
+.sales-empty {
+  padding: 24px;
+  text-align: center;
+  color: #64748b;
+}
+
+.sales-entry {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(2, 6, 23, 0.06);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  min-height: 96px;
+}
+
+.sales-entry.sales-tone-COMPLEMENTARY {
+  border-left: 4px solid #60a5fa;
+}
+.sales-entry.sales-tone-SEMEN_ANALYSIS {
+  border-left: 4px solid #4ade80;
+}
+.sales-entry.sales-tone-CGHS_RGH_LOOP {
+  border-left: 4px solid #facc15;
+}
+.sales-entry.sales-tone-GENERAL_LOOP {
+  border-left: 4px solid #cbd5e1;
+}
+.sales-entry.sales-tone-DARK_BLUE {
+  border-left: 4px solid #1e3a8a;
+}
+.sales-entry.sales-tone-LIGHT_ORANGE {
+  border-left: 4px solid #fb923c;
+}
+.sales-entry.sales-tone-UNCLASSIFIED {
+  border-left: 4px solid #f97316;
+}
+
+.sales-entry-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sales-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+  background: #f1f5f9;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.sales-move {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #0b6ef7;
+}
+
+.sales-move select {
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sales-entry-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px 10px;
+}
+
+.sales-span2 {
+  grid-column: span 2;
+}
+
+.sales-k {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.sales-v {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.sales-orig {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+@media (max-width: 720px) {
+  .sales-entry-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .sales-span2 {
+    grid-column: span 2;
+  }
+}

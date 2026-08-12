@@ -25,4 +25,6 @@ src/engineering/.ops-backups/
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+# Local sales Excel fixtures (large; keep out of git)
+src/owner/sales/fixtures/
+.pdfvenv/
