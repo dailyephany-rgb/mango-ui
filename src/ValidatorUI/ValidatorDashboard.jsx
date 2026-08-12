@@ -198,6 +198,22 @@ export default function ValidatorDashboard() {
     }
   };
 
+  const handleEditResult = async (entry, collectionName, payload) => {
+    if (!collectionName || !entry?.id || !payload) return;
+    try {
+      await updateDoc(doc(db, collectionName, entry.id), {
+        ...payload,
+        resultEditedBy: sessionStorage.getItem("loggedUser") || "Unknown",
+        resultEditedTime: serverTimestamp(),
+      });
+      alert("Results updated.");
+    } catch (err) {
+      console.error("❌ Error editing results:", err);
+      alert("Failed to update results. Check console.");
+      throw err;
+    }
+  };
+
   const currentData = useMemo(() => {
     const s = searchTerm.toLowerCase().trim();
     if (!s) return rawData;
@@ -314,6 +330,9 @@ export default function ValidatorDashboard() {
         loginMode={loginMode}
         onValidate={(entry) => handleValidate(entry, activeCollection)}
         onEntered={(entry) => handleEntered(entry, activeCollection)}
+        onEditResult={(entry, payload) =>
+          handleEditResult(entry, activeCollection, payload)
+        }
       />
       </EngComponent>
     </div>
