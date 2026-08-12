@@ -40,6 +40,9 @@ import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useScopedMasterEntries } from "../shared/hooks/useScopedMasterEntries.js";
 import SafeDateInput from "../shared/components/SafeDateInput.jsx";
+import DoubleCheckingPanel, {
+  DOUBLE_CHECK_TAB,
+} from "./DoubleCheckingPanel.jsx";
 
 export default function OutsourceRegister() {
   const [trackingMap, setTrackingMap] = useState({});
@@ -48,6 +51,7 @@ export default function OutsourceRegister() {
   const [saving, setSaving] = useState(false);
   const currentUser = sessionStorage.getItem("loggedUser") ||
   "Unknown User";
+  const isDoubleCheckTab = activeLab === DOUBLE_CHECK_TAB;
 
   const {
     regSearch,
@@ -69,14 +73,17 @@ export default function OutsourceRegister() {
     localBufferRef.current = localOutsourceData;
   }, [localOutsourceData]);
 
-  // "All" → date-only master query; specific lab → departments array-contains
+  // Lab tabs only — Double Checking does not use master_register
   const { masterEntries } = useScopedMasterEntries({
-    masterDeptKey: activeLab === "All" ? null : activeLab,
+    masterDeptKey:
+      isDoubleCheckTab || activeLab === "All" ? null : activeLab,
     dateFrom,
     dateTo,
   });
 
   useEffect(() => {
+    if (isDoubleCheckTab) return undefined;
+
     const fromStr = dateFrom || getLocalDateString();
     const toStr = dateTo || getLocalDateString();
     const start = localDayStart(fromStr);
@@ -107,9 +114,11 @@ export default function OutsourceRegister() {
       }
     );
     return () => unsubTracking();
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, isDoubleCheckTab]);
 
   const entries = useMemo(() => {
+    if (isDoubleCheckTab) return [];
+
     const expandedEntries = [];
 
     masterEntries.forEach((entry) => {
@@ -175,7 +184,7 @@ export default function OutsourceRegister() {
     });
 
     return expandedEntries;
-  }, [masterEntries, trackingMap, localOutsourceData, activeLab]);
+  }, [masterEntries, trackingMap, localOutsourceData, activeLab, isDoubleCheckTab]);
 
   const handleSave = async (entry) => {
     try {
@@ -514,11 +523,20 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
       </div>
 
       <div className="tab-container">
-        {[...Object.keys(OUTSOURCE_MAP), "All"].map((lab) => (
+        {[...Object.keys(OUTSOURCE_MAP), "All", DOUBLE_CHECK_TAB].map((lab) => (
           <button key={lab} className={`tab-btn ${activeLab === lab ? "active" : ""}`} onClick={() => setActiveLab(lab)}>{lab}</button>
         ))}
       </div>
 
+      {isDoubleCheckTab ? (
+        <DoubleCheckingPanel
+          dateFrom={dateFrom}
+          dateTo={dateTo}
+          activeSource={activeSource}
+          regSearch={regSearch}
+          currentUser={currentUser}
+        />
+      ) : (
       <div className="table-container">
         <table className="backroom-table">
           <thead>
@@ -617,7 +635,7 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
                   <td style={{ fontWeight: 'bold', color: '#1e3a8a' }}>{tatDisplay}</td>
                   <td>
                    
-                   
+                  
                   
                   <button
                       className={`collect-btn ${
@@ -677,6 +695,7 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
           </tbody>
         </table>
       </div>
+      )}
     </div>
     </EngComponent>
   );

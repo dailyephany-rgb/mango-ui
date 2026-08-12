@@ -270,3 +270,94 @@ button:disabled {
   appearance: none;
 }
 
+/* Double Checking create strip */
+.double-check-create {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.double-check-create-title {
+  font-weight: 700;
+  color: #1e3a8a;
+  margin-bottom: 12px;
+  font-size: 15px;
+}
+
+.double-check-create-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 12px;
+  align-items: end;
+}
+
+.double-check-create-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.double-check-create-grid input,
+.double-check-create-grid select {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #0f172a;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.double-check-tests {
+  grid-column: span 2;
+}
+
+.double-check-create-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.double-check-create-btn {
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.double-check-create-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.double-check-empty {
+  text-align: center;
+  color: #64748b;
+  padding: 16px;
+  margin: 0;
+}
+
+@media (max-width: 960px) {
+  .double-check-create-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .double-check-tests {
+    grid-column: span 2;
+  }
+}
+
+
