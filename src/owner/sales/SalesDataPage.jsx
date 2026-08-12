@@ -24,8 +24,8 @@ import {
 } from "./parseSalesExcel.js";
 import "./SalesData.css";
 
-const VIRTUAL_ROW = 108;
-const OVERSCAN = 8;
+const VIRTUAL_ROW = 44;
+const OVERSCAN = 12;
 
 function getLoggedUser() {
   try {
@@ -67,11 +67,60 @@ function SalesEntryCard({ entry, onMove }) {
     entry.originalClassification !== entry.currentClassification
       ? `Was ${tabLabel(entry.originalClassification)}`
       : null;
+  const billDate = entry.originalRow?.BillDate;
+  const billNo = entry.originalRow?.BillNo;
+  const consultant = entry.originalRow?.Consultant;
 
   return (
     <div className={`sales-entry sales-tone-${entry.currentClassification}`}>
-      <div className="sales-entry-top">
-        <span className="sales-badge">{badge}</span>
+      <div className="sales-entry-row">
+        <span className="sales-badge" title={origNote || badge}>
+          {badge}
+        </span>
+        <span className="sales-cell" title="Bill date">
+          <span className="sales-k">BillDate</span>
+          <span className="sales-v">{billDate || "—"}</span>
+        </span>
+        <span className="sales-cell" title="Reg No">
+          <span className="sales-k">Regno</span>
+          <span className="sales-v">{entry.regNo || "—"}</span>
+        </span>
+        <span className="sales-cell" title="Bill No">
+          <span className="sales-k">BillNo</span>
+          <span className="sales-v">{billNo ?? "—"}</span>
+        </span>
+        <span className="sales-cell sales-cell-grow" title="Patient">
+          <span className="sales-k">Name</span>
+          <span className="sales-v">{entry.name || "—"}</span>
+        </span>
+        <span className="sales-cell sales-cell-wide" title="Investigation">
+          <span className="sales-k">Investigation</span>
+          <span className="sales-v">{entry.investigation || "—"}</span>
+        </span>
+        <span className="sales-cell sales-cell-grow" title="Consultant">
+          <span className="sales-k">Consultant</span>
+          <span className="sales-v">{consultant || "—"}</span>
+        </span>
+        <span className="sales-cell" title="Category">
+          <span className="sales-k">Category</span>
+          <span className="sales-v">{entry.category || "—"}</span>
+        </span>
+        <span className="sales-cell sales-cell-num" title="Amount">
+          <span className="sales-k">Amount</span>
+          <span className="sales-v">{fmtMoney(entry.amount)}</span>
+        </span>
+        <span className="sales-cell sales-cell-num" title="Discount">
+          <span className="sales-k">Discount</span>
+          <span className="sales-v">{fmtMoney(entry.discount)}</span>
+        </span>
+        <span className="sales-cell sales-cell-num" title="Net">
+          <span className="sales-k">Netamt</span>
+          <span className="sales-v">{fmtMoney(entry.netamt)}</span>
+        </span>
+        <span className="sales-cell" title="Accession / Diagnostic No">
+          <span className="sales-k">AccessionNo</span>
+          <span className="sales-v">{entry.diagnosticNo || "—"}</span>
+        </span>
         <label className="sales-move">
           <span className="sales-move-label">MOVE TO</span>
           <select
@@ -87,48 +136,17 @@ function SalesEntryCard({ entry, onMove }) {
               ▼
             </option>
             {SALES_TABS.map((t) => (
-              <option key={t.id} value={t.id} disabled={t.id === entry.currentClassification}>
+              <option
+                key={t.id}
+                value={t.id}
+                disabled={t.id === entry.currentClassification}
+              >
                 {t.label}
               </option>
             ))}
           </select>
         </label>
       </div>
-      <div className="sales-entry-grid">
-        <div>
-          <span className="sales-k">Reg No</span>
-          <span className="sales-v">{entry.regNo || "—"}</span>
-        </div>
-        <div>
-          <span className="sales-k">Accession / Diag</span>
-          <span className="sales-v">{entry.diagnosticNo || "—"}</span>
-        </div>
-        <div className="sales-span2">
-          <span className="sales-k">Patient</span>
-          <span className="sales-v">{entry.name || "—"}</span>
-        </div>
-        <div className="sales-span2">
-          <span className="sales-k">Investigation</span>
-          <span className="sales-v">{entry.investigation || "—"}</span>
-        </div>
-        <div>
-          <span className="sales-k">Category</span>
-          <span className="sales-v">{entry.category || "—"}</span>
-        </div>
-        <div>
-          <span className="sales-k">Amount</span>
-          <span className="sales-v">{fmtMoney(entry.amount)}</span>
-        </div>
-        <div>
-          <span className="sales-k">Discount</span>
-          <span className="sales-v">{fmtMoney(entry.discount)}</span>
-        </div>
-        <div>
-          <span className="sales-k">Net</span>
-          <span className="sales-v">{fmtMoney(entry.netamt)}</span>
-        </div>
-      </div>
-      {origNote ? <div className="sales-orig">{origNote}</div> : null}
     </div>
   );
 }
