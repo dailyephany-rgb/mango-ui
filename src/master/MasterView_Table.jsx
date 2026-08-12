@@ -97,7 +97,7 @@ const MasterRegisterRow = memo(function MasterRegisterRow({
           "—"
         )}
       </td>
-      <td>{e.receiptSavedBy || "—"}</td>
+      <td className="col-saved-by">{e.receiptSavedBy || "—"}</td>
       <td>
         <button
           className={`urgent-btn ${e.urgent ? "is-urgent" : ""}`}
@@ -331,7 +331,7 @@ export default function MasterView_Table() {
               <th>Category</th>
               <th>Source</th>
               <th>Tests</th>
-              <th>Receipt Saved By</th>
+              <th className="col-saved-by">Receipt Saved By</th>
               <th>Status</th>
               <th>Action</th>
             </tr>
@@ -403,7 +403,7 @@ export default function MasterView_Table() {
                     onChange={(e) => setColFilter("tests", e.target.value)}
                   />
                 </th>
-                <th className="col-filter-cell">
+                <th className="col-filter-cell col-saved-by">
                   <input
                     type="text"
                     placeholder="Filter saved by…"

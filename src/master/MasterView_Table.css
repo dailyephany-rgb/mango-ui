@@ -306,6 +306,13 @@
   width: 150px;
 }
 
+.master-table th.col-saved-by,
+.master-table td.col-saved-by {
+  min-width: 150px;
+  width: 150px;
+  white-space: nowrap;
+}
+
 .col-filter-actions {
   text-align: center;
 }
