@@ -1,5 +1,5 @@
 
-import React, { useState, memo } from "react";
+import React, { useMemo, useState, memo } from "react";
 import "./MasterView_Table.css";
 import { db } from "../firebaseConfig.js";
 import {
@@ -10,6 +10,55 @@ import {
 import { useMasterRegisterSnapshots } from "../shared/hooks/useMasterRegisterSnapshots.js";
 import { useStableCallback } from "../shared/hooks/useStableCallback.js";
 import SafeDateInput from "../shared/components/SafeDateInput.jsx";
+
+const EMPTY_COL_FILTERS = {
+  name: "",
+  father: "",
+  doctor: "",
+  category: "",
+  source: "",
+  tests: "",
+  status: "",
+};
+
+function testsHaystack(entry) {
+  const list = entry.selectedTests || [];
+  return list
+    .map((t) => {
+      if (typeof t === "string") return t;
+      return `${t.dept || ""} ${t.test || ""}`;
+    })
+    .join(" ")
+    .toLowerCase();
+}
+
+function matchesColFilters(entry, colFilters) {
+  const includes = (value, needle) => {
+    if (!needle.trim()) return true;
+    return String(value || "")
+      .toLowerCase()
+      .includes(needle.trim().toLowerCase());
+  };
+
+  if (!includes(entry.name, colFilters.name)) return false;
+  if (!includes(entry.father, colFilters.father)) return false;
+  if (!includes(entry.doctor, colFilters.doctor)) return false;
+  if (!includes(entry.category, colFilters.category)) return false;
+  if (!includes(entry.source, colFilters.source)) return false;
+
+  if (colFilters.tests.trim()) {
+    const needle = colFilters.tests.trim().toLowerCase();
+    if (!testsHaystack(entry).includes(needle)) return false;
+  }
+
+  if (colFilters.status.trim()) {
+    const needle = colFilters.status.trim().toLowerCase();
+    const label = entry.urgent ? "urgent" : "normal";
+    if (!label.includes(needle)) return false;
+  }
+
+  return true;
+}
 
 const MasterRegisterRow = memo(function MasterRegisterRow({
   entry: e,
@@ -83,31 +132,28 @@ const MasterRegisterRow = memo(function MasterRegisterRow({
 });
 
 export default function MasterView_Table() {
-  
-  
   const [dateFrom, setDateFrom] = useState(() => {
     const now = new Date();
     const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
   });
 
   const [dateTo, setDateTo] = useState(() => {
     const now = new Date();
     const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
   });
 
   const [sourceFilter, setSourceFilter] = useState("All");
   const [searchReg, setSearchReg] = useState("");
+  const [showColFilters, setShowColFilters] = useState(false);
+  const [colFilters, setColFilters] = useState(EMPTY_COL_FILTERS);
 
-  const {
-    masterEntries,
-    loading,
-  } = useMasterRegisterSnapshots({
+  const { masterEntries } = useMasterRegisterSnapshots({
     dateFrom,
     dateTo,
   });
@@ -124,8 +170,6 @@ export default function MasterView_Table() {
     return null;
   };
 
-  
-
   // Keep master_register + report_details in sync (Card view reads report_details)
   const toggleUrgent = async (docId, currentUrgent) => {
     const next = !currentUrgent;
@@ -141,11 +185,13 @@ export default function MasterView_Table() {
 
   const handleEdit = (entry) => {
     localStorage.setItem("editPatientData", JSON.stringify(entry));
-    window.location.href = "/"; 
+    window.location.href = "/";
   };
 
   const handleDelete = async (docId, name) => {
-    const confirmDelete = window.confirm(`Are you sure you want to delete entry for ${name}?`);
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete entry for ${name}?`
+    );
     if (confirmDelete) {
       try {
         await Promise.all([
@@ -160,30 +206,43 @@ export default function MasterView_Table() {
     }
   };
 
-  const filteredEntries = masterEntries
-    .filter((entry) => {
-      
+  const setColFilter = (key, value) => {
+    setColFilters((prev) => ({ ...prev, [key]: value }));
+  };
 
+  const clearColFilters = () => setColFilters(EMPTY_COL_FILTERS);
 
-      const matchesSource = sourceFilter === "All" || entry.source?.toLowerCase() === sourceFilter.toLowerCase();
-      
-      const searchLower = searchReg.toLowerCase();
-      const matchesSearch = !searchReg || 
-        (entry.regNo?.toLowerCase().includes(searchLower)) || 
-        (entry.diagnosticNo?.toLowerCase().includes(searchLower));
+  const hasActiveColFilters = Object.values(colFilters).some((v) =>
+    String(v || "").trim()
+  );
 
-        return matchesSource && matchesSearch;
-    })
-    .sort((a, b) => {
-      if (a.urgent !== b.urgent) {
-        return a.urgent ? -1 : 1;
-      }
-      const dateA = parseDate(a);
-      const dateB = parseDate(b);
-      if (!dateA) return 1;
-      if (!dateB) return -1;
-      return dateA - dateB; 
-    });
+  const filteredEntries = useMemo(() => {
+    return masterEntries
+      .filter((entry) => {
+        const matchesSource =
+          sourceFilter === "All" ||
+          entry.source?.toLowerCase() === sourceFilter.toLowerCase();
+
+        const searchLower = searchReg.toLowerCase();
+        const matchesSearch =
+          !searchReg ||
+          entry.regNo?.toLowerCase().includes(searchLower) ||
+          entry.diagnosticNo?.toLowerCase().includes(searchLower);
+
+        if (!matchesSource || !matchesSearch) return false;
+        return matchesColFilters(entry, colFilters);
+      })
+      .sort((a, b) => {
+        if (a.urgent !== b.urgent) {
+          return a.urgent ? -1 : 1;
+        }
+        const dateA = parseDate(a);
+        const dateB = parseDate(b);
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return dateA - dateB;
+      });
+  }, [masterEntries, sourceFilter, searchReg, colFilters]);
 
   const onToggleUrgent = useStableCallback((docId, currentUrgent) => {
     toggleUrgent(docId, currentUrgent);
@@ -197,18 +256,39 @@ export default function MasterView_Table() {
 
   return (
     <div className="master-container">
-      <div className="header-bar"><h2>📋 Master Register — Table View</h2></div>
+      <div className="header-bar">
+        <h2>📋 Master Register — Table View</h2>
+      </div>
       <div className="filter-bar">
         <div className="filter-left">
-          <input type="text" placeholder="Search Reg or Diag No..." value={searchReg} onChange={(e) => setSearchReg(e.target.value)} />
+          <input
+            type="text"
+            placeholder="Search Reg or Diag No..."
+            value={searchReg}
+            onChange={(e) => setSearchReg(e.target.value)}
+          />
           <label>Date:</label>
-          <SafeDateInput aria-label="Date from" value={dateFrom} onChange={(v) => v && setDateFrom(v)} />
+          <SafeDateInput
+            aria-label="Date from"
+            value={dateFrom}
+            onChange={(v) => v && setDateFrom(v)}
+          />
           <span>to</span>
-          <SafeDateInput aria-label="Date to" value={dateTo} onChange={(v) => v && setDateTo(v)} />
+          <SafeDateInput
+            aria-label="Date to"
+            value={dateTo}
+            onChange={(v) => v && setDateTo(v)}
+          />
         </div>
         <div className="source-buttons">
           {["OPD", "IPD", "Third Floor", "All"].map((src) => (
-            <button key={src} className={sourceFilter === src ? "active" : ""} onClick={() => setSourceFilter(src)}>{src}</button>
+            <button
+              key={src}
+              className={sourceFilter === src ? "active" : ""}
+              onClick={() => setSourceFilter(src)}
+            >
+              {src}
+            </button>
           ))}
         </div>
       </div>
@@ -216,10 +296,106 @@ export default function MasterView_Table() {
         <table className="master-table">
           <thead>
             <tr>
-              <th>Reg No</th><th>Diagnostic No</th><th>Name</th><th>Father</th><th>Doctor</th><th>Category</th><th>Source</th><th>Tests</th>
-              <th>Status</th> 
+              <th>Reg No</th>
+              <th>Diagnostic No</th>
+              <th>
+                <span className="th-with-filter">
+                  Name
+                  <button
+                    type="button"
+                    className={`col-filter-toggle ${
+                      showColFilters ? "open" : ""
+                    } ${hasActiveColFilters ? "active" : ""}`}
+                    aria-label="Toggle column filters"
+                    aria-expanded={showColFilters}
+                    title="Column filters"
+                    onClick={() => setShowColFilters((v) => !v)}
+                  >
+                    ▼
+                  </button>
+                </span>
+              </th>
+              <th>Father</th>
+              <th>Doctor</th>
+              <th>Category</th>
+              <th>Source</th>
+              <th>Tests</th>
+              <th>Status</th>
               <th>Action</th>
             </tr>
+            {showColFilters ? (
+              <tr className="col-filter-row">
+                <th className="col-filter-cell col-filter-locked" />
+                <th className="col-filter-cell col-filter-locked" />
+                <th className="col-filter-cell">
+                  <input
+                    type="text"
+                    placeholder="Filter name…"
+                    value={colFilters.name}
+                    onChange={(e) => setColFilter("name", e.target.value)}
+                  />
+                </th>
+                <th className="col-filter-cell">
+                  <input
+                    type="text"
+                    placeholder="Filter father…"
+                    value={colFilters.father}
+                    onChange={(e) => setColFilter("father", e.target.value)}
+                  />
+                </th>
+                <th className="col-filter-cell">
+                  <input
+                    type="text"
+                    placeholder="Filter doctor…"
+                    value={colFilters.doctor}
+                    onChange={(e) => setColFilter("doctor", e.target.value)}
+                  />
+                </th>
+                <th className="col-filter-cell">
+                  <input
+                    type="text"
+                    placeholder="e.g. General"
+                    value={colFilters.category}
+                    onChange={(e) => setColFilter("category", e.target.value)}
+                  />
+                </th>
+                <th className="col-filter-cell">
+                  <input
+                    type="text"
+                    placeholder="e.g. OPD"
+                    value={colFilters.source}
+                    onChange={(e) => setColFilter("source", e.target.value)}
+                  />
+                </th>
+                <th className="col-filter-cell">
+                  <input
+                    type="text"
+                    placeholder="e.g. lft"
+                    value={colFilters.tests}
+                    onChange={(e) => setColFilter("tests", e.target.value)}
+                  />
+                </th>
+                <th className="col-filter-cell">
+                  <input
+                    type="text"
+                    placeholder="urgent / normal"
+                    value={colFilters.status}
+                    onChange={(e) => setColFilter("status", e.target.value)}
+                  />
+                </th>
+                <th className="col-filter-cell col-filter-actions">
+                  {hasActiveColFilters ? (
+                    <button
+                      type="button"
+                      className="col-filter-clear"
+                      onClick={clearColFilters}
+                    >
+                      Clear
+                    </button>
+                  ) : null}
+                </th>
+              </tr>
+            ) : null}
           </thead>
           <tbody>
             {filteredEntries.map((e) => (
