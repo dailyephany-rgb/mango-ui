@@ -31,7 +31,6 @@ const TABLE_COLUMNS = [
   { key: "status", label: "Status" },
   { key: "billDate", label: "BillDate" },
   { key: "regNo", label: "Regno" },
-  { key: "billNo", label: "BillNo" },
   { key: "name", label: "Name" },
   { key: "investigation", label: "Investigation" },
   { key: "consultant", label: "Consultant" },
@@ -84,13 +83,11 @@ function SalesEntryRow({ entry, onMove }) {
       ? `Was ${tabLabel(entry.originalClassification)}`
       : null;
   const billDate = entry.originalRow?.BillDate;
-  const billNo = entry.originalRow?.BillNo;
   const consultant = entry.originalRow?.Consultant;
   const cells = [
     { key: "status", value: badge, title: origNote || badge, className: "sales-col-status" },
     { key: "billDate", value: billDate || "—", title: billDate },
     { key: "regNo", value: entry.regNo || "—", title: entry.regNo },
-    { key: "billNo", value: billNo ?? "—", title: billNo },
     { key: "name", value: entry.name || "—", title: entry.name },
     {
       key: "investigation",
