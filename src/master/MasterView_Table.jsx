@@ -20,6 +20,7 @@ const EMPTY_COL_FILTERS = {
   category: "",
   source: "",
   tests: "",
+  receiptSavedBy: "",
   status: "",
 };
 
@@ -54,6 +55,8 @@ function matchesColFilters(entry, colFilters) {
     const needle = colFilters.tests.trim().toLowerCase();
     if (!testsHaystack(entry).includes(needle)) return false;
   }
+
+  if (!includes(entry.receiptSavedBy, colFilters.receiptSavedBy)) return false;
 
   if (colFilters.status.trim()) {
     const needle = colFilters.status.trim().toLowerCase();
@@ -94,6 +97,7 @@ const MasterRegisterRow = memo(function MasterRegisterRow({
           "—"
         )}
       </td>
+      <td>{e.receiptSavedBy || "—"}</td>
       <td>
         <button
           className={`urgent-btn ${e.urgent ? "is-urgent" : ""}`}
@@ -133,6 +137,7 @@ const MasterRegisterRow = memo(function MasterRegisterRow({
     a.category === b.category &&
     a.source === b.source &&
     a.urgent === b.urgent &&
+    a.receiptSavedBy === b.receiptSavedBy &&
     a.selectedTests === b.selectedTests
   );
 });
@@ -326,6 +331,7 @@ export default function MasterView_Table() {
               <th>Category</th>
               <th>Source</th>
               <th>Tests</th>
+              <th>Receipt Saved By</th>
               <th>Status</th>
               <th>Action</th>
             </tr>
@@ -395,6 +401,16 @@ export default function MasterView_Table() {
                     placeholder="e.g. lft"
                     value={colFilters.tests}
                     onChange={(e) => setColFilter("tests", e.target.value)}
+                  />
+                </th>
+                <th className="col-filter-cell">
+                  <input
+                    type="text"
+                    placeholder="Filter saved by…"
+                    value={colFilters.receiptSavedBy}
+                    onChange={(e) =>
+                      setColFilter("receiptSavedBy", e.target.value)
+                    }
                   />
                 </th>
                 <th className="col-filter-cell">
