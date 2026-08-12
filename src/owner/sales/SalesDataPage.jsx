@@ -24,8 +24,24 @@ import {
 } from "./parseSalesExcel.js";
 import "./SalesData.css";
 
-const VIRTUAL_ROW = 44;
-const OVERSCAN = 12;
+const VIRTUAL_ROW = 36;
+const OVERSCAN = 14;
+
+const TABLE_COLUMNS = [
+  { key: "status", label: "Status" },
+  { key: "billDate", label: "BillDate" },
+  { key: "regNo", label: "Regno" },
+  { key: "billNo", label: "BillNo" },
+  { key: "name", label: "Name" },
+  { key: "investigation", label: "Investigation" },
+  { key: "consultant", label: "Consultant" },
+  { key: "category", label: "Category" },
+  { key: "amount", label: "Amount", align: "right" },
+  { key: "discount", label: "Discount", align: "right" },
+  { key: "netamt", label: "Netamt", align: "right" },
+  { key: "accession", label: "AccessionNo" },
+  { key: "move", label: "Move To" },
+];
 
 function getLoggedUser() {
   try {
@@ -56,7 +72,7 @@ function fmtMoney(v) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
-function SalesEntryCard({ entry, onMove }) {
+function SalesEntryRow({ entry, onMove }) {
   const auto =
     entry.classificationSource === "automatic"
       ? "AUTO"
@@ -70,83 +86,102 @@ function SalesEntryCard({ entry, onMove }) {
   const billDate = entry.originalRow?.BillDate;
   const billNo = entry.originalRow?.BillNo;
   const consultant = entry.originalRow?.Consultant;
+  const cells = [
+    { key: "status", value: badge, title: origNote || badge, className: "sales-col-status" },
+    { key: "billDate", value: billDate || "—", title: billDate },
+    { key: "regNo", value: entry.regNo || "—", title: entry.regNo },
+    { key: "billNo", value: billNo ?? "—", title: billNo },
+    { key: "name", value: entry.name || "—", title: entry.name },
+    {
+      key: "investigation",
+      value: entry.investigation || "—",
+      title: entry.investigation,
+    },
+    { key: "consultant", value: consultant || "—", title: consultant },
+    { key: "category", value: entry.category || "—", title: entry.category },
+    {
+      key: "amount",
+      value: fmtMoney(entry.amount),
+      className: "sales-col-num",
+    },
+    {
+      key: "discount",
+      value: fmtMoney(entry.discount),
+      className: "sales-col-num",
+    },
+    {
+      key: "netamt",
+      value: fmtMoney(entry.netamt),
+      className: "sales-col-num",
+    },
+    {
+      key: "accession",
+      value: entry.diagnosticNo || "—",
+      title: entry.diagnosticNo,
+    },
+  ];
 
   return (
-    <div className={`sales-entry sales-tone-${entry.currentClassification}`}>
-      <div className="sales-entry-row">
-        <span className="sales-badge" title={origNote || badge}>
-          {badge}
+    <div
+      className={`sales-entry sales-tone-${entry.currentClassification}`}
+      role="row"
+    >
+      {cells.map((c) => (
+        <span
+          key={c.key}
+          className={`sales-cell ${c.className || ""}`}
+          title={c.title || undefined}
+          role="cell"
+        >
+          {c.key === "status" ? (
+            <span className="sales-badge">{c.value}</span>
+          ) : (
+            c.value
+          )}
         </span>
-        <span className="sales-cell" title="Bill date">
-          <span className="sales-k">BillDate</span>
-          <span className="sales-v">{billDate || "—"}</span>
-        </span>
-        <span className="sales-cell" title="Reg No">
-          <span className="sales-k">Regno</span>
-          <span className="sales-v">{entry.regNo || "—"}</span>
-        </span>
-        <span className="sales-cell" title="Bill No">
-          <span className="sales-k">BillNo</span>
-          <span className="sales-v">{billNo ?? "—"}</span>
-        </span>
-        <span className="sales-cell sales-cell-grow" title="Patient">
-          <span className="sales-k">Name</span>
-          <span className="sales-v">{entry.name || "—"}</span>
-        </span>
-        <span className="sales-cell sales-cell-wide" title="Investigation">
-          <span className="sales-k">Investigation</span>
-          <span className="sales-v">{entry.investigation || "—"}</span>
-        </span>
-        <span className="sales-cell sales-cell-grow" title="Consultant">
-          <span className="sales-k">Consultant</span>
-          <span className="sales-v">{consultant || "—"}</span>
-        </span>
-        <span className="sales-cell" title="Category">
-          <span className="sales-k">Category</span>
-          <span className="sales-v">{entry.category || "—"}</span>
-        </span>
-        <span className="sales-cell sales-cell-num" title="Amount">
-          <span className="sales-k">Amount</span>
-          <span className="sales-v">{fmtMoney(entry.amount)}</span>
-        </span>
-        <span className="sales-cell sales-cell-num" title="Discount">
-          <span className="sales-k">Discount</span>
-          <span className="sales-v">{fmtMoney(entry.discount)}</span>
-        </span>
-        <span className="sales-cell sales-cell-num" title="Net">
-          <span className="sales-k">Netamt</span>
-          <span className="sales-v">{fmtMoney(entry.netamt)}</span>
-        </span>
-        <span className="sales-cell" title="Accession / Diagnostic No">
-          <span className="sales-k">AccessionNo</span>
-          <span className="sales-v">{entry.diagnosticNo || "—"}</span>
-        </span>
-        <label className="sales-move">
-          <span className="sales-move-label">MOVE TO</span>
-          <select
-            aria-label="Move entry to classification"
-            defaultValue=""
-            onChange={(e) => {
-              const dest = e.target.value;
-              e.target.value = "";
-              if (dest) onMove(entry.id, dest);
-            }}
-          >
-            <option value="" disabled>
-              ▼
+      ))}
+      <label className="sales-move" role="cell">
+        <select
+          aria-label="Move entry to classification"
+          defaultValue=""
+          onChange={(e) => {
+            const dest = e.target.value;
+            e.target.value = "";
+            if (dest) onMove(entry.id, dest);
+          }}
+        >
+          <option value="" disabled>
+            Move…
+          </option>
+          {SALES_TABS.map((t) => (
+            <option
+              key={t.id}
+              value={t.id}
+              disabled={t.id === entry.currentClassification}
+            >
+              {t.label}
             </option>
-            {SALES_TABS.map((t) => (
-              <option
-                key={t.id}
-                value={t.id}
-                disabled={t.id === entry.currentClassification}
-              >
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+function SalesTableHeader() {
+  return (
+    <div className="sales-table-header" role="row">
+      {TABLE_COLUMNS.map((col) => (
+        <span
+          key={col.key}
+          className={`sales-th${col.align === "right" ? " sales-col-num" : ""}${
+            col.key === "status" ? " sales-col-status" : ""
+          }`}
+          role="columnheader"
+        >
+          {col.label}
+        </span>
+      ))}
     </div>
   );
 }
@@ -159,8 +194,12 @@ function VirtualEntryList({ items, onMove }) {
     const el = parentRef.current;
     if (!el) return undefined;
     const onScroll = () => {
-      const start = Math.max(0, Math.floor(el.scrollTop / VIRTUAL_ROW) - OVERSCAN);
-      const visible = Math.ceil(el.clientHeight / VIRTUAL_ROW) + OVERSCAN * 2;
+      const start = Math.max(
+        0,
+        Math.floor(el.scrollTop / VIRTUAL_ROW) - OVERSCAN
+      );
+      const visible =
+        Math.ceil(el.clientHeight / VIRTUAL_ROW) + OVERSCAN * 2;
       setRange({ start, end: Math.min(items.length, start + visible) });
     };
     onScroll();
@@ -177,12 +216,17 @@ function VirtualEntryList({ items, onMove }) {
   const padBottom = Math.max(0, (items.length - range.end) * VIRTUAL_ROW);
 
   return (
-    <div className="sales-list table-wrapper" ref={parentRef}>
-      <div style={{ height: padTop }} />
-      {slice.map((entry) => (
-        <SalesEntryCard key={entry.id} entry={entry} onMove={onMove} />
-      ))}
-      <div style={{ height: padBottom }} />
+    <div className="sales-table-wrap">
+      <div className="sales-table-scroll" ref={parentRef}>
+        <div className="sales-table-inner">
+          <SalesTableHeader />
+          <div style={{ height: padTop }} aria-hidden="true" />
+          {slice.map((entry) => (
+            <SalesEntryRow key={entry.id} entry={entry} onMove={onMove} />
+          ))}
+          <div style={{ height: padBottom }} aria-hidden="true" />
+        </div>
+      </div>
     </div>
   );
 }

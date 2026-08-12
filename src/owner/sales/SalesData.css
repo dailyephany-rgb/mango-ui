@@ -1,7 +1,23 @@
 /* Sales Data — extends Owner UI patterns (OwnerUI.css) */
 
 .sales-root {
-  max-width: 1100px;
+  max-width: none;
+  width: 100%;
+  --sales-cols:
+    118px
+    168px
+    124px
+    118px
+    200px
+    360px
+    260px
+    200px
+    80px
+    80px
+    80px
+    132px
+    128px;
+  --sales-table-width: 2140px;
 }
 
 .sales-upload h3 {
@@ -144,137 +160,102 @@
   padding-bottom: 8px;
 }
 
-.sales-list {
-  max-height: min(70vh, 720px);
-  overflow: auto;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #f8fafc;
-  padding: 8px;
-}
-
 .sales-empty {
   padding: 24px;
   text-align: center;
   color: #64748b;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+/* Table shell: one scroller for X + Y; header sticks on top */
+.sales-table-wrap {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.sales-table-scroll {
+  max-height: min(70vh, 720px);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sales-table-inner {
+  min-width: var(--sales-table-width);
+  width: max-content;
+}
+
+.sales-table-header,
+.sales-entry {
+  display: grid;
+  grid-template-columns: var(--sales-cols);
+  column-gap: 10px;
+  align-items: center;
+  padding: 0 12px;
+  box-sizing: border-box;
+  width: var(--sales-table-width);
+}
+
+.sales-table-header {
+  height: 36px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+.sales-th {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sales-entry {
+  height: 36px;
+  border-bottom: 1px solid #f1f5f9;
   background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  box-shadow: 0 1px 2px rgba(2, 6, 23, 0.04);
-  padding: 4px 8px;
-  margin-bottom: 4px;
-  min-height: 40px;
+}
+
+.sales-entry:hover {
+  background: #f0f7ff;
 }
 
 .sales-entry.sales-tone-COMPLEMENTARY {
-  border-left: 4px solid #60a5fa;
+  box-shadow: inset 3px 0 0 #60a5fa;
 }
 .sales-entry.sales-tone-SEMEN_ANALYSIS {
-  border-left: 4px solid #4ade80;
+  box-shadow: inset 3px 0 0 #4ade80;
 }
 .sales-entry.sales-tone-CGHS_RGH_LOOP {
-  border-left: 4px solid #facc15;
+  box-shadow: inset 3px 0 0 #facc15;
 }
 .sales-entry.sales-tone-GENERAL_LOOP {
-  border-left: 4px solid #cbd5e1;
+  box-shadow: inset 3px 0 0 #cbd5e1;
 }
 .sales-entry.sales-tone-DARK_BLUE {
-  border-left: 4px solid #1e3a8a;
+  box-shadow: inset 3px 0 0 #1e3a8a;
 }
 .sales-entry.sales-tone-LIGHT_ORANGE {
-  border-left: 4px solid #fb923c;
+  box-shadow: inset 3px 0 0 #fb923c;
 }
 .sales-entry.sales-tone-UNCLASSIFIED {
-  border-left: 4px solid #f97316;
-}
-
-/* One straight Excel-style row */
-.sales-entry-row {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 8px;
-  overflow-x: auto;
-  min-height: 36px;
-}
-
-.sales-badge {
-  flex: 0 0 auto;
-  font-size: 10px;
-  font-weight: 700;
-  color: #334155;
-  background: #f1f5f9;
-  border-radius: 999px;
-  padding: 2px 7px;
-  white-space: nowrap;
+  box-shadow: inset 3px 0 0 #f97316;
 }
 
 .sales-cell {
-  flex: 0 0 auto;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0;
-}
-
-.sales-cell-grow {
-  flex: 1 1 120px;
-  max-width: 180px;
-}
-
-.sales-cell-wide {
-  flex: 1 1 180px;
-  max-width: 260px;
-}
-
-.sales-cell-num {
-  flex: 0 0 56px;
-  text-align: right;
-}
-
-.sales-cell-num .sales-v {
-  text-align: right;
-}
-
-.sales-move {
-  flex: 0 0 auto;
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #0b6ef7;
-  white-space: nowrap;
-}
-
-.sales-move select {
-  padding: 2px 4px;
-  border-radius: 4px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  font-size: 11px;
-  cursor: pointer;
-}
-
-.sales-k {
-  display: block;
-  font-size: 9px;
-  font-weight: 600;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  line-height: 1.1;
-}
-
-.sales-v {
-  display: block;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 550;
   color: #0f172a;
   white-space: nowrap;
   overflow: hidden;
@@ -282,3 +263,51 @@
   line-height: 1.25;
 }
 
+.sales-col-status {
+  display: flex;
+  align-items: center;
+}
+
+.sales-col-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sales-badge {
+  display: inline-block;
+  max-width: 100%;
+  font-size: 10px;
+  font-weight: 700;
+  color: #334155;
+  background: #e2e8f0;
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sales-move {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin: 0;
+}
+
+.sales-move select {
+  width: 100%;
+  max-width: 120px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0b6ef7;
+  cursor: pointer;
+}
+
+.sales-move select:hover {
+  border-color: #0b6ef7;
+  background: #f8fbff;
+}
