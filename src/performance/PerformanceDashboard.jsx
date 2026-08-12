@@ -478,6 +478,55 @@ function DashboardInner() {
               })}
             </tbody>
           </table>
+
+          <h2 style={{ marginTop: "1.5rem" }}>Slow Page Recorder</h2>
+          <p className="muted">
+            Auto-recorded when total load ≥ 30s (timeline event kind{" "}
+            <code>slow_page</code>).
+          </p>
+          <table className="perf-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Page</th>
+                <th>Dept</th>
+                <th>Duration</th>
+                <th>Online</th>
+                <th>Cache</th>
+                <th>Docs</th>
+                <th>Queries</th>
+                <th>Listeners</th>
+                <th>Heap</th>
+                <th>Prev OK</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(filtered.events || [])
+                .filter((e) => e.kind === "slow_page")
+                .slice()
+                .reverse()
+                .slice(0, 40)
+                .map((e, i) => (
+                  <tr key={`${e.id || e.at}-${i}`}>
+                    <td>{new Date(e.at).toLocaleString()}</td>
+                    <td>{e.page}</td>
+                    <td>{e.department}</td>
+                    <td>{ms(e.totalMs)}</td>
+                    <td>{e.networkOnline === false ? "Offline" : "Online"}</td>
+                    <td>{e.cacheHit ? "Hit" : "Miss"}</td>
+                    <td>{e.snapshotDocCount ?? "—"}</td>
+                    <td>{e.queryCount ?? "—"}</td>
+                    <td>{e.listenerCount ?? "—"}</td>
+                    <td>{bytes(e.heapUsed)}</td>
+                    <td>{ms(e.previousSuccessfulLoadMs)}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+          {(filtered.events || []).filter((e) => e.kind === "slow_page")
+            .length === 0 && (
+            <p className="muted">No slow page events in this date range.</p>
+          )}
         </div>
       )}
 

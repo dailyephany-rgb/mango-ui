@@ -857,18 +857,26 @@ const qrScanningRef = useRef(false);
         const reportDetailsEntry = {
           regNo,
           diagnosticNo: diagNo,
-        
+
           name: formData.name,
+          father: formData.father,
+          age: formData.age,
+          ageUnit: formData.ageUnit,
+          gender: formData.gender,
           doctor: formData.doctor,
           phone: formData.phone,
           category: formData.category,
           source: formData.source,
-        
+          urgent: formData.urgent || false,
+
           selectedTests: formData.selectedTests,
-        
+
           timePrinted: fullTimePrinted,
           timeCollected: finalTimeCollected,
-        
+
+          // Denormalized dept keys (same as master_register) for queries
+          departments: entryData.departments,
+
           receiptSavedBy:
             sessionStorage.getItem("loggedUser") || "Unknown",
         };
@@ -945,7 +953,9 @@ const qrScanningRef = useRef(false);
         { merge: true }
       );
     } else {
-      // Preserve workflow progress
+      // Update shared fields; preserve existing workflow progress maps.
+      // Only seed empty workflow containers when the doc is missing that map.
+      const existing = reportSnap.data() || {};
       const {
         routineReportsScanned,
         routineReportsSaved,
@@ -957,7 +967,24 @@ const qrScanningRef = useRef(false);
         outsourceReportsDelivered,
         ...editReportDetails
       } = reportDetailsEntry;
-    
+
+      const workflowSeeds = {
+        routineReportsScanned,
+        routineReportsSaved,
+        routineReportsValidated,
+        routineReportsEntered,
+        insideLabReportsSaved,
+        outsourceReportsCollected,
+        outsourceReportsReceived,
+        outsourceReportsDelivered,
+      };
+
+      for (const [key, value] of Object.entries(workflowSeeds)) {
+        if (value != null && existing[key] == null) {
+          editReportDetails[key] = value;
+        }
+      }
+
       await setDoc(
         reportDocRef,
         editReportDetails,

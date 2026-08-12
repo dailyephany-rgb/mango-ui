@@ -126,12 +126,14 @@ export default function MasterView_Table() {
 
   
 
-  // FIX: Use e.id instead of regNo to target the composite ID in Firestore
+  // Keep master_register + report_details in sync (Card view reads report_details)
   const toggleUrgent = async (docId, currentUrgent) => {
+    const next = !currentUrgent;
     try {
-      await setDoc(doc(db, "master_register", docId), { 
-        urgent: !currentUrgent 
-      }, { merge: true });
+      await Promise.all([
+        setDoc(doc(db, "master_register", docId), { urgent: next }, { merge: true }),
+        setDoc(doc(db, "report_details", docId), { urgent: next }, { merge: true }),
+      ]);
     } catch (error) {
       console.error("Error updating urgency: ", error);
     }
@@ -142,15 +144,18 @@ export default function MasterView_Table() {
     window.location.href = "/"; 
   };
 
-  // FIX: Use e.id instead of regNo for deletion
   const handleDelete = async (docId, name) => {
     const confirmDelete = window.confirm(`Are you sure you want to delete entry for ${name}?`);
     if (confirmDelete) {
       try {
-        await deleteDoc(doc(db, "master_register", docId));
+        await Promise.all([
+          deleteDoc(doc(db, "master_register", docId)),
+          deleteDoc(doc(db, "report_details", docId)),
+        ]);
         alert("✅ Deleted successfully.");
       } catch (error) {
         console.error(error);
+        alert(`❌ Error deleting entry: ${error.message}`);
       }
     }
   };

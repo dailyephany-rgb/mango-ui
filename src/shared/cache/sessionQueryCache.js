@@ -7,8 +7,13 @@ const PREFIX = "mango.sqc.v1:";
 
 function emitCache(partial) {
   try {
+    const key = partial?.key || "";
+    const layer =
+      typeof key === "string" && key.startsWith("static:")
+        ? "static"
+        : partial.layer || "session";
     import("../../performance/performanceCollector.js")
-      .then((m) => m.recordCacheEvent?.(partial))
+      .then((m) => m.recordCacheEvent?.({ ...partial, layer }))
       .catch(() => {});
   } catch {
     /* ignore */
