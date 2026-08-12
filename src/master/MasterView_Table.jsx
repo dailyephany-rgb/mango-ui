@@ -12,6 +12,8 @@ import { useStableCallback } from "../shared/hooks/useStableCallback.js";
 import SafeDateInput from "../shared/components/SafeDateInput.jsx";
 
 const EMPTY_COL_FILTERS = {
+  regNo: "",
+  diagnosticNo: "",
   name: "",
   father: "",
   doctor: "",
@@ -40,6 +42,8 @@ function matchesColFilters(entry, colFilters) {
       .includes(needle.trim().toLowerCase());
   };
 
+  if (!includes(entry.regNo, colFilters.regNo)) return false;
+  if (!includes(entry.diagnosticNo, colFilters.diagnosticNo)) return false;
   if (!includes(entry.name, colFilters.name)) return false;
   if (!includes(entry.father, colFilters.father)) return false;
   if (!includes(entry.doctor, colFilters.doctor)) return false;
@@ -68,8 +72,10 @@ const MasterRegisterRow = memo(function MasterRegisterRow({
 }) {
   return (
     <tr>
-      <td style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
-      <td>{e.diagnosticNo || "—"}</td>
+      <td className="col-reg" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>
+        {e.regNo}
+      </td>
+      <td className="col-diag">{e.diagnosticNo || "—"}</td>
       <td>{e.name}</td>
       <td>{e.father}</td>
       <td>{e.doctor}</td>
@@ -296,8 +302,8 @@ export default function MasterView_Table() {
         <table className="master-table">
           <thead>
             <tr>
-              <th>Reg No</th>
-              <th>Diagnostic No</th>
+              <th className="col-reg">Reg No</th>
+              <th className="col-diag">Diagnostic No</th>
               <th>
                 <span className="th-with-filter">
                   Name
@@ -325,8 +331,24 @@ export default function MasterView_Table() {
             </tr>
             {showColFilters ? (
               <tr className="col-filter-row">
-                <th className="col-filter-cell col-filter-locked" />
-                <th className="col-filter-cell col-filter-locked" />
+                <th className="col-filter-cell col-reg">
+                  <input
+                    type="text"
+                    placeholder="Filter reg…"
+                    value={colFilters.regNo}
+                    onChange={(e) => setColFilter("regNo", e.target.value)}
+                  />
+                </th>
+                <th className="col-filter-cell col-diag">
+                  <input
+                    type="text"
+                    placeholder="Filter diag…"
+                    value={colFilters.diagnosticNo}
+                    onChange={(e) =>
+                      setColFilter("diagnosticNo", e.target.value)
+                    }
+                  />
+                </th>
                 <th className="col-filter-cell">
                   <input
                     type="text"
