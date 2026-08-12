@@ -18,6 +18,7 @@ import {
 import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFirestore.js";
 import { db } from "../firebaseConfig";
 import OUTSOURCE_MAP from "../Outsource.json";
+import testMapping from "../test_mapping.json";
 import {
   parseEntryDate,
   getLocalDateString,
@@ -30,6 +31,65 @@ export const DOUBLE_CHECK_TAB = "Double Checking";
 export const DOUBLE_CHECK_COLLECTION = "double_check_outsource";
 
 const LAB_OPTIONS = Object.keys(OUTSOURCE_MAP);
+const OUTSOURCE_DEPT_KEYS = new Set(LAB_OPTIONS);
+
+/** Clinical + inside-lab depts only (exclude STERLING / NEUBERG / …). */
+const CLINICAL_INSIDE_DEPTS = Object.keys(testMapping).filter(
+  (dept) => !OUTSOURCE_DEPT_KEYS.has(dept)
+);
+
+const OUTSOURCE_PREFIX = "(outsource) ";
+
+function withOutsourcePrefix(testName) {
+  return `${OUTSOURCE_PREFIX}${testName}`;
+}
+
+/** Catalog for search: original names from mapping, shown with (outsource) prefix. */
+const DOUBLE_CHECK_TEST_CATALOG = CLINICAL_INSIDE_DEPTS.flatMap((dept) => {
+  const names = testMapping[dept] || [];
+  const seen = new Set();
+  return names
+    .filter((t) => {
+      const key = String(t).toUpperCase().trim();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .map((test) => ({
+      dept,
+      originalTest: test,
+      test: withOutsourcePrefix(test),
+    }));
+});
+
+/** Same doctor list as mango.jsx */
+const DOCTOR_OPTIONS = [
+  "Dr. Anil Sharma",
+  "Dr. Renu Makwana",
+  "Dr. Sanjay Makwana",
+  "Dr. Kapil Kumar Raheja",
+  "Dr. Vivek Lakhawat",
+  "Sanjeev Sanghvi",
+  "Dr. Akhil Govil",
+  "Dr. Jitendra Chouhan",
+  "Dr. Jitendra Khetawat",
+  "Dr. Ashish Joshi",
+  "RMO (Redidential Medical Officer)",
+  "Dr. Ashok Bishnoi",
+  "Consultant Gynaecology",
+  "Consultant ART",
+  "Consultant Paediatrician",
+  "Consultant Orthopaedic",
+  "Dr. Vinod Shaily",
+  "Dr. Dabi",
+  "Dr. Saurabh Kuvera",
+  "Dr. Pravesh Vyas",
+  "Dr. Neha Agarwal",
+  "Dr. Jyotsana Sharma",
+  "Dr. Lalit Mohan Rathi",
+  "Dr. Amit Singhvi",
+  "Dr. Consultant Obstretrics",
+];
 
 const EMPTY_FORM = {
   regNo: "",
@@ -39,7 +99,7 @@ const EMPTY_FORM = {
   age: "",
   ageUnit: "years",
   source: "OPD",
-  tests: "",
+  selectedTests: [],
   labName: "",
 };
 
@@ -48,18 +108,16 @@ function buildDocId(regNo, diagnosticNo, labName) {
   return `${String(regNo).trim()}_${String(diagnosticNo).trim()}_${labSlug}_DOUBLECHECK`;
 }
 
-function parseTests(raw) {
-  return String(raw || "")
-    .split(/[,;\n]+/)
-    .map((t) => t.trim())
-    .filter(Boolean);
-}
-
 function toTime(value) {
   if (!value) return null;
   if (value?.toDate) return value.toDate();
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function testLabel(t) {
+  if (typeof t === "string") return t;
+  return t?.test || "";
 }
 
 export default function DoubleCheckingPanel({
@@ -73,6 +131,11 @@ export default function DoubleCheckingPanel({
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const searchRef = useRef(null);
+  const resultRefs = useRef([]);
 
   const [localBuffer, setLocalBuffer] = usePersistedObjectState(
     "double_check_localBuffer",
@@ -82,6 +145,15 @@ export default function DoubleCheckingPanel({
   useEffect(() => {
     bufferRef.current = localBuffer;
   }, [localBuffer]);
+
+  useEffect(() => {
+    if (focusedIndex >= 0 && resultRefs.current[focusedIndex]) {
+      resultRefs.current[focusedIndex].scrollIntoView({
+        block: "nearest",
+        behavior: "smooth",
+      });
+    }
+  }, [focusedIndex]);
 
   useEffect(() => {
     const fromStr = dateFrom || getLocalDateString();
@@ -136,7 +208,9 @@ export default function DoubleCheckingPanel({
         if (regSearch.trim()) {
           const s = regSearch.trim().toLowerCase();
           const regKey = String(e.regNo || "").toLowerCase();
-          const accKey = String(e.diagnosticNo || e.accessionNo || "").toLowerCase();
+          const accKey = String(
+            e.diagnosticNo || e.accessionNo || ""
+          ).toLowerCase();
           if (!regKey.includes(s) && !accKey.includes(s)) return false;
         }
         return true;
@@ -154,19 +228,89 @@ export default function DoubleCheckingPanel({
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchText(value);
+    setFocusedIndex(-1);
+    if (!value.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    const lower = value.toLowerCase();
+    // Match like mango: startsWith on the original clinical/inside-lab name
+    const results = DOUBLE_CHECK_TEST_CATALOG.filter((t) =>
+      t.originalTest.toLowerCase().startsWith(lower)
+    );
+    setSearchResults(results.slice(0, 50));
+  };
+
+  const handleSelectSearchTest = (item) => {
+    setForm((prev) => {
+      const exists = prev.selectedTests.some(
+        (t) => t.dept === item.dept && t.test === item.test
+      );
+      if (exists) return prev;
+      return {
+        ...prev,
+        selectedTests: [
+          ...prev.selectedTests,
+          {
+            dept: item.dept,
+            test: item.test,
+            originalTest: item.originalTest,
+          },
+        ],
+      };
+    });
+    setSearchText("");
+    setSearchResults([]);
+    setFocusedIndex(-1);
+    searchRef.current?.focus();
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (searchResults.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setFocusedIndex((prev) =>
+        prev < searchResults.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setFocusedIndex((prev) => (prev > 0 ? prev - 1 : 0));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const item =
+        focusedIndex >= 0 ? searchResults[focusedIndex] : searchResults[0];
+      if (item) handleSelectSearchTest(item);
+    }
+  };
+
+  const handleRemoveSelectedTest = (index) => {
+    setForm((prev) => ({
+      ...prev,
+      selectedTests: prev.selectedTests.filter((_, i) => i !== index),
+    }));
+  };
+
   const canCreate =
     form.regNo.trim() &&
     form.diagnosticNo.trim() &&
     form.name.trim() &&
     form.labName &&
-    parseTests(form.tests).length > 0;
+    form.selectedTests.length > 0;
 
   const handleCreate = async () => {
     if (!canCreate || creating) return;
     const regNo = form.regNo.trim();
     const diagnosticNo = form.diagnosticNo.trim();
     const labName = form.labName;
-    const selectedTests = parseTests(form.tests);
+    const selectedTests = form.selectedTests.map((t) => ({
+      dept: t.dept,
+      test: t.test,
+      originalTest: t.originalTest || t.test,
+    }));
+    const testNames = selectedTests.map((t) => t.test);
     const docId = buildDocId(regNo, diagnosticNo, labName);
 
     try {
@@ -193,7 +337,7 @@ export default function DoubleCheckingPanel({
         source: form.source || "OPD",
         labName,
         selectedTests,
-        tests: selectedTests,
+        tests: testNames,
         concernedPerson: "",
         relation: "",
         mobileNo: "",
@@ -213,6 +357,8 @@ export default function DoubleCheckingPanel({
       });
 
       setForm(EMPTY_FORM);
+      setSearchText("");
+      setSearchResults([]);
       alert(`✅ Double-check entry created for ${form.name.trim()} (${labName}).`);
     } catch (err) {
       console.error(err);
@@ -363,11 +509,17 @@ export default function DoubleCheckingPanel({
           </label>
           <label>
             Doctor
-            <input
+            <select
               value={form.doctor}
               onChange={(e) => setField("doctor", e.target.value)}
-              placeholder="Doctor"
-            />
+            >
+              <option value="">Select Doctor</option>
+              {DOCTOR_OPTIONS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             Age
@@ -418,12 +570,36 @@ export default function DoubleCheckingPanel({
             </select>
           </label>
           <label className="double-check-tests">
-            Test(s)
-            <input
-              value={form.tests}
-              onChange={(e) => setField("tests", e.target.value)}
-              placeholder="Comma-separated tests"
-            />
+            Search Tests
+            <div className="dc-search-wrapper">
+              <input
+                ref={searchRef}
+                type="text"
+                placeholder="Type to search (e.g. L)…"
+                value={searchText}
+                onChange={handleSearchChange}
+                onKeyDown={handleSearchKeyDown}
+              />
+              {searchResults.length > 0 && (
+                <div className="dc-search-results-box">
+                  {searchResults.map((item, i) => (
+                    <div
+                      key={`${item.dept}-${item.originalTest}-${i}`}
+                      ref={(el) => {
+                        resultRefs.current[i] = el;
+                      }}
+                      className={`dc-search-result-item ${
+                        i === focusedIndex ? "focused" : ""
+                      }`}
+                      onClick={() => handleSelectSearchTest(item)}
+                    >
+                      <strong>{item.test}</strong>
+                      <span>({item.dept})</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </label>
           <div className="double-check-create-actions">
             <button
@@ -436,6 +612,28 @@ export default function DoubleCheckingPanel({
             </button>
           </div>
         </div>
+        {form.selectedTests.length > 0 ? (
+          <div className="dc-selected-tests">
+            <div className="dc-selected-tests-title">Selected tests</div>
+            <ul>
+              {form.selectedTests.map((t, i) => (
+                <li key={`${t.dept}-${t.test}-${i}`}>
+                  <span>
+                    {t.test} <em>({t.dept})</em>
+                  </span>
+                  <button
+                    type="button"
+                    className="dc-remove-test"
+                    onClick={() => handleRemoveSelectedTest(i)}
+                    aria-label="Remove test"
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </div>
 
       <div className="table-container">
@@ -513,7 +711,8 @@ export default function DoubleCheckingPanel({
                   </td>
                   <td style={{ maxWidth: "180px" }}>
                     {(e.displayTests || e.selectedTests || [])
-                      .map((t) => (typeof t === "string" ? t : t.test))
+                      .map((t) => testLabel(t))
+                      .filter(Boolean)
                       .join(", ") || "—"}
                   </td>
                   <td>
