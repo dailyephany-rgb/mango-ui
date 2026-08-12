@@ -4,6 +4,8 @@ import { useStableCallback } from "../shared/hooks/useStableCallback.js";
 import SafeDateInput from "../shared/components/SafeDateInput.jsx";
 
 const COAG_RESULT_FIELDS = ["bt", "ct", "pt", "inr", "aptt"];
+const BLOOD_GROUPS = ["A", "B", "AB", "O"];
+const RH_FACTORS = ["Positive", "Negative"];
 
 const RESULT_EDIT_TITLES = [
   "Coagulation",
@@ -20,6 +22,7 @@ function allowsResultEdit(title) {
 
 function hasEditableResult(item) {
   if (item == null) return false;
+  if (item.bloodGroup || item.rhFactor) return true;
   if (item.result != null && String(item.result).trim() !== "") return true;
   if (typeof item.results === "string" && item.results.trim()) return true;
   if (
@@ -50,8 +53,27 @@ function buildCoagResultsString(fields) {
   return parts.join(" | ");
 }
 
+function buildBloodResult(bloodGroup, rhFactor) {
+  if (!bloodGroup || !rhFactor) return "";
+  return `${bloodGroup} ${rhFactor === "Positive" ? "+" : "-"}`;
+}
+
 function initEditDraft(item, title = "") {
   if (!item) return { mode: "none", values: {} };
+
+  const isBloodTitle = String(title).includes("Blood Group");
+  const hasBloodFields =
+    (item.bloodGroup != null && String(item.bloodGroup).trim() !== "") ||
+    (item.rhFactor != null && String(item.rhFactor).trim() !== "");
+  if (isBloodTitle || hasBloodFields) {
+    return {
+      mode: "blood",
+      values: {
+        bloodGroup: item.bloodGroup != null ? String(item.bloodGroup) : "",
+        rhFactor: item.rhFactor != null ? String(item.rhFactor) : "",
+      },
+    };
+  }
 
   const isCoagTitle = String(title).includes("Coagulation");
   const hasCoagFields = COAG_RESULT_FIELDS.some(
@@ -86,6 +108,15 @@ function initEditDraft(item, title = "") {
 
 function draftToPayload(draft) {
   if (!draft || draft.mode === "none") return null;
+  if (draft.mode === "blood") {
+    const bloodGroup = draft.values.bloodGroup || "";
+    const rhFactor = draft.values.rhFactor || "";
+    return {
+      bloodGroup,
+      rhFactor,
+      result: buildBloodResult(bloodGroup, rhFactor),
+    };
+  }
   if (draft.mode === "coag") {
     const fields = { ...draft.values };
     return {
@@ -147,6 +178,48 @@ function ResultEditModal({ item, title, saving, onClose, onSave }) {
         </p>
 
         <div className="validator-edit-body">
+          {draft.mode === "blood" && (
+            <>
+              <label className="validator-edit-field">
+                <span>Blood Group</span>
+                <select
+                  value={draft.values.bloodGroup || ""}
+                  onChange={(e) => setValue("bloodGroup", e.target.value)}
+                >
+                  <option value="">Select</option>
+                  {BLOOD_GROUPS.map((bg) => (
+                    <option key={bg} value={bg}>
+                      {bg}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="validator-edit-field">
+                <span>Rh Factor</span>
+                <select
+                  value={draft.values.rhFactor || ""}
+                  onChange={(e) => setValue("rhFactor", e.target.value)}
+                >
+                  <option value="">Select</option>
+                  {RH_FACTORS.map((rh) => (
+                    <option key={rh} value={rh}>
+                      {rh}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="validator-edit-preview">
+                Result preview:{" "}
+                <strong>
+                  {buildBloodResult(
+                    draft.values.bloodGroup,
+                    draft.values.rhFactor
+                  ) || "—"}
+                </strong>
+              </p>
+            </>
+          )}
+
           {draft.mode === "coag" &&
             COAG_RESULT_FIELDS.map((key) => (
               <label key={key} className="validator-edit-field">
@@ -398,6 +471,8 @@ const ValidatorTableRow = memo(function ValidatorTableRow({
     a.duration === b.duration &&
     a.result === b.result &&
     a.results === b.results &&
+    a.bloodGroup === b.bloodGroup &&
+    a.rhFactor === b.rhFactor &&
     a.bt === b.bt &&
     a.ct === b.ct &&
     a.pt === b.pt &&

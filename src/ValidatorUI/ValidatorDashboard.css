@@ -362,7 +362,8 @@ h2 {
 }
 
 .validator-edit-field input,
-.validator-edit-field textarea {
+.validator-edit-field textarea,
+.validator-edit-field select {
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   padding: 8px 10px;
@@ -370,6 +371,13 @@ h2 {
   font-weight: 500;
   color: #0f172a;
   font-family: inherit;
+}
+
+.validator-edit-preview {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
 }
 
 .validator-edit-field textarea {
