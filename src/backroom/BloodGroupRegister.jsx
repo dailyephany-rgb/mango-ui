@@ -25,6 +25,11 @@ import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx"
 import { EngTelemetry } from "../engineering/telemetry/EngTelemetry.js";
 import { isEngTelemetryEnabled } from "../engineering/telemetry/killSwitch.js";
 import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
+import {
+  EMPTY_DEPT_COL_FILTERS,
+  applyDeptColFilters,
+  hasActiveDeptColFilters,
+} from "../shared/utils/deptColFilters.js";
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useScopedMasterEntries } from "../shared/hooks/useScopedMasterEntries.js";
@@ -34,6 +39,11 @@ import {
   DEPT_REGISTER_ROW_FIELDS,
 } from "../shared/utils/arePatientRowEqual.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
+import ColFilterToggle, {
+  ColFilterInput,
+  ColFilterLocked,
+  ColFilterClearCell,
+} from "../shared/components/ColFilterToggle.jsx";
 
 
 
@@ -87,6 +97,9 @@ export default function BloodGroupRegister() {
     sourceFilter,
     setSourceFilter,
   } = useRegisterFilters();
+
+  const [showColFilters, setShowColFilters] = useState(false);
+  const [colFilters, setColFilters] = useState(EMPTY_DEPT_COL_FILTERS);
 
   const { masterEntries } = useScopedMasterEntries({
     masterDeptKey: "Blood-Group",
@@ -371,16 +384,23 @@ export default function BloodGroupRegister() {
     }
   };
 
+  const setColFilter = (key, value) => {
+    setColFilters((prev) => ({ ...prev, [key]: value }));
+  };
+  const clearColFilters = () => setColFilters(EMPTY_DEPT_COL_FILTERS);
+  const hasActiveColFilters = hasActiveDeptColFilters(colFilters);
+
   const filteredEntries = useMemo(() => {
     const entriesWithDate = activeEntries.filter((p) => parseEntryDate(p));
-    return filterAndSortRegisterPatients(entriesWithDate, {
+    const base = filterAndSortRegisterPatients(entriesWithDate, {
       regSearch,
       sourceFilter,
       dateFrom,
       dateTo,
       getDiag: (p) => p.diagnosticNo || p.accessionNo || "",
     });
-  }, [activeEntries, regSearch, sourceFilter, dateFrom, dateTo]);
+    return applyDeptColFilters(base, colFilters);
+  }, [activeEntries, regSearch, sourceFilter, dateFrom, dateTo, colFilters]);
 
   const onChange = useStableCallback((tab, key, field, value) => {
     handleChange(tab, key, field, value);
@@ -426,7 +446,14 @@ export default function BloodGroupRegister() {
             <tr>
               <th className="sticky-col">Reg No</th>
               <th className="sticky-col">Diag No</th>
-              <th className="sticky-col">Name</th>
+              <th className="sticky-col">
+                <ColFilterToggle
+                  label="Name"
+                  open={showColFilters}
+                  active={hasActiveColFilters}
+                  onToggle={() => setShowColFilters((v) => !v)}
+                />
+              </th>
               <th>Age</th>
               <th>Gender</th>
               <th>Source</th>
@@ -437,6 +464,53 @@ export default function BloodGroupRegister() {
               <th>Saved By</th>
               <th>Action</th>
             </tr>
+            {showColFilters ? (
+              <tr className="col-filter-row">
+                <ColFilterInput
+                  value={colFilters.regNo}
+                  onChange={(v) => setColFilter("regNo", v)}
+                  placeholder="Filter reg…"
+                />
+                <ColFilterInput
+                  value={colFilters.diagnosticNo}
+                  onChange={(v) => setColFilter("diagnosticNo", v)}
+                  placeholder="Filter diag…"
+                />
+                <ColFilterInput
+                  value={colFilters.name}
+                  onChange={(v) => setColFilter("name", v)}
+                  placeholder="Filter name…"
+                />
+                <ColFilterInput
+                  value={colFilters.age}
+                  onChange={(v) => setColFilter("age", v)}
+                  placeholder="Filter age…"
+                />
+                <ColFilterInput
+                  value={colFilters.gender}
+                  onChange={(v) => setColFilter("gender", v)}
+                  placeholder="M / F"
+                />
+                <ColFilterInput
+                  value={colFilters.source}
+                  onChange={(v) => setColFilter("source", v)}
+                  placeholder="e.g. OPD"
+                />
+                <ColFilterLocked />
+                <ColFilterLocked />
+                <ColFilterLocked />
+                <ColFilterLocked />
+                <ColFilterInput
+                  value={colFilters.savedBy}
+                  onChange={(v) => setColFilter("savedBy", v)}
+                  placeholder="Filter saved by…"
+                />
+                <ColFilterClearCell
+                  show={hasActiveColFilters}
+                  onClear={clearColFilters}
+                />
+              </tr>
+            ) : null}
           </thead>
           <VirtualizedTableBody
             items={filteredEntries}

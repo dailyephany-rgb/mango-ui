@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo, lazy, Suspense, memo } from "react";
 import "./Haematology.css";
+import "../shared/styles/colFilters.css";
 import { db } from "../firebaseConfig.js";
 import {
   doc,
@@ -14,6 +15,11 @@ import { handleInventoryDeduction } from "../inventory/inventorymapping";
 import UserMenu from "../auth/UserMenu";
 import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
 import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
+import {
+  EMPTY_DEPT_COL_FILTERS,
+  applyDeptColFilters,
+  hasActiveDeptColFilters,
+} from "../shared/utils/deptColFilters.js";
 import { normalizeSource } from "../shared/utils/source.js";
 import { compositeId, safeKey } from "../shared/utils/ids.js";
 import {
@@ -26,6 +32,11 @@ import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.j
 import { useStableCallback } from "../shared/hooks/useStableCallback.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
+import ColFilterToggle, {
+  ColFilterInput,
+  ColFilterLocked,
+  ColFilterClearCell,
+} from "../shared/components/ColFilterToggle.jsx";
 import {
   arePatientRowEqual,
   DEPT_REGISTER_ROW_FIELDS,
@@ -44,6 +55,8 @@ const CURRENT_DEPT = "Haematology";
 export default function Haematology() {
   const [activeTab, setActiveTab] = useState("register");
   const visitedTabs = useVisitedTabs(activeTab, "register");
+  const [showColFilters, setShowColFilters] = useState(false);
+  const [colFilters, setColFilters] = useState(EMPTY_DEPT_COL_FILTERS);
 
   const {
     regSearch,
@@ -390,17 +403,22 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
       }  
   };
 
-  const filteredPatients = useMemo(
-    () =>
-      filterAndSortRegisterPatients(patients, {
-        regSearch,
-        sourceFilter,
-        dateFrom,
-        dateTo,
-        getDiag: (p) => p.diagnosticNo || p.accessionNo || "",
-      }),
-    [patients, regSearch, sourceFilter, dateFrom, dateTo]
-  );
+  const setColFilter = (key, value) => {
+    setColFilters((prev) => ({ ...prev, [key]: value }));
+  };
+  const clearColFilters = () => setColFilters(EMPTY_DEPT_COL_FILTERS);
+  const hasActiveColFilters = hasActiveDeptColFilters(colFilters);
+
+  const filteredPatients = useMemo(() => {
+    const base = filterAndSortRegisterPatients(patients, {
+      regSearch,
+      sourceFilter,
+      dateFrom,
+      dateTo,
+      getDiag: (p) => p.diagnosticNo || p.accessionNo || "",
+    });
+    return applyDeptColFilters(base, colFilters);
+  }, [patients, regSearch, sourceFilter, dateFrom, dateTo, colFilters]);
 
   const onScan = useStableCallback((patient, value) => {
     handleScan(patient, value);
@@ -496,7 +514,14 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
                   <tr>
                     <th className="sticky-col">Reg No</th>
                     <th className="sticky-col">Diag No</th>
-                    <th className="sticky-col">Patient Name</th>
+                    <th className="sticky-col">
+                      <ColFilterToggle
+                        label="Patient Name"
+                        open={showColFilters}
+                        active={hasActiveColFilters}
+                        onToggle={() => setShowColFilters((v) => !v)}
+                      />
+                    </th>
                     <th>Age</th>
                     <th>Gender</th>
                     <th>Source</th>
@@ -511,6 +536,65 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
                     <th>Critical</th>
                     <th>Action</th>
                   </tr>
+                  {showColFilters ? (
+                    <tr className="col-filter-row">
+                      <ColFilterInput
+                        value={colFilters.regNo}
+                        onChange={(v) => setColFilter("regNo", v)}
+                        placeholder="Filter reg…"
+                      />
+                      <ColFilterInput
+                        value={colFilters.diagnosticNo}
+                        onChange={(v) => setColFilter("diagnosticNo", v)}
+                        placeholder="Filter diag…"
+                      />
+                      <ColFilterInput
+                        value={colFilters.name}
+                        onChange={(v) => setColFilter("name", v)}
+                        placeholder="Filter name…"
+                      />
+                      <ColFilterInput
+                        value={colFilters.age}
+                        onChange={(v) => setColFilter("age", v)}
+                        placeholder="Filter age…"
+                      />
+                      <ColFilterInput
+                        value={colFilters.gender}
+                        onChange={(v) => setColFilter("gender", v)}
+                        placeholder="M / F"
+                      />
+                      <ColFilterInput
+                        value={colFilters.source}
+                        onChange={(v) => setColFilter("source", v)}
+                        placeholder="e.g. OPD"
+                      />
+                      <ColFilterInput
+                        value={colFilters.tests}
+                        onChange={(v) => setColFilter("tests", v)}
+                        placeholder="e.g. haemogram"
+                      />
+                      <ColFilterLocked />
+                      <ColFilterLocked />
+                      <ColFilterLocked />
+                      <ColFilterLocked />
+                      <ColFilterLocked />
+                      <ColFilterInput
+                        value={colFilters.status}
+                        onChange={(v) => setColFilter("status", v)}
+                        placeholder="saved / scanned / pending"
+                      />
+                      <ColFilterInput
+                        value={colFilters.savedBy}
+                        onChange={(v) => setColFilter("savedBy", v)}
+                        placeholder="Filter saved by…"
+                      />
+                      <ColFilterLocked />
+                      <ColFilterClearCell
+                        show={hasActiveColFilters}
+                        onClear={clearColFilters}
+                      />
+                    </tr>
+                  ) : null}
                 </thead>
                 {filteredPatients.length === 0 ? (
                   <tbody>

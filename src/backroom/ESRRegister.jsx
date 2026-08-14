@@ -15,12 +15,22 @@ import "./Backroom.css";
 import { normalizeSource } from "../shared/utils/source.js";
 import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
 import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
+import {
+  EMPTY_DEPT_COL_FILTERS,
+  applyDeptColFilters,
+  hasActiveDeptColFilters,
+} from "../shared/utils/deptColFilters.js";
 import { compositeId } from "../shared/utils/ids.js";
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
+import ColFilterToggle, {
+  ColFilterInput,
+  ColFilterLocked,
+  ColFilterClearCell,
+} from "../shared/components/ColFilterToggle.jsx";
 
 
 
@@ -60,6 +70,9 @@ export default function ESRRegister() {
     sourceFilter,
     setSourceFilter,
   } = useRegisterFilters();
+
+  const [showColFilters, setShowColFilters] = useState(false);
+  const [colFilters, setColFilters] = useState(EMPTY_DEPT_COL_FILTERS);
 
   const {
     masterEntries,
@@ -388,17 +401,24 @@ const [pendingCritical, setPendingCritical] = usePersistedObjectState("esr_pendi
     } catch (err) { alert("Error saving."); } finally { setSaving(false); }
   };
 
-  const filteredEntries = useMemo(
-    () =>
-      filterAndSortRegisterPatients(mergedEntries, {
-        regSearch,
-        sourceFilter,
-        dateFrom,
-        dateTo,
-        getDiag: (p) => p.diagnosticNo || p.accessionNo || "",
-      }),
-    [mergedEntries, regSearch, sourceFilter, dateFrom, dateTo]
-  );
+  const setColFilter = (key, value) => {
+    setColFilters((prev) => ({ ...prev, [key]: value }));
+  };
+  const clearColFilters = () => setColFilters(EMPTY_DEPT_COL_FILTERS);
+  const hasActiveColFilters = hasActiveDeptColFilters(colFilters);
+
+  const filteredEntries = useMemo(() => {
+    const base = filterAndSortRegisterPatients(mergedEntries, {
+      regSearch,
+      sourceFilter,
+      dateFrom,
+      dateTo,
+      getDiag: (p) => p.diagnosticNo || p.accessionNo || "",
+    });
+    return applyDeptColFilters(base, colFilters, {
+      getTests: (p) => getCleanTests(p).join(" "),
+    });
+  }, [mergedEntries, regSearch, sourceFilter, dateFrom, dateTo, colFilters]);
 
   return (
     <div className="register-section">
@@ -421,7 +441,14 @@ const [pendingCritical, setPendingCritical] = usePersistedObjectState("esr_pendi
             <tr>
               <th className="sticky-col">Reg No</th>
               <th className="sticky-col">Diag No</th>
-              <th className="sticky-col">Patient Name</th>
+              <th className="sticky-col">
+                <ColFilterToggle
+                  label="Patient Name"
+                  open={showColFilters}
+                  active={hasActiveColFilters}
+                  onToggle={() => setShowColFilters((v) => !v)}
+                />
+              </th>
               <th>Age</th><th>Source</th><th>Selected Tests</th>
               <th>Start Time</th><th>End Time</th><th>Duration</th><th>Result</th>
               <th>Scanned</th>
@@ -430,6 +457,60 @@ const [pendingCritical, setPendingCritical] = usePersistedObjectState("esr_pendi
               <th>Critical</th>
               <th>Action</th>
             </tr>
+            {showColFilters ? (
+              <tr className="col-filter-row">
+                <ColFilterInput
+                  value={colFilters.regNo}
+                  onChange={(v) => setColFilter("regNo", v)}
+                  placeholder="Filter reg…"
+                />
+                <ColFilterInput
+                  value={colFilters.diagnosticNo}
+                  onChange={(v) => setColFilter("diagnosticNo", v)}
+                  placeholder="Filter diag…"
+                />
+                <ColFilterInput
+                  value={colFilters.name}
+                  onChange={(v) => setColFilter("name", v)}
+                  placeholder="Filter name…"
+                />
+                <ColFilterInput
+                  value={colFilters.age}
+                  onChange={(v) => setColFilter("age", v)}
+                  placeholder="Filter age…"
+                />
+                <ColFilterInput
+                  value={colFilters.source}
+                  onChange={(v) => setColFilter("source", v)}
+                  placeholder="e.g. OPD"
+                />
+                <ColFilterInput
+                  value={colFilters.tests}
+                  onChange={(v) => setColFilter("tests", v)}
+                  placeholder="e.g. esr"
+                />
+                <ColFilterLocked />
+                <ColFilterLocked />
+                <ColFilterLocked />
+                <ColFilterLocked />
+                <ColFilterLocked />
+                <ColFilterInput
+                  value={colFilters.status}
+                  onChange={(v) => setColFilter("status", v)}
+                  placeholder="saved / scanned / pending"
+                />
+                <ColFilterInput
+                  value={colFilters.savedBy}
+                  onChange={(v) => setColFilter("savedBy", v)}
+                  placeholder="Filter saved by…"
+                />
+                <ColFilterLocked />
+                <ColFilterClearCell
+                  show={hasActiveColFilters}
+                  onClear={clearColFilters}
+                />
+              </tr>
+            ) : null}
           </thead>
           <VirtualizedTableBody
             items={filteredEntries}

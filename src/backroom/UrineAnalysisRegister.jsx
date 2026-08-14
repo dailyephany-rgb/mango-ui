@@ -13,12 +13,22 @@ import "./Backroom.css";
 import { normalizeSource } from "../shared/utils/source.js";
 import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
 import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
+import {
+  EMPTY_DEPT_COL_FILTERS,
+  applyDeptColFilters,
+  hasActiveDeptColFilters,
+} from "../shared/utils/deptColFilters.js";
 import { compositeId } from "../shared/utils/ids.js";
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
+import ColFilterToggle, {
+  ColFilterInput,
+  ColFilterLocked,
+  ColFilterClearCell,
+} from "../shared/components/ColFilterToggle.jsx";
 
 
 import { handleInventoryDeduction } from "../inventory/inventorymapping";
@@ -69,6 +79,9 @@ export default function UrineAnalysisRegister() {
     sourceFilter,
     setSourceFilter,
   } = useRegisterFilters();
+
+  const [showColFilters, setShowColFilters] = useState(false);
+  const [colFilters, setColFilters] = useState(EMPTY_DEPT_COL_FILTERS);
 
   const {
     masterEntries,
@@ -451,17 +464,27 @@ export default function UrineAnalysisRegister() {
     }
   };
 
-  const filteredEntries = useMemo(
-    () =>
-      filterAndSortRegisterPatients(mergedEntries, {
-        regSearch,
-        sourceFilter,
-        dateFrom,
-        dateTo,
-        getDiag: (p) => p.diagnosticNo || p.accessionNo || "",
-      }),
-    [mergedEntries, regSearch, sourceFilter, dateFrom, dateTo]
-  );
+  const setColFilter = (key, value) => {
+    setColFilters((prev) => ({ ...prev, [key]: value }));
+  };
+  const clearColFilters = () => setColFilters(EMPTY_DEPT_COL_FILTERS);
+  const hasActiveColFilters = hasActiveDeptColFilters(colFilters);
+
+  const filteredEntries = useMemo(() => {
+    const base = filterAndSortRegisterPatients(mergedEntries, {
+      regSearch,
+      sourceFilter,
+      dateFrom,
+      dateTo,
+      getDiag: (p) => p.diagnosticNo || p.accessionNo || "",
+    });
+    return applyDeptColFilters(base, colFilters, {
+      getTests: (p) =>
+        getUrineSelectedTests(p)
+          .map((t) => (typeof t === "object" ? t.test : t))
+          .join(" "),
+    });
+  }, [mergedEntries, regSearch, sourceFilter, dateFrom, dateTo, colFilters]);
 
   const urineTableColumnCount =
     7 + parameterFields.length + routineExtraFields.length + 5;
@@ -487,7 +510,14 @@ export default function UrineAnalysisRegister() {
             <tr>
               <th className="sticky-col col-regno">Reg No</th>
               <th className="sticky-col col-diagno">Diag No</th>
-              <th className="sticky-col col-name">Name</th>
+              <th className="sticky-col col-name">
+                <ColFilterToggle
+                  label="Name"
+                  open={showColFilters}
+                  active={hasActiveColFilters}
+                  onToggle={() => setShowColFilters((v) => !v)}
+                />
+              </th>
               <th>Age</th><th>Gender</th><th>Source</th><th>Selected Tests</th>
               {parameterFields.map((p) => (<th key={p.key}>{p.label}</th>))}
               {routineExtraFields.map((f) => (<th key={f.key}>{f.label}</th>))}
@@ -497,6 +527,67 @@ export default function UrineAnalysisRegister() {
               <th>Critical</th>
               <th>Save</th>
             </tr>
+            {showColFilters ? (
+              <tr className="col-filter-row">
+                <ColFilterInput
+                  value={colFilters.regNo}
+                  onChange={(v) => setColFilter("regNo", v)}
+                  placeholder="Filter reg…"
+                />
+                <ColFilterInput
+                  value={colFilters.diagnosticNo}
+                  onChange={(v) => setColFilter("diagnosticNo", v)}
+                  placeholder="Filter diag…"
+                />
+                <ColFilterInput
+                  value={colFilters.name}
+                  onChange={(v) => setColFilter("name", v)}
+                  placeholder="Filter name…"
+                />
+                <ColFilterInput
+                  value={colFilters.age}
+                  onChange={(v) => setColFilter("age", v)}
+                  placeholder="Filter age…"
+                />
+                <ColFilterInput
+                  value={colFilters.gender}
+                  onChange={(v) => setColFilter("gender", v)}
+                  placeholder="M / F"
+                />
+                <ColFilterInput
+                  value={colFilters.source}
+                  onChange={(v) => setColFilter("source", v)}
+                  placeholder="e.g. OPD"
+                />
+                <ColFilterInput
+                  value={colFilters.tests}
+                  onChange={(v) => setColFilter("tests", v)}
+                  placeholder="e.g. urine"
+                />
+                {parameterFields.map((p) => (
+                  <ColFilterLocked key={`urine-lock-${p.key}`} />
+                ))}
+                {routineExtraFields.map((f) => (
+                  <ColFilterLocked key={`urine-lock-${f.key}`} />
+                ))}
+                <ColFilterLocked />
+                <ColFilterInput
+                  value={colFilters.status}
+                  onChange={(v) => setColFilter("status", v)}
+                  placeholder="saved / scanned / pending"
+                />
+                <ColFilterInput
+                  value={colFilters.savedBy}
+                  onChange={(v) => setColFilter("savedBy", v)}
+                  placeholder="Filter saved by…"
+                />
+                <ColFilterLocked />
+                <ColFilterClearCell
+                  show={hasActiveColFilters}
+                  onClear={clearColFilters}
+                />
+              </tr>
+            ) : null}
           </thead>
           <VirtualizedTableBody
             items={filteredEntries}

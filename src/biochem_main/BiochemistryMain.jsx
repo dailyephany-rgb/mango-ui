@@ -57,6 +57,8 @@ const EMPTY_COL_FILTERS = {
   diagnosticNo: "",
   name: "",
   source: "",
+  age: "",
+  gender: "",
   category: "",
   tests: "",
   status: "",
@@ -75,6 +77,8 @@ function matchesColFilters(patient, colFilters) {
   if (!includes(patient.diagnosticNo, colFilters.diagnosticNo)) return false;
   if (!includes(patient.name, colFilters.name)) return false;
   if (!includes(patient.source, colFilters.source)) return false;
+  if (!includes(patient.age, colFilters.age)) return false;
+  if (!includes(patient.gender, colFilters.gender)) return false;
   if (!includes(patient.category, colFilters.category)) return false;
 
   if (colFilters.tests.trim()) {
@@ -594,8 +598,22 @@ export default function BiochemistryMain() {
                         onChange={(e) => setColFilter("source", e.target.value)}
                       />
                     </th>
-                    <th className="col-filter-cell col-filter-locked" />
-                    <th className="col-filter-cell col-filter-locked" />
+                    <th className="col-filter-cell">
+                      <input
+                        type="text"
+                        placeholder="Filter age…"
+                        value={colFilters.age}
+                        onChange={(e) => setColFilter("age", e.target.value)}
+                      />
+                    </th>
+                    <th className="col-filter-cell">
+                      <input
+                        type="text"
+                        placeholder="M / F"
+                        value={colFilters.gender}
+                        onChange={(e) => setColFilter("gender", e.target.value)}
+                      />
+                    </th>
                     <th className="col-filter-cell">
                       <input
                         type="text"
