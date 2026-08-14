@@ -13,6 +13,7 @@ import "./MasterAdmin.css";
 import { MASTER_ADMIN_DEPARTMENTS } from "../shared/config/collections.js";
 import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 import SafeDateInput from "../shared/components/SafeDateInput.jsx";
+import { downloadCompareReconPdf } from "./exportCompareReconPdf.js";
 
 const DEPARTMENTS = MASTER_ADMIN_DEPARTMENTS;
 
@@ -37,6 +38,7 @@ export default function MasterAdminPanel() {
   const [isCompareView, setIsCompareView] = useState(false);
   const [reconData, setReconData] = useState(null);
   const [reconTab, setReconTab] = useState("missing");
+  const [comparePdfBusy, setComparePdfBusy] = useState(false);
 
   const parseDateForFilter = (field) => {
     if (!field) return null;
@@ -457,10 +459,26 @@ if (mappedLabNames && mappedLabNames.length > 0) {
            
            {reconData && (
              <div style={{ width: "100%" }}>
-                <div style={{ display: "flex", gap: "20px", marginBottom: "15px", padding: "10px", backgroundColor: "#f1f5f9", borderRadius: "5px" }}>
+                <div style={{ display: "flex", gap: "20px", marginBottom: "15px", padding: "10px", backgroundColor: "#f1f5f9", borderRadius: "5px", alignItems: "center", flexWrap: "wrap" }}>
                     <span><strong>Match Rate:</strong> {reconData.stats.rate}%</span>
                     <span><strong>Total Hospital Bills:</strong> {reconData.stats.total}</span>
                     <span><strong>Lab Total (Filtered):</strong> {reconData.stats.labTotal}</span>
+                    <button
+                      type="button"
+                      className="btn-update"
+                      style={{ backgroundColor: "#1e3a8a", marginLeft: "auto" }}
+                      disabled={comparePdfBusy}
+                      onClick={() => {
+                        setComparePdfBusy(true);
+                        try {
+                          downloadCompareReconPdf(reconData);
+                        } finally {
+                          setComparePdfBusy(false);
+                        }
+                      }}
+                    >
+                      {comparePdfBusy ? "Preparing…" : "Print Report"}
+                    </button>
                 </div>
                 <div className="source-buttons">
                  
