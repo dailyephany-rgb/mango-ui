@@ -56,6 +56,79 @@ function patientHeader(doc, patient, y) {
   return y + 2;
 }
 
+/** Draw owner-style KPI cards in a wrapping row (title / blue value / subtitle). */
+function drawKpiCards(doc, cards, startY, opts = {}) {
+  const marginX = opts.marginX ?? 14;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const gap = 3.5;
+  const cols = opts.cols ?? Math.min(3, Math.max(1, cards.length));
+  const cardW = (pageWidth - marginX * 2 - gap * (cols - 1)) / cols;
+  const cardH = 28;
+  const pad = 3.5;
+
+  let y = startY;
+  let col = 0;
+
+  cards.forEach((card) => {
+    if (col === 0) {
+      y = ensureSpace(doc, y, cardH + 4);
+    }
+
+    const x = marginX + col * (cardW + gap);
+
+    // Card chrome
+    doc.setDrawColor(226, 232, 240);
+    doc.setFillColor(255, 255, 255);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(x, y, cardW, cardH, 2, 2, "FD");
+
+    // Title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(15, 23, 42);
+    const titleLines = doc.splitTextToSize(
+      String(card.title || ""),
+      cardW - pad * 2
+    );
+    doc.text(titleLines.slice(0, 2), x + pad, y + 5.5);
+
+    // Value (brand blue, large)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(11, 110, 247);
+    doc.text(String(card.value ?? 0), x + pad, y + 15.5);
+
+    // Subtitle
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    const subLines = doc.splitTextToSize(
+      String(card.subtitle || ""),
+      cardW - pad * 2
+    );
+    doc.text(subLines.slice(0, 2), x + pad, y + 21.5);
+    doc.setTextColor(15, 23, 42);
+
+    col += 1;
+    if (col >= cols) {
+      col = 0;
+      y += cardH + gap;
+    }
+  });
+
+  if (col !== 0) {
+    y += cardH + gap;
+  }
+
+  return y + 2;
+}
+
+function drawKpiSection(doc, title, cards, y, cols) {
+  y = ensureSpace(doc, y, 36);
+  y = sectionTitle(doc, title, y);
+  return drawKpiCards(doc, cards, y, { cols });
+}
+
 /**
  * @param {{
  *   dateFrom: string,
@@ -99,41 +172,114 @@ export async function downloadOpsPerformancePdf(opts = {}) {
   doc.text(`Generated: ${new Date().toLocaleString()}`, 14, y);
   y += 10;
 
-  // --- KPI section ---
-  y = sectionTitle(doc, "1. KPI Summary", y);
-  autoTable(doc, {
-    startY: y,
-    head: [["Metric", "Value"]],
-    body: [
-      ["Routine Patients", String(summary.routineTotal ?? 0)],
-      ["Routine Pending", String(summary.routinePending ?? 0)],
-      ["Routine Completed", String(summary.routineCompleted ?? 0)],
-      ["Routine Printed", String(summary.routinePrinted ?? 0)],
-      ["WhatsApp Required", String(summary.whatsappRequired ?? 0)],
-      ["WhatsApp Sent", String(summary.whatsappSent ?? 0)],
-      ["Inside Lab Patients", String(summary.insideTotal ?? 0)],
-      ["Inside Lab Pending", String(summary.insidePending ?? 0)],
-      ["Inside Lab Completed", String(summary.insideCompleted ?? 0)],
-      ["Inside Lab Printed", String(summary.insidePrinted ?? 0)],
-      ["Outsource Patients", String(summary.outsourceTotal ?? 0)],
-      ["Outsource Remaining", String(summary.outsourceRemaining ?? 0)],
-      ["Outsource Collected", String(summary.outsourceCollected ?? 0)],
-      ["Reports Received", String(summary.outsourceReportReceived ?? 0)],
-      ["Reports Delivered", String(summary.outsourceReportDelivered ?? 0)],
+  // --- KPI cards (same layout/content as Owner WorkflowKPIBlocks) ---
+  y = drawKpiSection(
+    doc,
+    "Routine Reports",
+    [
+      {
+        title: "Routine Patients",
+        value: summary.routineTotal ?? 0,
+        subtitle: "Reports requiring routine workflow",
+      },
+      {
+        title: "Pending",
+        value: summary.routinePending ?? 0,
+        subtitle: "Waiting for workflow completion",
+      },
+      {
+        title: "Completed",
+        value: summary.routineCompleted ?? 0,
+        subtitle: "Routine workflow completed",
+      },
+      {
+        title: "Printed",
+        value: summary.routinePrinted ?? 0,
+        subtitle: "Routine reports printed",
+      },
+      {
+        title: "WhatsApp Required",
+        value: summary.whatsappRequired ?? 0,
+        subtitle: "Awaiting WhatsApp",
+      },
+      {
+        title: "WhatsApp Sent",
+        value: summary.whatsappSent ?? 0,
+        subtitle: "WhatsApp delivered",
+      },
     ],
-    styles: { fontSize: 9, cellPadding: 2 },
-    headStyles: { fillColor: [37, 99, 235] },
-    margin: { left: 14, right: 14 },
-  });
-  y = (doc.lastAutoTable?.finalY || y) + 10;
+    y,
+    3
+  );
+
+  y = drawKpiSection(
+    doc,
+    "Inside Lab",
+    [
+      {
+        title: "Inside Lab Patients",
+        value: summary.insideTotal ?? 0,
+        subtitle: "Reports requiring inside lab workflow",
+      },
+      {
+        title: "Pending",
+        value: summary.insidePending ?? 0,
+        subtitle: "Waiting for workflow completion",
+      },
+      {
+        title: "Completed",
+        value: summary.insideCompleted ?? 0,
+        subtitle: "Inside lab workflow completed",
+      },
+      {
+        title: "Printed",
+        value: summary.insidePrinted ?? 0,
+        subtitle: "Inside lab reports printed",
+      },
+    ],
+    y,
+    2
+  );
+
+  y = drawKpiSection(
+    doc,
+    "Outsource",
+    [
+      {
+        title: "Outsource Patients",
+        value: summary.outsourceTotal ?? 0,
+        subtitle: "Reports requiring outsource workflow",
+      },
+      {
+        title: "Remaining",
+        value: summary.outsourceRemaining ?? 0,
+        subtitle: "Samples yet to be collected",
+      },
+      {
+        title: "Collected",
+        value: summary.outsourceCollected ?? 0,
+        subtitle: "Samples collected and sent",
+      },
+      {
+        title: "Reports Received",
+        value: summary.outsourceReportReceived ?? 0,
+        subtitle: "Reports received from outsource lab",
+      },
+      {
+        title: "Reports Delivered",
+        value: summary.outsourceReportDelivered ?? 0,
+        subtitle: "Reports delivered to patients",
+      },
+    ],
+    y,
+    3
+  );
+
+  y += 4;
 
   // --- Routine pending ---
   y = ensureSpace(doc, y, 20);
-  y = sectionTitle(
-    doc,
-    `2. Routine Pending (${routinePending.length})`,
-    y
-  );
+  y = sectionTitle(doc, `Routine Pending (${routinePending.length})`, y);
   if (!routinePending.length) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
@@ -152,7 +298,9 @@ export async function downloadOpsPerformancePdf(opts = {}) {
       ]);
       autoTable(doc, {
         startY: y,
-        head: [["Department", "Tests", "Scanned", "Saved", "Validated", "Entered"]],
+        head: [
+          ["Department", "Tests", "Scanned", "Saved", "Validated", "Entered"],
+        ],
         body: rows.length ? rows : [["—", "—", "—", "—", "—", "—"]],
         styles: { fontSize: 8, cellPadding: 1.5 },
         headStyles: { fillColor: [219, 234, 254], textColor: [30, 58, 138] },
@@ -164,11 +312,7 @@ export async function downloadOpsPerformancePdf(opts = {}) {
 
   // --- Inside pending ---
   y = ensureSpace(doc, y, 20);
-  y = sectionTitle(
-    doc,
-    `3. Inside Lab Pending (${insidePending.length})`,
-    y
-  );
+  y = sectionTitle(doc, `Inside Lab Pending (${insidePending.length})`, y);
   if (!insidePending.length) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
@@ -198,7 +342,7 @@ export async function downloadOpsPerformancePdf(opts = {}) {
   y = ensureSpace(doc, y, 20);
   y = sectionTitle(
     doc,
-    `4. Outsource Incomplete (${outsourcePending.length})`,
+    `Outsource Incomplete (${outsourcePending.length})`,
     y
   );
   if (!outsourcePending.length) {
@@ -217,9 +361,7 @@ export async function downloadOpsPerformancePdf(opts = {}) {
       ]);
       autoTable(doc, {
         startY: y,
-        head: [
-          ["Department", "Tests", "Collected", "Received", "Delivered"],
-        ],
+        head: [["Department", "Tests", "Collected", "Received", "Delivered"]],
         body: rows.length ? rows : [["—", "—", "—", "—", "—"]],
         styles: { fontSize: 8, cellPadding: 1.5 },
         headStyles: { fillColor: [219, 234, 254], textColor: [30, 58, 138] },
