@@ -17,11 +17,32 @@ function testsCell(tests) {
 
 function sectionTitle(doc, text, y) {
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
+  doc.setFontSize(12);
   doc.setTextColor(30, 58, 138);
   doc.text(text, 14, y);
   doc.setTextColor(15, 23, 42);
   return y + 6;
+}
+
+/** Major pending-block heading with bar background for clear section breaks. */
+function pendingSectionHeading(doc, text, y) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const marginX = 14;
+  const barH = 9;
+
+  y = ensureSpace(doc, y + 8, barH + 18);
+  y += 6;
+
+  doc.setFillColor(30, 58, 138);
+  doc.roundedRect(marginX, y - 6, pageWidth - marginX * 2, barH, 1.5, 1.5, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(255, 255, 255);
+  doc.text(String(text), marginX + 3.5, y);
+  doc.setTextColor(15, 23, 42);
+
+  return y + barH + 4;
 }
 
 function ensureSpace(doc, y, need = 40) {
@@ -34,7 +55,7 @@ function ensureSpace(doc, y, need = 40) {
 }
 
 function patientHeader(doc, patient, y) {
-  y = ensureSpace(doc, y, 28);
+  y = ensureSpace(doc, y, 36);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   const name = patient.patientName || patient.name || "—";
@@ -43,7 +64,7 @@ function patientHeader(doc, patient, y) {
     14,
     y
   );
-  y += 4;
+  y += 5;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(71, 85, 105);
@@ -53,7 +74,47 @@ function patientHeader(doc, patient, y) {
     y
   );
   doc.setTextColor(15, 23, 42);
-  return y + 2;
+  return y + 5;
+}
+
+function renderPendingBlock(doc, y, { title, emptyText, patients, buildRows, head }) {
+  y = pendingSectionHeading(doc, title, y);
+
+  if (!patients.length) {
+    y = ensureSpace(doc, y, 12);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(emptyText, 14, y);
+    doc.setTextColor(15, 23, 42);
+    return y + 12;
+  }
+
+  patients.forEach((p, index) => {
+    if (index > 0) {
+      y += 6;
+      y = ensureSpace(doc, y, 40);
+      const pageWidth = doc.internal.pageSize.getWidth();
+      doc.setDrawColor(203, 213, 225);
+      doc.setLineWidth(0.25);
+      doc.line(14, y, pageWidth - 14, y);
+      y += 8;
+    }
+
+    y = patientHeader(doc, p, y);
+    const rows = buildRows(p);
+    autoTable(doc, {
+      startY: y,
+      head: [head],
+      body: rows.length ? rows : [head.map(() => "—")],
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [219, 234, 254], textColor: [30, 58, 138] },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc.lastAutoTable?.finalY || y) + 10;
+  });
+
+  return y + 6;
 }
 
 /** Draw owner-style KPI cards in a wrapping row (title / blue value / subtitle). */
@@ -275,101 +336,52 @@ export async function downloadOpsPerformancePdf(opts = {}) {
     3
   );
 
-  y += 4;
+  y += 8;
 
-  // --- Routine pending ---
-  y = ensureSpace(doc, y, 20);
-  y = sectionTitle(doc, `Routine Pending (${routinePending.length})`, y);
-  if (!routinePending.length) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text("No pending routine workflows.", 14, y);
-    y += 8;
-  } else {
-    for (const p of routinePending) {
-      y = patientHeader(doc, p, y);
-      const rows = (p.routineStatuses || []).map((d) => [
+  // --- Pending sections (clear banners + spaced patient blocks) ---
+  y = renderPendingBlock(doc, y, {
+    title: `Routine Pending (${routinePending.length})`,
+    emptyText: "No pending routine workflows.",
+    patients: routinePending,
+    head: ["Department", "Tests", "Scanned", "Saved", "Validated", "Entered"],
+    buildRows: (p) =>
+      (p.routineStatuses || []).map((d) => [
         d.dept || "—",
         testsCell(d.tests),
         yesNo(d.scanned),
         yesNo(d.saved),
         yesNo(d.validated),
         yesNo(d.entered),
-      ]);
-      autoTable(doc, {
-        startY: y,
-        head: [
-          ["Department", "Tests", "Scanned", "Saved", "Validated", "Entered"],
-        ],
-        body: rows.length ? rows : [["—", "—", "—", "—", "—", "—"]],
-        styles: { fontSize: 8, cellPadding: 1.5 },
-        headStyles: { fillColor: [219, 234, 254], textColor: [30, 58, 138] },
-        margin: { left: 14, right: 14 },
-      });
-      y = (doc.lastAutoTable?.finalY || y) + 6;
-    }
-  }
+      ]),
+  });
 
-  // --- Inside pending ---
-  y = ensureSpace(doc, y, 20);
-  y = sectionTitle(doc, `Inside Lab Pending (${insidePending.length})`, y);
-  if (!insidePending.length) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text("No pending inside-lab workflows.", 14, y);
-    y += 8;
-  } else {
-    for (const p of insidePending) {
-      y = patientHeader(doc, p, y);
-      const rows = (p.insideStatuses || []).map((d) => [
+  y = renderPendingBlock(doc, y, {
+    title: `Inside Lab Pending (${insidePending.length})`,
+    emptyText: "No pending inside-lab workflows.",
+    patients: insidePending,
+    head: ["Department", "Tests", "Saved"],
+    buildRows: (p) =>
+      (p.insideStatuses || []).map((d) => [
         d.dept || "—",
         testsCell(d.tests),
         yesNo(d.saved),
-      ]);
-      autoTable(doc, {
-        startY: y,
-        head: [["Department", "Tests", "Saved"]],
-        body: rows.length ? rows : [["—", "—", "—"]],
-        styles: { fontSize: 8, cellPadding: 1.5 },
-        headStyles: { fillColor: [219, 234, 254], textColor: [30, 58, 138] },
-        margin: { left: 14, right: 14 },
-      });
-      y = (doc.lastAutoTable?.finalY || y) + 6;
-    }
-  }
+      ]),
+  });
 
-  // --- Outsource pending ---
-  y = ensureSpace(doc, y, 20);
-  y = sectionTitle(
-    doc,
-    `Outsource Incomplete (${outsourcePending.length})`,
-    y
-  );
-  if (!outsourcePending.length) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text("No incomplete outsource workflows.", 14, y);
-  } else {
-    for (const p of outsourcePending) {
-      y = patientHeader(doc, p, y);
-      const rows = (p.outsourceStatuses || []).map((d) => [
+  y = renderPendingBlock(doc, y, {
+    title: `Outsource Incomplete (${outsourcePending.length})`,
+    emptyText: "No incomplete outsource workflows.",
+    patients: outsourcePending,
+    head: ["Department", "Tests", "Collected", "Received", "Delivered"],
+    buildRows: (p) =>
+      (p.outsourceStatuses || []).map((d) => [
         d.dept || "—",
         testsCell(d.tests),
         yesNo(d.sampleCollected),
         yesNo(d.reportReceived),
         yesNo(d.reportGiven),
-      ]);
-      autoTable(doc, {
-        startY: y,
-        head: [["Department", "Tests", "Collected", "Received", "Delivered"]],
-        body: rows.length ? rows : [["—", "—", "—", "—", "—"]],
-        styles: { fontSize: 8, cellPadding: 1.5 },
-        headStyles: { fillColor: [219, 234, 254], textColor: [30, 58, 138] },
-        margin: { left: 14, right: 14 },
-      });
-      y = (doc.lastAutoTable?.finalY || y) + 6;
-    }
-  }
+      ]),
+  });
 
   const safeFrom = String(dateFrom || "from").replace(/[^\d-]/g, "");
   const safeTo = String(dateTo || "to").replace(/[^\d-]/g, "");
