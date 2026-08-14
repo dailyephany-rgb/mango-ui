@@ -39,6 +39,21 @@ export function ColFilterInput({ value, onChange, placeholder }) {
   );
 }
 
+export function ColFilterSelect({ value, onChange, options, placeholder = "All" }) {
+  return (
+    <th className="col-filter-cell">
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">{placeholder}</option>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </th>
+  );
+}
+
 export function ColFilterLocked() {
   return <th className="col-filter-cell col-filter-locked" />;
 }

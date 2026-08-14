@@ -20,6 +20,7 @@ import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 import INSIDE_ROOM_MAP from "../inside_room_routing.json"; 
 import "./InsideLab.css";
+import "../shared/styles/colFilters.css";
 import {
   parseEntryDate,
   toLocalDateString,
@@ -30,6 +31,16 @@ import {
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useScopedMasterEntries } from "../shared/hooks/useScopedMasterEntries.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
+import {
+  EMPTY_DEPT_COL_FILTERS,
+  applyDeptColFilters,
+  hasActiveDeptColFilters,
+} from "../shared/utils/deptColFilters.js";
+import ColFilterToggle, {
+  ColFilterInput,
+  ColFilterLocked,
+  ColFilterClearCell,
+} from "../shared/components/ColFilterToggle.jsx";
 
 export default function InsideLabRegister() {
   const loggedUser =
@@ -42,6 +53,8 @@ export default function InsideLabRegister() {
   const [labResults, setLabResults] = useState({}); 
   const [localDrafts, setLocalDrafts] = useState({}); 
   const [activeTab, setActiveTab] = useState("PathologyRegister");
+  const [showColFilters, setShowColFilters] = useState(false);
+  const [colFilters, setColFilters] = useState(EMPTY_DEPT_COL_FILTERS);
   const {
     regSearch,
     setRegSearch,
@@ -266,8 +279,14 @@ export default function InsideLabRegister() {
 
   
 
+  const setColFilter = (key, value) => {
+    setColFilters((prev) => ({ ...prev, [key]: value }));
+  };
+  const clearColFilters = () => setColFilters(EMPTY_DEPT_COL_FILTERS);
+  const hasActiveColFilters = hasActiveDeptColFilters(colFilters);
+
   const filteredEntries = useMemo(() => {
-    return entries
+    const base = entries
       .filter((e) => {
         const patientTests = (e.selectedTests || []).map(t => 
           (typeof t === "string" ? t : t?.test || "").toUpperCase().trim()
@@ -301,7 +320,32 @@ export default function InsideLabRegister() {
         if (!dateB) return -1;
         return dateA - dateB;
       });
-  }, [entries, activeTab, activeSource, regSearch, dateFrom, dateTo]);
+
+    return applyDeptColFilters(base, colFilters, {
+      getDiag: (p) => p.diagnosticNo || p.accNo || "",
+      getAge: (p) =>
+        `${p.age ?? ""} ${p.ageUnit ?? ""} / ${p.gender || p.sex || ""}`.trim(),
+      getTests: (p) =>
+        (p.selectedTests || [])
+          .map((t) => (typeof t === "string" ? t : t?.test || ""))
+          .filter((testName) =>
+            INSIDE_ROOM_MAP[activeTab].some(
+              (mapped) => testName.toUpperCase() === mapped.toUpperCase()
+            )
+          )
+          .join(" "),
+      getSavedBy: (p) => labResults[getDeptUniqueKey(p)]?.savedBy || "",
+    });
+  }, [
+    entries,
+    activeTab,
+    activeSource,
+    regSearch,
+    dateFrom,
+    dateTo,
+    colFilters,
+    labResults,
+  ]);
 
   return (
     <EngComponent name="InsideLab" type="Page" parent={null} moduleId="InsideLab">
@@ -389,7 +433,14 @@ export default function InsideLabRegister() {
             <tr>
               <th>Reg No</th>
               <th>Diagnostic No</th>
-              <th>Name</th>
+              <th>
+                <ColFilterToggle
+                  label="Name"
+                  open={showColFilters}
+                  active={hasActiveColFilters}
+                  onToggle={() => setShowColFilters((v) => !v)}
+                />
+              </th>
               <th>Age/Gender</th>
               <th>Doctor</th>
               <th>Test(s)</th>
@@ -397,6 +448,50 @@ export default function InsideLabRegister() {
               <th>Action</th>
               <th>Finalize</th>
             </tr>
+            {showColFilters ? (
+              <tr className="col-filter-row">
+                <ColFilterInput
+                  value={colFilters.regNo}
+                  onChange={(v) => setColFilter("regNo", v)}
+                  placeholder="Filter reg…"
+                />
+                <ColFilterInput
+                  value={colFilters.diagnosticNo}
+                  onChange={(v) => setColFilter("diagnosticNo", v)}
+                  placeholder="Filter diag…"
+                />
+                <ColFilterInput
+                  value={colFilters.name}
+                  onChange={(v) => setColFilter("name", v)}
+                  placeholder="Filter name…"
+                />
+                <ColFilterInput
+                  value={colFilters.age}
+                  onChange={(v) => setColFilter("age", v)}
+                  placeholder="Age / gender…"
+                />
+                <ColFilterInput
+                  value={colFilters.doctor}
+                  onChange={(v) => setColFilter("doctor", v)}
+                  placeholder="Filter doctor…"
+                />
+                <ColFilterInput
+                  value={colFilters.tests}
+                  onChange={(v) => setColFilter("tests", v)}
+                  placeholder="e.g. biopsy"
+                />
+                <ColFilterInput
+                  value={colFilters.savedBy}
+                  onChange={(v) => setColFilter("savedBy", v)}
+                  placeholder="Filter saved by…"
+                />
+                <ColFilterLocked />
+                <ColFilterClearCell
+                  show={hasActiveColFilters}
+                  onClear={clearColFilters}
+                />
+              </tr>
+            ) : null}
           </thead>
           <tbody>
             {filteredEntries.map((e) => {

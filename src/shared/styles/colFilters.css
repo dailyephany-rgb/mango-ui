@@ -59,7 +59,20 @@
   text-align: left;
 }
 
-.col-filter-cell input:focus {
+.col-filter-cell select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 5px 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #0f172a;
+  background: #fff;
+}
+
+.col-filter-cell input:focus,
+.col-filter-cell select:focus {
   outline: none;
   border-color: #2563eb;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);

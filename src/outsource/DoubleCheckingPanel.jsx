@@ -26,6 +26,17 @@ import {
   localDayEndExclusive,
 } from "../shared/utils/dates.js";
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
+import {
+  EMPTY_DEPT_COL_FILTERS,
+  applyDeptColFilters,
+  hasActiveDeptColFilters,
+} from "../shared/utils/deptColFilters.js";
+import ColFilterToggle, {
+  ColFilterInput,
+  ColFilterLocked,
+  ColFilterClearCell,
+} from "../shared/components/ColFilterToggle.jsx";
+import "../shared/styles/colFilters.css";
 
 export const DOUBLE_CHECK_TAB = "Double Checking";
 export const DOUBLE_CHECK_COLLECTION = "double_check_outsource";
@@ -134,6 +145,8 @@ export default function DoubleCheckingPanel({
   const [searchText, setSearchText] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [showColFilters, setShowColFilters] = useState(false);
+  const [colFilters, setColFilters] = useState(EMPTY_DEPT_COL_FILTERS);
   const searchRef = useRef(null);
   const resultRefs = useRef([]);
 
@@ -201,8 +214,14 @@ export default function DoubleCheckingPanel({
     return () => unsub();
   }, [dateFrom, dateTo]);
 
+  const setColFilter = (key, value) => {
+    setColFilters((prev) => ({ ...prev, [key]: value }));
+  };
+  const clearColFilters = () => setColFilters(EMPTY_DEPT_COL_FILTERS);
+  const hasActiveColFilters = hasActiveDeptColFilters(colFilters);
+
   const filtered = useMemo(() => {
-    return rows
+    const base = rows
       .filter((e) => {
         if (activeSource !== "All" && e.source !== activeSource) return false;
         if (regSearch.trim()) {
@@ -222,7 +241,15 @@ export default function DoubleCheckingPanel({
         if (!dateB) return -1;
         return dateA - dateB;
       });
-  }, [rows, activeSource, regSearch]);
+    return applyDeptColFilters(base, colFilters, {
+      getDiag: (p) => p.diagnosticNo || p.accessionNo || "",
+      getTests: (p) =>
+        (p.displayTests || p.selectedTests || [])
+          .map((t) => testLabel(t))
+          .filter(Boolean)
+          .join(" "),
+    });
+  }, [rows, activeSource, regSearch, colFilters]);
 
   const setField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -642,7 +669,14 @@ export default function DoubleCheckingPanel({
             <tr>
               <th className="sticky-col">Reg No</th>
               <th className="sticky-col">Diag No</th>
-              <th className="sticky-col">Name</th>
+              <th className="sticky-col">
+                <ColFilterToggle
+                  label="Name"
+                  open={showColFilters}
+                  active={hasActiveColFilters}
+                  onToggle={() => setShowColFilters((v) => !v)}
+                />
+              </th>
               <th>Outsource Collected</th>
               <th>Age</th>
               <th>Test(s)</th>
@@ -659,6 +693,83 @@ export default function DoubleCheckingPanel({
               <th>Received</th>
               <th>Delivered</th>
             </tr>
+            {showColFilters ? (
+              <tr className="col-filter-row">
+                <ColFilterInput
+                  value={colFilters.regNo}
+                  onChange={(v) => setColFilter("regNo", v)}
+                  placeholder="Filter reg…"
+                />
+                <ColFilterInput
+                  value={colFilters.diagnosticNo}
+                  onChange={(v) => setColFilter("diagnosticNo", v)}
+                  placeholder="Filter diag…"
+                />
+                <ColFilterInput
+                  value={colFilters.name}
+                  onChange={(v) => setColFilter("name", v)}
+                  placeholder="Filter name…"
+                />
+                <ColFilterLocked />
+                <ColFilterInput
+                  value={colFilters.age}
+                  onChange={(v) => setColFilter("age", v)}
+                  placeholder="Filter age…"
+                />
+                <ColFilterInput
+                  value={colFilters.tests}
+                  onChange={(v) => setColFilter("tests", v)}
+                  placeholder="e.g. culture"
+                />
+                <ColFilterInput
+                  value={colFilters.lab}
+                  onChange={(v) => setColFilter("lab", v)}
+                  placeholder="e.g. STERLING"
+                />
+                <ColFilterInput
+                  value={colFilters.doctor}
+                  onChange={(v) => setColFilter("doctor", v)}
+                  placeholder="Filter doctor…"
+                />
+                <ColFilterInput
+                  value={colFilters.person}
+                  onChange={(v) => setColFilter("person", v)}
+                  placeholder="Filter person…"
+                />
+                <ColFilterInput
+                  value={colFilters.relation}
+                  onChange={(v) => setColFilter("relation", v)}
+                  placeholder="Filter relation…"
+                />
+                <ColFilterInput
+                  value={colFilters.mobile}
+                  onChange={(v) => setColFilter("mobile", v)}
+                  placeholder="Filter mobile…"
+                />
+                <ColFilterInput
+                  value={colFilters.collectedBy}
+                  onChange={(v) => setColFilter("collectedBy", v)}
+                  placeholder="Filter collected by…"
+                />
+                <ColFilterInput
+                  value={colFilters.receivedBy}
+                  onChange={(v) => setColFilter("receivedBy", v)}
+                  placeholder="Filter received by…"
+                />
+                <ColFilterInput
+                  value={colFilters.deliveredBy}
+                  onChange={(v) => setColFilter("deliveredBy", v)}
+                  placeholder="Filter delivered by…"
+                />
+                <ColFilterLocked />
+                <ColFilterLocked />
+                <ColFilterLocked />
+                <ColFilterClearCell
+                  show={hasActiveColFilters}
+                  onClear={clearColFilters}
+                />
+              </tr>
+            ) : null}
           </thead>
           <tbody>
             {filtered.map((e) => {

@@ -34,6 +34,7 @@ import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
 import ColFilterToggle, {
   ColFilterInput,
+  ColFilterSelect,
   ColFilterLocked,
   ColFilterClearCell,
 } from "../shared/components/ColFilterToggle.jsx";
@@ -577,7 +578,15 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
                       <ColFilterLocked />
                       <ColFilterLocked />
                       <ColFilterLocked />
-                      <ColFilterLocked />
+                      <ColFilterSelect
+                        value={colFilters.machine}
+                        onChange={(v) => setColFilter("machine", v)}
+                        placeholder="All machines"
+                        options={[
+                          { value: "3-part", label: "3-Part" },
+                          { value: "5-part", label: "5-Part" },
+                        ]}
+                      />
                       <ColFilterInput
                         value={colFilters.status}
                         onChange={(v) => setColFilter("status", v)}

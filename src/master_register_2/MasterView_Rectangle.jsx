@@ -760,6 +760,7 @@ const specialCompleted =
               <thead>
                 <tr>
                   <th>Department</th>
+                  <th>Tests</th>
                   <th>Saved</th>
                 </tr>
               </thead>
@@ -768,6 +769,7 @@ const specialCompleted =
                 {rec.workflowStatuses.map((d, i) => (
                   <tr key={i}>
                     <td>{d.dept}</td>
+                    <td>{Array.isArray(d.tests) ? d.tests.join(", ") : "—"}</td>
                     <td className={d.saved ? "status-yes" : "status-pending"}>
                       {d.saved ? "Yes" : "No"}
                     </td>
@@ -786,6 +788,7 @@ const specialCompleted =
               <thead>
                 <tr>
                   <th>Department</th>
+                  <th>Tests</th>
                   <th>Collected</th>
                   <th>Received</th>
                   <th>Delivered</th>
@@ -796,6 +799,7 @@ const specialCompleted =
                 {rec.workflowStatuses.map((d, i) => (
                   <tr key={i}>
                     <td>{d.dept}</td>
+                    <td>{Array.isArray(d.tests) ? d.tests.join(", ") : "—"}</td>
 
                     <td
                       className={

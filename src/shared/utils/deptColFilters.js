@@ -9,6 +9,15 @@ export const EMPTY_DEPT_COL_FILTERS = {
   source: "",
   category: "",
   tests: "",
+  machine: "",
+  lab: "",
+  doctor: "",
+  person: "",
+  relation: "",
+  mobile: "",
+  collectedBy: "",
+  receivedBy: "",
+  deliveredBy: "",
   status: "",
   savedBy: "",
 };
@@ -28,6 +37,11 @@ export function defaultTestsHaystack(patient) {
   if (patient?.testsDisplay != null && String(patient.testsDisplay).trim()) {
     return String(patient.testsDisplay);
   }
+  if (Array.isArray(patient?.displayTests) && patient.displayTests.length) {
+    return patient.displayTests
+      .map((t) => (typeof t === "string" ? t : t?.test || ""))
+      .join(" ");
+  }
   if (Array.isArray(patient?.relevantTests) && patient.relevantTests.length) {
     return patient.relevantTests.join(" ");
   }
@@ -43,18 +57,28 @@ export function defaultTestsHaystack(patient) {
 /**
  * @param {object} patient
  * @param {typeof EMPTY_DEPT_COL_FILTERS} colFilters
- * @param {{ getAge?: (p: object) => string, getTests?: (p: object) => string }} [options]
+ * @param {{
+ *   getAge?: (p: object) => string,
+ *   getTests?: (p: object) => string,
+ *   getDiag?: (p: object) => string,
+ *   getSavedBy?: (p: object) => string,
+ * }} [options]
  */
 export function matchesDeptColFilters(patient, colFilters, options = {}) {
   const getAge = options.getAge || defaultAgeHaystack;
   const getTests = options.getTests || defaultTestsHaystack;
+  const getDiag =
+    options.getDiag ||
+    ((p) => p.diagnosticNo || p.accessionNo || p.accNo || "");
+  const getSavedBy = options.getSavedBy || ((p) => p.savedBy);
 
   if (!includesColFilter(patient.regNo, colFilters.regNo)) return false;
-  if (!includesColFilter(patient.diagnosticNo, colFilters.diagnosticNo))
+  if (!includesColFilter(getDiag(patient), colFilters.diagnosticNo))
     return false;
   if (!includesColFilter(patient.name, colFilters.name)) return false;
   if (!includesColFilter(getAge(patient), colFilters.age)) return false;
-  if (!includesColFilter(patient.gender, colFilters.gender)) return false;
+  if (!includesColFilter(patient.gender || patient.sex, colFilters.gender))
+    return false;
   if (!includesColFilter(patient.source, colFilters.source)) return false;
   if (!includesColFilter(patient.category, colFilters.category)) return false;
 
@@ -72,7 +96,38 @@ export function matchesDeptColFilters(patient, colFilters, options = {}) {
     }
   }
 
-  if (!includesColFilter(patient.savedBy, colFilters.savedBy)) return false;
+  if (String(colFilters.machine || "").trim()) {
+    if (String(patient.machine || "") !== String(colFilters.machine)) {
+      return false;
+    }
+  }
+
+  if (
+    !includesColFilter(patient.labName || patient.lab, colFilters.lab)
+  ) {
+    return false;
+  }
+  if (
+    !includesColFilter(
+      patient.doctor || patient.doctorName,
+      colFilters.doctor
+    )
+  ) {
+    return false;
+  }
+  if (!includesColFilter(patient.concernedPerson, colFilters.person))
+    return false;
+  if (!includesColFilter(patient.relation, colFilters.relation)) return false;
+  if (!includesColFilter(patient.mobileNo || patient.mobile, colFilters.mobile))
+    return false;
+  if (!includesColFilter(patient.collectedBy, colFilters.collectedBy))
+    return false;
+  if (!includesColFilter(patient.receivedBy, colFilters.receivedBy))
+    return false;
+  if (!includesColFilter(patient.deliveredBy, colFilters.deliveredBy))
+    return false;
+
+  if (!includesColFilter(getSavedBy(patient), colFilters.savedBy)) return false;
   return true;
 }
 
