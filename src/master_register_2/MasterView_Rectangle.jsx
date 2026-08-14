@@ -221,8 +221,7 @@ const isRoutineDepartmentComplete = (dept) => {
   return (
     dept.scanned === "Yes" &&
     dept.saved === "Yes" &&
-    dept.validated === true &&
-    dept.entered === true
+    dept.validated === true
   );
 };
 
@@ -264,7 +263,6 @@ selectedTests.forEach((t) => {
     scanned: rec.routineReportsScanned?.[config.firestoreKey],
     saved: rec.routineReportsSaved?.[config.firestoreKey],
     validated: rec.routineReportsValidated?.[config.firestoreKey],
-    entered: rec.routineReportsEntered?.[config.firestoreKey],
   });
 
   statuses.push({
@@ -279,7 +277,6 @@ selectedTests.forEach((t) => {
     scanned: cascaded.scanned,
     saved: cascaded.saved,
     validated: cascaded.validated,
-    entered: cascaded.entered,
   });
  
 });
@@ -402,8 +399,7 @@ const specialCompleted =
         (s) =>
           s.scanned === "Yes" ||
           s.saved === "Yes" ||
-          s.validated ||
-          s.entered
+          s.validated
       )
     ? "In Progress"
     : "Pending";
@@ -722,7 +718,6 @@ const specialCompleted =
             <th>Scanned</th>
             <th>Saved</th>
             <th>Validated</th>
-            <th>Entered</th>
           </tr>
         </thead>
 
@@ -738,8 +733,6 @@ const specialCompleted =
               <td>{d.saved}</td>
 
               <td>{d.validated ? "Yes" : "No"}</td>
-
-              <td>{d.entered ? "Yes" : "No"}</td>
             </tr>
           ))}
         </tbody>

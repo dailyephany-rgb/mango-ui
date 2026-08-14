@@ -58,27 +58,6 @@ export default function OwnerBloodGroupPage() {
   // 2. Dynamic Fetcher Selection
   const Fetcher = mode === "testing" ? TestingFetcher : RetestingFetcher;
 
-  useEffect(() => {
-    if (mode === "retesting") {
-      if (staffTab === "entered") {
-        setStaffTab("testing");
-      }
-  
-      if (
-        delayStage ===
-        "validated_to_entered"
-      ) {
-        setDelayStage(
-          "scanned_to_saved"
-        );
-      }
-    }
-  }, [
-    mode,
-    staffTab,
-    delayStage,
-  ]);
-
   // 3. Subscription (Trusting the Fetcher)
   useEffect(() => {
     const unsub = Fetcher.subscribeOverview({
@@ -201,13 +180,7 @@ export default function OwnerBloodGroupPage() {
           dept.saved_to_validated ??
           null
         );
-
-      case "entered":
-          return mode === "testing"
-            ? (dept.validated_to_entered ??null) : null;
-        
-  
-      case "turnaround":
+case "turnaround":
         return (
           dept.turnaround ??
           null
@@ -270,7 +243,7 @@ export default function OwnerBloodGroupPage() {
                 ? [
                     "testing",
                     "validated",
-                    "entered",
+                    
                   ]
                 : [
                     "testing",
@@ -375,9 +348,6 @@ export default function OwnerBloodGroupPage() {
 
         {mode === "testing" && (
           <>
-            <option value="entered">
-              Validated → Entered
-            </option>
 
             <option value="complete">
               Complete Analysis
@@ -484,9 +454,6 @@ export default function OwnerBloodGroupPage() {
         </option>
 
         {mode === "testing" && (
-          <option value="validated_to_entered">
-            Validated → Entered
-          </option>
           )}
         
           <option value="turnaround">
@@ -685,50 +652,6 @@ export default function OwnerBloodGroupPage() {
       </>
     )}
 
-    {mode === "testing" &&
-      staffTab === "entered" && (
-        <>
-          <div className="chart-card">
-            <h3>
-              Entry Distribution
-            </h3>
-
-            <StaffDistribution
-              data={
-                staffAnalytics?.entered
-                  ?.distribution || []
-              }
-            />
-          </div>
-
-          <div className="chart-card">
-            <h3>
-              Avg Validate → Enter by Staff
-            </h3>
-
-            <StaffAvgCards
-              data={
-                staffAnalytics?.entered
-                  ?.averages || []
-              }
-                />
-              </div>
-
-              <div className="chart-card full-width">
-                <h3>
-                  Entry Timeline
-                </h3>
-
-                <StaffTimeline
-                  timelines={
-                    staffAnalytics?.entered
-                      ?.timelines || {}
-                  }
-                />
-              </div>
-            </>
-          )}
-
       </OwnerChartsSection>
             </OwnerTabPanel>
       )}
@@ -830,9 +753,6 @@ export default function OwnerBloodGroupPage() {
 
               {mode === "testing" && (
                 <>
-                  <option value="entered">
-                    Validated → Entered
-                  </option>
 
                   <option value="complete">
                     Complete Analysis

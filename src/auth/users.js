@@ -157,12 +157,6 @@ export const departments = [
     url: "/index_validator.html",
     loginMode: "validator"
   },
-  
-  {
-    name: "Validator - Entered",
-    url: "/index_validator.html",
-    loginMode: "entered"
-  },
 
   {
     name: "Critical Alerts",

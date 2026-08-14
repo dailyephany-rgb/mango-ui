@@ -79,8 +79,6 @@ export function mergeDeptRows(rows = []) {
         savedBy: r.savedBy || "",
         timeValidated: toDate(r.validatedTime || r.timeValidated),
         validatedBy: r.validatedBy || "",
-        enteredBy: r.enteredBy || "",
-        enteredTime: toDate(r.enteredTime),
         isSaved: r.saved === "Yes" || !!(r.savedTime || r.timeSaved),
         isValidated: r.validated === true || r.status === "validated" || !!(r.validatedTime || r.timeValidated),
         isCritical: r.critical === "Yes", 
@@ -117,10 +115,6 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
           end = toDate(row.timeValidated);
           break;
 
-        case "validated_to_entered":
-          start = toDate(row.timeValidated);
-          end = toDate(row.enteredTime);
-          break;
 
           case "turnaround":
           start = toDate(row.timeCollected);
@@ -162,11 +156,7 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
       
         validatedBy:
           row.validatedBy || "NA",
-      
-        enteredBy:
-          row.enteredBy || "NA",
-      
-        timeScanned:
+timeScanned:
           row.timeScanned,
       
         timeSaved:
@@ -174,10 +164,7 @@ export function computeSLAViolations(unifiedRows, timingMap, stage = "scanned_to
       
         timeValidated:
           row.timeValidated,
-      
-        enteredTime:
-          row.enteredTime,
-      });
+});
     }
   });
   return violators.sort((a, b) => b.excess - a.excess);
@@ -250,7 +237,27 @@ export function computeKPIs(masterRows = [], serologyRows = []) {
     avgTurnaroundTime: avg(averages.collectedToValidated),
     slowestEntry,
   };
+
+return {
+    testing: {
+      totalSaved,
+      distribution,
+      averages,
+      timelines,
+    },
+
+    validated: {
+      totalValidated,
+      distribution:
+        validatedDistribution,
+      averages:
+        validatedAverages,
+      timelines:
+        validatedTimelines,
+    },
+  };
 }
+
 
 /* ================= SUBSCRIBE OVERVIEW =================== */
 
@@ -615,148 +622,6 @@ export function computeStaffAnalytics(
       })
     );
 
-  /* =========================
-     ENTERED (enteredBy)
-  ========================= */
-
-  const enteredRows =
-    rows.filter(
-      (r) =>
-        r.enteredBy &&
-        r.timeValidated &&
-        r.enteredTime
-    );
-
-  const totalEntered =
-    enteredRows.length;
-
-  const enteredDistributionMap =
-    {};
-
-  const enteredAvgMap =
-    {};
-
-  const enteredTimelines =
-    {};
-
-  enteredRows.forEach(
-    (r) => {
-      const staff =
-        r.enteredBy.trim();
-
-      if (!staff)
-        return;
-
-      enteredDistributionMap[
-        staff
-      ] =
-        (enteredDistributionMap[
-          staff
-        ] ||
-          0) + 1;
-
-      const duration =
-        minutesDiff(
-          r.timeValidated,
-          r.enteredTime
-        );
-
-      if (
-        duration !=
-        null
-      ) {
-        if (
-          !enteredAvgMap[
-            staff
-          ]
-        ) {
-          enteredAvgMap[
-            staff
-          ] = [];
-        }
-
-        enteredAvgMap[
-          staff
-        ].push(
-          duration
-        );
-
-        if (
-          !enteredTimelines[
-            staff
-          ]
-        ) {
-          enteredTimelines[
-            staff
-          ] = [];
-        }
-
-        enteredTimelines[staff].push({
-          x: r.diagnosticNo || r.regNo,
-          regNo: r.regNo,
-          diagnosticNo: r.diagnosticNo || "NA",
-          name: r.name,
-          test: r.test,
-          selectedTests: r.selectedTests || [],
-          duration,
-          timeValidated: r.timeValidated,
-          enteredTime: r.enteredTime,
-        });
-      }
-    }
-  );
-
-  const enteredDistribution =
-    Object.entries(
-      enteredDistributionMap
-    )
-      .map(
-        ([
-          name,
-          count,
-        ]) => ({
-          name,
-          count,
-          percentage:
-            totalEntered
-              ? Math.round(
-                  (count /
-                    totalEntered) *
-                    100
-                )
-              : 0,
-        })
-      )
-      .sort(
-        (a, b) =>
-          b.count -
-          a.count
-      );
-
-  const enteredAverages =
-    Object.entries(
-      enteredAvgMap
-    ).map(
-      ([
-        name,
-        values,
-      ]) => ({
-        name,
-        avgMinutes:
-          Math.round(
-            values.reduce(
-              (
-                s,
-                v
-              ) =>
-                s + v,
-              0
-            ) /
-              values.length
-          ),
-      })
-    );
-
   return {
     testing: {
       totalSaved,
@@ -773,16 +638,6 @@ export function computeStaffAnalytics(
         validatedAverages,
       timelines:
         validatedTimelines,
-    },
-
-    entered: {
-      totalEntered,
-      distribution:
-        enteredDistribution,
-      averages:
-        enteredAverages,
-      timelines:
-        enteredTimelines,
     },
   };
 }

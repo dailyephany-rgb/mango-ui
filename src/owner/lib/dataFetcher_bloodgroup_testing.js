@@ -68,12 +68,10 @@ export function mergeDeptRows(rows = []) {
         timeSaved: toDate(r.savedTime || r.timeSaved),
         savedBy: r.savedBy || "",
         timeValidated: toDate(r.validatedTime || r.timeValidated),
-        timeEntered: toDate(r.enteredTime || r.timeEntered),
         isSaved: r.saved === "Yes" || !!(r.savedTime || r.timeSaved),
         isValidated: r.validated === true || r.status === "validated"
          || !!(r.validatedTime || r.timeValidated),
         validatedBy: r.validatedBy || "",
-        enteredBy: r.enteredBy,
         testList: new Set(),
       };
     }
@@ -107,13 +105,6 @@ switch (stage) {
     end = toDate(row.timeValidated);
     break;
 
-  case "validated_to_entered":
-    start = toDate(row.timeValidated);
-    end = toDate(
-      row.timeEntered ||
-      row.enteredTime
-    );
-    break;
 
     case "turnaround":
     start = toDate(row.timeCollected);
@@ -152,11 +143,7 @@ const duration = Math.round(
       
         validatedBy:
           row.validatedBy || "NA",
-      
-        enteredBy:
-          row.enteredBy || "NA",
-      
-        timeScanned:
+timeScanned:
           row.timeScanned,
       
         timeSaved:
@@ -164,10 +151,7 @@ const duration = Math.round(
       
         timeValidated:
           row.timeValidated,
-      
-        enteredTime:
-          row.timeEntered,
-      });
+});
     }
   });
   return violators.sort((a, b) => b.excess - a.excess);
@@ -402,87 +386,6 @@ const validatedDistribution =
             : 0,
    }));
 
-/* =========================
-   ENTERED (enteredBy)
-========================= */
-
-const enteredRows = rows.filter(
-  (r) =>
-    r.enteredBy &&
-    r.timeValidated &&
-    r.timeEntered
-);
-const totalEntered = enteredRows.length;
-
-const enteredDistributionMap = {};
-const enteredAvgMap = {};
-const enteredTimelines = {};
-
-enteredRows.forEach((r) => {
-  const user = r.enteredBy.trim();
-  if (!user) return;
-
-  enteredDistributionMap[user] =
-    (enteredDistributionMap[user] || 0) + 1;
-
-  const mins = minutesDiff(
-    r.timeValidated,
-    r.timeEntered
-  );
-
-  if (mins != null) {
-    if (!enteredAvgMap[user]) {
-      enteredAvgMap[user] = [];
-    }
-
-    enteredAvgMap[user].push(mins);
-
-    if (!enteredTimelines[user]) {
-      enteredTimelines[user] = [];
-    }
-
-    enteredTimelines[user].push({
-      x: r.diagnosticNo || r.regNo,
-      regNo: r.regNo,
-      diagnosticNo: r.diagnosticNo || "NA",
-      name: r.name,
-      test: r.test,
-      selectedTests: r.selectedTests || [],
-      duration: mins,
-      timeValidated: r.timeValidated,
-      timeEntered: r.timeEntered,
-    });
-  }
-});
-
-const enteredDistribution = Object.entries(
-  enteredDistributionMap
-).map(([name, count]) => ({
-  name,
-  count,
-  percentage:
-    totalEntered > 0
-      ? Number(
-          ((count / totalEntered) * 100).toFixed(1)
-        )
-      : 0,
-}));
-
-const enteredAverages = Object.entries(
-  enteredAvgMap
-).map(([name, values]) => ({
-  name,
-  avgMinutes:
-    values.length > 0
-      ? Math.round(
-          values.reduce(
-            (sum, v) => sum + v,
-            0
-          ) / values.length
-        )
-      : 0,
-}));
-
 return {
   testing: {
     totalSaved,
@@ -497,17 +400,10 @@ return {
     averages: validatedAverages,
     timelines: validatedTimelines,
   },
-  entered: {
-    totalEntered,
-    distribution: enteredDistribution,
-    averages: enteredAverages,
-    timelines: enteredTimelines,
-  },
 };
 
    
 }
-
 
 
 /* ================= SUBSCRIBE OVERVIEW =================== */

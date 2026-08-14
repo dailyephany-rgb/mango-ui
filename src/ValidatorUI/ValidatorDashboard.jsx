@@ -119,33 +119,7 @@ export default function ValidatorDashboard() {
   }, [activeCollection, dateFrom, dateTo]);
 
   const handleValidate = async (entry, collectionName) => {
-    try {
-      const ref = doc(db, collectionName, entry.id);
-      await updateDoc(ref, {
-        validated: true,
-        validatedBy: sessionStorage.getItem("loggedUser") || "Unknown",
-        validatedTime: serverTimestamp(),
-        status: "validated",
-      });
-
-      const dept = ROUTINE_DEPARTMENTS[collectionName];
-
-      if (dept) {
-        await updateDoc(
-          doc(db, "report_details", entry.id),
-          reportDetailsStageCascadeFields(dept, "validated")
-        );
-      }
-
-      alert("Entry Validated Successfully!");
-    } catch (err) {
-      console.error("❌ Error during validation:", err);
-      alert("Validation failed. Check console.");
-    }
-  };
-
-  const handleEntered = async (entry, collectionName) => {
-    if (entry.entered) {
+    if (entry.validated) {
       return;
     }
 
@@ -156,13 +130,13 @@ export default function ValidatorDashboard() {
       const dept = ROUTINE_DEPARTMENTS[collectionName];
 
       const reportSnap = await getDoc(reportRef);
-
       const batch = writeBatch(db);
 
       batch.update(ref, {
-        entered: true,
-        enteredBy: sessionStorage.getItem("loggedUser") || "Unknown",
-        enteredTime: serverTimestamp(),
+        validated: true,
+        validatedBy: sessionStorage.getItem("loggedUser") || "Unknown",
+        validatedTime: serverTimestamp(),
+        status: "validated",
       });
 
       const reportUpdates = {};
@@ -170,7 +144,7 @@ export default function ValidatorDashboard() {
       if (dept) {
         Object.assign(
           reportUpdates,
-          reportDetailsStageCascadeFields(dept, "entered")
+          reportDetailsStageCascadeFields(dept, "validated")
         );
       }
 
@@ -191,10 +165,10 @@ export default function ValidatorDashboard() {
 
       await batch.commit();
 
-      alert("Marked as Entered!");
+      alert("Entry Validated Successfully!");
     } catch (err) {
-      console.error("❌ Error during entry:", err);
-      alert("Failed to mark as Entered.");
+      console.error("❌ Error during validation:", err);
+      alert("Validation failed. Check console.");
     }
   };
 
@@ -329,7 +303,6 @@ export default function ValidatorDashboard() {
         setDateTo={setDateTo}
         loginMode={loginMode}
         onValidate={(entry) => handleValidate(entry, activeCollection)}
-        onEntered={(entry) => handleEntered(entry, activeCollection)}
         onEditResult={(entry, payload) =>
           handleEditResult(entry, activeCollection, payload)
         }

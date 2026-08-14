@@ -22,9 +22,7 @@ export default function DelayTable({ violators = [],stage = "scanned_to_saved",}
               ? "Delivered By"
               : stage === "scanned_to_saved"
               ? "Saved By"
-              : stage === "saved_to_validated"
-              ? "Validated By"
-              : "Entered By"}
+              : "Validated By"}
           </th>
             <th>Duration (min)</th>
             <th>Allowed (min)</th>
@@ -55,9 +53,7 @@ export default function DelayTable({ violators = [],stage = "scanned_to_saved",}
                   ? v.deliveredBy || "NA"
                   : stage === "scanned_to_saved"
                   ? v.savedBy || "NA"
-                  : stage === "saved_to_validated"
-                  ? v.validatedBy || "NA"
-                  : v.enteredBy || "NA"}
+                  : v.validatedBy || "NA"}
               </td>
                   <td>{v.duration}</td>
                   <td>{v.allowed}</td>

@@ -343,7 +343,7 @@ export async function downloadOpsPerformancePdf(opts = {}) {
     title: `Routine Pending (${routinePending.length})`,
     emptyText: "No pending routine workflows.",
     patients: routinePending,
-    head: ["Department", "Tests", "Scanned", "Saved", "Validated", "Entered"],
+    head: ["Department", "Tests", "Scanned", "Saved", "Validated"],
     buildRows: (p) =>
       (p.routineStatuses || []).map((d) => [
         d.dept || "—",
@@ -351,7 +351,6 @@ export async function downloadOpsPerformancePdf(opts = {}) {
         yesNo(d.scanned),
         yesNo(d.saved),
         yesNo(d.validated),
-        yesNo(d.entered),
       ]),
   });
 

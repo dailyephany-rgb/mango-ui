@@ -133,7 +133,6 @@ export function buildWorkflowStatusTables(reportDetails = {}) {
         scanned: reportDetails.routineReportsScanned?.[config.firestoreKey],
         saved: reportDetails.routineReportsSaved?.[config.firestoreKey],
         validated: reportDetails.routineReportsValidated?.[config.firestoreKey],
-        entered: reportDetails.routineReportsEntered?.[config.firestoreKey],
       });
       routineStatuses.push({
         dept: config.label,
@@ -141,7 +140,6 @@ export function buildWorkflowStatusTables(reportDetails = {}) {
         scanned: cascaded.scanned,
         saved: cascaded.saved,
         validated: cascaded.validated,
-        entered: cascaded.entered,
       });
       return;
     }

@@ -491,7 +491,6 @@ const selectedTests = qrTests
             reportDetailsEntry.routineReportsScanned ??= {};
             reportDetailsEntry.routineReportsSaved ??= {};
             reportDetailsEntry.routineReportsValidated ??= {};
-            reportDetailsEntry.routineReportsEntered ??= {};
         
            
         
@@ -535,7 +534,6 @@ const selectedTests = qrTests
         routineReportsScanned,
         routineReportsSaved,
         routineReportsValidated,
-        routineReportsEntered,
         insideLabReportsSaved,
         outsourceReportsCollected,
         outsourceReportsReceived,

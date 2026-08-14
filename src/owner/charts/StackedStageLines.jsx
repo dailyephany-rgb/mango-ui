@@ -25,7 +25,6 @@ const CustomTooltip = ({ active, payload, label }) => {
     payload.find(p => p.dataKey === "collectedToScanned"),
     payload.find(p => p.dataKey === "scannedToSaved"),
     payload.find(p => p.dataKey === "savedToValidated"),
-    payload.find((p) => p.dataKey === "validatedToEntered"),
   ].filter(Boolean);
 
   return (
@@ -71,17 +70,13 @@ const CustomTooltip = ({ active, payload, label }) => {
       const tS = p.timeScanned   ? new Date(p.timeScanned).getTime() : null;
       const tSv= p.timeSaved     ? new Date(p.timeSaved).getTime() : null;
       const tV = p.timeValidated ? new Date(p.timeValidated).getTime() : null;
-      const tE = p.timeEntered ? new Date(p.timeEntered).getTime()
-      : null;
 
       const pc = tP && tC ? Math.max(0, Math.round((tC - tP) / 60000)) : 0;
       const cs = tC && tS ? Math.max(0, Math.round((tS - tC) / 60000)) : 0;
       const ss = tS && tSv ? Math.max(0, Math.round((tSv - tS) / 60000)) : 0;
       const sv = tSv && tV ? Math.max(0, Math.round((tV - tSv) / 60000)) : 0;
-      const ve = tV && tE ? Math.max(0,Math.round((tE - tV) / 60000)
-      ): 0;
       const turnaround = cs + ss + sv;
-      const completeAnalysis = cs + ss + sv + ve;
+      const completeAnalysis = turnaround;
 
       return {
         x: index + 1,
@@ -92,7 +87,6 @@ const CustomTooltip = ({ active, payload, label }) => {
         collectedToScanned: cs,
         scannedToSaved: ss,
         savedToValidated: sv,
-        validatedToEntered: ve,
       
         turnaround,
         completeAnalysis,
@@ -123,9 +117,6 @@ const CustomTooltip = ({ active, payload, label }) => {
       case "validated":
         value = d.savedToValidated;
         break;
-      case "entered":
-          value = d.validatedToEntered;
-          break;
   
       case "turnaround":
         value = d.turnaround;
@@ -238,14 +229,6 @@ const CustomTooltip = ({ active, payload, label }) => {
             fill="#fef3c7"
           />
         )}
-        {stageFilter === "entered" && (
-        <Area
-            type="monotone"
-            dataKey="validatedToEntered"
-            stroke="#ec4899"
-            fill="#fbcfe8"
-          />
-        )}
 
         {stageFilter === "turnaround" && (
           <>
@@ -298,14 +281,6 @@ const CustomTooltip = ({ active, payload, label }) => {
       dataKey="savedToValidated"
       stroke="#f59e0b"
       fill="#fef3c7"
-      stackId="1"
-    />
-
-    <Area
-      type="monotone"
-      dataKey="validatedToEntered"
-      stroke="#ec4899"
-      fill="fbcfe8"
       stackId="1"
     />
   </>

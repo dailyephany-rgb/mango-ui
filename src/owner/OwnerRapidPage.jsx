@@ -193,14 +193,7 @@ export default function OwnerRapidPage() {
           dept.saved_to_validated ??
           null
         );
-
-      case "entered":
-          return (
-            dept.validated_to_entered ??
-            null
-          );
-  
-      case "turnaround":
+case "turnaround":
         return (
           dept.turnaround ??
           null
@@ -259,7 +252,7 @@ export default function OwnerRapidPage() {
               {[
                 "testing",
                 "validated",
-                "entered",
+                
               ].map((t) => (
                 <button
                   key={t}
@@ -357,10 +350,6 @@ export default function OwnerRapidPage() {
 
         <option value="validated">
           Saved → Validated
-        </option>
-
-        <option value="entered">
-          Validated → Entered
         </option>
 
         <option value="turnaround">
@@ -471,10 +460,6 @@ export default function OwnerRapidPage() {
 
           <option value="saved_to_validated">
             Saved → Validated
-          </option>
-
-          <option value="validated_to_entered">
-            Validated → Entered
           </option>
 
           <option value="turnaround">
@@ -656,49 +641,7 @@ export default function OwnerRapidPage() {
       </>
     )}
 
-    {staffTab === "entered" && (
-      <>
-        <div className="chart-card">
-          <h3>
-            Entry Distribution
-          </h3>
-
-          <StaffDistribution
-            data={
-              staffAnalytics?.entered
-                ?.distribution || []
-            }
-          />
-        </div>
-
-        <div className="chart-card">
-          <h3>
-            Avg Validate → Enter by
-            Staff
-          </h3>
-
-          <StaffAvgCards
-            data={
-              staffAnalytics?.entered
-                ?.averages || []
-            }
-          />
-        </div>
-
-        <div className="chart-card full-width">
-          <h3>
-            Entry Timeline
-          </h3>
-
-          <StaffTimeline
-            timelines={
-              staffAnalytics?.entered
-                ?.timelines || {}
-                }
-              />
-            </div>
-          </>
-        )}
+    
 
       </OwnerChartsSection>
               </OwnerTabPanel>
@@ -802,10 +745,6 @@ export default function OwnerRapidPage() {
 
           <option value="validated">
             Saved → Validated
-          </option>
-
-          <option value="entered">
-            Validated → Entered
           </option>
 
           <option value="turnaround">

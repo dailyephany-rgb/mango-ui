@@ -75,11 +75,6 @@ export function mergeDeptRows(rows = []) {
         isCritical: r.critical === "Yes",
         savedBy: r.savedBy || "",
         validatedBy: r.validatedBy || "",
-        enteredBy: r.enteredBy || "",
-        enteredTime: toDate(
-          r.enteredTime ||
-          r.timeEntered
-        ),
         testList: new Set(),
       };
     }
@@ -114,10 +109,6 @@ switch (stage) {
     end = toDate(row.timeValidated);
     break;
 
-  case "validated_to_entered":
-    start = toDate(row.timeValidated);
-    end = toDate(row.enteredTime);
-    break;
 
   case "turnaround":
     start = toDate(row.timeCollected);
@@ -154,7 +145,6 @@ switch (stage) {
         timeSaved: row.timeSaved,
         savedBy: row.savedBy || "NA",
         validatedBy: row.validatedBy || "NA",
-        enteredBy: row.enteredBy || "NA",
     });
     }
   });
@@ -380,85 +370,6 @@ const validatedDistribution =
             : 0,
    }));
 
-/* =========================
-   ENTERED (enteredBy)
-========================= */
-
-
-const enteredRows = rows.filter(
-  (r) => r.enteredTime
-);
-
-const totalEntered = enteredRows.length;
-
-const enteredDistributionMap = {};
-const enteredAvgMap = {};
-const enteredTimelines = {};
-
-enteredRows.forEach((r) => {
-  const user = r.enteredBy || "Unknown";
-
-  enteredDistributionMap[user] =
-    (enteredDistributionMap[user] || 0) + 1;
-
-const mins = minutesDiff(
-      r.timeValidated,
-      r.enteredTime
-    );
-
-  if (mins != null) {
-    if (!enteredAvgMap[user]) {
-      enteredAvgMap[user] = [];
-    }
-
-    enteredAvgMap[user].push(mins);
-
-    if (!enteredTimelines[user]) {
-      enteredTimelines[user] = [];
-    }
-
-    enteredTimelines[user].push({
-      x: r.diagnosticNo || r.regNo,
-      regNo: r.regNo,
-      diagnosticNo: r.diagnosticNo || "NA",
-      name: r.name,
-      test: r.test,
-      selectedTests: r.selectedTests || [],
-      duration: mins,
-      timeValidated: r.timeValidated,
-      enteredTime: r.enteredTime,
-    });
-  }
-});
-
-const enteredDistribution = Object.entries(
-  enteredDistributionMap
-).map(([name, count]) => ({
-  name,
-  count,
-  percentage:
-    totalEntered > 0
-      ? Number(
-          ((count / totalEntered) * 100).toFixed(1)
-        )
-      : 0,
-}));
-
-const enteredAverages = Object.entries(
-  enteredAvgMap
-).map(([name, values]) => ({
-  name,
-  avgMinutes:
-    values.length > 0
-      ? Math.round(
-          values.reduce(
-            (sum, v) => sum + v,
-            0
-          ) / values.length
-        )
-      : 0,
-}));
-
 return {
   testing: {
     totalSaved,
@@ -473,14 +384,9 @@ return {
     averages: validatedAverages,
     timelines: validatedTimelines,
   },
-  entered: {
-    totalEntered,
-    distribution: enteredDistribution,
-    averages: enteredAverages,
-    timelines: enteredTimelines,
-  },
 };  
 }
+
 
 /* ================= SUBSCRIBE OVERVIEW =================== */
 

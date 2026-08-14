@@ -140,11 +140,7 @@ export default function OwnerHormones() {
   
         case "validated":
           return dept.saved_to_validated ?? null;
-        
-        case "entered":
-          return dept.validated_to_entered ?? null;
-        
-        case "turnaround":
+case "turnaround":
           return dept.turnaround ?? null;
         
         case "complete":
@@ -236,7 +232,7 @@ export default function OwnerHormones() {
 
         {activeTab === "staff" && (
         <div className="tab-buttons" style={{ marginTop: 12 }}>
-      {["testing", "validated", "entered"].map((t) => (
+      {["testing", "validated"].map((t) => (
         <button
           key={t}
           className={staffTab === t ? "active" : ""}
@@ -320,10 +316,6 @@ export default function OwnerHormones() {
         <option value="validated">
           Saved → Validated
         </option>
-
-          <option value="entered">
-            Validated → Entered
-          </option>
 
           <option value="turnaround">
             Turnaround Time
@@ -426,10 +418,6 @@ export default function OwnerHormones() {
 
           <option value="saved_to_validated">
             Saved → Validated
-          </option>
-
-          <option value="validated_to_entered">
-            Validated → Entered
           </option>
           
           <option value="turnaround">
@@ -621,58 +609,7 @@ export default function OwnerHormones() {
         </div>
       </>
     )}
-        {staffTab ===
-      "entered" && (
-      <>
-        <div className="chart-card">
-          <h3>
-            Entry
-            Distribution
-          </h3>
-
-          <StaffDistribution
-            data={
-              staffAnalytics
-                ?.entered
-                ?.distribution ||
-              []
-            }
-          />
-        </div>
-
-        <div className="chart-card">
-          <h3>
-            Avg Validate →
-            Enter by Staff
-          </h3>
-
-          <StaffAvgCards
-            data={
-              staffAnalytics
-                ?.entered
-                ?.averages ||
-              []
-            }
-          />
-        </div>
-
-        <div className="chart-card full-width">
-          <h3>
-            Entry
-            Timeline
-          </h3>
-
-          <StaffTimeline
-            timelines={
-              staffAnalytics
-                ?.entered
-                ?.timelines ||
-              {}
-            }
-          />
-        </div>
-      </>
-    )}
+        
   </OwnerChartsSection>
         </OwnerTabPanel>
       )}
@@ -778,10 +715,6 @@ export default function OwnerHormones() {
 
     <option value="validated">
       Saved → Validated
-    </option>
-
-    <option value="entered">
-     Validated → Entered
     </option>
 
     <option value="turnaround">

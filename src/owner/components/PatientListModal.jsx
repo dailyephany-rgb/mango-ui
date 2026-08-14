@@ -24,8 +24,6 @@ export default function PatientListModal({ open, onClose, patients }) {
                 <th>Validated</th>
                 <th>Saved By</th>
                 <th>Validated By</th>
-                <th>Entered By</th>
-
               </tr>
             </thead>
             <tbody>
@@ -58,12 +56,7 @@ export default function PatientListModal({ open, onClose, patients }) {
                   <td>
                     {p.validatedBy || "—"}
                   </td>
-
-                  <td>
-                    {p.enteredBy || "—"}
-                  </td>
-
-                </tr>
+</tr>
               ))}
             </tbody>
           </table>

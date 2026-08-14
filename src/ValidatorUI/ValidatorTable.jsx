@@ -295,7 +295,6 @@ const ValidatorTableRow = memo(function ValidatorTableRow({
   isESR,
   loginMode,
   onValidate,
-  onEntered,
   onEditResult,
 }) {
   const hasUrineRoutine =
@@ -346,15 +345,7 @@ const ValidatorTableRow = memo(function ValidatorTableRow({
   const editEnabled = canEditResult && hasEditableResult(item);
 
   return (
-    <tr
-      className={
-        item.entered
-          ? "row-entered"
-          : item.validated
-          ? "row-validated"
-          : "row-saved"
-      }
-    >
+    <tr className={item.validated ? "row-validated" : "row-saved"}>
       <td>{item.regNo || "—"}</td>
       <td>{item.diagnosticNo || item.accessionNo || "—"}</td>
       <td>{item.name || "—"}</td>
@@ -373,9 +364,6 @@ const ValidatorTableRow = memo(function ValidatorTableRow({
       </td>
       <td style={{ fontWeight: "600", color: "#16a34a" }}>
         {item.validatedBy || "—"}
-      </td>
-      <td style={{ fontWeight: "600", color: "#2563eb" }}>
-        {item.enteredBy || "—"}
       </td>
       {supportsCritical && (
         <td style={{ textAlign: "center" }}>
@@ -419,13 +407,9 @@ const ValidatorTableRow = memo(function ValidatorTableRow({
             {item.validated ? "Validated" : "✅ Validate"}
           </button>
         ) : (
-          <button
-            className={`entered-btn ${item.entered ? "entered" : ""}`}
-            disabled={!item.validated || item.entered}
-            onClick={() => onEntered(item)}
-          >
-            {item.entered ? "Entered" : "Enter"}
-          </button>
+          <span style={{ color: item.validated ? "#16a34a" : "#9ca3af", fontWeight: 600 }}>
+            {item.validated ? "Validated" : "Awaiting validation"}
+          </span>
         )}
       </td>
       {canEditResult && (
@@ -450,7 +434,6 @@ const ValidatorTableRow = memo(function ValidatorTableRow({
   if (prev.isESR !== next.isESR) return false;
   if (prev.loginMode !== next.loginMode) return false;
   if (prev.onValidate !== next.onValidate) return false;
-  if (prev.onEntered !== next.onEntered) return false;
   if (prev.onEditResult !== next.onEditResult) return false;
   const a = prev.item;
   const b = next.item;
@@ -463,9 +446,7 @@ const ValidatorTableRow = memo(function ValidatorTableRow({
     a.source === b.source &&
     a.savedBy === b.savedBy &&
     a.validatedBy === b.validatedBy &&
-    a.enteredBy === b.enteredBy &&
     a.validated === b.validated &&
-    a.entered === b.entered &&
     a.critical === b.critical &&
     a.criticalParameter === b.criticalParameter &&
     a.duration === b.duration &&
@@ -486,7 +467,6 @@ export default function ValidatorTable({
   title,
   data,
   onValidate,
-  onEntered,
   onEditResult,
   searchTerm,
   setSearchTerm,
@@ -508,7 +488,7 @@ export default function ValidatorTable({
   !title.includes("Blood Group");
 
   const finalColumnCount =
-    8 +
+    7 +
     (supportsCritical ? 1 : 0) +
     (shouldShowResult ? 1 : 0) +
     (isESR ? 1 : 0) +
@@ -525,7 +505,6 @@ export default function ValidatorTable({
   );
 
   const stableValidate = useStableCallback((item) => onValidate(item));
-  const stableEntered = useStableCallback((item) => onEntered(item));
   const stableOpenEdit = useStableCallback((item) => setEditingItem(item));
 
   const handleModalSave = async (payload) => {
@@ -551,7 +530,6 @@ export default function ValidatorTable({
         isESR={isESR}
         loginMode={loginMode}
         onValidate={stableValidate}
-        onEntered={stableEntered}
         onEditResult={stableOpenEdit}
       />
     ),
@@ -563,7 +541,6 @@ export default function ValidatorTable({
       isESR,
       loginMode,
       stableValidate,
-      stableEntered,
       stableOpenEdit,
     ]
   );
@@ -611,7 +588,6 @@ export default function ValidatorTable({
               <th>Tests</th>
               <th>Saved By</th>
               <th>Validated By</th>
-              <th>Entered By</th>
               {supportsCritical && (<th>Critical</th>)}
               {shouldShowResult && (<th>Result</th>)}    
               {isESR && <th>Duration</th>}

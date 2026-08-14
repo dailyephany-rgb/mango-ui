@@ -914,7 +914,6 @@ const qrScanningRef = useRef(false);
             reportDetailsEntry.routineReportsScanned ??= {};
             reportDetailsEntry.routineReportsSaved ??= {};
             reportDetailsEntry.routineReportsValidated ??= {};
-            reportDetailsEntry.routineReportsEntered ??= {};
         
            
         
@@ -960,7 +959,6 @@ const qrScanningRef = useRef(false);
         routineReportsScanned,
         routineReportsSaved,
         routineReportsValidated,
-        routineReportsEntered,
         insideLabReportsSaved,
         outsourceReportsCollected,
         outsourceReportsReceived,
@@ -972,7 +970,6 @@ const qrScanningRef = useRef(false);
         routineReportsScanned,
         routineReportsSaved,
         routineReportsValidated,
-        routineReportsEntered,
         insideLabReportsSaved,
         outsourceReportsCollected,
         outsourceReportsReceived,
