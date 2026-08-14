@@ -52,6 +52,47 @@ const InventoryAdjustmentTab = lazy(() =>
 
 const CURRENT_DEPT = "Bio-Chemistry";
 
+const EMPTY_COL_FILTERS = {
+  regNo: "",
+  diagnosticNo: "",
+  name: "",
+  source: "",
+  category: "",
+  tests: "",
+  status: "",
+  savedBy: "",
+};
+
+function matchesColFilters(patient, colFilters) {
+  const includes = (value, needle) => {
+    if (!needle.trim()) return true;
+    return String(value || "")
+      .toLowerCase()
+      .includes(needle.trim().toLowerCase());
+  };
+
+  if (!includes(patient.regNo, colFilters.regNo)) return false;
+  if (!includes(patient.diagnosticNo, colFilters.diagnosticNo)) return false;
+  if (!includes(patient.name, colFilters.name)) return false;
+  if (!includes(patient.source, colFilters.source)) return false;
+  if (!includes(patient.category, colFilters.category)) return false;
+
+  if (colFilters.tests.trim()) {
+    const needle = colFilters.tests.trim().toLowerCase();
+    const haystack = String(patient.testsDisplay || "").toLowerCase();
+    if (!haystack.includes(needle)) return false;
+  }
+
+  if (colFilters.status.trim()) {
+    const needle = colFilters.status.trim().toLowerCase();
+    const label = String(patient.status || "").toLowerCase();
+    if (!label.includes(needle)) return false;
+  }
+
+  if (!includes(patient.savedBy, colFilters.savedBy)) return false;
+  return true;
+}
+
 export default function BiochemistryMain() {
   const {
     regSearch,
@@ -66,6 +107,8 @@ export default function BiochemistryMain() {
 
   const [activeTab, setActiveTab] = useState("biochem");
   const visitedTabs = useVisitedTabs(activeTab, "biochem");
+  const [showColFilters, setShowColFilters] = useState(false);
+  const [colFilters, setColFilters] = useState(EMPTY_COL_FILTERS);
 
   const {
     masterEntries,
@@ -348,17 +391,35 @@ export default function BiochemistryMain() {
     }
   };
 
-  const filteredPatients = useMemo(
-    () =>
-      filterAndSortRegisterPatients(patients, {
-        regSearch,
-        sourceFilter,
-        dateFrom,
-        dateTo,
-        getDiag: (p) => p.diagnosticNo || "",
-      }),
-    [patients, regSearch, sourceFilter, dateFrom, dateTo]
+  const setColFilter = (key, value) => {
+    setColFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const clearColFilters = () => setColFilters(EMPTY_COL_FILTERS);
+
+  const hasActiveColFilters = Object.values(colFilters).some((v) =>
+    String(v || "").trim()
   );
+
+  const filteredPatients = useMemo(() => {
+    const base = filterAndSortRegisterPatients(patients, {
+      regSearch,
+      sourceFilter,
+      dateFrom,
+      dateTo,
+      getDiag: (p) => p.diagnosticNo || "",
+    });
+    if (!hasActiveColFilters) return base;
+    return base.filter((p) => matchesColFilters(p, colFilters));
+  }, [
+    patients,
+    regSearch,
+    sourceFilter,
+    dateFrom,
+    dateTo,
+    colFilters,
+    hasActiveColFilters,
+  ]);
 
   const onRemarkChange = useStableCallback((id, value) => {
     handleInputChange(id, "result", value);
@@ -467,20 +528,126 @@ export default function BiochemistryMain() {
               <thead>
                 <tr>
                   <th>Reg No</th>
-                  <th>Diag No</th> 
-                  <th>Patient Name</th>
-                  <th>Source</th> 
+                  <th>Diag No</th>
+                  <th>
+                    <span className="th-with-filter">
+                      Patient Name
+                      <button
+                        type="button"
+                        className={`col-filter-toggle ${
+                          showColFilters ? "open" : ""
+                        } ${hasActiveColFilters ? "active" : ""}`}
+                        aria-label="Toggle column filters"
+                        aria-expanded={showColFilters}
+                        title="Column filters"
+                        onClick={() => setShowColFilters((v) => !v)}
+                      >
+                        ▼
+                      </button>
+                    </span>
+                  </th>
+                  <th>Source</th>
                   <th>Age</th>
                   <th>Gender</th>
                   <th>Category</th>
                   <th>Selected Tests</th>
                   <th>Remark</th>
                   <th>Scanned</th>
-                    <th>Status</th>
-                    <th>Saved By</th>
-                    <th>Critical</th>
-                    <th>Action</th>
+                  <th>Status</th>
+                  <th>Saved By</th>
+                  <th>Critical</th>
+                  <th>Action</th>
                 </tr>
+                {showColFilters ? (
+                  <tr className="col-filter-row">
+                    <th className="col-filter-cell">
+                      <input
+                        type="text"
+                        placeholder="Filter reg…"
+                        value={colFilters.regNo}
+                        onChange={(e) => setColFilter("regNo", e.target.value)}
+                      />
+                    </th>
+                    <th className="col-filter-cell">
+                      <input
+                        type="text"
+                        placeholder="Filter diag…"
+                        value={colFilters.diagnosticNo}
+                        onChange={(e) =>
+                          setColFilter("diagnosticNo", e.target.value)
+                        }
+                      />
+                    </th>
+                    <th className="col-filter-cell">
+                      <input
+                        type="text"
+                        placeholder="Filter name…"
+                        value={colFilters.name}
+                        onChange={(e) => setColFilter("name", e.target.value)}
+                      />
+                    </th>
+                    <th className="col-filter-cell">
+                      <input
+                        type="text"
+                        placeholder="e.g. OPD"
+                        value={colFilters.source}
+                        onChange={(e) => setColFilter("source", e.target.value)}
+                      />
+                    </th>
+                    <th className="col-filter-cell col-filter-locked" />
+                    <th className="col-filter-cell col-filter-locked" />
+                    <th className="col-filter-cell">
+                      <input
+                        type="text"
+                        placeholder="e.g. General"
+                        value={colFilters.category}
+                        onChange={(e) =>
+                          setColFilter("category", e.target.value)
+                        }
+                      />
+                    </th>
+                    <th className="col-filter-cell">
+                      <input
+                        type="text"
+                        placeholder="e.g. lft"
+                        value={colFilters.tests}
+                        onChange={(e) => setColFilter("tests", e.target.value)}
+                      />
+                    </th>
+                    <th className="col-filter-cell col-filter-locked" />
+                    <th className="col-filter-cell col-filter-locked" />
+                    <th className="col-filter-cell">
+                      <input
+                        type="text"
+                        placeholder="saved / scanned / pending"
+                        value={colFilters.status}
+                        onChange={(e) => setColFilter("status", e.target.value)}
+                      />
+                    </th>
+                    <th className="col-filter-cell">
+                      <input
+                        type="text"
+                        placeholder="Filter saved by…"
+                        value={colFilters.savedBy}
+                        onChange={(e) =>
+                          setColFilter("savedBy", e.target.value)
+                        }
+                      />
+                    </th>
+                    <th className="col-filter-cell col-filter-locked" />
+                    <th className="col-filter-cell col-filter-actions">
+                      {hasActiveColFilters ? (
+                        <button
+                          type="button"
+                          className="col-filter-clear"
+                          onClick={clearColFilters}
+                        >
+                          Clear
+                        </button>
+                      ) : null}
+                    </th>
+                  </tr>
+                ) : null}
               </thead>
               <VirtualizedTableBody
                 items={filteredPatients}
