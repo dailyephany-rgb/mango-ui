@@ -5,7 +5,7 @@ import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrinted
 import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPaint.js";
 import { withOwnerSourceControl } from "../lib/withOwnerSourceControl.js";
 import testMapping from "../../test_mapping.json";
-
+import { buildWorkflowStatusTables } from "../../shared/utils/buildWorkflowStatusTables.js";
 
 export const ROUTINE_WORKFLOW_LOOKUP = {
   "Bio-Chemistry": {
@@ -441,16 +441,20 @@ const outsourceReportDelivered =
     (lab) => reportDetails.outsourceReportsDelivered?.[lab]
   );
 
+  const { routineStatuses, insideStatuses, outsourceStatuses } =
+    buildWorkflowStatusTables(reportDetails);
+
   return {
     id: reportDetails.id,
     regNo: reportDetails.regNo,
     diagnosticNo: reportDetails.diagnosticNo,
     patientName: reportDetails.name || "",
+    doctor: reportDetails.doctor || "",
+    phone: reportDetails.phone || "",
+    category: reportDetails.category || "",
     source: reportDetails.source || "",
     selectedTests,
     timeCollected,
-    routineReportPrintedTime,
-    routineReportPrinted: !!reportDetails.routineReportPrinted,
 
     hasRoutine: routine.hasRoutine,
     routineDepartments: routine.departments,
@@ -459,15 +463,18 @@ const outsourceReportDelivered =
     routineReportPrinted: Boolean(reportDetails.routineReportPrinted),
     routineReportPrintedTime,
     routineReportPrintedBy: reportDetails.routineReportPrintedBy || "",
+    routineStatuses,
 
     hasInsideLab,
     insideLabCompleted,
+    insideStatuses,
 
     insideLabReportPrinted: Boolean (reportDetails.insideLabReportPrinted),
     insideLabReportPrintedTime,
     insideLabReportPrintedBy: reportDetails.insideLabReportPrintedBy || "",
 
     hasOutsource,
+    outsourceStatuses,
 
     outsourceCollected,
 

@@ -47,6 +47,7 @@ export default defineConfig({
         owner_outsource: resolve(__dirname, "owner_outsource.html"),
         owner_inside_lab: resolve(__dirname, "owner_lab.html"),
         owner_sales: resolve(__dirname, "owner_sales.html"),
+        owner_ops_report: resolve(__dirname, "owner_ops_report.html"),
 
 
       },

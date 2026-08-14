@@ -1,0 +1,132 @@
+.ops-report-root {
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  padding: 20px;
+  background: #f8fafc;
+  min-height: 100vh;
+  color: #0f172a;
+}
+
+.ops-report-root.embedded {
+  padding: 0;
+  min-height: 0;
+  background: transparent;
+}
+
+.ops-report-header,
+.ops-report-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.ops-report-header h1 {
+  margin: 0;
+  font-size: 22px;
+  color: #1e3a8a;
+}
+
+.ops-report-toolbar h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #1e3a8a;
+}
+
+.ops-download-btn {
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.ops-download-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ops-download-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.ops-pdf-error {
+  color: #b91c1c;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.ops-loading,
+.ops-empty {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.ops-pending-section {
+  margin-top: 28px;
+}
+
+.ops-pending-section h3 {
+  margin: 0 0 12px;
+  color: #1e3a8a;
+  font-size: 16px;
+}
+
+.ops-count {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.ops-pending-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.ops-pending-meta {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #0f172a;
+}
+
+@media (max-width: 900px) {
+  .ops-pending-meta {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.ops-stage-wrap {
+  overflow-x: auto;
+}
+
+.ops-stage-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ops-stage-table th {
+  background: #dbeafe;
+  color: #1e3a8a;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid #bfdbfe;
+  font-weight: 700;
+}
+
+.ops-stage-table td {
+  padding: 7px 10px;
+  border: 1px solid #e2e8f0;
+  vertical-align: top;
+}
