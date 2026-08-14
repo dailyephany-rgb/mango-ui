@@ -6,6 +6,7 @@
 import { db } from "../../firebaseConfig.js";
 import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrintedQuery.js";
 import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPaint.js";
+import { slaTimestampFields } from "../ops/slaTimestampFields.js";
 import { trackedOnSnapshot as onSnapshot } from "../../shared/firestore/trackedFirestore.js";
 import { subscribeSharedMasterRegister } from "../../shared/firestore/subscribeSharedOnSnapshot.js";
 import { withOwnerSourceControl } from "./withOwnerSourceControl.js";
@@ -139,6 +140,7 @@ switch (stage) {
       const status = duration <= allowed * 1.5 ? "borderline" : "violation";
       
       violators.push({
+        ...slaTimestampFields(row),
         regNo: row.regNo,
         diagnosticNo: row.diagnosticNo, // Added diagnosticNo
         name: row.name,

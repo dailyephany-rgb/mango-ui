@@ -147,7 +147,16 @@ const totalPatientsReportsGiven = new Set(
             duration: diff,
             allowed: activeLimit,
             excess: diff - activeLimit, // Needed for Histogram buckets
-            status: "violation"
+            status: "violation",
+            // Turnaround PDF column mapping
+            timeCollected: r.timeOutsourcedCollected ?? null,
+            timeScanned: null,
+            timeSaved: r.timeReportReceived ?? null,
+            timeValidated: r.timeReportDelivered ?? null,
+            savedBy: r.receivedBy || "NA",
+            validatedBy: r.deliveredBy || "NA",
+            receivedBy: r.receivedBy || "NA",
+            deliveredBy: r.deliveredBy || "NA",
           });
         }
 

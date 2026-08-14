@@ -3,6 +3,8 @@ import { OwnerContext } from "../OwnerContext.jsx";
 import DateSourceFilter from "../components/DateSourceFilter.jsx";
 import { subscribeToWorkflowAnalytics } from "../workflow/workflowfetcher.js";
 import { downloadOpsPerformancePdf } from "./exportOpsPerformancePdf.js";
+import { collectTurnaroundData } from "./collectTurnaroundData.js";
+import { downloadTurnaroundPdf } from "./exportTurnaroundPdf.js";
 import "./OperationsPerformanceReport.css";
 
 /**
@@ -22,6 +24,7 @@ export default function OperationsPerformanceReport({
   });
   const [loading, setLoading] = useState(true);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [turnaroundBusy, setTurnaroundBusy] = useState(false);
   const [pdfError, setPdfError] = useState("");
 
   useEffect(() => {
@@ -84,6 +87,28 @@ export default function OperationsPerformanceReport({
     }
   };
 
+  const handleDownloadTurnaround = async () => {
+    setTurnaroundBusy(true);
+    setPdfError("");
+    try {
+      const { sections } = await collectTurnaroundData({
+        dateRange,
+        source,
+      });
+      await downloadTurnaroundPdf({
+        dateFrom: dateRange?.from || "",
+        dateTo: dateRange?.to || "",
+        source,
+        sections,
+      });
+    } catch (err) {
+      console.error(err);
+      setPdfError(err?.message || String(err));
+    } finally {
+      setTurnaroundBusy(false);
+    }
+  };
+
   return (
     <div className={`ops-report-root ${embedded ? "embedded" : ""}`}>
       {!embedded ? (
@@ -114,10 +139,29 @@ export default function OperationsPerformanceReport({
           <button
             type="button"
             className="ops-download-btn"
-            disabled={pdfBusy || loading}
+            disabled={pdfBusy || turnaroundBusy || loading}
             onClick={handleDownloadOps}
           >
             {pdfBusy ? "Preparing PDF…" : loading ? "Loading…" : "Download"}
+          </button>
+        </div>
+
+        <div className="ops-report-row">
+          <div className="ops-report-row-main">
+            <div className="ops-report-name">Turnaround</div>
+            <div className="ops-report-meta">
+              Date range: {dateLabel}
+              {source && source !== "All" ? ` · Source: ${source}` : ""}
+              {" · "}SLA violators (clinical, backroom, outsource, inside lab)
+            </div>
+          </div>
+          <button
+            type="button"
+            className="ops-download-btn"
+            disabled={turnaroundBusy || pdfBusy}
+            onClick={handleDownloadTurnaround}
+          >
+            {turnaroundBusy ? "Preparing PDF…" : "Download"}
           </button>
         </div>
       </div>
