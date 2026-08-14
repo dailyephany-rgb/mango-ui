@@ -5,6 +5,8 @@ import { subscribeToWorkflowAnalytics } from "../workflow/workflowfetcher.js";
 import { downloadOpsPerformancePdf } from "./exportOpsPerformancePdf.js";
 import { collectTurnaroundData } from "./collectTurnaroundData.js";
 import { downloadTurnaroundPdf } from "./exportTurnaroundPdf.js";
+import { collectCriticalData } from "./collectCriticalData.js";
+import { downloadCriticalPdf } from "./exportCriticalPdf.js";
 import "./OperationsPerformanceReport.css";
 
 /**
@@ -25,6 +27,7 @@ export default function OperationsPerformanceReport({
   const [loading, setLoading] = useState(true);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [turnaroundBusy, setTurnaroundBusy] = useState(false);
+  const [criticalBusy, setCriticalBusy] = useState(false);
   const [pdfError, setPdfError] = useState("");
 
   useEffect(() => {
@@ -109,6 +112,32 @@ export default function OperationsPerformanceReport({
     }
   };
 
+  const handleDownloadCritical = async () => {
+    setCriticalBusy(true);
+    setPdfError("");
+    try {
+      const { rows, pendingCount, reportedCount } = await collectCriticalData({
+        dateRange,
+        source,
+      });
+      await downloadCriticalPdf({
+        dateFrom: dateRange?.from || "",
+        dateTo: dateRange?.to || "",
+        source,
+        rows,
+        pendingCount,
+        reportedCount,
+      });
+    } catch (err) {
+      console.error(err);
+      setPdfError(err?.message || String(err));
+    } finally {
+      setCriticalBusy(false);
+    }
+  };
+
+  const anyBusy = pdfBusy || turnaroundBusy || criticalBusy;
+
   return (
     <div className={`ops-report-root ${embedded ? "embedded" : ""}`}>
       {!embedded ? (
@@ -139,7 +168,7 @@ export default function OperationsPerformanceReport({
           <button
             type="button"
             className="ops-download-btn"
-            disabled={pdfBusy || turnaroundBusy || loading}
+            disabled={anyBusy || loading}
             onClick={handleDownloadOps}
           >
             {pdfBusy ? "Preparing PDF…" : loading ? "Loading…" : "Download"}
@@ -158,10 +187,29 @@ export default function OperationsPerformanceReport({
           <button
             type="button"
             className="ops-download-btn"
-            disabled={turnaroundBusy || pdfBusy}
+            disabled={anyBusy}
             onClick={handleDownloadTurnaround}
           >
             {turnaroundBusy ? "Preparing PDF…" : "Download"}
+          </button>
+        </div>
+
+        <div className="ops-report-row">
+          <div className="ops-report-row-main">
+            <div className="ops-report-name">Critical</div>
+            <div className="ops-report-meta">
+              Date range: {dateLabel}
+              {source && source !== "All" ? ` · Source: ${source}` : ""}
+              {" · "}Pending + Reported (Critical Alerts Center)
+            </div>
+          </div>
+          <button
+            type="button"
+            className="ops-download-btn"
+            disabled={anyBusy}
+            onClick={handleDownloadCritical}
+          >
+            {criticalBusy ? "Preparing PDF…" : "Download"}
           </button>
         </div>
       </div>
