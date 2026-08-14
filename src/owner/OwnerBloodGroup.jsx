@@ -453,9 +453,6 @@ case "turnaround":
           Saved → Validated
         </option>
 
-        {mode === "testing" && (
-          )}
-        
           <option value="turnaround">
           Turnaround (Collected → Validated)
         </option>
