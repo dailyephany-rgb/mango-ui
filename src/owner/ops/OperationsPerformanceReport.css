@@ -34,6 +34,45 @@
   color: #1e3a8a;
 }
 
+.ops-report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+  max-width: 820px;
+}
+
+.ops-report-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.ops-report-row-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.ops-report-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.ops-report-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
 .ops-download-btn {
   border: none;
   background: #2563eb;
@@ -43,6 +82,7 @@
   padding: 10px 16px;
   border-radius: 8px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .ops-download-btn:disabled {
@@ -58,75 +98,4 @@
   color: #b91c1c;
   font-weight: 600;
   margin: 0 0 12px;
-}
-
-.ops-loading,
-.ops-empty {
-  color: #64748b;
-  font-size: 14px;
-}
-
-.ops-pending-section {
-  margin-top: 28px;
-}
-
-.ops-pending-section h3 {
-  margin: 0 0 12px;
-  color: #1e3a8a;
-  font-size: 16px;
-}
-
-.ops-count {
-  color: #64748b;
-  font-weight: 600;
-}
-
-.ops-pending-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 12px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-}
-
-.ops-pending-meta {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 10px;
-  color: #0f172a;
-}
-
-@media (max-width: 900px) {
-  .ops-pending-meta {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.ops-stage-wrap {
-  overflow-x: auto;
-}
-
-.ops-stage-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-
-.ops-stage-table th {
-  background: #dbeafe;
-  color: #1e3a8a;
-  text-align: left;
-  padding: 8px 10px;
-  border: 1px solid #bfdbfe;
-  font-weight: 700;
-}
-
-.ops-stage-table td {
-  padding: 7px 10px;
-  border: 1px solid #e2e8f0;
-  vertical-align: top;
 }
