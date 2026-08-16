@@ -7,6 +7,8 @@ import { collectTurnaroundData } from "./collectTurnaroundData.js";
 import { downloadTurnaroundPdf } from "./exportTurnaroundPdf.js";
 import { collectCriticalData } from "./collectCriticalData.js";
 import { downloadCriticalPdf } from "./exportCriticalPdf.js";
+import { collectOperationWorkflowData } from "./collectOperationWorkflowData.js";
+import OperationWorkflowReport from "./OperationWorkflowReport.jsx";
 import "./OperationsPerformanceReport.css";
 
 /**
@@ -28,6 +30,10 @@ export default function OperationsPerformanceReport({
   const [pdfBusy, setPdfBusy] = useState(false);
   const [turnaroundBusy, setTurnaroundBusy] = useState(false);
   const [criticalBusy, setCriticalBusy] = useState(false);
+  const [opWorkflowBusy, setOpWorkflowBusy] = useState(false);
+  const [opWorkflowData, setOpWorkflowData] = useState(null);
+  const [opWorkflowError, setOpWorkflowError] = useState("");
+  const [opWorkflowOpen, setOpWorkflowOpen] = useState(false);
   const [pdfError, setPdfError] = useState("");
 
   useEffect(() => {
@@ -136,7 +142,27 @@ export default function OperationsPerformanceReport({
     }
   };
 
-  const anyBusy = pdfBusy || turnaroundBusy || criticalBusy;
+  const handleViewOperationWorkflow = async () => {
+    setOpWorkflowOpen(true);
+    setOpWorkflowBusy(true);
+    setOpWorkflowError("");
+    try {
+      const data = await collectOperationWorkflowData({
+        dateRange,
+        source,
+      });
+      setOpWorkflowData(data);
+    } catch (err) {
+      console.error(err);
+      setOpWorkflowData(null);
+      setOpWorkflowError(err?.message || String(err));
+    } finally {
+      setOpWorkflowBusy(false);
+    }
+  };
+
+  const anyBusy =
+    pdfBusy || turnaroundBusy || criticalBusy || opWorkflowBusy;
 
   return (
     <div className={`ops-report-root ${embedded ? "embedded" : ""}`}>
@@ -212,7 +238,34 @@ export default function OperationsPerformanceReport({
             {criticalBusy ? "Preparing PDF…" : "Download"}
           </button>
         </div>
+
+        <div className="ops-report-row">
+          <div className="ops-report-row-main">
+            <div className="ops-report-name">Operation Workflow</div>
+            <div className="ops-report-meta">
+              Date range: {dateLabel}
+              {source && source !== "All" ? ` · Source: ${source}` : ""}
+              {" · "}Planned vs actual by slot / role (followed & disfollowed)
+            </div>
+          </div>
+          <button
+            type="button"
+            className="ops-download-btn"
+            disabled={anyBusy}
+            onClick={handleViewOperationWorkflow}
+          >
+            {opWorkflowBusy ? "Loading…" : "View"}
+          </button>
+        </div>
       </div>
+
+      {opWorkflowOpen ? (
+        <OperationWorkflowReport
+          data={opWorkflowData}
+          loading={opWorkflowBusy}
+          error={opWorkflowError}
+        />
+      ) : null}
     </div>
   );
 }
