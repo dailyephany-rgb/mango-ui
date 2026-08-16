@@ -164,6 +164,16 @@ export const departments = [
   },
 
   {
+    name: "Master Admin",
+    url: "/master_admin.html"
+  },
+
+  {
+    name: "Operation Map",
+    url: "/operation_map.html"
+  },
+
+  {
     name: "Inventory Intake",
     url: "/inventory.html"
   }
