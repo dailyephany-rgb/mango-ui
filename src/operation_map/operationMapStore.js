@@ -12,6 +12,8 @@ import {
   emptyAssignments,
   hoursForSlot,
   newSlotId,
+  normalizeAssignments,
+  asStaffList,
   COMMAND_ROLES,
   SECOND_LAYER_ROLES,
   MAIN_DEPT_KEYS,
@@ -105,7 +107,7 @@ export function ensureHoursForSlots(dayPlan) {
         next.hours[hourKey] = {
           ...next.hours[hourKey],
           slotId: slot.id,
-          assignments: next.hours[hourKey].assignments || emptyAssignments(),
+          assignments: normalizeAssignments(next.hours[hourKey].assignments),
         };
       }
     });
@@ -143,9 +145,7 @@ export function cloneDayPlan(source, targetDate) {
   Object.entries(source.hours || {}).forEach(([hk, val]) => {
     clonedHours[hk] = {
       slotId: val.slotId,
-      assignments: JSON.parse(
-        JSON.stringify(val.assignments || emptyAssignments())
-      ),
+      assignments: normalizeAssignments(val.assignments),
     };
   });
   return {
@@ -176,19 +176,21 @@ export function stripStaffFromDayPlan(dayPlan, staffId) {
   if (!dayPlan || !staffId) return dayPlan;
   const hours = {};
   Object.entries(dayPlan.hours || {}).forEach(([hk, val]) => {
-    const a = JSON.parse(
-      JSON.stringify(val?.assignments || emptyAssignments())
-    );
+    const a = normalizeAssignments(val?.assignments);
     for (const key of COMMAND_ROLES.concat(SECOND_LAYER_ROLES)) {
-      if (a[key] === staffId) a[key] = null;
+      a[key] = asStaffList(a[key]).filter((id) => id !== staffId);
     }
     for (const key of MAIN_DEPT_KEYS) {
-      if (a[key]?.staff === staffId) a[key].staff = null;
-      if (a[key]?.validator === staffId) a[key].validator = null;
+      a[key] = {
+        staff: asStaffList(a[key]?.staff).filter((id) => id !== staffId),
+        validator: asStaffList(a[key]?.validator).filter(
+          (id) => id !== staffId
+        ),
+      };
     }
     for (const key of BOTTOM_DEPT_KEYS) {
       a[key] = {
-        staff: (a[key]?.staff || []).filter((id) => id !== staffId),
+        staff: asStaffList(a[key]?.staff).filter((id) => id !== staffId),
       };
     }
     hours[hk] = { ...val, assignments: a };

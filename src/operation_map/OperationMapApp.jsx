@@ -8,6 +8,9 @@ import {
   MAIN_DEPT_KEYS,
   BOTTOM_DEPT_KEYS,
   emptyAssignments,
+  normalizeAssignments,
+  asStaffList,
+  getRoleStaffList,
   formatHourLabel,
   formatSlotRange,
   hoursForSlot,
@@ -66,7 +69,7 @@ function formatDateHeading(dateStr) {
 }
 
 function cloneAssignments(a) {
-  return JSON.parse(JSON.stringify(a || emptyAssignments()));
+  return normalizeAssignments(a);
 }
 
 export default function OperationMapApp({ mode = "owner" }) {
@@ -174,9 +177,10 @@ export default function OperationMapApp({ mode = "owner" }) {
     ? hoursForSlot(activeSlot.startTime, activeSlot.endTime)
     : [];
 
-  const hourAssignments =
+  const hourAssignments = normalizeAssignments(
     (activeHour && dayPlan?.hours?.[activeHour]?.assignments) ||
-    emptyAssignments();
+      emptyAssignments()
+  );
 
   const updateHourAssignments = (mutator) => {
     if (!dayPlan || !activeHour) return;
@@ -203,54 +207,71 @@ export default function OperationMapApp({ mode = "owner" }) {
       return;
     }
     updateHourAssignments((a) => {
-      // remove from any existing role first
-      const cleared = clearStaffFromAssignments(a, staffId);
+      const next = normalizeAssignments(a);
       const cfg = ROLE_CONFIG[roleKey];
-      if (!cfg) return cleared;
+      if (!cfg) return next;
 
-      if (cfg.multi) {
-        const list = [...(cleared[roleKey]?.staff || [])];
-        if (!list.includes(staffId) && list.length < cfg.maxAssignees) {
-          list.push(staffId);
-        }
-        cleared[roleKey] = { staff: list };
-        return cleared;
-      }
+      const max = cfg.maxAssignees || 8;
 
       if (cfg.hasValidator) {
-        cleared[roleKey] = {
-          staff: cleared[roleKey]?.staff ?? null,
-          validator: cleared[roleKey]?.validator ?? null,
-          [field]: staffId,
+        const list = asStaffList(next[roleKey]?.[field]);
+        if (!list.includes(staffId) && list.length < max) {
+          list.push(staffId);
+        }
+        next[roleKey] = {
+          staff: asStaffList(next[roleKey]?.staff),
+          validator: asStaffList(next[roleKey]?.validator),
+          [field]: list,
         };
-        return cleared;
+        return next;
       }
 
-      cleared[roleKey] = staffId;
-      return cleared;
+      if (BOTTOM_DEPT_KEYS.includes(roleKey)) {
+        const list = asStaffList(next[roleKey]?.staff);
+        if (!list.includes(staffId) && list.length < max) {
+          list.push(staffId);
+        }
+        next[roleKey] = { staff: list };
+        return next;
+      }
+
+      const list = asStaffList(next[roleKey]);
+      if (!list.includes(staffId) && list.length < max) {
+        list.push(staffId);
+      }
+      next[roleKey] = list;
+      return next;
     });
   };
 
   const clearAssignee = (roleKey, field = "staff", staffId = null) => {
     updateHourAssignments((a) => {
+      const next = normalizeAssignments(a);
       const cfg = ROLE_CONFIG[roleKey];
-      if (!cfg) return a;
-      if (cfg.multi) {
-        a[roleKey] = {
-          staff: (a[roleKey]?.staff || []).filter((id) => id !== staffId),
-        };
-        return a;
-      }
+      if (!cfg) return next;
+
       if (cfg.hasValidator) {
-        a[roleKey] = {
-          staff: a[roleKey]?.staff ?? null,
-          validator: a[roleKey]?.validator ?? null,
-          [field]: null,
+        next[roleKey] = {
+          staff: asStaffList(next[roleKey]?.staff),
+          validator: asStaffList(next[roleKey]?.validator),
+          [field]: asStaffList(next[roleKey]?.[field]).filter(
+            (id) => id !== staffId
+          ),
         };
-        return a;
+        return next;
       }
-      a[roleKey] = null;
-      return a;
+
+      if (BOTTOM_DEPT_KEYS.includes(roleKey)) {
+        next[roleKey] = {
+          staff: asStaffList(next[roleKey]?.staff).filter(
+            (id) => id !== staffId
+          ),
+        };
+        return next;
+      }
+
+      next[roleKey] = asStaffList(next[roleKey]).filter((id) => id !== staffId);
+      return next;
     });
   };
 
@@ -917,17 +938,21 @@ export default function OperationMapApp({ mode = "owner" }) {
 }
 
 function clearStaffFromAssignments(a, staffId) {
-  const next = cloneAssignments(a);
+  const next = normalizeAssignments(a);
   for (const key of COMMAND_ROLES.concat(SECOND_LAYER_ROLES)) {
-    if (next[key] === staffId) next[key] = null;
+    next[key] = asStaffList(next[key]).filter((id) => id !== staffId);
   }
   for (const key of MAIN_DEPT_KEYS) {
-    if (next[key]?.staff === staffId) next[key].staff = null;
-    if (next[key]?.validator === staffId) next[key].validator = null;
+    next[key] = {
+      staff: asStaffList(next[key]?.staff).filter((id) => id !== staffId),
+      validator: asStaffList(next[key]?.validator).filter(
+        (id) => id !== staffId
+      ),
+    };
   }
   for (const key of BOTTOM_DEPT_KEYS) {
     next[key] = {
-      staff: (next[key]?.staff || []).filter((id) => id !== staffId),
+      staff: asStaffList(next[key]?.staff).filter((id) => id !== staffId),
     };
   }
   return next;
@@ -948,62 +973,27 @@ function RoleCard({
 
   const renderSlot = (field, label) => {
     const dropKey = `${roleKey}:${field}`;
-    let content;
-    if (cfg.multi) {
-      const list = assignments[roleKey]?.staff || [];
-      content =
-        list.length === 0 ? (
-          <span className="om-placeholder">
-            {readOnly ? "Unassigned" : "Drop staff"}
-          </span>
-        ) : (
-          list.map((id) => (
-            <div className="om-assignee" key={id}>
-              <span>✓ {staffById[id]?.name || id}</span>
-              {!readOnly ? (
-                <button
-                  type="button"
-                  onClick={() => onClear(roleKey, "staff", id)}
-                >
-                  ×
-                </button>
-              ) : null}
-            </div>
-          ))
-        );
-    } else if (cfg.hasValidator) {
-      const id = assignments[roleKey]?.[field];
-      content = id ? (
-        <div className="om-assignee">
-          <span>✓ {staffById[id]?.name || id}</span>
-          {!readOnly ? (
-            <button type="button" onClick={() => onClear(roleKey, field)}>
-              ×
-            </button>
-          ) : null}
-        </div>
-      ) : (
+    const list = getRoleStaffList(assignments, roleKey, field);
+    const content =
+      list.length === 0 ? (
         <span className="om-placeholder">
           {readOnly ? "Unassigned" : "Drop staff"}
         </span>
-      );
-    } else {
-      const id = assignments[roleKey];
-      content = id ? (
-        <div className="om-assignee">
-          <span>✓ {staffById[id]?.name || id}</span>
-          {!readOnly ? (
-            <button type="button" onClick={() => onClear(roleKey)}>
-              ×
-            </button>
-          ) : null}
-        </div>
       ) : (
-        <span className="om-placeholder">
-          {readOnly ? "Unassigned" : "Drop staff"}
-        </span>
+        list.map((id) => (
+          <div className="om-assignee" key={id}>
+            <span>✓ {staffById[id]?.name || id}</span>
+            {!readOnly ? (
+              <button
+                type="button"
+                onClick={() => onClear(roleKey, field, id)}
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
+        ))
       );
-    }
 
     return (
       <div
@@ -1034,8 +1024,6 @@ function RoleCard({
           {renderSlot("staff", "Incharge / Staff")}
           {renderSlot("validator", "Validator")}
         </>
-      ) : cfg.multi ? (
-        renderSlot("staff", "Staff")
       ) : (
         renderSlot("staff", "Staff")
       )}

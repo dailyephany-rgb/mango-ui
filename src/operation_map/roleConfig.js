@@ -1,5 +1,6 @@
 /**
  * Operation Map — stable role keys for planned staffing (audit-ready later).
+ * All role slots hold string[] of staff ids (legacy string|null normalized on load).
  */
 
 export const ROLE_CONFIG = {
@@ -7,63 +8,63 @@ export const ROLE_CONFIG = {
     key: "mangoOperator",
     label: "Mango Operator",
     layer: "command",
-    maxAssignees: 1,
+    maxAssignees: 8,
     hasValidator: false,
   },
   secondInCommand: {
     key: "secondInCommand",
     label: "Second in Command",
     layer: "command",
-    maxAssignees: 1,
+    maxAssignees: 8,
     hasValidator: false,
   },
   phlebotomist: {
     key: "phlebotomist",
     label: "Phlebotomist",
     layer: "second",
-    maxAssignees: 1,
+    maxAssignees: 8,
     hasValidator: false,
   },
   thirdFloor: {
     key: "thirdFloor",
     label: "Third Floor",
     layer: "second",
-    maxAssignees: 1,
+    maxAssignees: 8,
     hasValidator: false,
   },
   biochemistry: {
     key: "biochemistry",
     label: "Biochemistry",
     layer: "department",
-    maxAssignees: 1,
+    maxAssignees: 8,
     hasValidator: true,
   },
   hormones: {
     key: "hormones",
     label: "Hormones",
     layer: "department",
-    maxAssignees: 1,
+    maxAssignees: 8,
     hasValidator: true,
   },
   haematology: {
     key: "haematology",
     label: "Haematology",
     layer: "department",
-    maxAssignees: 1,
+    maxAssignees: 8,
     hasValidator: true,
   },
   coagulation: {
     key: "coagulation",
     label: "Coagulation",
     layer: "department",
-    maxAssignees: 1,
+    maxAssignees: 8,
     hasValidator: true,
   },
   backroom: {
     key: "backroom",
     label: "Backroom",
     layer: "department",
-    maxAssignees: 1,
+    maxAssignees: 8,
     hasValidator: true,
   },
   backup: {
@@ -72,23 +73,20 @@ export const ROLE_CONFIG = {
     layer: "department",
     maxAssignees: 8,
     hasValidator: false,
-    multi: true,
   },
   insideLab: {
     key: "insideLab",
     label: "Inside Lab",
     layer: "department",
-    maxAssignees: 4,
+    maxAssignees: 8,
     hasValidator: false,
-    multi: true,
   },
   outsource: {
     key: "outsource",
     label: "Outsource",
     layer: "department",
-    maxAssignees: 4,
+    maxAssignees: 8,
     hasValidator: false,
-    multi: true,
   },
 };
 
@@ -103,20 +101,67 @@ export const MAIN_DEPT_KEYS = [
 ];
 export const BOTTOM_DEPT_KEYS = ["backup", "insideLab", "outsource"];
 
+/** Coerce legacy string|null or array into a clean string[]. */
+export function asStaffList(value) {
+  if (value == null || value === "") return [];
+  if (Array.isArray(value)) {
+    return value.map((v) => String(v || "").trim()).filter(Boolean);
+  }
+  const s = String(value).trim();
+  return s ? [s] : [];
+}
+
 export function emptyAssignments() {
-  const a = {
-    mangoOperator: null,
-    secondInCommand: null,
-    phlebotomist: null,
-    thirdFloor: null,
-  };
+  const a = {};
+  for (const key of COMMAND_ROLES.concat(SECOND_LAYER_ROLES)) {
+    a[key] = [];
+  }
   for (const key of MAIN_DEPT_KEYS) {
-    a[key] = { staff: null, validator: null };
+    a[key] = { staff: [], validator: [] };
   }
   for (const key of BOTTOM_DEPT_KEYS) {
     a[key] = { staff: [] };
   }
   return a;
+}
+
+/** Normalize any saved hour assignments to the multi-assignee shape. */
+export function normalizeAssignments(raw) {
+  const base = emptyAssignments();
+  if (!raw || typeof raw !== "object") return base;
+
+  for (const key of COMMAND_ROLES.concat(SECOND_LAYER_ROLES)) {
+    base[key] = asStaffList(raw[key]);
+  }
+  for (const key of MAIN_DEPT_KEYS) {
+    const d = raw[key];
+    if (d && typeof d === "object" && !Array.isArray(d)) {
+      base[key] = {
+        staff: asStaffList(d.staff),
+        validator: asStaffList(d.validator),
+      };
+    } else {
+      base[key] = { staff: asStaffList(d), validator: [] };
+    }
+  }
+  for (const key of BOTTOM_DEPT_KEYS) {
+    const d = raw[key];
+    if (d && typeof d === "object" && !Array.isArray(d)) {
+      base[key] = { staff: asStaffList(d.staff) };
+    } else {
+      base[key] = { staff: asStaffList(d) };
+    }
+  }
+  return base;
+}
+
+export function getRoleStaffList(assignments, roleKey, field = "staff") {
+  const cfg = ROLE_CONFIG[roleKey];
+  if (!cfg || !assignments) return [];
+  if (cfg.hasValidator || BOTTOM_DEPT_KEYS.includes(roleKey)) {
+    return asStaffList(assignments[roleKey]?.[field || "staff"]);
+  }
+  return asStaffList(assignments[roleKey]);
 }
 
 export function timeToMinutes(hhmm) {
@@ -178,15 +223,15 @@ export function createEmptyDayPlan(date) {
 export function collectAssignmentStaff(assignments, into = new Set()) {
   if (!assignments) return into;
   for (const key of COMMAND_ROLES.concat(SECOND_LAYER_ROLES)) {
-    if (assignments[key]) into.add(assignments[key]);
+    asStaffList(assignments[key]).forEach((id) => into.add(id));
   }
   for (const key of MAIN_DEPT_KEYS) {
-    const d = assignments[key];
-    if (d?.staff) into.add(d.staff);
-    if (d?.validator) into.add(d.validator);
+    const d = assignments[key] || {};
+    asStaffList(d.staff).forEach((id) => into.add(id));
+    asStaffList(d.validator).forEach((id) => into.add(id));
   }
   for (const key of BOTTOM_DEPT_KEYS) {
-    (assignments[key]?.staff || []).forEach((id) => into.add(id));
+    asStaffList(assignments[key]?.staff).forEach((id) => into.add(id));
   }
   return into;
 }
@@ -203,15 +248,21 @@ export function uniqueAssignedStaffIds(hoursObj, slotId = null) {
 export function staffAssignedInHour(assignments, staffId) {
   if (!staffId || !assignments) return null;
   for (const key of COMMAND_ROLES.concat(SECOND_LAYER_ROLES)) {
-    if (assignments[key] === staffId) return { roleKey: key, field: "staff" };
+    if (asStaffList(assignments[key]).includes(staffId)) {
+      return { roleKey: key, field: "staff" };
+    }
   }
   for (const key of MAIN_DEPT_KEYS) {
     const d = assignments[key] || {};
-    if (d.staff === staffId) return { roleKey: key, field: "staff" };
-    if (d.validator === staffId) return { roleKey: key, field: "validator" };
+    if (asStaffList(d.staff).includes(staffId)) {
+      return { roleKey: key, field: "staff" };
+    }
+    if (asStaffList(d.validator).includes(staffId)) {
+      return { roleKey: key, field: "validator" };
+    }
   }
   for (const key of BOTTOM_DEPT_KEYS) {
-    if ((assignments[key]?.staff || []).includes(staffId)) {
+    if (asStaffList(assignments[key]?.staff).includes(staffId)) {
       return { roleKey: key, field: "staff" };
     }
   }

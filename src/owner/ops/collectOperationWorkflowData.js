@@ -27,6 +27,7 @@ import {
   SECOND_LAYER_ROLES,
   formatSlotRange,
   hoursForSlot,
+  asStaffList,
 } from "../../operation_map/roleConfig.js";
 import { toLocalDateString, parseDateField } from "../../shared/utils/dates.js";
 import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrintedQuery.js";
@@ -166,17 +167,13 @@ function resolvePlanned(assignments, roleKey, field) {
     COMMAND_ROLES.includes(roleKey) ||
     SECOND_LAYER_ROLES.includes(roleKey)
   ) {
-    const v = assignments[roleKey];
-    return v ? [normName(v)] : [];
+    return asStaffList(assignments[roleKey]);
   }
   if (MAIN_DEPT_KEYS.includes(roleKey)) {
-    const v = assignments[roleKey]?.[field || "staff"];
-    return v ? [normName(v)] : [];
+    return asStaffList(assignments[roleKey]?.[field || "staff"]);
   }
   if (BOTTOM_DEPT_KEYS.includes(roleKey)) {
-    return (assignments[roleKey]?.staff || [])
-      .map(normName)
-      .filter(Boolean);
+    return asStaffList(assignments[roleKey]?.staff);
   }
   return [];
 }
