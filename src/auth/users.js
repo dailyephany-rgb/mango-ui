@@ -108,10 +108,20 @@ export const users = [
     password: "2710"
   },
 
+  {
+    username: "Shahnawaz",
+    password: "0403"
+  },
 
+  {
+    username: "Subhash",
+    password: "0110"
+  },
 
-
-
+  {
+    username: "Zahid",
+    password: "0008"
+  },
 
 ];
 

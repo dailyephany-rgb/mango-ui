@@ -15,7 +15,9 @@
   --om-leave: #ef4444;
   --om-off: #94a3b8;
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
   background: var(--om-bg);
   color: var(--om-text);
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -93,6 +95,8 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .om-header {
@@ -103,6 +107,7 @@
   padding: 16px 20px;
   background: var(--om-card);
   border-bottom: 1px solid var(--om-border);
+  flex-shrink: 0;
 }
 
 .om-header h1 {
@@ -181,6 +186,8 @@
   flex-direction: column;
   gap: 14px;
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .om-slots-row {
@@ -188,6 +195,7 @@
   gap: 12px;
   flex-wrap: wrap;
   align-items: stretch;
+  flex-shrink: 0;
 }
 
 .om-slot-card {
@@ -244,6 +252,7 @@
   border: 1px solid var(--om-border);
   border-radius: 10px;
   padding: 10px 12px;
+  flex-shrink: 0;
 }
 
 .om-timeline-label {
@@ -272,13 +281,16 @@
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr) 220px;
   gap: 14px;
-  align-items: start;
+  align-items: stretch;
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 @media (max-width: 1100px) {
   .om-workspace {
     grid-template-columns: 1fr;
+    overflow: auto;
   }
   .om-sidebar {
     display: none;
@@ -290,6 +302,15 @@
   border: 1px solid var(--om-border);
   border-radius: 12px;
   padding: 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.om-panel.om-right {
+  overflow: auto;
 }
 
 .om-panel h3 {
@@ -337,7 +358,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 62vh;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
 }
 
@@ -416,6 +438,8 @@
   border-radius: 12px;
   padding: 16px;
   overflow: auto;
+  min-height: 0;
+  max-height: 100%;
 }
 
 .om-layer-title {
@@ -545,6 +569,7 @@
   font-size: 12px;
   color: var(--om-muted);
   padding: 0 4px;
+  flex-shrink: 0;
 }
 
 .om-modal-backdrop {
@@ -603,7 +628,9 @@
 .om-leave-approvals {
   display: flex;
   flex-direction: column;
-  min-height: 100%;
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
 }
 
 .om-leave-header {
