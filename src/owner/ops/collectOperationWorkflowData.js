@@ -501,6 +501,15 @@ export async function collectOperationWorkflowData({
           plannedNames: Array.from(agg.plannedNames).sort(),
           followedCount: agg.followedCount,
           notFollowedCount: agg.notFollowedCount,
+          entries: agg.followedCount + agg.notFollowedCount,
+          followPct:
+            agg.followedCount + agg.notFollowedCount
+              ? Math.round(
+                  (agg.followedCount /
+                    (agg.followedCount + agg.notFollowedCount)) *
+                    100
+                )
+              : null,
           followedBy: nameCountList(agg.followedBy),
           disfollowedBy: nameCountList(agg.disfollowedBy),
           skippedNoPlan: agg.skippedNoPlan,
@@ -513,6 +522,7 @@ export async function collectOperationWorkflowData({
         (s, r) => s + r.notFollowedCount,
         0
       );
+      const entries = followedCount + notFollowedCount;
 
       return {
         id: slot.id,
@@ -522,6 +532,10 @@ export async function collectOperationWorkflowData({
         endTime: slot.endTime,
         followedCount,
         notFollowedCount,
+        entries,
+        followPct: entries
+          ? Math.round((followedCount / entries) * 100)
+          : null,
         roles,
       };
     });

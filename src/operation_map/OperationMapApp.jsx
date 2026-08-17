@@ -317,6 +317,49 @@ export default function OperationMapApp({ mode = "owner" }) {
     }
   };
 
+  const handleCopyPreviousSlot = () => {
+    if (!dayPlan || !activeSlotId || !activeSlot) {
+      alert("Select a slot first.");
+      return;
+    }
+    const slots = dayPlan.slots || [];
+    const idx = slots.findIndex((s) => s.id === activeSlotId);
+    if (idx <= 0) {
+      alert("No previous slot on this day to copy from.");
+      return;
+    }
+    if (
+      !window.confirm(
+        "Copy staff assignments from the previous slot into this slot’s hours?"
+      )
+    ) {
+      return;
+    }
+
+    const prevSlot = slots[idx - 1];
+    const targetHours = hoursForSlot(activeSlot.startTime, activeSlot.endTime);
+    const prevHours = hoursForSlot(prevSlot.startTime, prevSlot.endTime);
+    const nextHours = { ...(dayPlan.hours || {}) };
+
+    targetHours.forEach((hk, i) => {
+      const sourceKey = prevHours.includes(hk)
+        ? hk
+        : prevHours[Math.min(i, prevHours.length - 1)];
+      const source = sourceKey ? dayPlan.hours?.[sourceKey] : null;
+      nextHours[hk] = {
+        ...(nextHours[hk] || {}),
+        slotId: activeSlotId,
+        assignments: source
+          ? normalizeAssignments(
+              JSON.parse(JSON.stringify(source.assignments || emptyAssignments()))
+            )
+          : emptyAssignments(),
+      };
+    });
+
+    markDirty({ ...dayPlan, hours: nextHours });
+  };
+
   const statusOf = (staffId) => {
     if (isOnLeaveForHour(effectiveLeave, staffId, activeHour)) return "leave";
     const where = staffAssignedInHour(hourAssignments, staffId);
@@ -348,8 +391,11 @@ export default function OperationMapApp({ mode = "owner" }) {
 
   const filteredStaff = staffList.filter((s) => {
     if (search) {
-      const q = search.toLowerCase();
-      if (!s.name.toLowerCase().includes(q) && !s.id.toLowerCase().includes(q)) {
+      const q = search.trim().toLowerCase();
+      const name = String(s.name || "").toLowerCase();
+      const id = String(s.id || "").toLowerCase();
+      // Prefix match: "n" → Nakshatra, Naresh; not names that merely contain "n"
+      if (!name.startsWith(q) && !id.startsWith(q)) {
         return false;
       }
     }
@@ -479,6 +525,15 @@ export default function OperationMapApp({ mode = "owner" }) {
                 </button>
                 <button
                   type="button"
+                  className="om-btn"
+                  onClick={handleCopyPreviousSlot}
+                  disabled={!activeSlotId || (dayPlan?.slots?.length || 0) < 2}
+                  title="Copy assignments from the previous slot into the selected slot"
+                >
+                  Copy Previous Slot
+                </button>
+                <button
+                  type="button"
                   className={`om-btn om-btn-primary ${dirty ? "dirty" : ""}`}
                   disabled={!dirty || saving || loading}
                   onClick={handleSave}
@@ -585,7 +640,7 @@ export default function OperationMapApp({ mode = "owner" }) {
                   <h3>{isStaff ? "Today’s roster" : "Available Staff"}</h3>
                   <input
                     className="om-search"
-                    placeholder="Search staff…"
+                    placeholder="Search by starting letters…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
