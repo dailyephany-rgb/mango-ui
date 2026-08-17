@@ -390,6 +390,104 @@ export function computeStaffAnalytics(rows = []) {
   };
 }
 
+/* ================= SUBSCRIBE OVERVIEW =================== */
+
+export function subscribeOverview({ onData, source = "All", dateRange }) {
+  const { paintCache, onDataLive, setSourceKey } = createOwnerSessionPaint({
+    dept: "bloodgroup_retesting",
+    dateRange,
+    source,
+    onData,
+  });
+  paintCache();
+
+  let currentSource = source ?? "All";
+
+  const masterRef = scopedTimePrintedQuery("master_register", dateRange);
+  const bgRef = scopedTimePrintedQuery(
+    "bloodgroup_retesting_register",
+    dateRange
+  );
+  if (!masterRef || !bgRef) {
+    const empty = () => {};
+    empty.updateSource = () => {};
+    return empty;
+  }
+
+  let masterRows = [];
+  let bgRows = [];
+
+  const runPublish = () => {
+    const from = dateRange?.from
+      ? new Date(dateRange.from + "T00:00:00")
+      : null;
+    const to = dateRange?.to
+      ? new Date(dateRange.to + "T23:59:59")
+      : null;
+
+    const filterFn = (row) => {
+      const t = toDate(row.timePrinted);
+      if (!t) return false;
+      if (from && t < from) return false;
+      if (to && t > to) return false;
+
+      const normSource =
+        currentSource && currentSource !== "All"
+          ? String(currentSource).trim().toUpperCase()
+          : null;
+      if (normSource) {
+        const rowSource = (row.source || "").trim().toUpperCase();
+        if (rowSource !== normSource) return false;
+      }
+      return true;
+    };
+
+    const filteredMaster = masterRows.filter(filterFn);
+    const filteredBG = bgRows.filter(filterFn);
+
+    const merged = mergeDeptRows(filteredBG);
+    const unified = unifyForCharts(merged);
+    const violators = computeSLAViolations(unified, testTimings);
+    const staffAnalytics = computeStaffAnalytics(merged);
+
+    onDataLive({
+      masterRows: filteredMaster,
+      deptRows: merged,
+      unifiedRows: unified,
+      violators,
+      kpis: computeKPIs(filteredMaster, merged),
+      staffAnalytics,
+    });
+  };
+
+  const { publish, publishNow, cancel } = createDebouncedPublish(runPublish, 75);
+
+  const unsubMaster = subscribeSharedMasterRegister(dateRange, (snap) => {
+    masterRows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    publish();
+  });
+  const unsubBG = onSnapshot(bgRef, (snap) => {
+    bgRows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    publish();
+  });
+
+  return withOwnerSourceControl(
+    () => {
+      cancel();
+      unsubMaster?.();
+      unsubBG?.();
+    },
+    {
+      getSource: () => currentSource,
+      setSource: (next) => {
+        currentSource = next;
+      },
+      publish: publishNow,
+      setSourceKey,
+    }
+  );
+}
+
 export function unifyForCharts(rows = []) {
   return rows.map((r) => ({
     ...r,

@@ -89,6 +89,13 @@ function firstOverviewPayload(subscribeOverview, opts, settleMs = 450) {
     }, OVERVIEW_TIMEOUT_MS);
 
     try {
+      if (typeof subscribeOverview !== "function") {
+        finish(
+          null,
+          new Error("Department subscribeOverview is not available")
+        );
+        return;
+      }
       unsub = subscribeOverview({
         ...opts,
         onData: (payload) => {
