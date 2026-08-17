@@ -49,6 +49,7 @@ export default defineConfig({
         owner_sales: resolve(__dirname, "owner_sales.html"),
         owner_ops_report: resolve(__dirname, "owner_ops_report.html"),
         operation_map: resolve(__dirname, "operation_map.html"),
+        operation_map_staff: resolve(__dirname, "operation_map_staff.html"),
 
 
       },

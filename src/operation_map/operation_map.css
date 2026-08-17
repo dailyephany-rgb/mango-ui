@@ -762,3 +762,22 @@
   font-size: 12px;
   color: var(--om-muted);
 }
+
+.om-staff-mode .om-staff-readonly {
+  cursor: default;
+}
+
+.om-staff-mode .om-role-slot {
+  cursor: default;
+}
+
+.om-workspace-staff .om-map {
+  min-width: 0;
+}
+
+.om-staff-mode .om-leave-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}

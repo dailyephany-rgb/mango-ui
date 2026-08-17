@@ -169,8 +169,8 @@ export const departments = [
   },
 
   {
-    name: "Operation Map",
-    url: "/operation_map.html"
+    name: "Operation Schedule",
+    url: "/operation_map_staff.html"
   },
 
   {

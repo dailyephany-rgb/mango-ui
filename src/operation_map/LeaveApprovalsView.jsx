@@ -318,10 +318,20 @@ export default function LeaveApprovalsView({
 
 /**
  * Modal to submit a leave application from Operation Map Quick Actions.
+ * When lockedStaffId is set, staff cannot apply for someone else.
  */
-export function ApplyLeaveModal({ staffList, actor, onClose, onSubmitted }) {
+export function ApplyLeaveModal({
+  staffList,
+  actor,
+  onClose,
+  onSubmitted,
+  lockedStaffId = null,
+}) {
   const today = getLocalDateString();
-  const [staffId, setStaffId] = useState(staffList[0]?.id || "");
+  const locked = Boolean(lockedStaffId);
+  const [staffId, setStaffId] = useState(
+    lockedStaffId || staffList[0]?.id || ""
+  );
   const [fromDate, setFromDate] = useState(today);
   const [toDate, setToDate] = useState(today);
   const [type, setType] = useState("full");
@@ -331,22 +341,35 @@ export function ApplyLeaveModal({ staffList, actor, onClose, onSubmitted }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    if (lockedStaffId) setStaffId(lockedStaffId);
+  }, [lockedStaffId]);
+
+  const lockedName =
+    staffList.find((s) => s.id === lockedStaffId)?.name || lockedStaffId;
+
   return (
     <div className="om-modal-backdrop" onClick={onClose}>
       <div className="om-modal" onClick={(e) => e.stopPropagation()}>
         <h2>Apply Leave</h2>
         <p className="om-leave-modal-hint">
-          Creates a pending application. Approve it under Leave Approvals.
+          {locked
+            ? "Creates a pending application for you. An owner will approve or reject it."
+            : "Creates a pending application. Approve it under Leave Approvals."}
         </p>
         {error ? <p className="om-error">{error}</p> : null}
         <label>Staff</label>
-        <select value={staffId} onChange={(e) => setStaffId(e.target.value)}>
-          {staffList.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
+        {locked ? (
+          <input type="text" value={lockedName || ""} readOnly disabled />
+        ) : (
+          <select value={staffId} onChange={(e) => setStaffId(e.target.value)}>
+            {staffList.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        )}
         <label>From</label>
         <input
           type="date"
@@ -402,11 +425,12 @@ export function ApplyLeaveModal({ staffList, actor, onClose, onSubmitted }) {
               setBusy(true);
               setError("");
               try {
-                const person = staffList.find((s) => s.id === staffId);
+                const id = lockedStaffId || staffId;
+                const person = staffList.find((s) => s.id === id);
                 await createLeaveRequest(
                   {
-                    staffId,
-                    staffName: person?.name || staffId,
+                    staffId: id,
+                    staffName: person?.name || id,
                     fromDate,
                     toDate: toDate || fromDate,
                     type,

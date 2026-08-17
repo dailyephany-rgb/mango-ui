@@ -34,6 +34,7 @@ import {
 import {
   loadApprovedLeaveForDate,
   approvedRequestsToLeaveEntries,
+  listLeaveRequestsForStaff,
 } from "./leaveRequestStore.js";
 import LeaveApprovalsView, { ApplyLeaveModal } from "./LeaveApprovalsView.jsx";
 import "./operation_map.css";
@@ -68,12 +69,15 @@ function cloneAssignments(a) {
   return JSON.parse(JSON.stringify(a || emptyAssignments()));
 }
 
-export default function OperationMapApp() {
+export default function OperationMapApp({ mode = "owner" }) {
+  const isStaff = mode === "staff";
   const actor = sessionStorage.getItem("loggedUser") || "Unknown";
-  const [view, setView] = useState("map"); // map | leave
+  const [view, setView] = useState("map"); // map | leave (owner only)
   const [date, setDate] = useState(getLocalDateString());
   const [dayPlan, setDayPlan] = useState(null);
   const [approvedLeave, setApprovedLeave] = useState([]);
+  const [myLeave, setMyLeave] = useState([]);
+  const [myLeaveTick, setMyLeaveTick] = useState(0);
   const [loading, setLoading] = useState(true);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -137,10 +141,30 @@ export default function OperationMapApp() {
   }, []);
 
   useEffect(() => {
-    if (view === "map") load(date);
-  }, [date, load, view]);
+    if (isStaff || view === "map") load(date);
+  }, [date, load, view, isStaff]);
+
+  useEffect(() => {
+    if (!isStaff || !actor || actor === "Unknown") {
+      setMyLeave([]);
+      return;
+    }
+    let cancelled = false;
+    listLeaveRequestsForStaff(actor)
+      .then((rows) => {
+        if (!cancelled) setMyLeave(rows);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) setMyLeave([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isStaff, actor, myLeaveTick]);
 
   const markDirty = (nextPlan) => {
+    if (isStaff) return;
     setDayPlan(nextPlan);
     setDirty(true);
   };
@@ -339,27 +363,35 @@ export default function OperationMapApp() {
   };
 
   return (
-    <div className="om-root">
+    <div className={`om-root ${isStaff ? "om-staff-mode" : ""}`}>
       <aside className="om-sidebar">
         <div className="om-brand">
           Jodhpur Dairy
           <small>Diagnostics Lab</small>
         </div>
         <div className="om-nav-label">OPERATIONS</div>
-        <button
-          type="button"
-          className={`om-nav-item ${view === "map" ? "active" : ""}`}
-          onClick={() => setView("map")}
-        >
-          Operation Map
-        </button>
-        <button
-          type="button"
-          className={`om-nav-item ${view === "leave" ? "active" : ""}`}
-          onClick={() => setView("leave")}
-        >
-          Leave Approvals
-        </button>
+        {isStaff ? (
+          <button type="button" className="om-nav-item active">
+            Operation Schedule
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              className={`om-nav-item ${view === "map" ? "active" : ""}`}
+              onClick={() => setView("map")}
+            >
+              Operation Map
+            </button>
+            <button
+              type="button"
+              className={`om-nav-item ${view === "leave" ? "active" : ""}`}
+              onClick={() => setView("leave")}
+            >
+              Leave Approvals
+            </button>
+          </>
+        )}
         <div className="om-sidebar-footer">
           {actor}
           <div style={{ marginTop: 8 }}>
@@ -368,7 +400,7 @@ export default function OperationMapApp() {
         </div>
       </aside>
 
-      {view === "leave" ? (
+      {!isStaff && view === "leave" ? (
         <div className="om-main">
           <LeaveApprovalsView
             actor={actor}
@@ -382,8 +414,12 @@ export default function OperationMapApp() {
       <div className="om-main">
         <header className="om-header">
           <div>
-            <h1>Operation Map</h1>
-            <p>Plan who works where, by date, slot, and hour</p>
+            <h1>{isStaff ? "Operation Schedule" : "Operation Map"}</h1>
+            <p>
+              {isStaff
+                ? "View today’s plan by date, slot, and hour — apply leave if needed"
+                : "Plan who works where, by date, slot, and hour"}
+            </p>
           </div>
           <div className="om-header-actions">
             <div className="om-date-nav">
@@ -403,17 +439,37 @@ export default function OperationMapApp() {
                 ›
               </button>
             </div>
-            <button type="button" className="om-btn" onClick={handleCopyPrevious}>
-              Copy Previous Day
-            </button>
-            <button
-              type="button"
-              className={`om-btn om-btn-primary ${dirty ? "dirty" : ""}`}
-              disabled={!dirty || saving || loading}
-              onClick={handleSave}
-            >
-              {saving ? "Saving…" : dirty ? "Save Schedule *" : "Save Schedule"}
-            </button>
+            {isStaff ? (
+              <button
+                type="button"
+                className="om-btn om-btn-primary"
+                onClick={() => setModal("addLeave")}
+              >
+                Apply Leave
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="om-btn"
+                  onClick={handleCopyPrevious}
+                >
+                  Copy Previous Day
+                </button>
+                <button
+                  type="button"
+                  className={`om-btn om-btn-primary ${dirty ? "dirty" : ""}`}
+                  disabled={!dirty || saving || loading}
+                  onClick={handleSave}
+                >
+                  {saving
+                    ? "Saving…"
+                    : dirty
+                      ? "Save Schedule *"
+                      : "Save Schedule"}
+                </button>
+              </>
+            )}
           </div>
         </header>
 
@@ -442,6 +498,7 @@ export default function OperationMapApp() {
                         setActiveHour(hrs[0] || null);
                       }}
                       onContextMenu={(e) => {
+                        if (isStaff) return;
                         e.preventDefault();
                         if (
                           window.confirm(`Remove ${slot.label || "this slot"}?`)
@@ -471,13 +528,15 @@ export default function OperationMapApp() {
                     </div>
                   );
                 })}
-                <button
-                  type="button"
-                  className="om-slot-card om-slot-add"
-                  onClick={() => setModal("addSlot")}
-                >
-                  + Add Slot
-                </button>
+                {!isStaff ? (
+                  <button
+                    type="button"
+                    className="om-slot-card om-slot-add"
+                    onClick={() => setModal("addSlot")}
+                  >
+                    + Add Slot
+                  </button>
+                ) : null}
               </div>
 
               <div className="om-timeline">
@@ -500,31 +559,33 @@ export default function OperationMapApp() {
                 ))}
               </div>
 
-              <div className="om-workspace">
+              <div className={`om-workspace ${isStaff ? "om-workspace-staff" : ""}`}>
                 <aside className="om-panel">
-                  <h3>Available Staff</h3>
+                  <h3>{isStaff ? "Today’s roster" : "Available Staff"}</h3>
                   <input
                     className="om-search"
                     placeholder="Search staff…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
-                  <div className="om-filter-tabs">
-                    {["all", "available", "backup"].map((f) => (
-                      <button
-                        key={f}
-                        type="button"
-                        className={staffFilter === f ? "active" : ""}
-                        onClick={() => setStaffFilter(f)}
-                      >
-                        {f === "all"
-                          ? "All"
-                          : f === "available"
-                            ? "Available"
-                            : "Backup"}
-                      </button>
-                    ))}
-                  </div>
+                  {!isStaff ? (
+                    <div className="om-filter-tabs">
+                      {["all", "available", "backup"].map((f) => (
+                        <button
+                          key={f}
+                          type="button"
+                          className={staffFilter === f ? "active" : ""}
+                          onClick={() => setStaffFilter(f)}
+                        >
+                          {f === "all"
+                            ? "All"
+                            : f === "available"
+                              ? "Available"
+                              : "Backup"}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   <div className="om-staff-list">
                     {filteredStaff.map((s) => {
                       const st = statusOf(s.id);
@@ -532,18 +593,24 @@ export default function OperationMapApp() {
                       return (
                         <div
                           key={s.id}
-                          className={`om-staff-card ${leave ? "unavailable" : ""}`}
-                          draggable={!leave}
+                          className={`om-staff-card ${leave ? "unavailable" : ""} ${isStaff ? "om-staff-readonly" : ""}`}
+                          draggable={!isStaff && !leave}
                           onDragStart={(e) => {
-                            if (leave) {
+                            if (isStaff || leave) {
                               e.preventDefault();
                               return;
                             }
                             e.dataTransfer.setData("text/staff-id", s.id);
                             e.dataTransfer.effectAllowed = "move";
                           }}
-                          onDoubleClick={() => openCapabilities(s.id)}
-                          title="Drag to assign · Double-click capabilities"
+                          onDoubleClick={() => {
+                            if (!isStaff) openCapabilities(s.id);
+                          }}
+                          title={
+                            isStaff
+                              ? s.name
+                              : "Drag to assign · Double-click capabilities"
+                          }
                         >
                           <div className="om-avatar">{initials(s.name)}</div>
                           <div className="om-staff-meta">
@@ -568,20 +635,24 @@ export default function OperationMapApp() {
                       );
                     })}
                   </div>
-                  <button
-                    type="button"
-                    className="om-btn"
-                    style={{ width: "100%", marginTop: 10 }}
-                    onClick={() => setModal("addStaff")}
-                  >
-                    + Add Staff
-                  </button>
+                  {!isStaff ? (
+                    <button
+                      type="button"
+                      className="om-btn"
+                      style={{ width: "100%", marginTop: 10 }}
+                      onClick={() => setModal("addStaff")}
+                    >
+                      + Add Staff
+                    </button>
+                  ) : null}
                 </aside>
 
                 <section className="om-map">
                   {!activeHour ? (
                     <p className="om-footer-hint">
-                      Add a work slot, then select an hour to assign staff.
+                      {isStaff
+                        ? "No slot/hour selected for this day."
+                        : "Add a work slot, then select an hour to assign staff."}
                     </p>
                   ) : (
                     <>
@@ -595,6 +666,7 @@ export default function OperationMapApp() {
                             staffById={staffById}
                             onDrop={onDropRole}
                             onClear={clearAssignee}
+                            readOnly={isStaff}
                           />
                         ))}
                       </div>
@@ -609,6 +681,7 @@ export default function OperationMapApp() {
                             staffById={staffById}
                             onDrop={onDropRole}
                             onClear={clearAssignee}
+                            readOnly={isStaff}
                           />
                         ))}
                       </div>
@@ -623,6 +696,7 @@ export default function OperationMapApp() {
                             staffById={staffById}
                             onDrop={onDropRole}
                             onClear={clearAssignee}
+                            readOnly={isStaff}
                           />
                         ))}
                       </div>
@@ -635,6 +709,7 @@ export default function OperationMapApp() {
                             staffById={staffById}
                             onDrop={onDropRole}
                             onClear={clearAssignee}
+                            readOnly={isStaff}
                           />
                         ))}
                       </div>
@@ -692,6 +767,29 @@ export default function OperationMapApp() {
                     ))
                   )}
 
+                  {isStaff ? (
+                    <>
+                      <h3>My Leave</h3>
+                      {myLeave.length === 0 ? (
+                        <div className="om-placeholder">No leave requests yet</div>
+                      ) : (
+                        myLeave.slice(0, 8).map((row) => (
+                          <div className="om-leave-item" key={row.id}>
+                            <strong>
+                              {row.fromDate}
+                              {row.toDate && row.toDate !== row.fromDate
+                                ? ` → ${row.toDate}`
+                                : ""}
+                            </strong>
+                            <span className={`om-leave-status-pill ${row.status}`}>
+                              {row.status}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </>
+                  ) : null}
+
                   <h3>Quick Actions</h3>
                   <div className="om-quick">
                     <button
@@ -701,36 +799,40 @@ export default function OperationMapApp() {
                     >
                       Apply Leave
                     </button>
-                    <button
-                      type="button"
-                      className="om-btn"
-                      onClick={() => {
-                        const first = staffList[0];
-                        if (first) openCapabilities(first.id);
-                        else alert("No staff loaded.");
-                      }}
-                    >
-                      Manage Capabilities
-                    </button>
-                    <button
-                      type="button"
-                      className="om-btn"
-                      onClick={() =>
-                        window.print
-                          ? window.print()
-                          : alert("Use browser print")
-                      }
-                    >
-                      Print / Export
-                    </button>
+                    {!isStaff ? (
+                      <>
+                        <button
+                          type="button"
+                          className="om-btn"
+                          onClick={() => {
+                            const first = staffList[0];
+                            if (first) openCapabilities(first.id);
+                            else alert("No staff loaded.");
+                          }}
+                        >
+                          Manage Capabilities
+                        </button>
+                        <button
+                          type="button"
+                          className="om-btn"
+                          onClick={() =>
+                            window.print
+                              ? window.print()
+                              : alert("Use browser print")
+                          }
+                        >
+                          Print / Export
+                        </button>
+                      </>
+                    ) : null}
                   </div>
                 </aside>
               </div>
 
               <p className="om-footer-hint">
-                Drag staff onto roles for the selected hour. Changes stay local
-                until you click Save Schedule. Future dates (week+) use their
-                own Firebase day documents.
+                {isStaff
+                  ? "Follow the assigned roles for each hour. Use Apply Leave to request time off (owner approval required)."
+                  : "Drag staff onto roles for the selected hour. Changes stay local until you click Save Schedule. Future dates (week+) use their own Firebase day documents."}
               </p>
             </>
           )}
@@ -738,7 +840,7 @@ export default function OperationMapApp() {
       </div>
       )}
 
-      {modal === "addSlot" && (
+      {modal === "addSlot" && !isStaff && (
         <AddSlotModal
           onClose={() => setModal(null)}
           onSave={({ startTime, endTime, label }) => {
@@ -757,14 +859,16 @@ export default function OperationMapApp() {
         <ApplyLeaveModal
           staffList={staffList}
           actor={actor}
+          lockedStaffId={isStaff ? actor : null}
           onClose={() => setModal(null)}
           onSubmitted={() => {
-            setView("leave");
+            if (isStaff) setMyLeaveTick((n) => n + 1);
+            else setView("leave");
           }}
         />
       )}
 
-      {modal === "addStaff" && (
+      {modal === "addStaff" && !isStaff && (
         <AddStaffModal
           onClose={() => setModal(null)}
           onSave={(person) => {
@@ -777,7 +881,7 @@ export default function OperationMapApp() {
         />
       )}
 
-      {modal === "capabilities" && (
+      {modal === "capabilities" && !isStaff && (
         <CapabilitiesModal
           staffList={staffList}
           staffId={capStaffId}
@@ -829,7 +933,14 @@ function clearStaffFromAssignments(a, staffId) {
   return next;
 }
 
-function RoleCard({ roleKey, assignments, staffById, onDrop, onClear }) {
+function RoleCard({
+  roleKey,
+  assignments,
+  staffById,
+  onDrop,
+  onClear,
+  readOnly = false,
+}) {
   const cfg = ROLE_CONFIG[roleKey];
   const [over, setOver] = useState(null);
 
@@ -842,14 +953,21 @@ function RoleCard({ roleKey, assignments, staffById, onDrop, onClear }) {
       const list = assignments[roleKey]?.staff || [];
       content =
         list.length === 0 ? (
-          <span className="om-placeholder">Drop staff</span>
+          <span className="om-placeholder">
+            {readOnly ? "Unassigned" : "Drop staff"}
+          </span>
         ) : (
           list.map((id) => (
             <div className="om-assignee" key={id}>
               <span>✓ {staffById[id]?.name || id}</span>
-              <button type="button" onClick={() => onClear(roleKey, "staff", id)}>
-                ×
-              </button>
+              {!readOnly ? (
+                <button
+                  type="button"
+                  onClick={() => onClear(roleKey, "staff", id)}
+                >
+                  ×
+                </button>
+              ) : null}
             </div>
           ))
         );
@@ -858,36 +976,46 @@ function RoleCard({ roleKey, assignments, staffById, onDrop, onClear }) {
       content = id ? (
         <div className="om-assignee">
           <span>✓ {staffById[id]?.name || id}</span>
-          <button type="button" onClick={() => onClear(roleKey, field)}>
-            ×
-          </button>
+          {!readOnly ? (
+            <button type="button" onClick={() => onClear(roleKey, field)}>
+              ×
+            </button>
+          ) : null}
         </div>
       ) : (
-        <span className="om-placeholder">Drop staff</span>
+        <span className="om-placeholder">
+          {readOnly ? "Unassigned" : "Drop staff"}
+        </span>
       );
     } else {
       const id = assignments[roleKey];
       content = id ? (
         <div className="om-assignee">
           <span>✓ {staffById[id]?.name || id}</span>
-          <button type="button" onClick={() => onClear(roleKey)}>
-            ×
-          </button>
+          {!readOnly ? (
+            <button type="button" onClick={() => onClear(roleKey)}>
+              ×
+            </button>
+          ) : null}
         </div>
       ) : (
-        <span className="om-placeholder">Drop staff</span>
+        <span className="om-placeholder">
+          {readOnly ? "Unassigned" : "Drop staff"}
+        </span>
       );
     }
 
     return (
       <div
-        className={`om-role-slot ${over === dropKey ? "drop-over" : ""}`}
+        className={`om-role-slot ${!readOnly && over === dropKey ? "drop-over" : ""}`}
         onDragOver={(e) => {
+          if (readOnly) return;
           e.preventDefault();
           setOver(dropKey);
         }}
         onDragLeave={() => setOver(null)}
         onDrop={(e) => {
+          if (readOnly) return;
           setOver(null);
           onDrop(e, roleKey, field);
         }}

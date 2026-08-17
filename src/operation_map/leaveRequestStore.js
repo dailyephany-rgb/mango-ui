@@ -116,6 +116,35 @@ export async function listLeaveRequestsByStatus(status) {
 }
 
 /**
+ * All leave requests for one staff member (any status), newest first.
+ */
+export async function listLeaveRequestsForStaff(staffId) {
+  const id = String(staffId || "").trim();
+  if (!id) return [];
+  try {
+    const snap = await getDocs(
+      query(
+        collection(db, LEAVE_REQUESTS),
+        where("staffId", "==", id),
+        orderBy("requestedAt", "desc")
+      )
+    );
+    return snap.docs.map((d) => normalizeRequest(d.id, d.data()));
+  } catch (err) {
+    console.warn("staff leave ordered query failed, falling back", err);
+    const snap = await getDocs(
+      query(collection(db, LEAVE_REQUESTS), where("staffId", "==", id))
+    );
+    const rows = snap.docs.map((d) => normalizeRequest(d.id, d.data()));
+    return rows.sort((a, b) => {
+      const ta = a.requestedAt?.seconds || a.requestedAt?.toMillis?.() || 0;
+      const tb = b.requestedAt?.seconds || b.requestedAt?.toMillis?.() || 0;
+      return tb - ta;
+    });
+  }
+}
+
+/**
  * Approved leave covering a calendar date (fromDate <= date <= toDate).
  */
 export async function loadApprovedLeaveForDate(dateStr) {

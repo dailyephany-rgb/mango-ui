@@ -4,5 +4,5 @@ import OperationMapApp from "./operation_map/OperationMapApp.jsx";
 
 mountEngApp(
   document.getElementById("root"),
-  <OperationMapApp mode="owner" />
+  <OperationMapApp mode="staff" />
 );
