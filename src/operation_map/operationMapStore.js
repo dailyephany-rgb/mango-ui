@@ -12,6 +12,10 @@ import {
   emptyAssignments,
   hoursForSlot,
   newSlotId,
+  COMMAND_ROLES,
+  SECOND_LAYER_ROLES,
+  MAIN_DEPT_KEYS,
+  BOTTOM_DEPT_KEYS,
 } from "./roleConfig.js";
 
 const DAYS = "operation_map_days";
@@ -163,4 +167,31 @@ export function shiftDateStr(dateStr, deltaDays) {
   const mm = String(dt.getMonth() + 1).padStart(2, "0");
   const dd = String(dt.getDate()).padStart(2, "0");
   return `${yy}-${mm}-${dd}`;
+}
+
+/**
+ * Remove a staff member from every hour assignment on a day plan.
+ */
+export function stripStaffFromDayPlan(dayPlan, staffId) {
+  if (!dayPlan || !staffId) return dayPlan;
+  const hours = {};
+  Object.entries(dayPlan.hours || {}).forEach(([hk, val]) => {
+    const a = JSON.parse(
+      JSON.stringify(val?.assignments || emptyAssignments())
+    );
+    for (const key of COMMAND_ROLES.concat(SECOND_LAYER_ROLES)) {
+      if (a[key] === staffId) a[key] = null;
+    }
+    for (const key of MAIN_DEPT_KEYS) {
+      if (a[key]?.staff === staffId) a[key].staff = null;
+      if (a[key]?.validator === staffId) a[key].validator = null;
+    }
+    for (const key of BOTTOM_DEPT_KEYS) {
+      a[key] = {
+        staff: (a[key]?.staff || []).filter((id) => id !== staffId),
+      };
+    }
+    hours[hk] = { ...val, assignments: a };
+  });
+  return { ...dayPlan, hours };
 }

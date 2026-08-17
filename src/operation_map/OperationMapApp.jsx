@@ -29,7 +29,13 @@ import {
   seedStaffFromUsers,
   isOnLeaveForHour,
   getLeaveLabel,
+  mergeLeaveForDate,
 } from "./staffRoster.js";
+import {
+  loadApprovedLeaveForDate,
+  approvedRequestsToLeaveEntries,
+} from "./leaveRequestStore.js";
+import LeaveApprovalsView, { ApplyLeaveModal } from "./LeaveApprovalsView.jsx";
 import "./operation_map.css";
 
 function initials(name) {
@@ -64,8 +70,10 @@ function cloneAssignments(a) {
 
 export default function OperationMapApp() {
   const actor = sessionStorage.getItem("loggedUser") || "Unknown";
+  const [view, setView] = useState("map"); // map | leave
   const [date, setDate] = useState(getLocalDateString());
   const [dayPlan, setDayPlan] = useState(null);
+  const [approvedLeave, setApprovedLeave] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -94,12 +102,25 @@ export default function OperationMapApp() {
     return m;
   }, [staffList]);
 
+  const effectiveLeave = useMemo(
+    () =>
+      mergeLeaveForDate(
+        dayPlan?.leave,
+        approvedRequestsToLeaveEntries(approvedLeave)
+      ),
+    [dayPlan?.leave, approvedLeave]
+  );
+
   const load = useCallback(async (dateStr) => {
     setLoading(true);
     setError("");
     try {
-      const plan = ensureHoursForSlots(await loadDayPlan(dateStr));
+      const [plan, approved] = await Promise.all([
+        loadDayPlan(dateStr).then(ensureHoursForSlots),
+        loadApprovedLeaveForDate(dateStr),
+      ]);
       setDayPlan(plan);
+      setApprovedLeave(approved);
       setDirty(false);
       const firstSlot = plan.slots[0] || null;
       setActiveSlotId(firstSlot?.id || null);
@@ -116,8 +137,8 @@ export default function OperationMapApp() {
   }, []);
 
   useEffect(() => {
-    load(date);
-  }, [date, load]);
+    if (view === "map") load(date);
+  }, [date, load, view]);
 
   const markDirty = (nextPlan) => {
     setDayPlan(nextPlan);
@@ -154,7 +175,7 @@ export default function OperationMapApp() {
   };
 
   const assignStaff = (staffId, roleKey, field = "staff") => {
-    if (!staffId || isOnLeaveForHour(dayPlan?.leave, staffId, activeHour)) {
+    if (!staffId || isOnLeaveForHour(effectiveLeave, staffId, activeHour)) {
       return;
     }
     updateHourAssignments((a) => {
@@ -252,7 +273,7 @@ export default function OperationMapApp() {
   };
 
   const statusOf = (staffId) => {
-    if (isOnLeaveForHour(dayPlan?.leave, staffId, activeHour)) return "leave";
+    if (isOnLeaveForHour(effectiveLeave, staffId, activeHour)) return "leave";
     const where = staffAssignedInHour(hourAssignments, staffId);
     if (where?.roleKey === "backup") return "backup";
     if (where) return "assigned";
@@ -278,7 +299,7 @@ export default function OperationMapApp() {
     });
     return { total, leave, backup, assigned, available, off };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [staffList, hourAssignments, dayPlan?.leave, activeHour]);
+  }, [staffList, hourAssignments, effectiveLeave, activeHour]);
 
   const filteredStaff = staffList.filter((s) => {
     if (search) {
@@ -293,7 +314,7 @@ export default function OperationMapApp() {
     return true;
   });
 
-  const leaveNow = (dayPlan?.leave || []).filter((l) =>
+  const leaveNow = effectiveLeave.filter((l) =>
     isOnLeaveForHour([l], l.staffId, activeHour || "00:00")
   );
 
@@ -325,7 +346,20 @@ export default function OperationMapApp() {
           <small>Diagnostics Lab</small>
         </div>
         <div className="om-nav-label">OPERATIONS</div>
-        <div className="om-nav-item">Operation Map</div>
+        <button
+          type="button"
+          className={`om-nav-item ${view === "map" ? "active" : ""}`}
+          onClick={() => setView("map")}
+        >
+          Operation Map
+        </button>
+        <button
+          type="button"
+          className={`om-nav-item ${view === "leave" ? "active" : ""}`}
+          onClick={() => setView("leave")}
+        >
+          Leave Approvals
+        </button>
         <div className="om-sidebar-footer">
           {actor}
           <div style={{ marginTop: 8 }}>
@@ -334,6 +368,17 @@ export default function OperationMapApp() {
         </div>
       </aside>
 
+      {view === "leave" ? (
+        <div className="om-main">
+          <LeaveApprovalsView
+            actor={actor}
+            staffList={staffList.length ? staffList : seedStaffFromUsers([])}
+            onApproved={async () => {
+              await load(date);
+            }}
+          />
+        </div>
+      ) : (
       <div className="om-main">
         <header className="om-header">
           <div>
@@ -633,9 +678,11 @@ export default function OperationMapApp() {
                     <div className="om-placeholder">No leave this hour</div>
                   ) : (
                     leaveNow.map((l, i) => (
-                      <div className="om-leave-item" key={`${l.staffId}_${i}`}>
+                      <div className="om-leave-item" key={`${l.staffId}_${l.requestId || i}`}>
                         <strong>
-                          {staffById[l.staffId]?.name || l.staffId}
+                          {staffById[l.staffId]?.name ||
+                            l.staffName ||
+                            l.staffId}
                         </strong>
                         <span>
                           {getLeaveLabel([l], l.staffId, activeHour) ||
@@ -652,7 +699,7 @@ export default function OperationMapApp() {
                       className="om-btn"
                       onClick={() => setModal("addLeave")}
                     >
-                      Add Leave
+                      Apply Leave
                     </button>
                     <button
                       type="button"
@@ -689,6 +736,7 @@ export default function OperationMapApp() {
           )}
         </div>
       </div>
+      )}
 
       {modal === "addSlot" && (
         <AddSlotModal
@@ -706,15 +754,12 @@ export default function OperationMapApp() {
       )}
 
       {modal === "addLeave" && (
-        <AddLeaveModal
+        <ApplyLeaveModal
           staffList={staffList}
+          actor={actor}
           onClose={() => setModal(null)}
-          onSave={(entry) => {
-            markDirty({
-              ...dayPlan,
-              leave: [...(dayPlan.leave || []), entry],
-            });
-            setModal(null);
+          onSubmitted={() => {
+            setView("leave");
           }}
         />
       )}
@@ -906,68 +951,6 @@ function AddSlotModal({ onClose, onSave }) {
             onClick={() => onSave({ startTime, endTime, label })}
           >
             Add Slot
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AddLeaveModal({ staffList, onClose, onSave }) {
-  const [staffId, setStaffId] = useState(staffList[0]?.id || "");
-  const [type, setType] = useState("full");
-  const [startTime, setStartTime] = useState("11:00");
-  const [endTime, setEndTime] = useState("14:00");
-  return (
-    <div className="om-modal-backdrop" onClick={onClose}>
-      <div className="om-modal" onClick={(e) => e.stopPropagation()}>
-        <h2>Add Leave</h2>
-        <label>Staff</label>
-        <select value={staffId} onChange={(e) => setStaffId(e.target.value)}>
-          {staffList.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <label>Type</label>
-        <select value={type} onChange={(e) => setType(e.target.value)}>
-          <option value="full">Full Day</option>
-          <option value="partial">Partial</option>
-        </select>
-        {type === "partial" && (
-          <>
-            <label>Start</label>
-            <input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-            />
-            <label>End</label>
-            <input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-            />
-          </>
-        )}
-        <div className="om-modal-actions">
-          <button type="button" className="om-btn" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="om-btn om-btn-primary"
-            onClick={() =>
-              onSave({
-                staffId,
-                type,
-                startTime: type === "partial" ? startTime : null,
-                endTime: type === "partial" ? endTime : null,
-              })
-            }
-          >
-            Save Leave
           </button>
         </div>
       </div>
