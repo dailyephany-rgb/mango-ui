@@ -111,7 +111,18 @@ export async function downloadOperationWorkflowPdf(opts = {}) {
   doc.text(`Source: ${source || "All"}`, 10, y);
   y += 4.5;
   doc.text(`Generated: ${new Date().toLocaleString()}`, 10, y);
-  y += 5;
+  y += 4.5;
+  doc.setFontSize(8);
+  doc.setTextColor(71, 85, 105);
+  doc.text(
+    "Match rule: each register actor + timestamp is checked against who was planned for that role at that hour on the Operation Map. Planned column lists everyone assigned to the role across the slot; Followed uses the activity hour only.",
+    10,
+    y,
+    { maxWidth: pageWidth - 20 }
+  );
+  y += 8;
+  doc.setFontSize(9);
+  doc.setTextColor(51, 65, 85);
 
   const checked = summary.checked ?? 0;
   const followed = summary.followed ?? 0;

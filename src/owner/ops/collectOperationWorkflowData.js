@@ -1,6 +1,12 @@
 /**
  * Operation Workflow compliance: join clinical activity to Operation Map plans.
- * Bucket each action by its own timestamp → date + hour → planned role assignee.
+ *
+ * For each Firestore register stage (savedBy+savedTime, validatedBy+validatedTime,
+ * mango By+Time pairs, outsource By+Time pairs, insideLab savedBy+timeSaved):
+ *   1. Floor the stage timestamp to date + hourKey
+ *   2. Load planned assignees for that role at that hour
+ *   3. Followed iff the actor is in that hour's planned list
+ * Slot is used only to group PDF rows; Planned column unions names across slot hours.
  */
 import { trackedGetDocs as getDocs } from "../../shared/firestore/trackedFirestore.js";
 import * as Biochem from "../lib/dataFetcher_biochem_main.js";
@@ -28,11 +34,27 @@ import {
   formatSlotRange,
   hoursForSlot,
   asStaffList,
+  normalizeAssignments,
 } from "../../operation_map/roleConfig.js";
 import { toLocalDateString, parseDateField } from "../../shared/utils/dates.js";
 import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrintedQuery.js";
 
 const OVERVIEW_TIMEOUT_MS = 90_000;
+
+/** Placeholder actors from registers — never count as workflow entries. */
+const INVALID_ACTORS = new Set([
+  "",
+  "-",
+  "—",
+  "na",
+  "n/a",
+  "n.a.",
+  "none",
+  "null",
+  "undefined",
+  "unknown",
+  "not available",
+]);
 
 const CLINICAL_SOURCES = [
   { roleKey: "biochemistry", subscribe: Biochem.subscribeOverview },
@@ -141,6 +163,21 @@ function normName(v) {
   return String(v || "").trim();
 }
 
+function isUsableActor(v) {
+  const n = normName(v);
+  if (!n) return false;
+  return !INVALID_ACTORS.has(n.toLowerCase());
+}
+
+/** First usable date among register timestamp aliases. */
+function firstDate(...vals) {
+  for (const v of vals) {
+    const d = asDate(v);
+    if (d) return d;
+  }
+  return null;
+}
+
 function namesMatch(a, b) {
   return normName(a).toLowerCase() === normName(b).toLowerCase();
 }
@@ -200,6 +237,7 @@ function findSlotForHour(dayPlan, hourKey) {
 }
 
 function pushEvent(events, partial) {
+  if (!isUsableActor(partial.actor)) return;
   const actor = normName(partial.actor);
   const at = asDate(partial.at);
   if (!actor || !at) return;
@@ -214,13 +252,17 @@ function pushEvent(events, partial) {
   });
 }
 
+/**
+ * Dept register: savedBy+savedTime → staff; validatedBy+validatedTime → validator.
+ * Each stage is its own entry matched to the hour of that stage's timestamp.
+ */
 function emitClinicalRows(events, rows, roleKey) {
   (rows || []).forEach((r) => {
     pushEvent(events, {
       roleKey,
       field: "staff",
       actor: r.savedBy,
-      at: r.timeSaved,
+      at: firstDate(r.timeSaved, r.savedTime),
       action: "saved",
       regNo: r.regNo,
       diagnosticNo: r.diagnosticNo,
@@ -229,7 +271,7 @@ function emitClinicalRows(events, rows, roleKey) {
       roleKey,
       field: "validator",
       actor: r.validatedBy,
-      at: r.timeValidated,
+      at: firstDate(r.timeValidated, r.validatedTime),
       action: "validated",
       regNo: r.regNo,
       diagnosticNo: r.diagnosticNo,
@@ -237,13 +279,14 @@ function emitClinicalRows(events, rows, roleKey) {
   });
 }
 
+/** Mango Operator: each By+Time pair is its own entry vs mangoOperator that hour. */
 function emitMangoRows(events, records) {
   (records || []).forEach((r) => {
     pushEvent(events, {
       roleKey: "mangoOperator",
       field: "staff",
       actor: r.receiptSavedBy,
-      at: r.timePrinted,
+      at: firstDate(r.timePrinted, r.receiptSavedTime),
       action: "receipt",
       regNo: r.regNo,
       diagnosticNo: r.diagnosticNo,
@@ -252,7 +295,7 @@ function emitMangoRows(events, records) {
       roleKey: "mangoOperator",
       field: "staff",
       actor: r.routineReportPrintedBy,
-      at: r.routineReportPrintedTime,
+      at: firstDate(r.routineReportPrintedTime),
       action: "routinePrint",
       regNo: r.regNo,
       diagnosticNo: r.diagnosticNo,
@@ -261,7 +304,7 @@ function emitMangoRows(events, records) {
       roleKey: "mangoOperator",
       field: "staff",
       actor: r.insideLabReportPrintedBy,
-      at: r.insideLabReportPrintedTime,
+      at: firstDate(r.insideLabReportPrintedTime),
       action: "insidePrint",
       regNo: r.regNo,
       diagnosticNo: r.diagnosticNo,
@@ -270,7 +313,7 @@ function emitMangoRows(events, records) {
       roleKey: "mangoOperator",
       field: "staff",
       actor: r.whatsappSentBy,
-      at: r.whatsappSentTime,
+      at: firstDate(r.whatsappSentTime),
       action: "whatsapp",
       regNo: r.regNo,
       diagnosticNo: r.diagnosticNo,
@@ -284,7 +327,7 @@ function emitInsideRows(events, rows) {
       roleKey: "insideLab",
       field: "staff",
       actor: r.savedBy,
-      at: r.timeSaved,
+      at: firstDate(r.timeSaved, r.savedTime),
       action: "insideSave",
       regNo: r.regNo,
       diagnosticNo: r.diagnosticNo,
@@ -292,13 +335,17 @@ function emitInsideRows(events, rows) {
   });
 }
 
+/**
+ * Outsource stages: each By+Time vs outsource staff list for that hour only.
+ * Never reuse another stage's timestamp.
+ */
 function emitOutsourceRows(events, rows) {
   (rows || []).forEach((r) => {
     pushEvent(events, {
       roleKey: "outsource",
       field: "staff",
       actor: r.collectedBy,
-      at: r.timeOutsourcedCollected,
+      at: firstDate(r.timeOutsourcedCollected, r.outsourcedCollectedTime),
       action: "collected",
       regNo: r.regNo,
       diagnosticNo: r.diagnosticNo,
@@ -307,7 +354,7 @@ function emitOutsourceRows(events, rows) {
       roleKey: "outsource",
       field: "staff",
       actor: r.receivedBy,
-      at: r.timeReportReceived,
+      at: firstDate(r.timeReportReceived, r.reportReceivedTime),
       action: "received",
       regNo: r.regNo,
       diagnosticNo: r.diagnosticNo,
@@ -316,7 +363,7 @@ function emitOutsourceRows(events, rows) {
       roleKey: "outsource",
       field: "staff",
       actor: r.deliveredBy,
-      at: r.timeReportDelivered,
+      at: firstDate(r.timeReportDelivered, r.reportDeliveredTime),
       action: "delivered",
       regNo: r.regNo,
       diagnosticNo: r.diagnosticNo,
@@ -444,7 +491,10 @@ export async function collectOperationWorkflowData({
       return;
     }
 
-    const assignments = dayPlan.hours?.[hourKey]?.assignments || null;
+    // Match against Operation Map hour of this register timestamp only.
+    const assignments = normalizeAssignments(
+      dayPlan.hours?.[hourKey]?.assignments
+    );
     const planned = resolvePlanned(assignments, ev.roleKey, ev.field);
     const aggKey = `${dateStr}|${slot.id}|${ev.roleKey}|${ev.field}`;
 
@@ -456,7 +506,17 @@ export async function collectOperationWorkflowData({
       });
     }
     const agg = slotRoleMap.get(aggKey);
-    planned.forEach((p) => agg.plannedNames.add(p));
+
+    // Planned column = union across all hours in the slot (display).
+    // Followed check below still uses only this activity hour's planned list.
+    for (const hk of hoursForSlot(slot.startTime, slot.endTime)) {
+      const hourPlanned = resolvePlanned(
+        normalizeAssignments(dayPlan.hours?.[hk]?.assignments),
+        ev.roleKey,
+        ev.field
+      );
+      hourPlanned.forEach((p) => agg.plannedNames.add(p));
+    }
 
     if (!planned.length) {
       agg.skippedNoPlan += 1;
