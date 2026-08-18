@@ -115,7 +115,7 @@ export async function downloadOperationWorkflowPdf(opts = {}) {
   doc.setFontSize(8);
   doc.setTextColor(71, 85, 105);
   doc.text(
-    "Match rule: each register actor + timestamp is checked against who was planned for that role at that hour on the Operation Map. Planned column lists everyone assigned to the role across the slot; Followed uses the activity hour only.",
+    "Match rule: each register actor + timestamp is mapped to an Operation Map slot; Followed if that actor is among anyone planned for that role anywhere in the slot (slot-wide union).",
     10,
     y,
     { maxWidth: pageWidth - 20 }

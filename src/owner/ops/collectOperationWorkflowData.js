@@ -1,12 +1,12 @@
 /**
  * Operation Workflow compliance: join clinical activity to Operation Map plans.
  *
- * For each Firestore register stage (savedBy+savedTime, validatedBy+validatedTime,
- * mango By+Time pairs, outsource By+Time pairs, insideLab savedBy+timeSaved):
- *   1. Floor the stage timestamp to date + hourKey
- *   2. Load planned assignees for that role at that hour
- *   3. Followed iff the actor is in that hour's planned list
- * Slot is used only to group PDF rows; Planned column unions names across slot hours.
+ * Way B (slot match): for each register stage (savedBy+savedTime, validatedBy+
+ * validatedTime, mango/outsource By+Time pairs, insideLab save):
+ *   1. Floor the stage timestamp → date + hour → find Operation Map slot
+ *   2. Planned = union of assignees for that role across all hours in the slot
+ *   3. Followed iff the actor is in that slot-wide planned list
+ * Skip only when the role was never planned anywhere in the slot.
  */
 import { trackedGetDocs as getDocs } from "../../shared/firestore/trackedFirestore.js";
 import * as Biochem from "../lib/dataFetcher_biochem_main.js";
@@ -222,6 +222,21 @@ function resolvePlanned(assignments, roleKey, field) {
   return [];
 }
 
+/** Union of planned names for a role across every hour in the slot. */
+function resolvePlannedForSlot(dayPlan, slot, roleKey, field) {
+  const names = new Set();
+  if (!dayPlan || !slot) return [];
+  for (const hk of hoursForSlot(slot.startTime, slot.endTime)) {
+    const planned = resolvePlanned(
+      normalizeAssignments(dayPlan.hours?.[hk]?.assignments),
+      roleKey,
+      field
+    );
+    planned.forEach((p) => names.add(p));
+  }
+  return Array.from(names);
+}
+
 function findSlotForHour(dayPlan, hourKey) {
   const hourEntry = dayPlan?.hours?.[hourKey];
   if (hourEntry?.slotId) {
@@ -254,7 +269,7 @@ function pushEvent(events, partial) {
 
 /**
  * Dept register: savedBy+savedTime → staff; validatedBy+validatedTime → validator.
- * Each stage is its own entry matched to the hour of that stage's timestamp.
+ * Each stage is its own entry; matched to the slot covering that timestamp.
  */
 function emitClinicalRows(events, rows, roleKey) {
   (rows || []).forEach((r) => {
@@ -279,7 +294,7 @@ function emitClinicalRows(events, rows, roleKey) {
   });
 }
 
-/** Mango Operator: each By+Time pair is its own entry vs mangoOperator that hour. */
+/** Mango Operator: each By+Time pair is its own entry vs mangoOperator for that slot. */
 function emitMangoRows(events, records) {
   (records || []).forEach((r) => {
     pushEvent(events, {
@@ -336,7 +351,7 @@ function emitInsideRows(events, rows) {
 }
 
 /**
- * Outsource stages: each By+Time vs outsource staff list for that hour only.
+ * Outsource stages: each By+Time vs outsource staff list for the covering slot.
  * Never reuse another stage's timestamp.
  */
 function emitOutsourceRows(events, rows) {
@@ -491,11 +506,13 @@ export async function collectOperationWorkflowData({
       return;
     }
 
-    // Match against Operation Map hour of this register timestamp only.
-    const assignments = normalizeAssignments(
-      dayPlan.hours?.[hourKey]?.assignments
+    // Way B: match against slot-wide planned union (not the activity hour alone).
+    const planned = resolvePlannedForSlot(
+      dayPlan,
+      slot,
+      ev.roleKey,
+      ev.field
     );
-    const planned = resolvePlanned(assignments, ev.roleKey, ev.field);
     const aggKey = `${dateStr}|${slot.id}|${ev.roleKey}|${ev.field}`;
 
     if (!slotRoleMap.has(aggKey)) {
@@ -506,17 +523,7 @@ export async function collectOperationWorkflowData({
       });
     }
     const agg = slotRoleMap.get(aggKey);
-
-    // Planned column = union across all hours in the slot (display).
-    // Followed check below still uses only this activity hour's planned list.
-    for (const hk of hoursForSlot(slot.startTime, slot.endTime)) {
-      const hourPlanned = resolvePlanned(
-        normalizeAssignments(dayPlan.hours?.[hk]?.assignments),
-        ev.roleKey,
-        ev.field
-      );
-      hourPlanned.forEach((p) => agg.plannedNames.add(p));
-    }
+    planned.forEach((p) => agg.plannedNames.add(p));
 
     if (!planned.length) {
       agg.skippedNoPlan += 1;
