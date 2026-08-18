@@ -1,12 +1,12 @@
 /**
  * Operation Workflow compliance: join clinical activity to Operation Map plans.
  *
- * Way B (slot match): for each register stage (savedBy+savedTime, validatedBy+
- * validatedTime, mango/outsource By+Time pairs, insideLab save):
+ * Way B (slot match): for each register stage:
  *   1. Floor the stage timestamp → date + hour → find Operation Map slot
- *   2. Planned = union of assignees for that role across all hours in the slot
+ *   2. Planned = union of assignees for that map role across all hours in the slot
  *   3. Followed iff the actor is in that slot-wide planned list
- * Skip only when the role was never planned anywhere in the slot.
+ * Report rows may split Backroom/Mango/Outsource by register or action (reportKey)
+ * without changing Operation Map duty assignment (roleKey).
  */
 import { trackedGetDocs as getDocs } from "../../shared/firestore/trackedFirestore.js";
 import * as Biochem from "../lib/dataFetcher_biochem_main.js";
@@ -62,17 +62,92 @@ const INVALID_ACTORS = new Set([
 const ANONYMOUS_ACTORS = new Set(["unknown"]);
 
 const CLINICAL_SOURCES = [
-  { roleKey: "biochemistry", subscribe: Biochem.subscribeOverview },
-  { roleKey: "hormones", subscribe: Hormones.subscribeOverview },
-  { roleKey: "haematology", subscribe: Haem.subscribeOverview },
-  { roleKey: "coagulation", subscribe: Coag.subscribeOverview },
-  { roleKey: "backroom", subscribe: Serology.subscribeOverview },
-  { roleKey: "backroom", subscribe: Rapid.subscribeOverview },
-  { roleKey: "backroom", subscribe: Urine.subscribeOverview },
-  { roleKey: "backroom", subscribe: Esr.subscribeOverview },
-  { roleKey: "backroom", subscribe: BloodGroupTesting.subscribeOverview },
-  { roleKey: "backroom", subscribe: BloodGroupRetesting.subscribeOverview },
+  {
+    roleKey: "biochemistry",
+    reportKey: "biochemistry",
+    subscribe: Biochem.subscribeOverview,
+  },
+  {
+    roleKey: "hormones",
+    reportKey: "hormones",
+    subscribe: Hormones.subscribeOverview,
+  },
+  {
+    roleKey: "haematology",
+    reportKey: "haematology",
+    subscribe: Haem.subscribeOverview,
+  },
+  {
+    roleKey: "coagulation",
+    reportKey: "coagulation",
+    subscribe: Coag.subscribeOverview,
+  },
+  {
+    roleKey: "backroom",
+    reportKey: "serology",
+    subscribe: Serology.subscribeOverview,
+  },
+  {
+    roleKey: "backroom",
+    reportKey: "rapidCard",
+    subscribe: Rapid.subscribeOverview,
+  },
+  {
+    roleKey: "backroom",
+    reportKey: "urine",
+    subscribe: Urine.subscribeOverview,
+  },
+  {
+    roleKey: "backroom",
+    reportKey: "esr",
+    subscribe: Esr.subscribeOverview,
+  },
+  {
+    roleKey: "backroom",
+    reportKey: "bloodGroupTesting",
+    subscribe: BloodGroupTesting.subscribeOverview,
+  },
+  {
+    roleKey: "backroom",
+    reportKey: "bloodGroupRetesting",
+    subscribe: BloodGroupRetesting.subscribeOverview,
+  },
 ];
+
+/** Report-only display buckets (Operation Map duties stay on roleKey). */
+const REPORT_LABELS = {
+  biochemistry: "Biochemistry",
+  hormones: "Hormones",
+  haematology: "Haematology",
+  coagulation: "Coagulation",
+  serology: "Serology (Backroom)",
+  rapidCard: "Rapid Card (Backroom)",
+  urine: "Urine (Backroom)",
+  esr: "ESR (Backroom)",
+  bloodGroupTesting: "Blood Group Testing (Backroom)",
+  bloodGroupRetesting: "Blood Group Retesting (Backroom)",
+  insideLab: "Inside Lab",
+  mangoReceipt: "Mango (Report Saved By)",
+  mangoRoutinePrint: "Mango (Routine Report Printed By)",
+  mangoInsidePrint: "Mango (Inside Lab Report Printed By)",
+  mangoWhatsapp: "Mango (WhatsApp Sent By)",
+  outsourceCollected: "Outsource (Collected By)",
+  outsourceReceived: "Outsource (Report Received By)",
+  outsourceDelivered: "Outsource (Report Delivered By)",
+};
+
+const MANGO_ACTION_REPORT = {
+  receipt: "mangoReceipt",
+  routinePrint: "mangoRoutinePrint",
+  insidePrint: "mangoInsidePrint",
+  whatsapp: "mangoWhatsapp",
+};
+
+const OUTSOURCE_ACTION_REPORT = {
+  collected: "outsourceCollected",
+  received: "outsourceReceived",
+  delivered: "outsourceDelivered",
+};
 
 const OUTSOURCE_LABS = [
   { id: "SterlingRegister", lab: "STERLING" },
@@ -208,9 +283,18 @@ function eachDateStr(from, to) {
   return out;
 }
 
-function roleLabel(roleKey, field) {
-  const base = ROLE_CONFIG[roleKey]?.label || roleKey;
-  if (field === "validator") return `${base} Validator`;
+function roleLabel(roleKey, field, reportKey) {
+  const base =
+    (reportKey && REPORT_LABELS[reportKey]) ||
+    ROLE_CONFIG[roleKey]?.label ||
+    roleKey;
+  if (field === "validator") {
+    // e.g. "Serology Validator (Backroom)" when base is "Serology (Backroom)"
+    if (base.includes(" (Backroom)")) {
+      return base.replace(" (Backroom)", " Validator (Backroom)");
+    }
+    return `${base} Validator`;
+  }
   return base;
 }
 
@@ -267,6 +351,7 @@ function pushEvent(events, partial) {
   if (!actor || !at) return;
   events.push({
     roleKey: partial.roleKey,
+    reportKey: partial.reportKey || partial.roleKey,
     field: partial.field || "staff",
     actor,
     at,
@@ -278,12 +363,14 @@ function pushEvent(events, partial) {
 
 /**
  * Dept register: savedBy+savedTime → staff; validatedBy+validatedTime → validator.
- * Each stage is its own entry; matched to the slot covering that timestamp.
+ * reportKey splits PDF rows; roleKey is still used for Operation Map planned match.
  */
-function emitClinicalRows(events, rows, roleKey) {
+function emitClinicalRows(events, rows, roleKey, reportKey) {
+  const bucket = reportKey || roleKey;
   (rows || []).forEach((r) => {
     pushEvent(events, {
       roleKey,
+      reportKey: bucket,
       field: "staff",
       actor: r.savedBy,
       at: firstDate(r.timeSaved, r.savedTime),
@@ -293,6 +380,7 @@ function emitClinicalRows(events, rows, roleKey) {
     });
     pushEvent(events, {
       roleKey,
+      reportKey: bucket,
       field: "validator",
       actor: r.validatedBy,
       at: firstDate(r.timeValidated, r.validatedTime),
@@ -303,11 +391,12 @@ function emitClinicalRows(events, rows, roleKey) {
   });
 }
 
-/** Mango Operator: each By+Time pair is its own entry vs mangoOperator for that slot. */
+/** Mango: map role mangoOperator; report rows split by action. */
 function emitMangoRows(events, records) {
   (records || []).forEach((r) => {
     pushEvent(events, {
       roleKey: "mangoOperator",
+      reportKey: MANGO_ACTION_REPORT.receipt,
       field: "staff",
       actor: r.receiptSavedBy,
       at: firstDate(r.timePrinted, r.receiptSavedTime),
@@ -317,6 +406,7 @@ function emitMangoRows(events, records) {
     });
     pushEvent(events, {
       roleKey: "mangoOperator",
+      reportKey: MANGO_ACTION_REPORT.routinePrint,
       field: "staff",
       actor: r.routineReportPrintedBy,
       at: firstDate(r.routineReportPrintedTime),
@@ -326,6 +416,7 @@ function emitMangoRows(events, records) {
     });
     pushEvent(events, {
       roleKey: "mangoOperator",
+      reportKey: MANGO_ACTION_REPORT.insidePrint,
       field: "staff",
       actor: r.insideLabReportPrintedBy,
       at: firstDate(r.insideLabReportPrintedTime),
@@ -335,6 +426,7 @@ function emitMangoRows(events, records) {
     });
     pushEvent(events, {
       roleKey: "mangoOperator",
+      reportKey: MANGO_ACTION_REPORT.whatsapp,
       field: "staff",
       actor: r.whatsappSentBy,
       at: firstDate(r.whatsappSentTime),
@@ -349,6 +441,7 @@ function emitInsideRows(events, rows) {
   (rows || []).forEach((r) => {
     pushEvent(events, {
       roleKey: "insideLab",
+      reportKey: "insideLab",
       field: "staff",
       actor: r.savedBy,
       at: firstDate(r.timeSaved, r.savedTime),
@@ -359,14 +452,12 @@ function emitInsideRows(events, rows) {
   });
 }
 
-/**
- * Outsource stages: each By+Time vs outsource staff list for the covering slot.
- * Never reuse another stage's timestamp.
- */
+/** Outsource: map role outsource; report rows split by stage. */
 function emitOutsourceRows(events, rows) {
   (rows || []).forEach((r) => {
     pushEvent(events, {
       roleKey: "outsource",
+      reportKey: OUTSOURCE_ACTION_REPORT.collected,
       field: "staff",
       actor: r.collectedBy,
       at: firstDate(r.timeOutsourcedCollected, r.outsourcedCollectedTime),
@@ -376,6 +467,7 @@ function emitOutsourceRows(events, rows) {
     });
     pushEvent(events, {
       roleKey: "outsource",
+      reportKey: OUTSOURCE_ACTION_REPORT.received,
       field: "staff",
       actor: r.receivedBy,
       at: firstDate(r.timeReportReceived, r.reportReceivedTime),
@@ -385,6 +477,7 @@ function emitOutsourceRows(events, rows) {
     });
     pushEvent(events, {
       roleKey: "outsource",
+      reportKey: OUTSOURCE_ACTION_REPORT.delivered,
       field: "staff",
       actor: r.deliveredBy,
       at: firstDate(r.timeReportDelivered, r.reportDeliveredTime),
@@ -406,11 +499,12 @@ function nameCountList(map) {
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
-function emptyRoleAgg(roleKey, field) {
+function emptyRoleAgg(roleKey, field, reportKey) {
   return {
     roleKey,
+    reportKey: reportKey || roleKey,
     field,
-    roleLabel: roleLabel(roleKey, field),
+    roleLabel: roleLabel(roleKey, field, reportKey),
     plannedNames: new Set(),
     followedCount: 0,
     notFollowedCount: 0,
@@ -440,6 +534,7 @@ export async function collectOperationWorkflowData({
           });
           return {
             roleKey: src.roleKey,
+            reportKey: src.reportKey,
             rows: payload.unifiedRows || payload.deptRows || [],
           };
         })
@@ -472,8 +567,8 @@ export async function collectOperationWorkflowData({
     ]);
 
   emitMangoRows(events, mangoRows);
-  clinicalPayloads.forEach(({ roleKey, rows }) =>
-    emitClinicalRows(events, rows, roleKey)
+  clinicalPayloads.forEach(({ roleKey, reportKey, rows }) =>
+    emitClinicalRows(events, rows, roleKey, reportKey)
   );
   emitInsideRows(events, insideChunks.flat());
   emitOutsourceRows(events, outsourceChunks.flat());
@@ -515,20 +610,22 @@ export async function collectOperationWorkflowData({
       return;
     }
 
-    // Way B: match against slot-wide planned union (not the activity hour alone).
+    // Way B: match against slot-wide planned union for the Operation Map role.
+    // reportKey only splits PDF/aggregation rows — duties stay on roleKey.
     const planned = resolvePlannedForSlot(
       dayPlan,
       slot,
       ev.roleKey,
       ev.field
     );
-    const aggKey = `${dateStr}|${slot.id}|${ev.roleKey}|${ev.field}`;
+    const reportKey = ev.reportKey || ev.roleKey;
+    const aggKey = `${dateStr}|${slot.id}|${ev.roleKey}|${ev.field}|${reportKey}`;
 
     if (!slotRoleMap.has(aggKey)) {
       slotRoleMap.set(aggKey, {
         date: dateStr,
         slot,
-        ...emptyRoleAgg(ev.roleKey, ev.field),
+        ...emptyRoleAgg(ev.roleKey, ev.field, reportKey),
       });
     }
     const agg = slotRoleMap.get(aggKey);
@@ -557,7 +654,7 @@ export async function collectOperationWorkflowData({
         date: dateStr,
         slotLabel: slot.label || formatSlotRange(slot.startTime, slot.endTime),
         hourKey,
-        roleLabel: roleLabel(ev.roleKey, ev.field),
+        roleLabel: roleLabel(ev.roleKey, ev.field, reportKey),
         planned: planned.join(", "),
         actual: ev.actor,
         action: ev.action,
@@ -575,6 +672,7 @@ export async function collectOperationWorkflowData({
         if (!key.startsWith(`${date}|${slot.id}|`)) continue;
         roles.push({
           roleKey: agg.roleKey,
+          reportKey: agg.reportKey,
           field: agg.field,
           roleLabel: agg.roleLabel,
           plannedNames: Array.from(agg.plannedNames).sort(),
