@@ -41,7 +41,7 @@ import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrinted
 
 const OVERVIEW_TIMEOUT_MS = 90_000;
 
-/** Placeholder actors from registers — never count as workflow entries. */
+/** Placeholder actors that mean "no real person" — skip (do not count). */
 const INVALID_ACTORS = new Set([
   "",
   "-",
@@ -52,9 +52,14 @@ const INVALID_ACTORS = new Set([
   "none",
   "null",
   "undefined",
-  "unknown",
   "not available",
 ]);
+
+/**
+ * Actors that are real register events but anonymous — count as Not followed
+ * (never match planned staff).
+ */
+const ANONYMOUS_ACTORS = new Set(["unknown"]);
 
 const CLINICAL_SOURCES = [
   { roleKey: "biochemistry", subscribe: Biochem.subscribeOverview },
@@ -167,6 +172,10 @@ function isUsableActor(v) {
   const n = normName(v);
   if (!n) return false;
   return !INVALID_ACTORS.has(n.toLowerCase());
+}
+
+function isAnonymousActor(v) {
+  return ANONYMOUS_ACTORS.has(normName(v).toLowerCase());
 }
 
 /** First usable date among register timestamp aliases. */
@@ -532,7 +541,10 @@ export async function collectOperationWorkflowData({
     }
 
     checked += 1;
-    const ok = planned.some((p) => namesMatch(p, ev.actor));
+    // Unknown (and other anonymous actors) never count as followed.
+    const ok =
+      !isAnonymousActor(ev.actor) &&
+      planned.some((p) => namesMatch(p, ev.actor));
     if (ok) {
       followed += 1;
       agg.followedCount += 1;
