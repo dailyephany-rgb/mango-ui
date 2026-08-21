@@ -2,25 +2,16 @@
  * Operation Workflow compliance: join clinical activity to Operation Map plans.
  *
  * Way B (slot match): for each register stage:
- *   1. Floor the stage timestamp → date + hour → find Operation Map slot
+ *   1. Floor the stage timestamp → IST date + hour → find Operation Map slot
  *   2. Planned = union of assignees for that map role across all hours in the slot
  *   3. Followed iff the actor is in that slot-wide planned list
+ *
+ * All day bounds and hour bucketing use Asia/Kolkata (IST) so the same date
+ * range yields the same counts on every machine (Mac / Windows / any TZ).
  * Report rows may split Backroom/Mango/Outsource by register or action (reportKey)
  * without changing Operation Map duty assignment (roleKey).
  */
 import { trackedGetDocs as getDocs } from "../../shared/firestore/trackedFirestore.js";
-import * as Biochem from "../lib/dataFetcher_biochem_main.js";
-import * as Hormones from "../lib/dataFetcher_hormones_main.js";
-import * as Haem from "../lib/dataFetcher_haem.js";
-import * as Coag from "../lib/dataFetcher.js";
-import * as Serology from "../lib/dataFetcher_serology.js";
-import * as Rapid from "../lib/dataFetcher_rapid.js";
-import * as Urine from "../lib/dataFetcher_urine.js";
-import * as Esr from "../lib/dataFetcher_esr.js";
-import * as BloodGroupTesting from "../lib/dataFetcher_bloodgroup_testing.js";
-import * as BloodGroupRetesting from "../lib/dataFetcher_bloodgroup_retesting.js";
-import * as Outsource from "../lib/dataFetcher_outsource.js";
-import * as Lab from "../lib/dataFetcher_lab.js";
 import {
   loadDayPlan,
   shiftDateStr,
@@ -36,10 +27,20 @@ import {
   asStaffList,
   normalizeAssignments,
 } from "../../operation_map/roleConfig.js";
-import { toLocalDateString, parseDateField } from "../../shared/utils/dates.js";
-import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrintedQuery.js";
-
-const OVERVIEW_TIMEOUT_MS = 90_000;
+import {
+  parseDateField,
+  istDayStart,
+  istDayEndExclusive,
+  getISTDateString,
+} from "../../shared/utils/dates.js";
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "../../firebaseConfig.js";
 
 /** Placeholder actors that mean "no real person" — skip (do not count). */
 const INVALID_ACTORS = new Set([
@@ -61,56 +62,57 @@ const INVALID_ACTORS = new Set([
  */
 const ANONYMOUS_ACTORS = new Set(["unknown"]);
 
+/** Direct Firestore registers — no Owner overview (overview uses machine-local day). */
 const CLINICAL_SOURCES = [
   {
     roleKey: "biochemistry",
     reportKey: "biochemistry",
-    subscribe: Biochem.subscribeOverview,
+    collection: "biochemistry_register",
   },
   {
     roleKey: "hormones",
     reportKey: "hormones",
-    subscribe: Hormones.subscribeOverview,
+    collection: "hormones_main",
   },
   {
     roleKey: "haematology",
     reportKey: "haematology",
-    subscribe: Haem.subscribeOverview,
+    collection: "haematology_register",
   },
   {
     roleKey: "coagulation",
     reportKey: "coagulation",
-    subscribe: Coag.subscribeOverview,
+    collection: "coagulation_register",
   },
   {
     roleKey: "backroom",
     reportKey: "serology",
-    subscribe: Serology.subscribeOverview,
+    collection: "serology_register",
   },
   {
     roleKey: "backroom",
     reportKey: "rapidCard",
-    subscribe: Rapid.subscribeOverview,
+    collection: "rapid_card_register",
   },
   {
     roleKey: "backroom",
     reportKey: "urine",
-    subscribe: Urine.subscribeOverview,
+    collection: "urine_analysis_register",
   },
   {
     roleKey: "backroom",
     reportKey: "esr",
-    subscribe: Esr.subscribeOverview,
+    collection: "esr_register",
   },
   {
     roleKey: "backroom",
     reportKey: "bloodGroupTesting",
-    subscribe: BloodGroupTesting.subscribeOverview,
+    collection: "bloodgroup_testing_register",
   },
   {
     roleKey: "backroom",
     reportKey: "bloodGroupRetesting",
-    subscribe: BloodGroupRetesting.subscribeOverview,
+    collection: "bloodgroup_retesting_register",
   },
 ];
 
@@ -126,11 +128,11 @@ const REPORT_LABELS = {
   esr: "ESR (Backroom)",
   bloodGroupTesting: "Blood Group Testing (Backroom)",
   bloodGroupRetesting: "Blood Group Retesting (Backroom)",
-  insideLab: "Inside Lab",
   mangoReceipt: "Mango (Report Saved By)",
   mangoRoutinePrint: "Mango (Routine Report Printed By)",
   mangoInsidePrint: "Mango (Inside Lab Report Printed By)",
   mangoWhatsapp: "Mango (WhatsApp Sent By)",
+  insideLab: "Inside Lab (Saved By)",
   outsourceCollected: "Outsource (Collected By)",
   outsourceReceived: "Outsource (Report Received By)",
   outsourceDelivered: "Outsource (Report Delivered By)",
@@ -149,69 +151,6 @@ const OUTSOURCE_ACTION_REPORT = {
   delivered: "outsourceDelivered",
 };
 
-const OUTSOURCE_LABS = [
-  { id: "SterlingRegister", lab: "STERLING" },
-  { id: "NeubergRegister", lab: "NEUBERG" },
-  { id: "LifecellRegister", lab: "LIFECELL" },
-  { id: "LilacRegister", lab: "LILAC" },
-  { id: "ReliableRegister", lab: "RELIABLE" },
-];
-
-const INSIDE_LAB_DEPTS = [
-  { id: "FnacRegister", dept: "FNAC" },
-  { id: "PathologyRegister", dept: "PATHOLOGY" },
-  { id: "CultureRegister", dept: "CULTURE" },
-  { id: "FluidRegister", dept: "FLUID" },
-];
-
-function firstOverviewPayload(subscribeOverview, opts, settleMs = 450) {
-  return new Promise((resolve, reject) => {
-    let done = false;
-    let unsub = null;
-    let latest = null;
-    let settleTimer = null;
-
-    const finish = (payload, err) => {
-      if (done) return;
-      done = true;
-      clearTimeout(hardTimer);
-      clearTimeout(settleTimer);
-      try {
-        if (typeof unsub === "function") unsub();
-      } catch {
-        /* ignore */
-      }
-      if (err) reject(err);
-      else resolve(payload || {});
-    };
-
-    const hardTimer = setTimeout(() => {
-      if (latest != null) finish(latest);
-      else finish(null, new Error("Timed out waiting for department overview"));
-    }, OVERVIEW_TIMEOUT_MS);
-
-    try {
-      if (typeof subscribeOverview !== "function") {
-        finish(
-          null,
-          new Error("Department subscribeOverview is not available")
-        );
-        return;
-      }
-      unsub = subscribeOverview({
-        ...opts,
-        onData: (payload) => {
-          latest = payload;
-          clearTimeout(settleTimer);
-          settleTimer = setTimeout(() => finish(latest), settleMs);
-        },
-      });
-    } catch (err) {
-      finish(null, err);
-    }
-  });
-}
-
 function matchesSource(row, source) {
   if (!source || source === "All") return true;
   return (
@@ -221,13 +160,75 @@ function matchesSource(row, source) {
   );
 }
 
-async function loadReportDetailsRows(dateRange, source) {
-  const q = scopedTimePrintedQuery("report_details", dateRange);
-  if (!q) return [];
-  const snap = await getDocs(q);
-  return snap.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((r) => matchesSource(r, source));
+/** IST calendar day query — identical on every machine for the same YYYY-MM-DD. */
+async function loadScopedByField(collectionName, field, dateRange, source) {
+  const start = istDayStart(dateRange?.from);
+  const endExclusive = istDayEndExclusive(dateRange?.to);
+  if (!start || !endExclusive) return [];
+  try {
+    const q = query(
+      collection(db, collectionName),
+      where(field, ">=", Timestamp.fromDate(start)),
+      where(field, "<", Timestamp.fromDate(endExclusive)),
+      orderBy(field, "asc")
+    );
+    const snap = await getDocs(q);
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((r) => matchesSource(r, source));
+  } catch (err) {
+    console.warn(
+      `[OperationWorkflow] loadScopedByField ${collectionName}.${field}:`,
+      err?.message || err
+    );
+    return [];
+  }
+}
+
+/** Merge docs from several timestamp fields (activity may not share timePrinted day). */
+async function loadMergedByFields(collectionName, fields, dateRange, source) {
+  const chunks = await Promise.all(
+    fields.map((field) =>
+      loadScopedByField(collectionName, field, dateRange, source)
+    )
+  );
+  const byId = new Map();
+  for (const rows of chunks) {
+    for (const row of rows) {
+      byId.set(row.id, { ...(byId.get(row.id) || {}), ...row });
+    }
+  }
+  return Array.from(byId.values());
+}
+
+/**
+ * Mango stages often land on report_details whose timePrinted is a prior day.
+ * Load each stage by its own activity timestamp field (IST day).
+ */
+async function loadMangoStageRows(dateRange, source) {
+  const [receiptRows, routineRows, insidePrintRows, whatsappRows] =
+    await Promise.all([
+      loadScopedByField("report_details", "timePrinted", dateRange, source),
+      loadScopedByField(
+        "report_details",
+        "routineReportPrintedTime",
+        dateRange,
+        source
+      ),
+      loadScopedByField(
+        "report_details",
+        "insideLabReportPrintedTime",
+        dateRange,
+        source
+      ),
+      loadScopedByField(
+        "report_details",
+        "whatsappSentTime",
+        dateRange,
+        source
+      ),
+    ]);
+  return { receiptRows, routineRows, insidePrintRows, whatsappRows };
 }
 
 function asDate(v) {
@@ -267,7 +268,15 @@ function namesMatch(a, b) {
 }
 
 function hourKeyFromDate(d) {
-  return `${String(d.getHours()).padStart(2, "0")}:00`;
+  // Operation Map hours are lab/IST hours — never use machine-local getHours().
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(d);
+  let hour = parts.find((p) => p.type === "hour")?.value || "00";
+  if (hour === "24") hour = "00";
+  return `${hour.padStart(2, "0")}:00`;
 }
 
 function eachDateStr(from, to) {
@@ -391,9 +400,12 @@ function emitClinicalRows(events, rows, roleKey, reportKey) {
   });
 }
 
-/** Mango: map role mangoOperator; report rows split by action. */
-function emitMangoRows(events, records) {
-  (records || []).forEach((r) => {
+/** Mango: map role mangoOperator; each stage loaded by its own activity time. */
+function emitMangoStageEvents(events, stageRows) {
+  const { receiptRows, routineRows, insidePrintRows, whatsappRows } =
+    stageRows || {};
+
+  (receiptRows || []).forEach((r) => {
     pushEvent(events, {
       roleKey: "mangoOperator",
       reportKey: MANGO_ACTION_REPORT.receipt,
@@ -404,6 +416,8 @@ function emitMangoRows(events, records) {
       regNo: r.regNo,
       diagnosticNo: r.diagnosticNo,
     });
+  });
+  (routineRows || []).forEach((r) => {
     pushEvent(events, {
       roleKey: "mangoOperator",
       reportKey: MANGO_ACTION_REPORT.routinePrint,
@@ -414,6 +428,8 @@ function emitMangoRows(events, records) {
       regNo: r.regNo,
       diagnosticNo: r.diagnosticNo,
     });
+  });
+  (insidePrintRows || []).forEach((r) => {
     pushEvent(events, {
       roleKey: "mangoOperator",
       reportKey: MANGO_ACTION_REPORT.insidePrint,
@@ -424,6 +440,8 @@ function emitMangoRows(events, records) {
       regNo: r.regNo,
       diagnosticNo: r.diagnosticNo,
     });
+  });
+  (whatsappRows || []).forEach((r) => {
     pushEvent(events, {
       roleKey: "mangoOperator",
       reportKey: MANGO_ACTION_REPORT.whatsapp,
@@ -452,7 +470,7 @@ function emitInsideRows(events, rows) {
   });
 }
 
-/** Outsource: map role outsource; report rows split by stage. */
+/** Outsource: prefer raw Firestore stage timestamps (activity day). */
 function emitOutsourceRows(events, rows) {
   (rows || []).forEach((r) => {
     pushEvent(events, {
@@ -460,7 +478,7 @@ function emitOutsourceRows(events, rows) {
       reportKey: OUTSOURCE_ACTION_REPORT.collected,
       field: "staff",
       actor: r.collectedBy,
-      at: firstDate(r.timeOutsourcedCollected, r.outsourcedCollectedTime),
+      at: firstDate(r.outsourcedCollectedTime, r.timeOutsourcedCollected),
       action: "collected",
       regNo: r.regNo,
       diagnosticNo: r.diagnosticNo,
@@ -470,7 +488,7 @@ function emitOutsourceRows(events, rows) {
       reportKey: OUTSOURCE_ACTION_REPORT.received,
       field: "staff",
       actor: r.receivedBy,
-      at: firstDate(r.timeReportReceived, r.reportReceivedTime),
+      at: firstDate(r.reportReceivedTime, r.timeReportReceived),
       action: "received",
       regNo: r.regNo,
       diagnosticNo: r.diagnosticNo,
@@ -480,7 +498,7 @@ function emitOutsourceRows(events, rows) {
       reportKey: OUTSOURCE_ACTION_REPORT.delivered,
       field: "staff",
       actor: r.deliveredBy,
-      at: firstDate(r.timeReportDelivered, r.reportDeliveredTime),
+      at: firstDate(r.reportDeliveredTime, r.timeReportDelivered),
       action: "delivered",
       regNo: r.regNo,
       diagnosticNo: r.diagnosticNo,
@@ -523,55 +541,73 @@ export async function collectOperationWorkflowData({
 }) {
   const events = [];
 
-  const [mangoRows, clinicalPayloads, insideChunks, outsourceChunks] =
+  const [mangoStages, clinicalPayloads, insideRows, outsourceRows] =
     await Promise.all([
-      loadReportDetailsRows(dateRange, source),
+      loadMangoStageRows(dateRange, source),
       Promise.all(
         CLINICAL_SOURCES.map(async (src) => {
-          const payload = await firstOverviewPayload(src.subscribe, {
+          const rows = await loadMergedByFields(
+            src.collection,
+            ["timePrinted", "savedTime", "validatedTime"],
             dateRange,
-            source,
-          });
+            source
+          );
           return {
             roleKey: src.roleKey,
             reportKey: src.reportKey,
-            rows: payload.unifiedRows || payload.deptRows || [],
+            rows,
           };
         })
       ),
-      Promise.all(
-        INSIDE_LAB_DEPTS.map(async (tab) => {
-          const payload = await firstOverviewPayload(Lab.subscribeOverview, {
-            dateRange,
-            source,
-            activeRegister: tab.id,
-            targetDept: tab.dept,
-          });
-          return payload.deptRows || payload.unifiedRows || [];
-        })
+      // Prefer activity time; fall back to timePrinted for rows missing timeSaved.
+      loadMergedByFields(
+        "inside_lab_results",
+        ["timeSaved", "timePrinted"],
+        dateRange,
+        source
       ),
-      Promise.all(
-        OUTSOURCE_LABS.map(async (tab) => {
-          const payload = await firstOverviewPayload(
-            Outsource.subscribeOverview,
-            {
-              dateRange,
-              source,
-              activeRegister: tab.id,
-              targetLab: tab.lab,
-            }
-          );
-          return payload.deptRows || payload.unifiedRows || [];
-        })
-      ),
+      Promise.all([
+        loadScopedByField(
+          "outsource_tracking",
+          "outsourcedCollectedTime",
+          dateRange,
+          source
+        ),
+        loadScopedByField(
+          "outsource_tracking",
+          "reportReceivedTime",
+          dateRange,
+          source
+        ),
+        loadScopedByField(
+          "outsource_tracking",
+          "reportDeliveredTime",
+          dateRange,
+          source
+        ),
+        loadScopedByField(
+          "outsource_tracking",
+          "timePrinted",
+          dateRange,
+          source
+        ),
+      ]).then((chunks) => {
+        const byId = new Map();
+        for (const rows of chunks) {
+          for (const row of rows) {
+            byId.set(row.id, { ...(byId.get(row.id) || {}), ...row });
+          }
+        }
+        return Array.from(byId.values());
+      }),
     ]);
 
-  emitMangoRows(events, mangoRows);
+  emitMangoStageEvents(events, mangoStages);
   clinicalPayloads.forEach(({ roleKey, reportKey, rows }) =>
     emitClinicalRows(events, rows, roleKey, reportKey)
   );
-  emitInsideRows(events, insideChunks.flat());
-  emitOutsourceRows(events, outsourceChunks.flat());
+  emitInsideRows(events, insideRows);
+  emitOutsourceRows(events, outsourceRows);
 
   const dates = eachDateStr(dateRange?.from, dateRange?.to);
   const dayPlans = {};
@@ -592,7 +628,7 @@ export async function collectOperationWorkflowData({
   const detailMisses = [];
 
   events.forEach((ev) => {
-    const dateStr = toLocalDateString(ev.at);
+    const dateStr = getISTDateString(ev.at);
     if (!dateStr) return;
     if (dateRange?.from && dateStr < dateRange.from) return;
     if (dateRange?.to && dateStr > dateRange.to) return;

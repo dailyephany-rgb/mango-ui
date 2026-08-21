@@ -115,7 +115,7 @@ export async function downloadOperationWorkflowPdf(opts = {}) {
   doc.setFontSize(8);
   doc.setTextColor(71, 85, 105);
   doc.text(
-    "Match rule: register actor + timestamp → Operation Map slot; Followed if actor is among anyone planned for that map role in the slot. Backroom/Mango/Outsource rows are split by register or action for the report only — duty assignment on the map is unchanged. Actor Unknown counts as Not followed.",
+    "Match rule (IST / Asia/Kolkata): register actor + activity timestamp → Operation Map slot; Followed if actor is among anyone planned for that map role in the slot. Day filters and hours are always India time so Mac and other PCs match. Mango print/WhatsApp and Outsource stages use their own activity times. Actor Unknown counts as Not followed.",
     10,
     y,
     { maxWidth: pageWidth - 20 }
