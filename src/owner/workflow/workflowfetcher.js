@@ -1,11 +1,23 @@
 
 
 import { trackedOnSnapshot as onSnapshot } from "../../shared/firestore/trackedFirestore.js";
-import { scopedTimePrintedQuery } from "../../shared/firestore/scopedTimePrintedQuery.js";
 import { createOwnerSessionPaint } from "../../shared/cache/createOwnerSessionPaint.js";
 import { withOwnerSourceControl } from "../lib/withOwnerSourceControl.js";
 import testMapping from "../../test_mapping.json";
 import { buildWorkflowStatusTables } from "../../shared/utils/buildWorkflowStatusTables.js";
+import {
+  istDayStart,
+  istDayEndExclusive,
+  getISTDateString,
+} from "../../shared/utils/dates.js";
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  Timestamp,
+} from "firebase/firestore";
+import { db } from "../../firebaseConfig.js";
 
 export const ROUTINE_WORKFLOW_LOOKUP = {
   "Bio-Chemistry": {
@@ -172,19 +184,13 @@ const toDate = (value) => {
 
 const matchesFilters = (record, source, dateRange) => {
   const printed = toDate(record.timePrinted);
-
   if (!printed) return false;
 
-  const from = dateRange?.from
-    ? new Date(dateRange.from + "T00:00:00")
-    : null;
-
-  const to = dateRange?.to
-    ? new Date(dateRange.to + "T23:59:59")
-    : null;
-
-  if (from && printed < from) return false;
-  if (to && printed > to) return false;
+  // IST calendar day — same result on every machine for a given YYYY-MM-DD.
+  const dateStr = getISTDateString(printed);
+  if (!dateStr) return false;
+  if (dateRange?.from && dateStr < dateRange.from) return false;
+  if (dateRange?.to && dateStr > dateRange.to) return false;
 
   const normSource =
     source && source !== "All"
@@ -273,41 +279,66 @@ const buildWorkflowRecord = (reportDetails) => {
   const routine = buildRoutineWorkflow(selectedTests, reportDetails);
   const hasInsideLab = hasSpecialWorkflow(selectedTests, "inside");
   const hasOutsource = hasSpecialWorkflow(selectedTests, "outsource");
-  const routineCompleted = !!reportDetails.routineCompleted;
 
-  const insideLabCompleted = !!reportDetails.insideLabCompleted;
-  const outsourceCompleted = !!reportDetails.outsourceCompleted;
-  const routineStatus = !routine.hasRoutine? "Not Required" : routine.routineCompletedAt ? "Completed" : "Pending";
+  const { routineStatuses, insideStatuses, outsourceStatuses } =
+    buildWorkflowStatusTables(reportDetails);
 
- 
+  // Derive completion from stage maps / completedAt — do not rely only on
+  // report_details.routineCompleted (written only while Master View is open).
+  const stagesComplete =
+    routineStatuses.length > 0 &&
+    routineStatuses.every(
+      (s) => s.scanned === "Yes" && s.saved === "Yes" && !!s.validated
+    );
+  const routineCompleted =
+    !!reportDetails.routineCompleted ||
+    stagesComplete ||
+    (routine.hasRoutine && !!routine.routineCompletedAt);
+
+  const insideStagesComplete =
+    insideStatuses.length > 0 && insideStatuses.every((s) => !!s.saved);
+  const insideLabCompleted =
+    !!reportDetails.insideLabCompleted || insideStagesComplete;
+
+  const outsourceStagesComplete =
+    outsourceStatuses.length > 0 &&
+    outsourceStatuses.every(
+      (s) => s.sampleCollected && s.reportReceived && s.reportGiven
+    );
+  const outsourceCompleted =
+    !!reportDetails.outsourceCompleted || outsourceStagesComplete;
+
+  const routineStatus = !routine.hasRoutine
+    ? "Not Required"
+    : routineCompleted || routine.routineCompletedAt
+      ? "Completed"
+      : "Pending";
+
   const insideLabStatus = !hasInsideLab
-  ? "Not Required"
-  : insideLabCompleted
-  ? "Completed"
-  : "Pending";
+    ? "Not Required"
+    : insideLabCompleted
+      ? "Completed"
+      : "Pending";
 
-const outsourceStatus = !hasOutsource
-  ? "Not Required"
-  : outsourceCompleted
-  ? "Completed"
-  : "Pending";
-  
- 
+  const outsourceStatus = !hasOutsource
+    ? "Not Required"
+    : outsourceCompleted
+      ? "Completed"
+      : "Pending";
 
-    const timeCollected = toDate(reportDetails.timeCollected);
+  const timeCollected = toDate(reportDetails.timeCollected);
   const routineReportPrintedTime = toDate(reportDetails.routineReportPrintedTime);
   const insideLabReportPrintedTime = toDate(
     reportDetails.insideLabReportPrintedTime
   );
   const whatsappSentTime = toDate(reportDetails.whatsappSentTime);
 
-
   const workflowStage =
   reportDetails.whatsappSent
     ? "WhatsApp Sent"
     : reportDetails.routineReportPrinted
     ? "Routine Printed"
-    : routine.routineCompletedAt
+    : routineCompleted || routine.routineCompletedAt
     ? "Routine Completed"
     
     : hasInsideLab && insideLabCompleted ? "Inside Lab Completed": hasOutsource && outsourceCompleted ? "Outsource Completed"
@@ -319,7 +350,7 @@ const outsourceStatus = !hasOutsource
 
     let workflowProgress = 0;
 
-    if (routine.routineCompletedAt)
+    if (routineCompleted || routine.routineCompletedAt)
       workflowProgress = 33;
 
     if (reportDetails.routineReportPrinted)
@@ -440,9 +471,6 @@ const outsourceReportDelivered =
   outsourceLabs.every(
     (lab) => reportDetails.outsourceReportsDelivered?.[lab]
   );
-
-  const { routineStatuses, insideStatuses, outsourceStatuses } =
-    buildWorkflowStatusTables(reportDetails);
 
   return {
     id: reportDetails.id,
@@ -692,6 +720,13 @@ export const subscribeToWorkflowAnalytics = ({
   reportRecords.filter((record) =>
     matchesFilters(record, source, dateRange)
   );
+
+    // #region agent log
+    const droppedByFilter = reportRecords.length - filteredReports.length;
+    const localFrom = dateRange?.from ? new Date(dateRange.from + "T00:00:00") : null;
+    const localTo = dateRange?.to ? new Date(dateRange.to + "T23:59:59") : null;
+    fetch('http://127.0.0.1:7777/ingest/9a9945a0-51cf-4a66-869a-fb7fed73753f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30adf1'},body:JSON.stringify({sessionId:'30adf1',runId:'pre-fix',hypothesisId:'H1_H3',location:'workflowfetcher.js:emit',message:'Workflow emit filter stats',data:{dateFrom:dateRange?.from||null,dateTo:dateRange?.to||null,source,rawSnapCount:reportRecords.length,afterMatchesFilters:filteredReports.length,droppedByFilter,localFromISO:localFrom?.toISOString?.()||null,localToISO:localTo?.toISOString?.()||null,tzOffsetMin:new Date().getTimezoneOffset(),sampleDropped:reportRecords.filter((r)=>!matchesFilters(r,source,dateRange)).slice(0,3).map((r)=>({id:r.id,timePrinted:r.timePrinted?.toDate?.()?.toISOString?.()||String(r.timePrinted||''),source:r.source||null}))},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
   
     const records =
       mergeWorkflowRecords(filteredReports);
@@ -725,8 +760,9 @@ export const subscribeToWorkflowAnalytics = ({
 
   };
 
-  const reportQuery = scopedTimePrintedQuery("report_details", dateRange);
-  if (!reportQuery) {
+  const start = istDayStart(dateRange?.from);
+  const endExclusive = istDayEndExclusive(dateRange?.to);
+  if (!start || !endExclusive) {
     onDataLive({
       records: [],
       stackedBarRecords: [],
@@ -734,6 +770,17 @@ export const subscribeToWorkflowAnalytics = ({
     });
     return () => {};
   }
+
+  const reportQuery = query(
+    collection(db, "report_details"),
+    where("timePrinted", ">=", Timestamp.fromDate(start)),
+    where("timePrinted", "<", Timestamp.fromDate(endExclusive)),
+    orderBy("timePrinted", "asc")
+  );
+
+  // #region agent log
+  fetch('http://127.0.0.1:7777/ingest/9a9945a0-51cf-4a66-869a-fb7fed73753f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30adf1'},body:JSON.stringify({sessionId:'30adf1',runId:'post-fix',hypothesisId:'H1',location:'workflowfetcher.js:subscribe',message:'IST-scoped report_details subscribe',data:{dateFrom:dateRange?.from||null,dateTo:dateRange?.to||null,startISO:start.toISOString(),endISO:endExclusive.toISOString(),tzOffsetMin:new Date().getTimezoneOffset()},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
 
   const unsubscribeReport = onSnapshot(
     reportQuery,

@@ -358,8 +358,14 @@ statuses.push({
         s => !s.reportType);
       const specialStatuses = statuses.filter(
         s => s.reportType === "special");
+
+  const calculatedRoutineCompleted =
+    routineStatuses.length > 0 &&
+    routineStatuses.every(isRoutineDepartmentComplete);
         
-  const routineCompleted = !!rec.routineCompleted;
+  const routineCompletedFlag = !!rec.routineCompleted;
+  const routineCompleted =
+    routineCompletedFlag || calculatedRoutineCompleted;
 
 
   const insideLabItems = specialStatuses.filter(
@@ -370,10 +376,6 @@ statuses.push({
     s => s.workflow === "outsource"
   );
   
-  const insideLabCompleted = !!rec.insideLabCompleted;
-
-const outsourceCompleted = !!rec.outsourceCompleted;
-
 const calculatedInsideLabCompleted =
   insideLabItems.length > 0 &&
   insideLabItems.every((s) => s.saved);
@@ -386,6 +388,14 @@ const calculatedOutsourceCompleted =
       s.reportReceived &&
       s.reportGiven
   );
+
+  const insideLabCompletedFlag = !!rec.insideLabCompleted;
+  const insideLabCompleted =
+    insideLabCompletedFlag || calculatedInsideLabCompleted;
+
+  const outsourceCompletedFlag = !!rec.outsourceCompleted;
+  const outsourceCompleted =
+    outsourceCompletedFlag || calculatedOutsourceCompleted;
 
 const specialCompleted =
   calculatedInsideLabCompleted &&
@@ -441,13 +451,21 @@ const specialCompleted =
         
           routineCompleted,
 
+        routineCompletedFlag,
+
         insideLabCompleted,
 
+        insideLabCompletedFlag,
+
         outsourceCompleted,
+
+        outsourceCompletedFlag,
 
         calculatedInsideLabCompleted,
 
         calculatedOutsourceCompleted,
+
+        calculatedRoutineCompleted,
 
         specialCompleted,
 
@@ -487,7 +505,7 @@ const specialCompleted =
         // Only write completion fields when complete.
         if (
           calculatedRoutineCompleted &&
-          !rec.routineCompleted
+          !rec.routineCompletedFlag
         ) {
           updateData.routineCompleted = true;
         }
@@ -495,7 +513,7 @@ const specialCompleted =
         if (
           insideLabCards.length > 0 &&
           calculatedInsideLabCompleted &&
-          !rec.insideLabCompleted
+          !rec.insideLabCompletedFlag
         ) {
           updateData.insideLabCompleted = true;
         }
@@ -503,17 +521,32 @@ const specialCompleted =
         if (
           outsourceCards.length > 0 &&
           calculatedOutsourceCompleted &&
-          !rec.outsourceCompleted
+          !rec.outsourceCompletedFlag
         ) {
           updateData.outsourceCompleted = true;
         }
   
         if (Object.keys(updateData).length > 0) {
+          // #region agent log
+          fetch('http://127.0.0.1:7777/ingest/9a9945a0-51cf-4a66-869a-fb7fed73753f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30adf1'},body:JSON.stringify({sessionId:'30adf1',runId:'pre-fix',hypothesisId:'H2_H4',location:'MasterView_Rectangle.jsx:syncWorkflowCompletion',message:'Writing completion flags to report_details',data:{id:rec.id,regNo:rec.regNo,updateData,calculatedRoutineCompleted,alreadyRoutineCompleted:!!rec.routineCompleted,routineStatusCount:rec.routineStatuses?.length??0,routineStatusesSample:(rec.routineStatuses||[]).slice(0,4).map((s)=>({dept:s.dept,scanned:s.scanned,saved:s.saved,validated:s.validated}))},timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
           await setDoc(
             doc(db, "report_details", rec.id),
             updateData,
             { merge: true }
           );
+        } else if (
+          rec.routineStatuses?.length > 0 &&
+          calculatedRoutineCompleted === false
+        ) {
+          // #region agent log
+          const allYesLooking = (rec.routineStatuses || []).every(
+            (s) => s.scanned === "Yes" && s.saved === "Yes" && s.validated
+          );
+          if (allYesLooking && !rec.routineCompletedFlag) {
+            fetch('http://127.0.0.1:7777/ingest/9a9945a0-51cf-4a66-869a-fb7fed73753f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30adf1'},body:JSON.stringify({sessionId:'30adf1',runId:'post-fix',hypothesisId:'H2_H4',location:'MasterView_Rectangle.jsx:syncSkip',message:'All stages look Yes but calculatedRoutineCompleted false or skipped',data:{id:rec.id,regNo:rec.regNo,calculatedRoutineCompleted,routineCompletedFlag:!!rec.routineCompletedFlag,statuses:rec.routineStatuses},timestamp:Date.now()})}).catch(()=>{});
+          }
+          // #endregion
         }
       }
     };
