@@ -720,13 +720,6 @@ export const subscribeToWorkflowAnalytics = ({
   reportRecords.filter((record) =>
     matchesFilters(record, source, dateRange)
   );
-
-    // #region agent log
-    const droppedByFilter = reportRecords.length - filteredReports.length;
-    const localFrom = dateRange?.from ? new Date(dateRange.from + "T00:00:00") : null;
-    const localTo = dateRange?.to ? new Date(dateRange.to + "T23:59:59") : null;
-    fetch('http://127.0.0.1:7777/ingest/9a9945a0-51cf-4a66-869a-fb7fed73753f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30adf1'},body:JSON.stringify({sessionId:'30adf1',runId:'pre-fix',hypothesisId:'H1_H3',location:'workflowfetcher.js:emit',message:'Workflow emit filter stats',data:{dateFrom:dateRange?.from||null,dateTo:dateRange?.to||null,source,rawSnapCount:reportRecords.length,afterMatchesFilters:filteredReports.length,droppedByFilter,localFromISO:localFrom?.toISOString?.()||null,localToISO:localTo?.toISOString?.()||null,tzOffsetMin:new Date().getTimezoneOffset(),sampleDropped:reportRecords.filter((r)=>!matchesFilters(r,source,dateRange)).slice(0,3).map((r)=>({id:r.id,timePrinted:r.timePrinted?.toDate?.()?.toISOString?.()||String(r.timePrinted||''),source:r.source||null}))},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
   
     const records =
       mergeWorkflowRecords(filteredReports);
@@ -777,10 +770,6 @@ export const subscribeToWorkflowAnalytics = ({
     where("timePrinted", "<", Timestamp.fromDate(endExclusive)),
     orderBy("timePrinted", "asc")
   );
-
-  // #region agent log
-  fetch('http://127.0.0.1:7777/ingest/9a9945a0-51cf-4a66-869a-fb7fed73753f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30adf1'},body:JSON.stringify({sessionId:'30adf1',runId:'post-fix',hypothesisId:'H1',location:'workflowfetcher.js:subscribe',message:'IST-scoped report_details subscribe',data:{dateFrom:dateRange?.from||null,dateTo:dateRange?.to||null,startISO:start.toISOString(),endISO:endExclusive.toISOString(),tzOffsetMin:new Date().getTimezoneOffset()},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
 
   const unsubscribeReport = onSnapshot(
     reportQuery,

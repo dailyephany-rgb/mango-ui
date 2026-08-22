@@ -23,6 +23,7 @@ import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
+import ListenStatusBanner from "../shared/components/ListenStatusBanner.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
 import ColFilterToggle, {
   ColFilterInput,
@@ -88,6 +89,9 @@ export default function UrineAnalysisRegister() {
     deptDocs: urineDocs,
     savedSet,
     criticalReportedSet,
+    listenStatus,
+    masterError,
+    retryListen,
   } = useMasterDeptSnapshots({
     deptCollection: "urine_analysis_register",
     currentDept: CURRENT_DEPT,
@@ -503,6 +507,11 @@ export default function UrineAnalysisRegister() {
             sourceFilter={sourceFilter}
             setSourceFilter={setSourceFilter}
           />
+      <ListenStatusBanner
+        listenStatus={listenStatus}
+        masterError={masterError}
+        onRetry={retryListen}
+      />
 
       <div className="table-container">
         <table className="backroom-table">

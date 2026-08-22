@@ -36,11 +36,6 @@ export function createOwnerSessionPaint({ dept, dateRange, source, onData }) {
 
   const paintCache = () => {
     const cached = getCache(key);
-    // #region agent log
-    if (dept === "workflow") {
-      fetch('http://127.0.0.1:7777/ingest/9a9945a0-51cf-4a66-869a-fb7fed73753f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30adf1'},body:JSON.stringify({sessionId:'30adf1',runId:'pre-fix',hypothesisId:'H3',location:'createOwnerSessionPaint.js:paintCache',message:'Workflow paintCache check',data:{key,hasCache:cached!=null,cachedRecordCount:cached?.records?.length??null,dateFrom:dateRange?.from||null,dateTo:dateRange?.to||null},timestamp:Date.now()})}).catch(()=>{});
-    }
-    // #endregion
     if (cached != null && typeof onData === "function") {
       painted = true;
       deliver(cached);

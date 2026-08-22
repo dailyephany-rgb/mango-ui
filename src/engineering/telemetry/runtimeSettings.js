@@ -19,6 +19,7 @@ import {
   ENG_SAMPLE_RETENTION_DAYS,
 } from "../constants.js";
 import { safeRun, safeCall } from "./safeRun.js";
+import { safeStorageSet } from "./safeStorage.js";
 
 const LOCAL_SETTINGS_KEY = "mango.eng.settings.cache";
 
@@ -75,7 +76,7 @@ export function applyRuntimeSettings(partial = {}) {
     if (partial.sampleRates) {
       cached.sampleRates = { ...cached.sampleRates, ...partial.sampleRates };
     }
-    localStorage.setItem(LOCAL_SETTINGS_KEY, JSON.stringify(cached));
+    safeStorageSet(localStorage, LOCAL_SETTINGS_KEY, JSON.stringify(cached));
   }, "eng.settings.apply");
 }
 

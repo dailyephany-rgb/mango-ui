@@ -28,8 +28,21 @@ if (!app) {
 
 /**
  * Modern multi-tab persistent cache.
- * Falls back to getFirestore if Firestore was already initialized (HMR / second entry).
+ * getFirestore() fallback is only for "already initialized" (HMR / second entry).
+ * Other init failures are logged with the real error before a last-ditch getFirestore
+ * so the app can still boot — persistence is not disabled as a strategy.
  */
+function isAlreadyInitializedFirestoreError(err) {
+  const msg = String(err?.message || err || "");
+  const code = String(err?.code || "").toLowerCase();
+  return (
+    /already been started/i.test(msg) ||
+    /already initialized/i.test(msg) ||
+    /settings can no longer be changed/i.test(msg) ||
+    code.includes("failed-precondition")
+  );
+}
+
 let db;
 try {
   db = initializeFirestore(app, {
@@ -39,8 +52,26 @@ try {
   });
   console.log("🗄 Firestore persistentLocalCache (multi-tab) enabled");
 } catch (err) {
-  db = getFirestore(app);
-  console.log("♻️ Firestore already initialized — using existing instance");
+  if (isAlreadyInitializedFirestoreError(err)) {
+    db = getFirestore(app);
+    console.log("♻️ Firestore already initialized — using existing instance");
+  } else {
+    console.error(
+      "[firestore] initializeFirestore failed:",
+      err?.code || "",
+      err?.name || "",
+      err?.message || err
+    );
+    try {
+      db = getFirestore(app);
+      console.warn(
+        "[firestore] last-ditch getFirestore() after init failure — cache settings may differ"
+      );
+    } catch (err2) {
+      console.error("[firestore] getFirestore also failed:", err2?.message || err2);
+      throw err;
+    }
+  }
 }
 
 export { db };

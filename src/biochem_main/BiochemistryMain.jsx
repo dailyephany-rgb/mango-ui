@@ -29,6 +29,7 @@ import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
 import { useStableCallback } from "../shared/hooks/useStableCallback.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
+import ListenStatusBanner from "../shared/components/ListenStatusBanner.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
 import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
 import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
@@ -120,9 +121,10 @@ export default function BiochemistryMain() {
     deptDocs: biochemDocs,
     savedSet,
     criticalReportedSet,
-    loading,
     criticalReady,
     masterError,
+    listenStatus,
+    retryListen,
   } = useMasterDeptSnapshots({
     deptCollection: "biochemistry_register",
     currentDept: CURRENT_DEPT,
@@ -509,19 +511,16 @@ export default function BiochemistryMain() {
           />
           </EngComponent>
 
-          {loading ? (
-            <p>Loading Biochemistry data...</p>
-          ) : (
+          <ListenStatusBanner
+            listenStatus={listenStatus}
+            masterError={masterError}
+            onRetry={retryListen}
+          />
           <EngComponent
             name="Patient Register Table"
             type="Tables"
             parent="Biochemistry.jsx"
           >
-          {masterError ? (
-            <p style={{ color: "#b91c1c", marginBottom: 8 }}>
-              Live data error — retrying automatically. {String(masterError).slice(0, 120)}
-            </p>
-          ) : null}
           {!criticalReady ? (
             <p style={{ color: "#64748b", fontSize: 13, marginBottom: 8 }}>
               Loading critical flags…
@@ -686,7 +685,6 @@ export default function BiochemistryMain() {
             </table>
           </div>
           </EngComponent>
-          )}
       </div>
       </StickyTabPanel>
       )}
@@ -695,7 +693,7 @@ export default function BiochemistryMain() {
         <StickyTabPanel active={activeTab === "hormones"}>
         <EngComponent name="Hormones Tab" type="Page" parent="Biochemistry.jsx">
         <Suspense fallback={<p>Loading Hormones…</p>}>
-          <HormonesMain />
+          <HormonesMain enabled={activeTab === "hormones"} />
         </Suspense>
         </EngComponent>
         </StickyTabPanel>

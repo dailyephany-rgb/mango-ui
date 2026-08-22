@@ -31,6 +31,7 @@ import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
 import { useStableCallback } from "../shared/hooks/useStableCallback.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
+import ListenStatusBanner from "../shared/components/ListenStatusBanner.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
 import ColFilterToggle, {
   ColFilterInput,
@@ -75,9 +76,10 @@ export default function Haematology() {
     deptDocs: haemDocs,
     savedSet,
     criticalReportedSet,
-    loading,
     criticalReady,
     masterError,
+    listenStatus,
+    retryListen,
   } = useMasterDeptSnapshots({
     deptCollection: "haematology_register",
     currentDept: CURRENT_DEPT,
@@ -490,19 +492,16 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
           />
           </EngComponent>
 
-          {loading ? (
-            <p>Loading Haematology data...</p>
-          ) : (
+          <ListenStatusBanner
+            listenStatus={listenStatus}
+            masterError={masterError}
+            onRetry={retryListen}
+          />
           <EngComponent
             name="Patient Register Table"
             type="Tables"
             parent="Haematology.jsx"
           >
-          {masterError ? (
-            <p style={{ color: "#b91c1c", marginBottom: 8 }}>
-              Live data error — retrying automatically. {String(masterError).slice(0, 120)}
-            </p>
-          ) : null}
           {!criticalReady ? (
             <p style={{ color: "#64748b", fontSize: 13, marginBottom: 8 }}>
               Loading critical flags…
@@ -638,7 +637,6 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
             </div>
           </div>
           </EngComponent>
-          )}
         </>
         </StickyTabPanel>
       )}

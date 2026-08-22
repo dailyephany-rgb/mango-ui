@@ -25,6 +25,7 @@ import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
+import ListenStatusBanner from "../shared/components/ListenStatusBanner.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
 import ColFilterToggle, {
   ColFilterInput,
@@ -78,6 +79,9 @@ export default function ESRRegister() {
     masterEntries,
     deptDocs: esrDocs,
     criticalReportedSet,
+    listenStatus,
+    masterError,
+    retryListen,
   } = useMasterDeptSnapshots({
     deptCollection: "esr_register",
     currentDept: CURRENT_DEPT,
@@ -434,6 +438,11 @@ const [pendingCritical, setPendingCritical] = usePersistedObjectState("esr_pendi
             sourceFilter={sourceFilter}
             setSourceFilter={setSourceFilter}
           />
+      <ListenStatusBanner
+        listenStatus={listenStatus}
+        masterError={masterError}
+        onRetry={retryListen}
+      />
 
       <div className="table-scroll-container">
         <table className="backroom-table">

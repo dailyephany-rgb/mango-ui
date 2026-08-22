@@ -5,6 +5,7 @@
 import { BUFFER_CAPACITY, ENG_BUFFER_KEY } from "../constants.js";
 import { safeRun, safeCall } from "./safeRun.js";
 import { getRuntimeSettings } from "./runtimeSettings.js";
+import { safeStorageSetJsonArray } from "./safeStorage.js";
 
 /** @type {object[]} */
 let ring = [];
@@ -67,7 +68,7 @@ export function spillToSession() {
     const merged = [...(Array.isArray(existing) ? existing : []), ...ring].slice(
       -capacity()
     );
-    sessionStorage.setItem(ENG_BUFFER_KEY, JSON.stringify(merged));
+    safeStorageSetJsonArray(sessionStorage, ENG_BUFFER_KEY, merged);
   }, "eng.spill");
 }
 
@@ -104,6 +105,6 @@ export function replaceSpill(events) {
       sessionStorage.removeItem(ENG_BUFFER_KEY);
       return;
     }
-    sessionStorage.setItem(ENG_BUFFER_KEY, JSON.stringify(merged));
+    safeStorageSetJsonArray(sessionStorage, ENG_BUFFER_KEY, merged);
   }, "eng.replaceSpill");
 }

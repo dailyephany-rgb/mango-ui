@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, startTransition } from "react";
+import { useEffect, useState, useRef, useCallback, startTransition } from "react";
 import {
   collection,
   query,
@@ -19,14 +19,29 @@ import {
   localDayEndExclusive,
 } from "../utils/dates.js";
 import { annotateListenReason } from "../../engineering/telemetry/listenerWatch.js";
-import { subscribeListenerRecovery } from "../firestore/listenerRecovery.js";
+import {
+  subscribeListenerRecovery,
+  isListenerTimeoutError,
+  dispatchRecovery,
+  CLINICAL_FIRST_SNAPSHOT_HUNG_MS,
+} from "../firestore/listenerRecovery.js";
+
+/** @typedef {'IDLE'|'CONNECTING'|'READY'|'RECOVERING'|'TIMEOUT'|'ERROR'|'OFFLINE'|'CLOSED'} ClinicalListenStatus */
+
+const MASTER_HUNG_MS = CLINICAL_FIRST_SNAPSHOT_HUNG_MS;
+
+function classifyFailStatus() {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return "OFFLINE";
+  }
+  return "ERROR";
+}
 
 /**
  * Shared master + department + critical_alerts subscriptions.
  *
- * Readiness (first useful snapshot):
- *   `loading` clears when master_register first snapshot arrives.
- *   dept + critical hydrate asynchronously and do NOT block the table shell.
+ * Readiness: `listenStatus` is CONNECTING until master_register first snapshot
+ * (including cache). `loading` is never used as a full-page gate.
  *
  * Snapshot processing is incremental (docChanges) after the first seed.
  * Firestore remains the only source of truth. Clinical write paths unchanged.
@@ -50,17 +65,58 @@ export function useMasterDeptSnapshots({
   const [deptDocs, setDeptDocs] = useState({});
   const [savedSet, setSavedSet] = useState(new Set());
   const [criticalReportedSet, setCriticalReportedSet] = useState(new Set());
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [deptReady, setDeptReady] = useState(false);
   const [criticalReady, setCriticalReady] = useState(false);
   const [masterError, setMasterError] = useState(null);
+  const [listenStatus, setListenStatus] = useState(
+    /** @type {ClinicalListenStatus} */ ("IDLE")
+  );
   const [recoverGen, setRecoverGen] = useState(0);
   const listenGenRef = useRef(0);
+  const listenStatusRef = useRef(listenStatus);
+  listenStatusRef.current = listenStatus;
+  const recoveringRef = useRef(false);
 
-  // Online / assertion recovery → remount triad exactly once per nudge.
+  const retryListen = useCallback(() => {
+    const s = listenStatusRef.current;
+    if (s === "READY" || s === "CLOSED" || s === "IDLE") return;
+    if (s === "RECOVERING" || recoveringRef.current) return;
+    recoveringRef.current = true;
+    setListenStatus("RECOVERING");
+    setMasterError(null);
+    dispatchRecovery("user_retry");
+    window.setTimeout(() => {
+      recoveringRef.current = false;
+    }, 1500);
+  }, []);
+
+  // Assertion / explicit remount only. timeout/online go through dispatchRecovery
+  // (retryWaiting) and must not also increment recoverGen.
   useEffect(() => {
-    return subscribeListenerRecovery(() => {
+    return subscribeListenerRecovery((reason) => {
+      if (reason === "timeout" || reason === "online") return;
+      if (reason === "unrecoverable") {
+        setLoading(false);
+        setListenStatus(
+          typeof navigator !== "undefined" && navigator.onLine === false
+            ? "OFFLINE"
+            : "ERROR"
+        );
+        setMasterError(
+          "Firestore client did not recover. Tap Retry, or reload the page."
+        );
+        return;
+      }
+      if (listenStatusRef.current === "RECOVERING" && recoveringRef.current) {
+        return;
+      }
+      recoveringRef.current = true;
+      setListenStatus("RECOVERING");
       setRecoverGen((n) => n + 1);
+      window.setTimeout(() => {
+        recoveringRef.current = false;
+      }, 1500);
     });
   }, []);
 
@@ -74,6 +130,7 @@ export function useMasterDeptSnapshots({
       setDeptReady(false);
       setCriticalReady(false);
       setMasterError(null);
+      setListenStatus("CLOSED");
     };
 
     if (!enabled) {
@@ -91,12 +148,10 @@ export function useMasterDeptSnapshots({
       return undefined;
     }
 
-    // Only block UI on the true first subscribe. Re-querying on date/filter
-    // changes must NOT set loading — department pages early-return on loading
-    // and that unmounts the date inputs (can't type / picker closes).
     const isFirstListen = listenGenRef.current === 0;
     listenGenRef.current += 1;
-    if (isFirstListen) setLoading(true);
+    setLoading(false);
+    setListenStatus(recoverGen > 0 ? "RECOVERING" : "CONNECTING");
     setDeptReady(false);
     setCriticalReady(false);
     setMasterError(null);
@@ -132,9 +187,29 @@ export function useMasterDeptSnapshots({
     }
     annotateListenReason(masterQuery, listenReason);
 
+    let masterSettled = false;
+    const hungTimer = setTimeout(() => {
+      if (masterSettled) return;
+      masterSettled = true;
+      const offline =
+        typeof navigator !== "undefined" && navigator.onLine === false;
+      setLoading(false);
+      setListenStatus(offline ? "OFFLINE" : "TIMEOUT");
+      setMasterError(
+        offline
+          ? "You appear offline. Live data will resume when the network returns."
+          : "Live data did not arrive. You can retry without reloading."
+      );
+      if (!offline) {
+        dispatchRecovery("timeout");
+      }
+    }, MASTER_HUNG_MS);
+
     const unsubMaster = onSnapshot(
       masterQuery,
       (snapshot) => {
+        masterSettled = true;
+        clearTimeout(hungTimer);
         const result = masterStore.apply(snapshot);
         if (result.changed) {
           startTransition(() => {
@@ -144,14 +219,24 @@ export function useMasterDeptSnapshots({
         // FIRST USEFUL SNAPSHOT — table usable; dept/critical may still hydrate.
         setLoading(false);
         setMasterError(null);
+        setListenStatus("READY");
       },
       (err) => {
+        masterSettled = true;
+        clearTimeout(hungTimer);
         console.error(
           "[useMasterDeptSnapshots] master_register query failed — check composite index (departments + timePrinted):",
           err
         );
         setLoading(false);
         setMasterError(err?.message || String(err));
+        if (isListenerTimeoutError(err)) {
+          const offline =
+            typeof navigator !== "undefined" && navigator.onLine === false;
+          setListenStatus(offline ? "OFFLINE" : "TIMEOUT");
+        } else {
+          setListenStatus(classifyFailStatus());
+        }
       }
     );
 
@@ -309,6 +394,7 @@ export function useMasterDeptSnapshots({
     );
 
     return () => {
+      clearTimeout(hungTimer);
       masterStore.clear();
       deptById.clear();
       criticalById.clear();
@@ -341,6 +427,8 @@ export function useMasterDeptSnapshots({
     deptReady,
     criticalReady,
     masterError,
+    listenStatus,
+    retryListen,
   };
 }
 

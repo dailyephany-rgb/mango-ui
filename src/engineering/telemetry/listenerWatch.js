@@ -145,6 +145,25 @@ export function getLoadingPages() {
 }
 
 /**
+ * Page-load "first snapshot" should match clinical readiness (master_register)
+ * when that listen exists. Other pages still use the first any-listener snap.
+ * @param {string} collection
+ * @param {string} [page]
+ */
+export function shouldNotePageFirstSnapshot(collection, page) {
+  let hasMaster = false;
+  for (const e of active.values()) {
+    if (page && e.page && e.page !== page) continue;
+    if (e.collection === "master_register") {
+      hasMaster = true;
+      break;
+    }
+  }
+  if (!hasMaster) return true;
+  return collection === "master_register";
+}
+
+/**
  * Infer recreate pairing from a recent close of same page+collection.
  * @param {string} page
  * @param {string} collection

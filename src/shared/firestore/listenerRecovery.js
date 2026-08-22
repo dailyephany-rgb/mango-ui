@@ -9,11 +9,24 @@
  */
 
 import { safeRun } from "../../engineering/telemetry/safeRun.js";
+import {
+  getWaitingListeners,
+  retryWaitingPageListeners,
+} from "../../engineering/telemetry/listenerWatch.js";
 
-/** @typedef {'LOADING'|'READY'|'TIMEOUT'|'ERROR'|'OFFLINE'|'RECOVERING'|'LEFT_EARLY'} ListenerFinalState */
+/** @typedef {'IDLE'|'CONNECTING'|'READY'|'TIMEOUT'|'ERROR'|'OFFLINE'|'RECOVERING'|'CLOSED'|'LEFT_EARLY'} ListenerFinalState */
+
+/** Clinical UI hung-status threshold (page stays mounted). */
+export const CLINICAL_FIRST_SNAPSHOT_HUNG_MS = 10_000;
 
 const MAX_AUTO_RETRIES = 3;
 const ASSERTION_RETRY_COOLDOWN_MS = 5_000;
+const MAX_ASSERTION_RECOVERIES = 3;
+const ASSERTION_WINDOW_MS = 60_000;
+const CLIENT_RELOAD_KEY = "mango.fs.clientReload.v1";
+
+/** @type {number[]} */
+let assertionRecoveryAt = [];
 
 /** @type {Set<() => void>} */
 const recoverySubscribers = new Set();
@@ -24,6 +37,8 @@ let onlineHandlerBound = false;
 /** @type {ReturnType<typeof setTimeout> | null} */
 let onlineRecoveryTimer = null;
 const ONLINE_RECOVERY_DEBOUNCE_MS = 400;
+let recoveryBusyUntil = 0;
+const RECOVERY_LOCK_MS = 800;
 
 /**
  * Controlled online recovery: recreate waiting listeners only.
@@ -37,11 +52,7 @@ function scheduleOnlineRecovery() {
   }
   onlineRecoveryTimer = setTimeout(() => {
     onlineRecoveryTimer = null;
-    safeRun(() => {
-      import("../../engineering/telemetry/listenerWatch.js").then((m) => {
-        m.retryWaitingPageListeners?.();
-      });
-    }, "eng.net.retry");
+    dispatchRecovery("online");
   }, ONLINE_RECOVERY_DEBOUNCE_MS);
 }
 
@@ -76,6 +87,51 @@ export function isLikelyNetworkFirestoreError(err) {
 }
 
 /**
+ * Wrapper-level recreate only — INTERNAL ASSERTION is owned by remount / last-resort reload.
+ * @param {unknown} err
+ */
+export function isRetryableListenerError(err) {
+  if (isFirestoreInternalAssertion(err)) return false;
+  return isLikelyNetworkFirestoreError(err);
+}
+
+/**
+ * Synthetic error so clinical hooks can leave LOADING after retry exhaustion.
+ * @param {string} [cause]
+ */
+export function createListenerTimeoutError(cause = "timeout") {
+  const err = new Error(
+    `First snapshot did not arrive (${String(cause || "timeout").slice(0, 80)})`
+  );
+  err.name = "ListenerTimeout";
+  err.code = "timeout";
+  return err;
+}
+
+export function isListenerTimeoutError(err) {
+  return (
+    err?.name === "ListenerTimeout" ||
+    String(err?.code || "").toLowerCase() === "timeout"
+  );
+}
+
+function alreadyReloadedThisSession() {
+  try {
+    return sessionStorage.getItem(CLIENT_RELOAD_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markReloadedThisSession() {
+  try {
+    sessionStorage.setItem(CLIENT_RELOAD_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
  * Exponential backoff with jitter. attempt is 1-based.
  * @param {number} attempt
  */
@@ -91,10 +147,50 @@ export function maxAutoRetries() {
 }
 
 /**
- * Subscribe to recovery nudges (online / assertion recovery).
- * Callers should remount listeners via a recover generation counter.
- * @param {() => void} fn
+ * Single recovery authority. Callers must not also retryWaiting + remount.
+ * @param {string} [reason]
+ * @returns {{ skipped: boolean, path?: string, reason?: string }}
  */
+export function dispatchRecovery(reason = "recovery") {
+  const now = Date.now();
+  const r = String(reason || "recovery");
+  const bypassLock = r === "assertion" || r === "unrecoverable";
+  if (!bypassLock && now < recoveryBusyUntil) {
+    return { skipped: true, reason: "busy" };
+  }
+  if (!bypassLock) {
+    recoveryBusyUntil = now + RECOVERY_LOCK_MS;
+  }
+
+  if (r === "online" || r === "timeout") {
+    safeRun(() => {
+      retryWaitingPageListeners();
+    }, "eng.recovery.retryWaiting");
+    return { skipped: false, path: "retryWaiting" };
+  }
+
+  if (r === "unrecoverable") {
+    notifyListenerRecovery("unrecoverable");
+    return { skipped: false, path: "unrecoverable" };
+  }
+
+  if (r === "assertion") {
+    notifyListenerRecovery("assertion");
+    return { skipped: false, path: "remount" };
+  }
+
+  // user_retry / retry: waiting recreate XOR triad remount — never both.
+  const waiting = getWaitingListeners();
+  if (waiting.length > 0) {
+    safeRun(() => {
+      retryWaitingPageListeners();
+    }, "eng.recovery.userWaiting");
+    return { skipped: false, path: "retryWaiting" };
+  }
+  notifyListenerRecovery("retry");
+  return { skipped: false, path: "remount" };
+}
+
 export function subscribeListenerRecovery(fn) {
   recoverySubscribers.add(fn);
   return () => recoverySubscribers.delete(fn);
@@ -127,9 +223,42 @@ function attemptAssertionRecovery() {
   const now = Date.now();
   if (now - lastAssertionRetryAt < ASSERTION_RETRY_COOLDOWN_MS) return;
   lastAssertionRetryAt = now;
-  // Remount triad hooks once. Do not also retryWaiting here — that raced
-  // with recoverGen and could briefly double-subscribe.
-  notifyListenerRecovery("assertion");
+
+  assertionRecoveryAt = assertionRecoveryAt.filter(
+    (t) => now - t < ASSERTION_WINDOW_MS
+  );
+  assertionRecoveryAt.push(now);
+
+  // Client still throwing assertions after several remounts → one reload per tab session.
+  if (assertionRecoveryAt.length >= MAX_ASSERTION_RECOVERIES) {
+    if (!alreadyReloadedThisSession()) {
+      markReloadedThisSession();
+      dispatchRecovery("unrecoverable");
+      safeRun(() => {
+        import("../../engineering/telemetry/EngTelemetry.js").then((eng) => {
+          eng.EngTelemetry?.trackListenerRetry?.({
+            action: "retry",
+            event: "assertion_client_reload",
+            reason: "retry",
+            collection: "page",
+            docCount: assertionRecoveryAt.length,
+          });
+        });
+      }, "eng.assertion.reload");
+      try {
+        window.location.reload();
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+    // Already reloaded this session — do not loop. Surface unrecoverable; no remount.
+    dispatchRecovery("unrecoverable");
+    return;
+  }
+
+  // Remount triad hooks once. Do not also retryWaiting or wrapper recreate.
+  dispatchRecovery("assertion");
   safeRun(() => {
     import("../../engineering/telemetry/EngTelemetry.js").then((eng) => {
       eng.EngTelemetry?.trackListenerRetry?.({
@@ -239,7 +368,7 @@ export function classifyPageLoadOutcome(opts) {
     };
   }
   return {
-    finalState: "LOADING",
+    finalState: "CONNECTING",
     classification: "INCOMPLETE",
     finalReason: "NO_SNAPSHOT",
   };

@@ -23,6 +23,7 @@ import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
+import ListenStatusBanner from "../shared/components/ListenStatusBanner.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
 import ColFilterToggle, {
   ColFilterInput,
@@ -114,6 +115,9 @@ export default function RapidCardRegister() {
     masterEntries,
     deptDocs: rapidDocs,
     criticalReportedSet,
+    listenStatus,
+    masterError,
+    retryListen,
   } = useMasterDeptSnapshots({
     deptCollection: "rapid_card_register",
     currentDept: CURRENT_DEPT,
@@ -575,6 +579,11 @@ const [pendingCriticalMap, setPendingCriticalMap] = usePersistedObjectState("rap
             sourceFilter={sourceFilter}
             setSourceFilter={setSourceFilter}
           />
+      <ListenStatusBanner
+        listenStatus={listenStatus}
+        masterError={masterError}
+        onRetry={retryListen}
+      />
       <div className="table-scroll-container">
         <table className="backroom-table">
            <thead>

@@ -26,6 +26,7 @@ import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
 import { useStableCallback } from "../shared/hooks/useStableCallback.js";
 import RegisterFilterBar from "../shared/components/RegisterFilterBar.jsx";
+import ListenStatusBanner from "../shared/components/ListenStatusBanner.jsx";
 import CriticalAlertModal from "../shared/components/CriticalAlertModal.jsx";
 import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
 import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
@@ -84,7 +85,7 @@ function matchesColFilters(patient, colFilters) {
   return true;
 }
 
-export default function HormonesMain() {
+export default function HormonesMain({ enabled = true }) {
   const {
     regSearch,
     setRegSearch,
@@ -104,13 +105,16 @@ export default function HormonesMain() {
     deptDocs,
     savedSet,
     criticalReportedSet,
-    loading,
+    listenStatus,
+    masterError,
+    retryListen,
   } = useMasterDeptSnapshots({
     deptCollection: "hormones_main",
     currentDept: CURRENT_DEPT,
     masterDeptKey: "Hormones",
     dateFrom,
     dateTo,
+    enabled,
     isSavedDoc: (data) =>
       data.status === "saved" || data.saved === "Yes",
   });
@@ -425,9 +429,12 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
             setSourceFilter={setSourceFilter}
           />
 
-          {loading ? (
-            <div>Loading...</div>
-          ) : (
+          <ListenStatusBanner
+            listenStatus={listenStatus}
+            masterError={masterError}
+            onRetry={retryListen}
+          />
+
           <div className="table-wrapper">
             <table className="dept-table">
               <thead>
@@ -583,7 +590,6 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
               />
             </table>
           </div>
-          )}
         </>
         
           {criticalModalOpen && (

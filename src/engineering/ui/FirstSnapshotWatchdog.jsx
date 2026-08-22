@@ -9,11 +9,13 @@ import {
   subscribeListenerWatch,
   getWaitingListeners,
   getHungCount,
-  retryWaitingPageListeners,
 } from "../telemetry/listenerWatch.js";
 import { EngTelemetry } from "../telemetry/EngTelemetry.js";
 import { isEngTelemetryEnabled } from "../telemetry/killSwitch.js";
-import { subscribeListenerRecovery } from "../../shared/firestore/listenerRecovery.js";
+import {
+  subscribeListenerRecovery,
+  dispatchRecovery,
+} from "../../shared/firestore/listenerRecovery.js";
 
 export default function FirstSnapshotWatchdog() {
   const [tick, setTick] = useState(0);
@@ -82,15 +84,7 @@ export default function FirstSnapshotWatchdog() {
         collection: collections || "page",
         docCount: waiting.length,
       });
-      const result = retryWaitingPageListeners();
-      if (!result.attempted) {
-        EngTelemetry.trackListenerRetry({
-          action: "retry_failed",
-          event: "retry_failed",
-          reason: "retry",
-          collection: collections || "page",
-        });
-      }
+      dispatchRecovery("user_retry");
     } finally {
       setTimeout(() => setRetrying(false), 1500);
     }
@@ -127,12 +121,14 @@ export default function FirstSnapshotWatchdog() {
     >
       <div style={{ fontWeight: 800, marginBottom: 6, fontSize: 16 }}>
         {showOffline
-          ? "You appear offline"
+          ? "Offline"
           : any30
-            ? "Firestore still not responding"
-            : recoveryHint
-              ? "Reconnecting…"
-              : "Still loading…"}
+            ? "Live data timed out"
+            : recoveryHint === "unrecoverable"
+              ? "Live data error"
+              : recoveryHint
+                ? "Recovering live data"
+                : "Still loading"}
       </div>
       <div style={{ color: "#334155", marginBottom: 10 }}>
         {showOffline ? (
@@ -149,7 +145,11 @@ export default function FirstSnapshotWatchdog() {
                 {collections ? ` (${collections})` : ""} · {waitedSec}s
               </>
             ) : (
-              <>Recovery in progress ({recoveryHint || "retry"}).</>
+              <>
+                Application recovery in progress
+                {recoveryHint ? ` (${recoveryHint})` : ""}. This does not
+                confirm a Firestore reconnect.
+              </>
             )}
             {any30 ? (
               <>

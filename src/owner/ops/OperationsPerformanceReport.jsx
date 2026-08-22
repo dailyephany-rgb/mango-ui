@@ -36,19 +36,8 @@ export default function OperationsPerformanceReport({
   useEffect(() => {
     setLoading(true);
     setWorkflowData({ records: [], summary: {} });
-    // #region agent log
-    fetch('http://127.0.0.1:7777/ingest/9a9945a0-51cf-4a66-869a-fb7fed73753f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30adf1'},body:JSON.stringify({sessionId:'30adf1',runId:'post-fix',hypothesisId:'H1',location:'OperationsPerformanceReport.jsx:subscribe',message:'Ops Performance subscribe with dateRange (cleared stale)',data:{source,dateFrom:dateRange?.from||null,dateTo:dateRange?.to||null,tzOffsetMin:new Date().getTimezoneOffset()},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     const unsubscribe = subscribeToWorkflowAnalytics({
       onData: (data) => {
-        // #region agent log
-        const recs = data?.records || [];
-        const pending = recs.filter((r) => r.hasRoutine && !r.routineCompleted);
-        const pendingButAllStages = pending.filter((r) => {
-          return !!r.routineCompletedAt && !r.routineCompleted;
-        }).length;
-        fetch('http://127.0.0.1:7777/ingest/9a9945a0-51cf-4a66-869a-fb7fed73753f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30adf1'},body:JSON.stringify({sessionId:'30adf1',runId:'post-fix',hypothesisId:'H1_H2_H3',location:'OperationsPerformanceReport.jsx:onData',message:'Ops Performance data received',data:{dateFrom:dateRange?.from||null,dateTo:dateRange?.to||null,recordCount:recs.length,summaryRoutinePending:data?.summary?.routinePending??null,summaryRoutineCompleted:data?.summary?.routineCompleted??null,filterPendingCount:pending.length,pendingWithCompletedAtButFlagFalse:pendingButAllStages,samplePending:pending.slice(0,5).map((r)=>({id:r.id,regNo:r.regNo,routineCompleted:!!r.routineCompleted,routineCompletedAt:r.routineCompletedAt?String(r.routineCompletedAt):null,hasRoutine:!!r.hasRoutine,timePrinted:r.timePrinted?.seconds||r.timePrinted||null})),loadingWas:true},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         setWorkflowData(data);
         setLoading(false);
       },
@@ -92,9 +81,6 @@ export default function OperationsPerformanceReport({
     setPdfBusy(true);
     setPdfError("");
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7777/ingest/9a9945a0-51cf-4a66-869a-fb7fed73753f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'30adf1'},body:JSON.stringify({sessionId:'30adf1',runId:'post-fix',hypothesisId:'H1_H2',location:'OperationsPerformanceReport.jsx:downloadOps',message:'Download Ops PDF with current pending sets',data:{dateFrom:dateRange?.from||null,dateTo:dateRange?.to||null,loading,recordCount:records.length,routinePendingCount:routinePending.length,insidePendingCount:insidePending.length,outsourcePendingCount:outsourcePending.length,summaryKeys:Object.keys(summary||{}),sampleRoutinePending:routinePending.slice(0,5).map((r)=>({id:r.id,regNo:r.regNo,routineCompleted:!!r.routineCompleted,routineCompletedAt:r.routineCompletedAt?String(r.routineCompletedAt):null}))},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       await downloadOpsPerformancePdf({
         dateFrom: dateRange?.from || "",
         dateTo: dateRange?.to || "",

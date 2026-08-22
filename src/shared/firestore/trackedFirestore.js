@@ -46,13 +46,15 @@ import {
   getLoadingPages,
   getActiveListenerCount,
   getListenerCostSummary,
+  shouldNotePageFirstSnapshot,
 } from "../../engineering/telemetry/listenerWatch.js";
 import {
   isFirestoreInternalAssertion,
-  isLikelyNetworkFirestoreError,
+  isRetryableListenerError,
   recoveryBackoffMs,
   maxAutoRetries,
   installListenerRecoveryHooks,
+  createListenerTimeoutError,
 } from "./listenerRecovery.js";
 
 // Once per page: assertion + online recovery hooks (safe no-op if already installed).
@@ -203,6 +205,19 @@ function describeQueryConstraints(refOrQuery) {
   }
 }
 
+const INCLUDE_METADATA = { includeMetadataChanges: true };
+
+function mergeSnapshotOptions(options) {
+  if (
+    options &&
+    typeof options === "object" &&
+    typeof options.next !== "function"
+  ) {
+    return { ...options, includeMetadataChanges: true };
+  }
+  return INCLUDE_METADATA;
+}
+
 /**
  * @param {any} refOrQuery
  * @param {any} onNext
@@ -210,8 +225,12 @@ function describeQueryConstraints(refOrQuery) {
  * @param {any} [options]
  */
 export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
+  const listenOptions = mergeSnapshotOptions(options);
   if (!monitoring()) {
-    return fbOnSnapshot(refOrQuery, onNext, onError, options);
+    if (typeof onNext === "object" && onNext !== null && onError === undefined) {
+      return fbOnSnapshot(refOrQuery, listenOptions, onNext);
+    }
+    return fbOnSnapshot(refOrQuery, listenOptions, onNext, onError);
   }
 
   const perf = isMonitorEnabled();
@@ -258,6 +277,43 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
     }
   };
 
+  /** Close waiter, drop SDK listen, tell the hook — do not leave loading=true. */
+  const exhaustWaiter = (cause) => {
+    if (closed || !first) return;
+    first = false;
+    clearTimers();
+    unregisterListenerWatch(id, reason);
+    syncWaitHeartbeat();
+    try {
+      unsubInner();
+    } catch {
+      /* ignore */
+    }
+    closed = true;
+    const err = createListenerTimeoutError(cause);
+    if (typeof onError === "function") {
+      try {
+        onError(err);
+      } catch {
+        /* ignore */
+      }
+    } else if (
+      typeof onNext === "object" &&
+      onNext !== null &&
+      typeof onNext.error === "function"
+    ) {
+      try {
+        onNext.error(err);
+      } catch {
+        /* ignore */
+      }
+    }
+    if (perf) {
+      upsertListener({ id, state: "Error", error: String(err.message) });
+      closeListener(id);
+    }
+  };
+
   const scheduleAutoRetry = (cause) => {
     if (closed || !first) return;
     if (autoRetryCount >= maxAutoRetries()) {
@@ -274,6 +330,7 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
           });
         }, "eng.snap.retryExhaust");
       }
+      exhaustWaiter(cause);
       return;
     }
     if (autoRetryTimer) return;
@@ -302,10 +359,9 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
 
   const armTimers = () => {
     clearTimers();
-    if (!eng) return;
     t10 = setTimeout(() => {
       if (!first || closed) return;
-      if (markListenerTimeout(id, 10)) {
+      if (markListenerTimeout(id, 10) && eng) {
         safeRun(() => {
           EngTelemetry.trackListenerTimeout({
             action: "timeout_10",
@@ -321,7 +377,8 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
     }, TIMEOUT_10_MS);
     t30 = setTimeout(() => {
       if (!first || closed) return;
-      if (markListenerTimeout(id, 30)) {
+      const marked = markListenerTimeout(id, 30);
+      if (marked && eng) {
         safeRun(() => {
           EngTelemetry.trackListenerTimeout({
             action: "timeout_30",
@@ -343,9 +400,9 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
           }
         }, "eng.snap.t30");
         syncWaitHeartbeat();
-        // Bounded auto-recover: tear down + same query (never stack listeners).
-        scheduleAutoRetry("timeout_30");
       }
+      // Bounded auto-recover: tear down + same query (never stack listeners).
+      scheduleAutoRetry("timeout_30");
     }, TIMEOUT_30_MS);
   };
 
@@ -431,10 +488,8 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
         });
       }, "eng.snap.err");
     }
-    if (isLikelyNetworkFirestoreError(err) || isFirestoreInternalAssertion(err)) {
-      scheduleAutoRetry(
-        isFirestoreInternalAssertion(err) ? "internal_assertion" : "listener_error"
-      );
+    if (isRetryableListenerError(err)) {
+      scheduleAutoRetry("listener_error");
     }
   };
 
@@ -488,15 +543,19 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
           queryKey: `${ctx.page}:${collection}:listen`,
         });
         recordRead({ collection, docCount, source: "snapshot_first" });
-        onFirstSnapshot({
-          collection,
-          docCount,
-          arrivalMs: durationMs,
-        });
+        if (shouldNotePageFirstSnapshot(collection, ctx.page)) {
+          onFirstSnapshot({
+            collection,
+            docCount,
+            arrivalMs: durationMs,
+          });
+        }
       }
       if (eng) {
         safeRun(() => {
-          EngTelemetry.noteFirstSnapshot(durationMs);
+          if (shouldNotePageFirstSnapshot(collection, ctx.page)) {
+            EngTelemetry.noteFirstSnapshot(durationMs);
+          }
           EngTelemetry.trackQuery({
             collection,
             durationMs,
@@ -610,26 +669,31 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
 
   const wrapError = (err) => {
     reportListenerError(err);
+    if (isFirestoreInternalAssertion(err)) {
+      if (typeof onError === "function") return onError(err);
+      return;
+    }
+    if (isRetryableListenerError(err)) return;
     if (typeof onError === "function") return onError(err);
   };
 
   const attach = () => {
     if (typeof onNext === "object" && onNext !== null && !onError) {
       const observer = onNext;
-      unsubInner = fbOnSnapshot(refOrQuery, {
+      unsubInner = fbOnSnapshot(refOrQuery, listenOptions, {
         ...observer,
         next: (snap) => wrapNext(snap),
         error: (err) => {
           reportListenerError(err);
+          if (isFirestoreInternalAssertion(err) && observer.error) {
+            return observer.error(err);
+          }
+          if (isRetryableListenerError(err)) return;
           if (observer.error) return observer.error(err);
         },
       });
-    } else if (options !== undefined) {
-      unsubInner = fbOnSnapshot(refOrQuery, wrapNext, wrapError, options);
-    } else if (onError !== undefined) {
-      unsubInner = fbOnSnapshot(refOrQuery, wrapNext, wrapError);
     } else {
-      unsubInner = fbOnSnapshot(refOrQuery, wrapNext, wrapError);
+      unsubInner = fbOnSnapshot(refOrQuery, listenOptions, wrapNext, wrapError);
     }
   };
 

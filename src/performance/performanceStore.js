@@ -5,6 +5,7 @@
  */
 
 import { mergeRollupRecords } from "./rollupMerge.js";
+import { safeStorageSet } from "../engineering/telemetry/safeStorage.js";
 
 const STORE_KEY = "mango.perf.v1";
 const HEALTH_KEY = "mango.perf.health.v1";
@@ -191,23 +192,28 @@ function schedulePersist() {
 
 export function flushPersist() {
   if (typeof sessionStorage === "undefined") return;
-  try {
+  const persist = (queriesN, eventsN, readsN) => {
     const slim = {
       v: state.v,
       sessionStartedAt: state.sessionStartedAt,
       pageLoads: state.pageLoads,
-      queries: state.queries.slice(-150),
-      events: state.events.slice(-120),
+      queries: state.queries.slice(-queriesN),
+      events: state.events.slice(-eventsN),
       listeners: state.listeners,
-      reads: state.reads.slice(-200),
-      cacheEvents: state.cacheEvents.slice(-100),
-      longTasks: state.longTasks.slice(-30),
-      incrementalSync: state.incrementalSync.slice(-100),
+      reads: state.reads.slice(-readsN),
+      cacheEvents: state.cacheEvents.slice(-50),
+      longTasks: state.longTasks.slice(-15),
+      incrementalSync: state.incrementalSync.slice(-40),
       pageMeta: state.pageMeta,
     };
-    sessionStorage.setItem(STORE_KEY, JSON.stringify(slim));
-  } catch (err) {
-    console.warn("[perf] persist failed:", err?.message || err);
+    return safeStorageSet(sessionStorage, STORE_KEY, JSON.stringify(slim));
+  };
+  if (persist(150, 120, 200)) return;
+  if (persist(40, 30, 40)) return;
+  try {
+    sessionStorage.removeItem(STORE_KEY);
+  } catch {
+    /* ignore */
   }
 }
 
