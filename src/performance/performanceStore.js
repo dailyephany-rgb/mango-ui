@@ -6,6 +6,7 @@
 
 import { mergeRollupRecords } from "./rollupMerge.js";
 import { safeStorageSet } from "../engineering/telemetry/safeStorage.js";
+import { detectDeviceKind } from "../engineering/telemetry/deviceId.js";
 
 const STORE_KEY = "mango.perf.v1";
 const HEALTH_KEY = "mango.perf.health.v1";
@@ -192,6 +193,12 @@ function schedulePersist() {
 
 export function flushPersist() {
   if (typeof sessionStorage === "undefined") return;
+  try {
+    const kind = detectDeviceKind();
+    if (kind === "ipad" || kind === "iphone") return;
+  } catch {
+    /* persist on desktop */
+  }
   const persist = (queriesN, eventsN, readsN) => {
     const slim = {
       v: state.v,

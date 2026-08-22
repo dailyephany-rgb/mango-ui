@@ -6,6 +6,16 @@ import { BUFFER_CAPACITY, ENG_BUFFER_KEY } from "../constants.js";
 import { safeRun, safeCall } from "./safeRun.js";
 import { getRuntimeSettings } from "./runtimeSettings.js";
 import { safeStorageSetJsonArray } from "./safeStorage.js";
+import { detectDeviceKind } from "./deviceId.js";
+
+function skipSessionSpill() {
+  try {
+    const kind = detectDeviceKind();
+    return kind === "ipad" || kind === "iphone";
+  } catch {
+    return false;
+  }
+}
 
 /** @type {object[]} */
 let ring = [];
@@ -60,6 +70,8 @@ export function bufferSize() {
 
 export function spillToSession() {
   safeRun(() => {
+    // iPad/iPhone: do not compete with Firestore IndexedDB for Safari origin quota.
+    if (skipSessionSpill()) return;
     if (typeof sessionStorage === "undefined") return;
     const existing = safeCall(() => {
       const raw = sessionStorage.getItem(ENG_BUFFER_KEY);
@@ -98,6 +110,7 @@ export function clearSpill() {
  */
 export function replaceSpill(events) {
   safeRun(() => {
+    if (skipSessionSpill()) return;
     if (typeof sessionStorage === "undefined") return;
     const list = Array.isArray(events) ? events : [];
     const merged = list.slice(-capacity());

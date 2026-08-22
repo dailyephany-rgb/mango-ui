@@ -9,44 +9,53 @@ import React from "react";
  *   listenStatus?: string,
  *   masterError?: string | null,
  *   onRetry?: () => void,
+ *   rowCount?: number,
  * }} props
  */
 export default function ListenStatusBanner({
   listenStatus,
   masterError,
   onRetry,
+  rowCount,
 }) {
   const status = listenStatus || "READY";
   if (status === "CLOSED" || status === "IDLE") return null;
 
+  const emptyLive =
+    status === "READY" && typeof rowCount === "number" && rowCount === 0;
+
   const title =
     status === "CONNECTING"
       ? "Connecting to live data…"
-      : status === "READY"
-        ? "Live"
-        : status === "OFFLINE"
-          ? "Offline — waiting for connection"
-          : status === "RECOVERING"
-            ? "Recovering live data"
-            : status === "TIMEOUT"
-              ? "Still connecting…"
-              : status === "ERROR"
-                ? "Unable to connect"
-                : "Live data";
+      : emptyLive
+        ? "Live — waiting for rows"
+        : status === "READY"
+          ? "Live"
+          : status === "OFFLINE"
+            ? "Offline — waiting for connection"
+            : status === "RECOVERING"
+              ? "Recovering live data"
+              : status === "TIMEOUT"
+                ? "Still connecting…"
+                : status === "ERROR"
+                  ? "Unable to connect"
+                  : "Live data";
 
   const body =
-    status === "READY"
-      ? null
-      : masterError ||
-        (status === "CONNECTING"
-          ? "The register is ready. Rows appear when Firestore sends the first snapshot."
-          : status === "RECOVERING"
-            ? "Re-subscribing to live data. Filters and the table stay available."
-            : status === "TIMEOUT"
-              ? "The first snapshot is taking longer than usual. Tap Retry to subscribe again."
-              : status === "OFFLINE"
-                ? "The network is down. Listeners will retry when you are back online."
-                : "Live data is not ready.");
+    emptyLive
+      ? "Connected. Rows appear when this date has register documents."
+      : status === "READY"
+        ? null
+        : masterError ||
+          (status === "CONNECTING"
+            ? "The register is ready. Rows appear when Firestore sends the first snapshot."
+            : status === "RECOVERING"
+              ? "Re-subscribing to live data. Filters and the table stay available."
+              : status === "TIMEOUT"
+                ? "The first snapshot is taking longer than usual. Tap Retry to subscribe again."
+                : status === "OFFLINE"
+                  ? "The network is down. Listeners will retry when you are back online."
+                  : "Live data is not ready. Refresh the page URL if this continues.");
 
   const showRetry =
     typeof onRetry === "function" &&
@@ -75,7 +84,7 @@ export default function ListenStatusBanner({
     >
       <div style={{ fontWeight: 700, marginBottom: body ? 4 : 0 }}>{title}</div>
       {body ? (
-        <div style={{ color: "#334155" }}>{String(body).slice(0, 240)}</div>
+        <div style={{ color: "#334155" }}>{String(body).slice(0, 280)}</div>
       ) : null}
       {showRetry && !live ? (
         <button

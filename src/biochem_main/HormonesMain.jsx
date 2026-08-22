@@ -433,6 +433,7 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
             listenStatus={listenStatus}
             masterError={masterError}
             onRetry={retryListen}
+            rowCount={masterEntries.length}
           />
 
           <div className="table-wrapper">

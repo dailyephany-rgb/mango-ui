@@ -28,6 +28,7 @@ const {
   maxAutoRetries,
   dispatchRecovery,
   CLINICAL_FIRST_SNAPSHOT_HUNG_MS,
+  WAKE_HIDDEN_MS,
 } = await import(recoveryUrl);
 
 let passed = 0;
@@ -193,6 +194,10 @@ check("clinical hung UI threshold is 8-12s", () => {
   assert.equal(CLINICAL_FIRST_SNAPSHOT_HUNG_MS, 10_000);
 });
 
+check("wake remount threshold is 60s", () => {
+  assert.equal(WAKE_HIDDEN_MS, 60_000);
+});
+
 check("NO_SNAPSHOT classifies as CONNECTING not a page gate", () => {
   const o = classifyPageLoadOutcome({
     snap: null,
@@ -245,6 +250,41 @@ check("watchdog retry uses dispatchRecovery only", () => {
   const src = readSrc("src/engineering/ui/FirstSnapshotWatchdog.jsx");
   assert.ok(src.includes('dispatchRecovery("user_retry")'));
   assert.equal(src.includes("notifyListenerRecovery(\"retry\")"), false);
+});
+
+check("first-snapshot hang uses one clock; wrapper does not auto-retry at 30s", () => {
+  const src = readSrc("src/shared/firestore/trackedFirestore.js");
+  assert.equal(src.includes('scheduleAutoRetry("timeout_30")'), false);
+  assert.ok(src.includes("scheduleAutoRetry(\"listener_error\")"));
+});
+
+check("assertion recovery does not auto-reload the tab", () => {
+  const src = readSrc("src/shared/firestore/listenerRecovery.js");
+  assert.equal(src.includes("location.reload"), false);
+  assert.ok(src.includes("assertion_unrecoverable"));
+});
+
+check("iPad Firestore web client mitigations stay on persistence + listeners", () => {
+  const fb = readSrc("src/firebaseConfig.js");
+  assert.ok(fb.includes("experimentalAutoDetectLongPolling: true"));
+  assert.ok(fb.includes("persistentLocalCache"));
+  assert.ok(fb.includes("persistentMultipleTabManager"));
+  const rec = readSrc("src/shared/firestore/listenerRecovery.js");
+  assert.ok(rec.includes("visibilitychange"));
+  assert.ok(rec.includes('dispatchRecovery("wake")'));
+  assert.ok(rec.includes("WAKE_HIDDEN_MS"));
+});
+
+check("wake remounts triad; online does not", () => {
+  const rec = readSrc("src/shared/firestore/listenerRecovery.js");
+  assert.ok(rec.includes('if (r === "assertion" || r === "wake")'));
+  assert.ok(rec.includes('if (r === "online" || r === "timeout")'));
+  const hook = readSrc("src/shared/hooks/useMasterDeptSnapshots.js");
+  assert.ok(hook.includes("closeTriad"));
+  assert.ok(hook.includes("if (closed) return"));
+  const closeAt = hook.indexOf("const closeTriad");
+  const unsubAssign = hook.indexOf("unsubMaster = onSnapshot");
+  assert.ok(closeAt > 0 && unsubAssign > closeAt);
 });
 
 const safeStorageUrl = pathToFileURL(

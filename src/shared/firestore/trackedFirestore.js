@@ -315,6 +315,7 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
   };
 
   const scheduleAutoRetry = (cause) => {
+    // Explicit listener errors only. Silent first-snapshot hangs use the 10s UI clock.
     if (closed || !first) return;
     if (autoRetryCount >= maxAutoRetries()) {
       if (eng) {
@@ -401,8 +402,8 @@ export function trackedOnSnapshot(refOrQuery, onNext, onError, options) {
         }, "eng.snap.t30");
         syncWaitHeartbeat();
       }
-      // Bounded auto-recover: tear down + same query (never stack listeners).
-      scheduleAutoRetry("timeout_30");
+      // First-snapshot recreate is owned by dispatchRecovery("timeout") at 10s.
+      // Do not also scheduleAutoRetry here — that was a second clock.
     }, TIMEOUT_30_MS);
   };
 

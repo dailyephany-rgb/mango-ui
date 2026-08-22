@@ -583,6 +583,7 @@ const [pendingCriticalMap, setPendingCriticalMap] = usePersistedObjectState("rap
         listenStatus={listenStatus}
         masterError={masterError}
         onRetry={retryListen}
+        rowCount={masterEntries.length}
       />
       <div className="table-scroll-container">
         <table className="backroom-table">

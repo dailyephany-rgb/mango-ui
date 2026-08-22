@@ -104,11 +104,16 @@ export function useMasterDeptSnapshots({
             : "ERROR"
         );
         setMasterError(
-          "Firestore client did not recover. Tap Retry, or reload the page."
+          "Live data could not recover. Refresh the page URL, or tap Retry."
         );
         return;
       }
-      if (listenStatusRef.current === "RECOVERING" && recoveringRef.current) {
+      // wake must remount even if a short retry is in flight.
+      if (
+        reason !== "wake" &&
+        listenStatusRef.current === "RECOVERING" &&
+        recoveringRef.current
+      ) {
         return;
       }
       recoveringRef.current = true;
@@ -187,9 +192,41 @@ export function useMasterDeptSnapshots({
     }
     annotateListenReason(masterQuery, listenReason);
 
+    let closed = false;
+    let unsubMaster = () => {};
+    let unsubDept = () => {};
+    let unsubCritical = () => {};
+
+    const closeTriad = () => {
+      if (closed) return;
+      closed = true;
+      clearTimeout(hungTimer);
+      try {
+        unsubMaster();
+      } catch {
+        /* ignore */
+      }
+      try {
+        unsubDept();
+      } catch {
+        /* ignore */
+      }
+      try {
+        unsubCritical();
+      } catch {
+        /* ignore */
+      }
+      unsubMaster = () => {};
+      unsubDept = () => {};
+      unsubCritical = () => {};
+      masterStore.clear();
+      deptById.clear();
+      criticalById.clear();
+    };
+
     let masterSettled = false;
     const hungTimer = setTimeout(() => {
-      if (masterSettled) return;
+      if (closed || masterSettled) return;
       masterSettled = true;
       const offline =
         typeof navigator !== "undefined" && navigator.onLine === false;
@@ -205,23 +242,25 @@ export function useMasterDeptSnapshots({
       }
     }, MASTER_HUNG_MS);
 
-    const unsubMaster = onSnapshot(
+    unsubMaster = onSnapshot(
       masterQuery,
       (snapshot) => {
+        if (closed) return;
         masterSettled = true;
         clearTimeout(hungTimer);
         const result = masterStore.apply(snapshot);
         if (result.changed) {
           startTransition(() => {
+            if (closed) return;
             setMasterEntries(result.values);
           });
         }
-        // FIRST USEFUL SNAPSHOT — table usable; dept/critical may still hydrate.
         setLoading(false);
         setMasterError(null);
         setListenStatus("READY");
       },
       (err) => {
+        if (closed) return;
         masterSettled = true;
         clearTimeout(hungTimer);
         console.error(
@@ -254,6 +293,7 @@ export function useMasterDeptSnapshots({
     annotateListenReason(deptQuery, listenReason);
 
     const publishDeptState = () => {
+      if (closed) return;
       const docsMap = {};
       const sSet = new Set();
       for (const { key, data } of deptById.values()) {
@@ -261,15 +301,17 @@ export function useMasterDeptSnapshots({
         if (isSavedDoc(data)) sSet.add(key);
       }
       startTransition(() => {
+        if (closed) return;
         setDeptDocs(docsMap);
         setSavedSet(sSet);
         setDeptReady(true);
       });
     };
 
-    const unsubDept = onSnapshot(
+    unsubDept = onSnapshot(
       deptQuery,
       (snap) => {
+        if (closed) return;
         const t0 =
           typeof performance !== "undefined" ? performance.now() : Date.now();
         const stats = {
@@ -320,6 +362,7 @@ export function useMasterDeptSnapshots({
         emitDeptMetrics(stats, t0, deptById.size);
       },
       (err) => {
+        if (closed) return;
         console.error(
           `[useMasterDeptSnapshots] ${deptCollection} timePrinted query failed:`,
           err
@@ -342,19 +385,22 @@ export function useMasterDeptSnapshots({
     annotateListenReason(criticalQuery, listenReason);
 
     const publishCriticalState = () => {
+      if (closed) return;
       const cSet = new Set();
       for (const key of criticalById.values()) {
         if (key) cSet.add(key);
       }
       startTransition(() => {
+        if (closed) return;
         setCriticalReportedSet(cSet);
         setCriticalReady(true);
       });
     };
 
-    const unsubCritical = onSnapshot(
+    unsubCritical = onSnapshot(
       criticalQuery,
       (snap) => {
+        if (closed) return;
         if (!criticalSeeded) {
           criticalSeeded = true;
           criticalById.clear();
@@ -386,6 +432,7 @@ export function useMasterDeptSnapshots({
         publishCriticalState();
       },
       (err) => {
+        if (closed) return;
         console.error(
           "[useMasterDeptSnapshots] critical_alerts flaggedAt query failed — check index (dept + flaggedAt):",
           err
@@ -394,13 +441,7 @@ export function useMasterDeptSnapshots({
     );
 
     return () => {
-      clearTimeout(hungTimer);
-      masterStore.clear();
-      deptById.clear();
-      criticalById.clear();
-      unsubMaster();
-      unsubDept();
-      unsubCritical();
+      closeTriad();
     };
     // Intentional: stable callbacks from call site; re-subscribe on date/dept/collection/enabled/recover.
     // eslint-disable-next-line react-hooks/exhaustive-deps

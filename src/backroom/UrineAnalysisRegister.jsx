@@ -511,6 +511,7 @@ export default function UrineAnalysisRegister() {
         listenStatus={listenStatus}
         masterError={masterError}
         onRetry={retryListen}
+        rowCount={masterEntries.length}
       />
 
       <div className="table-container">

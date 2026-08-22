@@ -49,6 +49,10 @@ try {
     localCache: persistentLocalCache({
       tabManager: persistentMultipleTabManager(),
     }),
+    // Safari/iPad WebChannel can sit forever with neither snapshot nor error.
+    // Auto-detect switches to long polling only when the streaming transport fails.
+    // Does not disable persistence and does not change clinical queries.
+    experimentalAutoDetectLongPolling: true,
   });
   console.log("🗄 Firestore persistentLocalCache (multi-tab) enabled");
 } catch (err) {

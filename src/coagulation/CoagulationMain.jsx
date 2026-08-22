@@ -639,6 +639,7 @@ const logout = () => {
             listenStatus={listenStatus}
             masterError={masterError}
             onRetry={retryListen}
+            rowCount={masterEntries.length}
           />
           <EngComponent
             name="Patient Register Table"

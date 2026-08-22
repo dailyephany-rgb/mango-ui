@@ -125,7 +125,7 @@ export default function FirstSnapshotWatchdog() {
           : any30
             ? "Live data timed out"
             : recoveryHint === "unrecoverable"
-              ? "Live data error"
+              ? "Unable to recover — refresh the page URL"
               : recoveryHint
                 ? "Recovering live data"
                 : "Still loading"}
@@ -155,8 +155,8 @@ export default function FirstSnapshotWatchdog() {
               <>
                 <br />
                 React already started, but the first snapshot never arrived
-                (common on iPad Wi‑Fi). Tap Retry to re-open listeners — no page
-                reload.
+                (common on iPad Wi‑Fi). Tap Retry to re-open listeners. Staff
+                can refresh the page URL if Retry does not recover.
               </>
             ) : null}
           </>

@@ -18,12 +18,13 @@ import {
 
 /** Clinical UI hung-status threshold (page stays mounted). */
 export const CLINICAL_FIRST_SNAPSHOT_HUNG_MS = 10_000;
+/** Remount triad after this long in the background (iPad lock / Chrome suspend). */
+export const WAKE_HIDDEN_MS = 60_000;
 
 const MAX_AUTO_RETRIES = 3;
 const ASSERTION_RETRY_COOLDOWN_MS = 5_000;
 const MAX_ASSERTION_RECOVERIES = 3;
 const ASSERTION_WINDOW_MS = 60_000;
-const CLIENT_RELOAD_KEY = "mango.fs.clientReload.v1";
 
 /** @type {number[]} */
 let assertionRecoveryAt = [];
@@ -37,6 +38,12 @@ let onlineHandlerBound = false;
 /** @type {ReturnType<typeof setTimeout> | null} */
 let onlineRecoveryTimer = null;
 const ONLINE_RECOVERY_DEBOUNCE_MS = 400;
+/** @type {ReturnType<typeof setTimeout> | null} */
+let becomeVisibleTimer = null;
+const BECOME_VISIBLE_COALESCE_MS = 100;
+/** @type {number | null} */
+let hiddenAt = null;
+let forceWakeOnVisible = false;
 let recoveryBusyUntil = 0;
 const RECOVERY_LOCK_MS = 800;
 
@@ -45,6 +52,39 @@ const RECOVERY_LOCK_MS = 800;
  * Do NOT also remount triad via notify — that duplicated subscriptions
  * (retryWaiting + recoverGen remount racing).
  */
+function scheduleBecomeVisible() {
+  if (becomeVisibleTimer) {
+    clearTimeout(becomeVisibleTimer);
+    becomeVisibleTimer = null;
+  }
+  becomeVisibleTimer = setTimeout(() => {
+    becomeVisibleTimer = null;
+    const force = forceWakeOnVisible;
+    forceWakeOnVisible = false;
+    const hiddenMs = hiddenAt != null ? Date.now() - hiddenAt : 0;
+    hiddenAt = null;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      return;
+    }
+    if (force || hiddenMs >= WAKE_HIDDEN_MS) {
+      safeRun(() => {
+        import("../../engineering/telemetry/EngTelemetry.js").then((m) => {
+          m.EngTelemetry?.trackListenerRetry?.({
+            action: "retry",
+            event: "wake_remount",
+            reason: "reconnect",
+            collection: "page",
+            durationMs: hiddenMs,
+          });
+        });
+      }, "eng.wake.remount");
+      dispatchRecovery("wake");
+      return;
+    }
+    scheduleOnlineRecovery();
+  }, BECOME_VISIBLE_COALESCE_MS);
+}
+
 function scheduleOnlineRecovery() {
   if (onlineRecoveryTimer) {
     clearTimeout(onlineRecoveryTimer);
@@ -115,22 +155,6 @@ export function isListenerTimeoutError(err) {
   );
 }
 
-function alreadyReloadedThisSession() {
-  try {
-    return sessionStorage.getItem(CLIENT_RELOAD_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function markReloadedThisSession() {
-  try {
-    sessionStorage.setItem(CLIENT_RELOAD_KEY, "1");
-  } catch {
-    /* ignore */
-  }
-}
-
 /**
  * Exponential backoff with jitter. attempt is 1-based.
  * @param {number} attempt
@@ -174,8 +198,8 @@ export function dispatchRecovery(reason = "recovery") {
     return { skipped: false, path: "unrecoverable" };
   }
 
-  if (r === "assertion") {
-    notifyListenerRecovery("assertion");
+  if (r === "assertion" || r === "wake") {
+    notifyListenerRecovery(r);
     return { skipped: false, path: "remount" };
   }
 
@@ -229,31 +253,20 @@ function attemptAssertionRecovery() {
   );
   assertionRecoveryAt.push(now);
 
-  // Client still throwing assertions after several remounts → one reload per tab session.
+  // Staff refresh the URL themselves. Do not auto-reload the tab.
   if (assertionRecoveryAt.length >= MAX_ASSERTION_RECOVERIES) {
-    if (!alreadyReloadedThisSession()) {
-      markReloadedThisSession();
-      dispatchRecovery("unrecoverable");
-      safeRun(() => {
-        import("../../engineering/telemetry/EngTelemetry.js").then((eng) => {
-          eng.EngTelemetry?.trackListenerRetry?.({
-            action: "retry",
-            event: "assertion_client_reload",
-            reason: "retry",
-            collection: "page",
-            docCount: assertionRecoveryAt.length,
-          });
-        });
-      }, "eng.assertion.reload");
-      try {
-        window.location.reload();
-      } catch {
-        /* ignore */
-      }
-      return;
-    }
-    // Already reloaded this session — do not loop. Surface unrecoverable; no remount.
     dispatchRecovery("unrecoverable");
+    safeRun(() => {
+      import("../../engineering/telemetry/EngTelemetry.js").then((eng) => {
+        eng.EngTelemetry?.trackListenerRetry?.({
+          action: "retry_failed",
+          event: "assertion_unrecoverable",
+          reason: "retry",
+          collection: "page",
+          docCount: assertionRecoveryAt.length,
+        });
+      });
+    }, "eng.assertion.unrecoverable");
     return;
   }
 
@@ -311,7 +324,20 @@ export function installListenerRecoveryHooks() {
           m.EngTelemetry?.trackNetwork?.({ online: false });
         });
       }, "eng.net.offline");
-      // Do NOT remount listeners while offline (would thrash / duplicate).
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        if (hiddenAt == null) hiddenAt = Date.now();
+        return;
+      }
+      if (document.visibilityState === "visible") {
+        scheduleBecomeVisible();
+      }
+    });
+    window.addEventListener("pageshow", (ev) => {
+      if (!ev?.persisted) return;
+      forceWakeOnVisible = true;
+      scheduleBecomeVisible();
     });
   }
 }

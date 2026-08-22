@@ -442,6 +442,7 @@ const [pendingCritical, setPendingCritical] = usePersistedObjectState("esr_pendi
         listenStatus={listenStatus}
         masterError={masterError}
         onRetry={retryListen}
+        rowCount={masterEntries.length}
       />
 
       <div className="table-scroll-container">
