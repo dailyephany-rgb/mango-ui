@@ -150,6 +150,136 @@ const DEPARTMENT_LOOKUP = {
     },
   };
 
+const EMPTY_CARD_COL_FILTERS = {
+  regNo: "",
+  diagnosticNo: "",
+  name: "",
+  doctor: "",
+  source: "",
+  phone: "",
+  category: "",
+  status: "",
+  receiptSavedBy: "",
+  print: "",
+  printedBy: "",
+  whatsapp: "",
+  whatsappSentBy: "",
+};
+
+function includesText(value, needle) {
+  if (!needle?.trim()) return true;
+  return String(value || "")
+    .toLowerCase()
+    .includes(needle.trim().toLowerCase());
+}
+
+function uniqueColumnValues(values) {
+  const named = new Set();
+  let hasBlank = false;
+  for (const value of values) {
+    const text = value == null ? "" : String(value).trim();
+    if (!text || text === "—") hasBlank = true;
+    else named.add(text);
+  }
+  const list = [...named].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" })
+  );
+  if (hasBlank) list.push("—");
+  return list;
+}
+
+function whatsappLabel(rec) {
+  if (rec.whatsappSent) return "WhatsApp Sent";
+  if (rec.whatsappRequired) return "Send WhatsApp";
+  return "WhatsApp Required";
+}
+
+function printLabel(rec, layout) {
+  if (layout === "inside") {
+    return rec.insideLabReportPrinted ? "Printed" : "Print Report";
+  }
+  return rec.routineReportPrinted ? "Printed" : "Print Report";
+}
+
+function statusLabel(rec, layout) {
+  if (layout === "routine") return rec.overallStatus || "—";
+  return rec.workflowCompleted ? "Completed" : "Pending";
+}
+
+function printedByLabel(rec, layout) {
+  if (layout === "inside") return rec.insideLabReportPrintedBy || "—";
+  return rec.routineReportPrintedBy || "—";
+}
+
+function matchesCardColFilters(rec, filters, layout) {
+  if (!includesText(rec.regNo, filters.regNo)) return false;
+  if (!includesText(rec.diagnosticNo, filters.diagnosticNo)) return false;
+  if (!includesText(rec.name, filters.name)) return false;
+  if (!includesText(rec.doctor, filters.doctor)) return false;
+  if (filters.source && (rec.source || "—") !== filters.source) return false;
+  if (!includesText(rec.phone, filters.phone)) return false;
+  if (!includesText(rec.category, filters.category)) return false;
+  if (filters.status && statusLabel(rec, layout) !== filters.status) {
+    return false;
+  }
+
+  if (layout === "routine") {
+    if (
+      filters.receiptSavedBy &&
+      (rec.receiptSavedBy || "—") !== filters.receiptSavedBy
+    ) {
+      return false;
+    }
+    if (!includesText(printLabel(rec, layout), filters.print)) return false;
+    if (filters.printedBy && printedByLabel(rec, layout) !== filters.printedBy) {
+      return false;
+    }
+    if (filters.whatsapp && whatsappLabel(rec) !== filters.whatsapp) {
+      return false;
+    }
+    if (!includesText(rec.whatsappSentBy || "—", filters.whatsappSentBy)) {
+      return false;
+    }
+  }
+
+  if (layout === "inside") {
+    if (!includesText(printLabel(rec, layout), filters.print)) return false;
+    if (filters.printedBy && printedByLabel(rec, layout) !== filters.printedBy) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function CardFilterInput({ value, onChange, placeholder }) {
+  return (
+    <div className="col-filter-cell">
+      <input
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
+function CardFilterSelect({ value, onChange, options }) {
+  return (
+    <div className="col-filter-cell">
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">All</option>
+        {options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 export default function MasterViewCard() {
 
   
@@ -163,8 +293,8 @@ export default function MasterViewCard() {
   const [fromDate, setFromDate] = useState(today);
   const [toDate, setToDate] = useState(today);
   const [sourceFilter, setSourceFilter] = useState("All");
-  const [showCategoryFilter, setShowCategoryFilter] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [showColFilters, setShowColFilters] = useState(false);
+  const [colFilters, setColFilters] = useState(EMPTY_CARD_COL_FILTERS);
 
   const parseDate = (entry) => parseDateField(entry?.timePrinted);
 
@@ -548,8 +678,7 @@ const specialCompleted =
 
 
   // FILTER & SORT (date applied in Firestore via timePrinted)
-  const filtered = merged
-    .filter((rec) => {
+  const afterToolbar = merged.filter((rec) => {
       if (!rec.regNo) return false;
 
       const searchLower = searchReg.toLowerCase();
@@ -560,18 +689,20 @@ const specialCompleted =
       const sourceOk =
         sourceFilter === "All" || rec.source === sourceFilter;
 
-      const categoryNeedle = categoryFilter.trim().toLowerCase();
-      const categoryOk =
-        !categoryNeedle ||
-        (rec.category || "").toLowerCase().includes(categoryNeedle);
-
       const reportOk =
         reportView === "routine"
           ? rec.routineStatuses.length > 0
           : rec.specialStatuses.length > 0;
 
-        return matchesSearch && sourceOk && categoryOk && reportOk;
-          })
+        return matchesSearch && sourceOk && reportOk;
+          });
+
+  const filtered = afterToolbar
+          .filter((rec) =>
+            reportView !== "routine"
+              ? true
+              : matchesCardColFilters(rec, colFilters, "routine")
+          )
           .sort((a, b) => {
             const dateA = parseDate(a);
             const dateB = parseDate(b);
@@ -580,7 +711,8 @@ const specialCompleted =
             return dateA - dateB; 
           });
 
-          const specialDisplayRows = filtered.flatMap((rec) =>
+          const specialDisplayRows = afterToolbar
+          .flatMap((rec) =>
           rec.workflowCards.map((card) => ({
             ...rec,
             workflow: card.workflow,
@@ -588,7 +720,21 @@ const specialCompleted =
             workflowCompleted: card.completed,
             workflowId: `${rec.id}_${card.workflow}`,
           }))
-        );
+        )
+          .filter((row) =>
+            matchesCardColFilters(
+              row,
+              colFilters,
+              row.workflow === "inside" ? "inside" : "outsource"
+            )
+          )
+          .sort((a, b) => {
+            const dateA = parseDate(a);
+            const dateB = parseDate(b);
+            if (!dateA) return 1;
+            if (!dateB) return -1;
+            return dateA - dateB;
+          });
 
       const toggle = (id) =>
          setExpanded(expanded === id ? null : id);
@@ -682,6 +828,38 @@ const specialCompleted =
     (r) => r.workflow === "outsource"
   );
 
+  const setColFilter = (key, value) => {
+    setColFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const hasActiveColFilters = Object.values(colFilters).some((v) =>
+    String(v).trim()
+  );
+
+  const sourceOptions = uniqueColumnValues(afterToolbar.map((r) => r.source));
+  const receiptSavedByOptions = uniqueColumnValues(
+    afterToolbar.map((r) => r.receiptSavedBy)
+  );
+  const whatsappOptions = uniqueColumnValues(
+    afterToolbar.map((r) => whatsappLabel(r))
+  );
+  const printedByRoutineOptions = uniqueColumnValues(
+    afterToolbar.map((r) => r.routineReportPrintedBy)
+  );
+  const printedByInsideOptions = uniqueColumnValues(
+    afterToolbar.map((r) => r.insideLabReportPrintedBy)
+  );
+  const routineStatusOptions = uniqueColumnValues(
+    afterToolbar.map((r) => r.overallStatus)
+  );
+  const specialStatusOptions = uniqueColumnValues(
+    afterToolbar.flatMap((r) =>
+      (r.workflowCards || []).map((card) =>
+        card.completed ? "Completed" : "Pending"
+      )
+    )
+  );
+
   const renderCardHeader = (
     showPrint = true,
     showWhatsapp = false,
@@ -689,7 +867,16 @@ const specialCompleted =
     extraClass = ""
   ) => {
     const layoutClass = extraClass || (showPrint ? "" : "no-print");
-    const categoryFilterActive = Boolean(categoryFilter.trim());
+    const layout =
+      extraClass === "inside-lab"
+        ? "inside"
+        : layoutClass.includes("no-print")
+        ? "outsource"
+        : "routine";
+    const statusOptions =
+      layout === "routine" ? routineStatusOptions : specialStatusOptions;
+    const printedByOptions =
+      layout === "inside" ? printedByInsideOptions : printedByRoutineOptions;
 
     return (
       <>
@@ -703,9 +890,9 @@ const specialCompleted =
           <div className="card-col-category">
             <ColFilterToggle
               label="Category"
-              open={showCategoryFilter}
-              active={categoryFilterActive}
-              onToggle={() => setShowCategoryFilter((v) => !v)}
+              open={showColFilters}
+              active={hasActiveColFilters}
+              onToggle={() => setShowColFilters((v) => !v)}
             />
           </div>
           <div>Status</div>
@@ -723,34 +910,92 @@ const specialCompleted =
           <div>Expand</div>
         </div>
 
-        {showCategoryFilter ? (
+        {showColFilters ? (
           <div className={`card-filter-row ${layoutClass}`}>
-            <div />
-            <div />
-            <div />
-            <div />
-            <div />
-            <div />
+            <CardFilterInput
+              value={colFilters.regNo}
+              onChange={(v) => setColFilter("regNo", v)}
+              placeholder="Filter reg…"
+            />
+            <CardFilterInput
+              value={colFilters.diagnosticNo}
+              onChange={(v) => setColFilter("diagnosticNo", v)}
+              placeholder="Filter diag…"
+            />
+            <CardFilterInput
+              value={colFilters.name}
+              onChange={(v) => setColFilter("name", v)}
+              placeholder="Filter name…"
+            />
+            <CardFilterInput
+              value={colFilters.doctor}
+              onChange={(v) => setColFilter("doctor", v)}
+              placeholder="Filter doctor…"
+            />
+            <CardFilterSelect
+              value={colFilters.source}
+              onChange={(v) => setColFilter("source", v)}
+              options={sourceOptions}
+            />
+            <CardFilterInput
+              value={colFilters.phone}
+              onChange={(v) => setColFilter("phone", v)}
+              placeholder="Filter phone…"
+            />
             <div className="col-filter-cell card-col-category">
               <input
                 type="text"
                 placeholder="Filter category…"
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
+                value={colFilters.category}
+                onChange={(e) => setColFilter("category", e.target.value)}
               />
             </div>
-            <div />
-            {showWhatsapp && <div />}
-            {showPrint && <div />}
-            {printByLabel ? <div /> : null}
-            {showWhatsapp && <div />}
-            {showWhatsapp && <div />}
+            <CardFilterSelect
+              value={colFilters.status}
+              onChange={(v) => setColFilter("status", v)}
+              options={statusOptions}
+            />
+            {showWhatsapp && (
+              <CardFilterSelect
+                value={colFilters.receiptSavedBy}
+                onChange={(v) => setColFilter("receiptSavedBy", v)}
+                options={receiptSavedByOptions}
+              />
+            )}
+            {showPrint && (
+              <CardFilterInput
+                value={colFilters.print}
+                onChange={(v) => setColFilter("print", v)}
+                placeholder="Filter print…"
+              />
+            )}
+            {printByLabel ? (
+              <CardFilterSelect
+                value={colFilters.printedBy}
+                onChange={(v) => setColFilter("printedBy", v)}
+                options={printedByOptions}
+              />
+            ) : null}
+            {showWhatsapp && (
+              <CardFilterSelect
+                value={colFilters.whatsapp}
+                onChange={(v) => setColFilter("whatsapp", v)}
+                options={whatsappOptions}
+              />
+            )}
+            {showWhatsapp && (
+              <CardFilterInput
+                value={colFilters.whatsappSentBy}
+                onChange={(v) => setColFilter("whatsappSentBy", v)}
+                placeholder="Filter sent by…"
+              />
+            )}
             <div className="col-filter-cell col-filter-actions">
-              {categoryFilterActive ? (
+              {hasActiveColFilters ? (
                 <button
                   type="button"
                   className="col-filter-clear"
-                  onClick={() => setCategoryFilter("")}
+                  onClick={() => setColFilters(EMPTY_CARD_COL_FILTERS)}
                 >
                   Clear
                 </button>

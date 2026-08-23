@@ -133,10 +133,10 @@
 140px   /* Diagnostic */
 240px   /* Name */
 220px   /* Doctor */
-90px    /* Source */
+120px   /* Source */
 120px   /* Phone */
 260px   /* Category */
-120px   /* Status */
+160px   /* Status */
 120px   /* Receipt Saved By */
 130px   /* Print */
 120px   /* Printed By */
@@ -162,7 +162,7 @@
 
   box-shadow:none;
 
-  width:2050px;
+  width:2120px;
 }
 
 /* ===== Card ===== */
@@ -193,10 +193,10 @@
 140px
 240px
 220px
-90px
+120px
 120px
 260px
-120px   /* Status */
+160px   /* Status */
 120px   /* Receipt Saved By */
 130px   /* Print */
 120px   /* Printed By */
@@ -216,7 +216,7 @@
 
   transition:background .15s ease;
 
-  width:2050px;
+  width:2120px;
 }
 
 .card-top:hover{
@@ -246,10 +246,10 @@
         140px
         240px
         220px
-        90px
+        120px
         120px
         260px
-        120px
+        160px
         50px;
 }
 
@@ -264,15 +264,15 @@
         140px
         240px
         220px
-        90px
+        120px
         120px
         260px
-        120px   /* Status */
+        160px   /* Status */
         130px   /* Print */
         140px   /* Inside Lab Printed By */
         60px;   /* Expand */
 
-    width:1790px;
+    width:1860px;
 }
 
 /* ===== Status Tag ===== */
@@ -621,10 +621,10 @@
 140px
 240px
 220px
-90px
+120px
 120px
 260px
-120px
+160px
 120px
 130px
 120px
@@ -638,13 +638,18 @@
   padding:0;
   border:1px solid #dbe3ef;
   border-top:none;
-  width:2050px;
+  width:2120px;
 }
 
 .card-filter-row > div{
   overflow:visible;
   white-space:normal;
   padding:6px 8px;
+}
+
+.card-filter-row input,
+.card-filter-row select{
+  min-width:0;
 }
 
 .card-header-row > div{
