@@ -17,6 +17,8 @@ import {
   sortPageLoads,
   downloadCsv,
   dayKeyFromTs,
+  pageLoadCsvColumns,
+  pageLoadToCsvRow,
 } from "./perfViews.js";
 import { WaterfallPanel } from "./WaterfallPanel.jsx";
 import { LoadIdCell } from "./LoadIdCell.jsx";
@@ -43,7 +45,7 @@ function Empty({ configured, loading, label }) {
 
 export function TimelinePage() {
   const configured = useEngConfigured();
-  const { range, filters } = useEngFilters();
+  const { range, filters, formatDeviceName } = useEngFilters();
   const { rows: loads, loading } = useFilteredEngCollection(
     ENG_COLLECTIONS.pageLoads,
     { limitN: 400, timeMode: "ts" }
@@ -178,19 +180,10 @@ export function TimelinePage() {
               onClick={() =>
                 downloadCsv(
                   `eng-timeline-${dayKeyFromTs()}.csv`,
-                  timeline.map((e) => ({
-                    time: fmtTs(e._ts),
-                    kind: e._kind,
-                    loadId: e.loadId || e.id || "",
-                    deviceId: e.deviceId,
-                    department: e.department,
-                    page: e.page,
-                    buildId: e.buildId,
-                    totalMs: e.totalMs,
-                    interactiveMs: e.interactiveMs,
-                    firstSnapshotMs: e.firstSnapshotMs,
-                    label: e._label,
-                  }))
+                  filteredLoads.map((r) =>
+                    pageLoadToCsvRow(r, formatDeviceName)
+                  ),
+                  pageLoadCsvColumns()
                 )
               }
             >

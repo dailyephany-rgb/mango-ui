@@ -194,6 +194,48 @@ export function sortPageLoads(loads, key = "ts", dir = "desc") {
  * @param {object[]} rows
  * @param {string[]} [columns]
  */
+/** One CSV row matching the Performance timeline table (includes Status). */
+export function pageLoadCsvColumns() {
+  return [
+    "time",
+    "loadId",
+    "device",
+    "department",
+    "page",
+    "build",
+    "totalLoad",
+    "reactMount",
+    "firstQuery",
+    "firstSnapshot",
+    "tableRender",
+    "interactive",
+    "ready",
+    "status",
+  ];
+}
+
+export function pageLoadToCsvRow(r, formatDeviceName) {
+  const snap = fmtMs(r.firstSnapshotMs);
+  return {
+    time: fmtTs(r.ts),
+    loadId: r.loadId || r.id || "",
+    device: formatDeviceName
+      ? formatDeviceName(r.deviceId)
+      : r.deviceId || "",
+    department: r.department || "",
+    page: r.page || "",
+    build: r.buildId || "",
+    totalLoad: fmtMs(r.totalMs),
+    reactMount: fmtMs(r.firstRenderMs),
+    firstQuery: snap,
+    firstSnapshot: snap,
+    tableRender: "—",
+    interactive: fmtMs(r.interactiveMs),
+    ready: fmtMs(r.totalMs),
+    status: loadStatus(r),
+  };
+}
+
 export function downloadCsv(filename, rows, columns) {
   const cols =
     columns ||

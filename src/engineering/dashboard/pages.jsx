@@ -29,6 +29,8 @@ import {
   trendByDay,
   avg,
   percentile,
+  pageLoadCsvColumns,
+  pageLoadToCsvRow,
 } from "./perfViews.js";
 import { WaterfallPanel } from "./WaterfallPanel.jsx";
 
@@ -1271,7 +1273,7 @@ export function ReactMetricsPage() {
 
 export function PerformancePage() {
   const configured = useEngConfigured();
-  const { range } = useEngFilters();
+  const { range, formatDeviceName } = useEngFilters();
   const { rows, loading } = useFilteredEngCollection(ENG_COLLECTIONS.pages, {
     timeMode: "day",
   });
@@ -1403,18 +1405,10 @@ export function PerformancePage() {
             onClick={() =>
               downloadCsv(
                 `eng-performance-${dayKeyFromTs()}.csv`,
-                filteredLoads.map((r) => ({
-                  time: fmtTsPerf(r.ts),
-                  deviceId: r.deviceId,
-                  department: r.department,
-                  page: r.page,
-                  buildId: r.buildId,
-                  totalMs: r.totalMs,
-                  firstRenderMs: r.firstRenderMs,
-                  firstSnapshotMs: r.firstSnapshotMs,
-                  interactiveMs: r.interactiveMs,
-                  status: loadStatus(r),
-                }))
+                filteredLoads.map((r) =>
+                  pageLoadToCsvRow(r, formatDeviceName)
+                ),
+                pageLoadCsvColumns()
               )
             }
           >
