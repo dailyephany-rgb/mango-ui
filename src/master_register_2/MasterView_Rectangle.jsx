@@ -27,7 +27,7 @@ import {
   localDayEndExclusive,
   parseDateField,
 } from "../shared/utils/dates.js";
-import { cascadeRoutineStages } from "../shared/utils/routineStageFlags.js";
+import { cascadeRoutineStages, readRoutineMapFlag } from "../shared/utils/routineStageFlags.js";
 
 const DEPARTMENT_LOOKUP = {
   "Bio-Chemistry": {
@@ -260,9 +260,9 @@ selectedTests.forEach((t) => {
   if (!config || config.workflow !== "routine") return;
 
   const cascaded = cascadeRoutineStages({
-    scanned: rec.routineReportsScanned?.[config.firestoreKey],
-    saved: rec.routineReportsSaved?.[config.firestoreKey],
-    validated: rec.routineReportsValidated?.[config.firestoreKey],
+    scanned: readRoutineMapFlag(rec, "routineReportsScanned", config.firestoreKey),
+    saved: readRoutineMapFlag(rec, "routineReportsSaved", config.firestoreKey),
+    validated: readRoutineMapFlag(rec, "routineReportsValidated", config.firestoreKey),
   });
 
   statuses.push({

@@ -3,7 +3,7 @@
  * Shared by Owner Ops Performance Report (and available for Master Card).
  */
 
-import { cascadeRoutineStages } from "./routineStageFlags.js";
+import { cascadeRoutineStages, readRoutineMapFlag } from "./routineStageFlags.js";
 
 export const WORKFLOW_DEPARTMENT_LOOKUP = {
   "Bio-Chemistry": {
@@ -130,9 +130,21 @@ export function buildWorkflowStatusTables(reportDetails = {}) {
 
     if (config.workflow === "routine") {
       const cascaded = cascadeRoutineStages({
-        scanned: reportDetails.routineReportsScanned?.[config.firestoreKey],
-        saved: reportDetails.routineReportsSaved?.[config.firestoreKey],
-        validated: reportDetails.routineReportsValidated?.[config.firestoreKey],
+        scanned: readRoutineMapFlag(
+          reportDetails,
+          "routineReportsScanned",
+          config.firestoreKey
+        ),
+        saved: readRoutineMapFlag(
+          reportDetails,
+          "routineReportsSaved",
+          config.firestoreKey
+        ),
+        validated: readRoutineMapFlag(
+          reportDetails,
+          "routineReportsValidated",
+          config.firestoreKey
+        ),
       });
       routineStatuses.push({
         dept: config.label,

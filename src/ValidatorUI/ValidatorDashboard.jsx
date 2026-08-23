@@ -28,7 +28,7 @@ import {
   localDayStart,
   localDayEndExclusive,
 } from "../shared/utils/dates.js";
-import { reportDetailsStageCascadeFields } from "../shared/utils/routineStageFlags.js";
+import { applyReportDetailsStageToBatch } from "../shared/utils/routineStageFlags.js";
 import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 function getActiveCollection(
@@ -141,13 +141,6 @@ export default function ValidatorDashboard() {
 
       const reportUpdates = {};
 
-      if (dept) {
-        Object.assign(
-          reportUpdates,
-          reportDetailsStageCascadeFields(dept, "validated")
-        );
-      }
-
       if (
         completionField &&
         (!reportSnap.exists() || !reportSnap.data()[completionField])
@@ -155,13 +148,14 @@ export default function ValidatorDashboard() {
         reportUpdates[completionField] = serverTimestamp();
       }
 
-      if (Object.keys(reportUpdates).length > 0) {
-        if (reportSnap.exists()) {
-          batch.update(reportRef, reportUpdates);
-        } else {
-          batch.set(reportRef, reportUpdates, { merge: true });
-        }
-      }
+      applyReportDetailsStageToBatch(
+        batch,
+        reportRef,
+        reportSnap.exists(),
+        dept,
+        "validated",
+        reportUpdates
+      );
 
       await batch.commit();
 

@@ -6,7 +6,6 @@ import { db } from "../firebaseConfig.js";
 import {
   doc,
   setDoc,
-  updateDoc,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
@@ -22,6 +21,7 @@ import {
 } from "../shared/utils/deptColFilters.js";
 import { normalizeSource } from "../shared/utils/source.js";
 import { compositeId, safeKey } from "../shared/utils/ids.js";
+import { patchReportDetailsRoutineMaps } from "../shared/utils/routineStageFlags.js";
 import {
   extractTestName,
   entryHasCanonicalTest,
@@ -216,13 +216,9 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
     }));
   
     try {
-      await updateDoc(
-        doc(db, "report_details", regKey),
-        {
-          [`routineReportsScanned.${CURRENT_DEPT}`]:
-            value === "Yes",
-        }
-      );
+      await patchReportDetailsRoutineMaps(db, regKey, CURRENT_DEPT, {
+        scanned: value === "Yes",
+      });
     } catch (err) {
       console.error(
         "Failed to update scan status:",
@@ -368,14 +364,10 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
         { merge: true }
       );
 
-      await updateDoc(
-        doc(db, "report_details", compositeKey),
-        {
-          // Safeguard: if Save succeeds, Scan must also have succeeded.
-          [`routineReportsScanned.${CURRENT_DEPT}`]: true,
-          [`routineReportsSaved.${CURRENT_DEPT}`]: true,
-        }
-      );
+      await patchReportDetailsRoutineMaps(db, compositeKey, CURRENT_DEPT, {
+        scanned: true,
+        saved: true,
+      });
       
       setLocalScans((prev) => {
         const updated = { ...prev }; delete updated[compositeKey];
