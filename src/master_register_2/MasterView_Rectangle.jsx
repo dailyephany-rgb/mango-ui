@@ -20,6 +20,8 @@ import { trackedOnSnapshot as onSnapshot } from "../shared/firestore/trackedFire
 import SafeDateInput from "../shared/components/SafeDateInput.jsx";
 
 import "./MasterView_Rectangle.css";
+import "../shared/styles/colFilters.css";
+import ColFilterToggle from "../shared/components/ColFilterToggle.jsx";
 import UserMenu from "../auth/UserMenu";
 import {
   getLocalDateString,
@@ -161,6 +163,8 @@ export default function MasterViewCard() {
   const [fromDate, setFromDate] = useState(today);
   const [toDate, setToDate] = useState(today);
   const [sourceFilter, setSourceFilter] = useState("All");
+  const [showCategoryFilter, setShowCategoryFilter] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("");
 
   const parseDate = (entry) => parseDateField(entry?.timePrinted);
 
@@ -553,19 +557,20 @@ const specialCompleted =
         (rec.regNo?.toLowerCase().includes(searchLower)) || 
         (rec.diagnosticNo?.toLowerCase().includes(searchLower));
 
-      const sourceOk =sourceFilter === "All" ||
-      rec.source === sourceFilter;
+      const sourceOk =
+        sourceFilter === "All" || rec.source === sourceFilter;
+
+      const categoryNeedle = categoryFilter.trim().toLowerCase();
+      const categoryOk =
+        !categoryNeedle ||
+        (rec.category || "").toLowerCase().includes(categoryNeedle);
 
       const reportOk =
         reportView === "routine"
           ? rec.routineStatuses.length > 0
           : rec.specialStatuses.length > 0;
 
-        return (
-          matchesSearch &&
-          sourceOk &&
-          reportOk
-        );
+        return matchesSearch && sourceOk && categoryOk && reportOk;
           })
           .sort((a, b) => {
             const dateA = parseDate(a);
@@ -682,36 +687,80 @@ const specialCompleted =
     showWhatsapp = false,
     printByLabel = "",
     extraClass = ""
-  ) => (
+  ) => {
+    const layoutClass = extraClass || (showPrint ? "" : "no-print");
+    const categoryFilterActive = Boolean(categoryFilter.trim());
 
+    return (
+      <>
+        <div className={`card-header-row ${layoutClass}`}>
+          <div>Reg No</div>
+          <div>Diagnostic</div>
+          <div>Name</div>
+          <div>Doctor</div>
+          <div>Source</div>
+          <div>Phone</div>
+          <div className="card-col-category">
+            <ColFilterToggle
+              label="Category"
+              open={showCategoryFilter}
+              active={categoryFilterActive}
+              onToggle={() => setShowCategoryFilter((v) => !v)}
+            />
+          </div>
+          <div>Status</div>
 
-    <div
-  className={`card-header-row ${
-    extraClass || (showPrint ? "" : "no-print")
-  }`}
->
-      <div>Reg No</div>
-      <div>Diagnostic</div>
-      <div>Name</div>
-      <div>Doctor</div>
-      <div>Source</div>
-      <div>Phone</div>
-      <div>Category</div>
-      <div>Status</div>
-  
-      {showWhatsapp && <div>Receipt Saved By</div>}
+          {showWhatsapp && <div>Receipt Saved By</div>}
 
-      {showPrint && <div>Print</div>}
+          {showPrint && <div>Print</div>}
 
-      {printByLabel && <div>{printByLabel}</div>}
+          {printByLabel && <div>{printByLabel}</div>}
 
-      {showWhatsapp && <div>WhatsApp</div>}
+          {showWhatsapp && <div>WhatsApp</div>}
 
-      {showWhatsapp && <div>WhatsApp Sent By</div>}
-        
-      <div>Expand</div>
-    </div>
-  );
+          {showWhatsapp && <div>WhatsApp Sent By</div>}
+
+          <div>Expand</div>
+        </div>
+
+        {showCategoryFilter ? (
+          <div className={`card-filter-row ${layoutClass}`}>
+            <div />
+            <div />
+            <div />
+            <div />
+            <div />
+            <div />
+            <div className="col-filter-cell card-col-category">
+              <input
+                type="text"
+                placeholder="Filter category…"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+              />
+            </div>
+            <div />
+            {showWhatsapp && <div />}
+            {showPrint && <div />}
+            {printByLabel ? <div /> : null}
+            {showWhatsapp && <div />}
+            {showWhatsapp && <div />}
+            <div className="col-filter-cell col-filter-actions">
+              {categoryFilterActive ? (
+                <button
+                  type="button"
+                  className="col-filter-clear"
+                  onClick={() => setCategoryFilter("")}
+                >
+                  Clear
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </>
+    );
+  };
 
 
   const renderCommonCardTop = (rec) => (
@@ -722,7 +771,7 @@ const specialCompleted =
       <div>{rec.doctor}</div>
       <div>{rec.source}</div>
       <div>{rec.phone}</div>
-      <div>{rec.category}</div>
+      <div className="card-col-category">{rec.category}</div>
     </>
   );
 
