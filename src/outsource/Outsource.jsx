@@ -157,8 +157,10 @@ export default function OutsourceRegister() {
           const uniqueTrackingId = `${reg}_${diagNo}_${labName.replace(/\s+/g, "")}`;
 
           const firebaseData = trackingMap[uniqueTrackingId] || {};
-          const bufferedData =
-            localBufferRef.current[uniqueTrackingId] || {};
+          // Use state, not the ref: the ref is only synced in useEffect
+          // after paint, so a useMemo that reads the ref drops the character
+          // just typed into Name / Relation / Mobile.
+          const bufferedData = localOutsourceData[uniqueTrackingId] || {};
 
           const outData = {
             status: "Pending",
@@ -431,18 +433,22 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
       },
     }));
   
-    setLocalOutsourceData((prev) => ({
-      ...prev,
-      [trackingId]: {
-        ...(prev[trackingId] || {}),
-        status: newStatus,
-        isCollected: newStatus === "Scanned",
-        outsourcedCollectedTime:
-          newStatus === "Scanned" ? now : null,
-        collectedBy:
-          newStatus === "Scanned" ? currentUser : "",
-      },
-    }));
+    setLocalOutsourceData((prev) => {
+      const next = {
+        ...prev,
+        [trackingId]: {
+          ...(prev[trackingId] || {}),
+          status: newStatus,
+          isCollected: newStatus === "Scanned",
+          outsourcedCollectedTime:
+            newStatus === "Scanned" ? now : null,
+          collectedBy:
+            newStatus === "Scanned" ? currentUser : "",
+        },
+      };
+      localBufferRef.current = next;
+      return next;
+    });
   } catch (err) {
     console.error(err);
     alert("Failed to collect sample.");
@@ -454,14 +460,17 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
 
 
   const updateLocalEntry = (uniqueId, field, value) => {
-    // Keep the local buffer in sync (entries recompute from buffer)
-    setLocalOutsourceData(prev => ({
-      ...prev,
-      [uniqueId]: {
-        ...(prev[uniqueId] || {}),
-        [field]: value
-      }
-    }));
+    setLocalOutsourceData((prev) => {
+      const next = {
+        ...prev,
+        [uniqueId]: {
+          ...(prev[uniqueId] || {}),
+          [field]: value,
+        },
+      };
+      localBufferRef.current = next;
+      return next;
+    });
   };
 
   const setColFilter = (key, value) => {

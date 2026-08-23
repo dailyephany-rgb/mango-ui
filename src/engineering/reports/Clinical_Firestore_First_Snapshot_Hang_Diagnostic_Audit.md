@@ -378,4 +378,10 @@ Clinical pages hang because **readiness is “master `onSnapshot` fired,” and 
 
 ---
 
-*End of diagnostic audit. No implementation was performed.*
+## Ops follow-up (iPad quota — not part of the original diagnosis-only pass)
+
+If Timeline hung with `QuotaExceededError` / Firestore `addLocalQueryTarget` / assertion **b815**, IndexedDB for this origin is already full. After shipping `memoryLocalCache()` on iPad/iPhone, **clear Safari website data once** for the mango-ui origin on **ipad-biochem**. See [Ipad_Safari_Origin_Quota_Clear.md](./Ipad_Safari_Origin_Quota_Clear.md).
+
+---
+
+*End of diagnostic audit. No implementation was performed in the original pass.*

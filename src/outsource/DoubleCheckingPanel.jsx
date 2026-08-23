@@ -221,7 +221,11 @@ export default function DoubleCheckingPanel({
   const hasActiveColFilters = hasActiveDeptColFilters(colFilters);
 
   const filtered = useMemo(() => {
-    const base = rows
+    const merged = rows.map((e) => ({
+      ...e,
+      ...(localBuffer[e.uniqueTrackingId] || {}),
+    }));
+    const base = merged
       .filter((e) => {
         if (activeSource !== "All" && e.source !== activeSource) return false;
         if (regSearch.trim()) {
@@ -249,7 +253,7 @@ export default function DoubleCheckingPanel({
           .filter(Boolean)
           .join(" "),
     });
-  }, [rows, activeSource, regSearch, colFilters]);
+  }, [rows, localBuffer, activeSource, regSearch, colFilters]);
 
   const setField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -396,13 +400,17 @@ export default function DoubleCheckingPanel({
   };
 
   const updateLocalEntry = (uniqueId, field, value) => {
-    setLocalBuffer((prev) => ({
-      ...prev,
-      [uniqueId]: {
-        ...(prev[uniqueId] || {}),
-        [field]: value,
-      },
-    }));
+    setLocalBuffer((prev) => {
+      const next = {
+        ...prev,
+        [uniqueId]: {
+          ...(prev[uniqueId] || {}),
+          [field]: value,
+        },
+      };
+      bufferRef.current = next;
+      return next;
+    });
   };
 
   const clearLocal = (trackingId) => {

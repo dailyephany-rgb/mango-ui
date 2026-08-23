@@ -2,9 +2,11 @@ import { initializeApp, getApps } from "firebase/app";
 import {
   initializeFirestore,
   getFirestore,
+  memoryLocalCache,
   persistentLocalCache,
   persistentMultipleTabManager,
 } from "firebase/firestore";
+import { isIosSafariDevice } from "./shared/device/detectDeviceKind.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBS-JGY1X6GLM7YVXVSJuYvti_utJXMS5I",
@@ -43,18 +45,29 @@ function isAlreadyInitializedFirestoreError(err) {
   );
 }
 
+const useIosMemoryCache = isIosSafariDevice();
+
 let db;
 try {
   db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager(),
-    }),
+    // iPad/iPhone: Safari origin quota is shared with IndexedDB. Persistent
+    // cache hitting quota throws assertion b815 in addLocalQueryTarget and
+    // the first snapshot never arrives (Timeline hung). Memory cache avoids that.
+    // Desktop keeps multi-tab persistent cache.
+    localCache: useIosMemoryCache
+      ? memoryLocalCache()
+      : persistentLocalCache({
+          tabManager: persistentMultipleTabManager(),
+        }),
     // Safari/iPad WebChannel can sit forever with neither snapshot nor error.
     // Auto-detect switches to long polling only when the streaming transport fails.
-    // Does not disable persistence and does not change clinical queries.
     experimentalAutoDetectLongPolling: true,
   });
-  console.log("🗄 Firestore persistentLocalCache (multi-tab) enabled");
+  console.log(
+    useIosMemoryCache
+      ? "🗄 Firestore memoryLocalCache (iPad/iPhone — no IndexedDB persistence)"
+      : "🗄 Firestore persistentLocalCache (multi-tab) enabled"
+  );
 } catch (err) {
   if (isAlreadyInitializedFirestoreError(err)) {
     db = getFirestore(app);

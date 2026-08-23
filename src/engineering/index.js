@@ -12,6 +12,7 @@ export {
   assignNextFleetLabel,
   publishDeviceLabel,
   detectDeviceKind,
+  isIosSafariDevice,
   DEVICE_LABEL_PRESETS,
   normalizeDeviceLabel,
 } from "./deviceId.js";

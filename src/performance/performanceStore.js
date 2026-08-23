@@ -6,7 +6,7 @@
 
 import { mergeRollupRecords } from "./rollupMerge.js";
 import { safeStorageSet } from "../engineering/telemetry/safeStorage.js";
-import { detectDeviceKind } from "../engineering/telemetry/deviceId.js";
+import { isIosSafariDevice } from "../shared/device/detectDeviceKind.js";
 
 const STORE_KEY = "mango.perf.v1";
 const HEALTH_KEY = "mango.perf.health.v1";
@@ -49,8 +49,17 @@ function loadReadsCountedMap() {
 let readsCountedByDate = loadReadsCountedMap();
 let readsCountedPersistTimer = null;
 
+function skipIosLargeLocalStorage() {
+  try {
+    return isIosSafariDevice();
+  } catch {
+    return false;
+  }
+}
+
 function persistReadsCounted() {
   try {
+    if (skipIosLargeLocalStorage()) return;
     if (typeof localStorage === "undefined") return;
     const entries = Object.entries(readsCountedByDate).sort((a, b) =>
       a[0].localeCompare(b[0])
@@ -193,12 +202,7 @@ function schedulePersist() {
 
 export function flushPersist() {
   if (typeof sessionStorage === "undefined") return;
-  try {
-    const kind = detectDeviceKind();
-    if (kind === "ipad" || kind === "iphone") return;
-  } catch {
-    /* persist on desktop */
-  }
+  if (skipIosLargeLocalStorage()) return;
   const persist = (queriesN, eventsN, readsN) => {
     const slim = {
       v: state.v,
@@ -288,6 +292,7 @@ export function getHealthHistory() {
 /** Persist one day of health scores (keep 30). */
 export function saveDailyHealth(dateStr, scores) {
   try {
+    if (skipIosLargeLocalStorage()) return;
     const hist = getHealthHistory().filter((h) => h.date !== dateStr);
     hist.push({ date: dateStr, scores, at: Date.now() });
     hist.sort((a, b) => a.date.localeCompare(b.date));
@@ -306,6 +311,7 @@ export function saveDailyHealth(dateStr, scores) {
  */
 export function saveDailyRollup(dateStr, rollup) {
   try {
+    if (skipIosLargeLocalStorage()) return;
     const counted = getCountedReads(dateStr);
     const withCounted = {
       ...rollup,
