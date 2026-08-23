@@ -136,7 +136,7 @@
 120px   /* Source */
 120px   /* Phone */
 260px   /* Category */
-160px   /* Status */
+200px   /* Status */
 120px   /* Receipt Saved By */
 130px   /* Print */
 120px   /* Printed By */
@@ -162,7 +162,7 @@
 
   box-shadow:none;
 
-  width:2120px;
+  width:2160px;
 }
 
 /* ===== Card ===== */
@@ -196,7 +196,7 @@
 120px
 120px
 260px
-160px   /* Status */
+200px   /* Status */
 120px   /* Receipt Saved By */
 130px   /* Print */
 120px   /* Printed By */
@@ -216,7 +216,7 @@
 
   transition:background .15s ease;
 
-  width:2120px;
+  width:2160px;
 }
 
 .card-top:hover{
@@ -249,7 +249,7 @@
         120px
         120px
         260px
-        160px
+        200px
         50px;
 }
 
@@ -267,12 +267,12 @@
         120px
         120px
         260px
-        160px   /* Status */
+        200px   /* Status */
         130px   /* Print */
         140px   /* Inside Lab Printed By */
         60px;   /* Expand */
 
-    width:1860px;
+    width:1900px;
 }
 
 /* ===== Status Tag ===== */
@@ -281,10 +281,10 @@
   align-items:center;
   justify-content:center;
 
-  min-width:90px;
+  min-width:108px;
   height:26px;
 
-  padding:0 10px;
+  padding:0 14px;
 
   border-radius:999px;
 
@@ -624,7 +624,7 @@
 120px
 120px
 260px
-160px
+200px
 120px
 130px
 120px
@@ -638,7 +638,7 @@
   padding:0;
   border:1px solid #dbe3ef;
   border-top:none;
-  width:2120px;
+  width:2160px;
 }
 
 .card-filter-row > div{
