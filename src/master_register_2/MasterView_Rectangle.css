@@ -136,7 +136,7 @@
 120px   /* Source */
 120px   /* Phone */
 260px   /* Category */
-200px   /* Status */
+260px   /* Status */
 120px   /* Receipt Saved By */
 130px   /* Print */
 120px   /* Printed By */
@@ -162,7 +162,7 @@
 
   box-shadow:none;
 
-  width:2160px;
+  width:2220px;
 }
 
 /* ===== Card ===== */
@@ -196,7 +196,7 @@
 120px
 120px
 260px
-200px   /* Status */
+260px   /* Status */
 120px   /* Receipt Saved By */
 130px   /* Print */
 120px   /* Printed By */
@@ -216,7 +216,7 @@
 
   transition:background .15s ease;
 
-  width:2160px;
+  width:2220px;
 }
 
 .card-top:hover{
@@ -249,7 +249,7 @@
         120px
         120px
         260px
-        200px
+        260px
         50px;
 }
 
@@ -267,12 +267,12 @@
         120px
         120px
         260px
-        200px   /* Status */
+        260px   /* Status */
         130px   /* Print */
         140px   /* Inside Lab Printed By */
         60px;   /* Expand */
 
-    width:1900px;
+    width:1960px;
 }
 
 /* ===== Status Tag ===== */
@@ -281,10 +281,14 @@
   align-items:center;
   justify-content:center;
 
-  min-width:108px;
+  flex:0 0 auto;
+  width:max-content;
+  max-width:100%;
+
+  min-width:0;
   height:26px;
 
-  padding:0 14px;
+  padding:0 16px;
 
   border-radius:999px;
 
@@ -604,6 +608,18 @@
     align-items:flex-start;
 }
 
+.card-header-row > .card-col-status,
+.card-top > .card-col-status,
+.card-filter-row > .card-col-status{
+    justify-content:center;
+    padding-left:18px;
+    padding-right:18px;
+}
+
+.card-top > .card-col-status{
+    overflow:visible;
+}
+
 .card-header-row .th-with-filter{
     color:#fff;
 }
@@ -624,7 +640,7 @@
 120px
 120px
 260px
-200px
+260px
 120px
 130px
 120px
@@ -638,7 +654,7 @@
   padding:0;
   border:1px solid #dbe3ef;
   border-top:none;
-  width:2160px;
+  width:2220px;
 }
 
 .card-filter-row > div{

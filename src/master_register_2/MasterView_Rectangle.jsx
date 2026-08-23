@@ -895,7 +895,7 @@ const specialCompleted =
               onToggle={() => setShowColFilters((v) => !v)}
             />
           </div>
-          <div>Status</div>
+          <div className="card-col-status">Status</div>
 
           {showWhatsapp && <div>Receipt Saved By</div>}
 
@@ -1145,8 +1145,10 @@ const specialCompleted =
         >
         {renderCommonCardTop(rec)}
 
-        <div className={`status-tag ${getColor(rec.overallStatus)}`}>
-          {rec.overallStatus}
+        <div className="card-col-status">
+          <span className={`status-tag ${getColor(rec.overallStatus)}`}>
+            {rec.overallStatus}
+          </span>
         </div>
 
         <div>
@@ -1236,14 +1238,16 @@ const specialCompleted =
           >
           {renderCommonCardTop(rec)}
 
-          <div
-            className={
-              rec.workflowCompleted
-                ? "status-tag status-green"
-                : "status-tag status-yellow"
-            }
-          >
-            {rec.workflowCompleted ? "Completed" : "Pending"}
+          <div className="card-col-status">
+            <span
+              className={
+                rec.workflowCompleted
+                  ? "status-tag status-green"
+                  : "status-tag status-yellow"
+              }
+            >
+              {rec.workflowCompleted ? "Completed" : "Pending"}
+            </span>
           </div>
 
           
