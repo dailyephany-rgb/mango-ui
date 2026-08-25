@@ -134,6 +134,7 @@
 240px   /* Name */
 220px   /* Doctor */
 120px   /* Source */
+130px   /* Time Collected */
 120px   /* Phone */
 260px   /* Category */
 260px   /* Status */
@@ -162,7 +163,7 @@
 
   box-shadow:none;
 
-  width:2220px;
+  width:2350px;
 }
 
 /* ===== Card ===== */
@@ -194,6 +195,7 @@
 240px
 220px
 120px
+130px
 120px
 260px
 260px   /* Status */
@@ -216,7 +218,7 @@
 
   transition:background .15s ease;
 
-  width:2220px;
+  width:2350px;
 }
 
 .card-top:hover{
@@ -247,10 +249,13 @@
         240px
         220px
         120px
+        130px
         120px
         260px
         260px
         50px;
+
+    width:1550px;
 }
 
 
@@ -265,6 +270,7 @@
         240px
         220px
         120px
+        130px
         120px
         260px
         260px   /* Status */
@@ -272,7 +278,7 @@
         140px   /* Inside Lab Printed By */
         60px;   /* Expand */
 
-    width:1960px;
+    width:2090px;
 }
 
 /* ===== Status Tag ===== */
@@ -318,6 +324,10 @@
 
 .status-blue {
   background-color: #2563eb; /* Validated */
+}
+
+.time-collected-missing {
+  color: #9ca3af;
 }
 
 /* ===== Dropdown Section ===== */
@@ -638,6 +648,7 @@
 240px
 220px
 120px
+130px
 120px
 260px
 260px
@@ -654,7 +665,7 @@
   padding:0;
   border:1px solid #dbe3ef;
   border-top:none;
-  width:2220px;
+  width:2350px;
 }
 
 .card-filter-row > div{

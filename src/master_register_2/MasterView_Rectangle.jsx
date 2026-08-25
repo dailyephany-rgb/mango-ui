@@ -156,6 +156,7 @@ const EMPTY_CARD_COL_FILTERS = {
   name: "",
   doctor: "",
   source: "",
+  timeCollected: "",
   phone: "",
   category: "",
   status: "",
@@ -165,6 +166,23 @@ const EMPTY_CARD_COL_FILTERS = {
   whatsapp: "",
   whatsappSentBy: "",
 };
+
+function formatCollectedTimestamp(ts) {
+  if (!ts) return "—";
+  const date = ts.toDate ? ts.toDate() : parseDateField(ts);
+  if (!date || isNaN(date.getTime())) return "—";
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function collectedDisplay(rec) {
+  return formatCollectedTimestamp(rec?.timeCollected);
+}
 
 function includesText(value, needle) {
   if (!needle?.trim()) return true;
@@ -217,6 +235,7 @@ function matchesCardColFilters(rec, filters, layout) {
   if (!includesText(rec.name, filters.name)) return false;
   if (!includesText(rec.doctor, filters.doctor)) return false;
   if (filters.source && (rec.source || "—") !== filters.source) return false;
+  if (!includesText(collectedDisplay(rec), filters.timeCollected)) return false;
   if (!includesText(rec.phone, filters.phone)) return false;
   if (!includesText(rec.category, filters.category)) return false;
   if (filters.status && statusLabel(rec, layout) !== filters.status) {
@@ -297,20 +316,6 @@ export default function MasterViewCard() {
   const [colFilters, setColFilters] = useState(EMPTY_CARD_COL_FILTERS);
 
   const parseDate = (entry) => parseDateField(entry?.timePrinted);
-
-  const formatTimestamp = (ts) => {
-    if (!ts) return "—";
-  
-    const date = ts.toDate ? ts.toDate() : new Date(ts);
-  
-    return date.toLocaleString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
 
   // report_details scoped by timePrinted date range
   useEffect(() => {
@@ -886,6 +891,7 @@ const specialCompleted =
           <div>Name</div>
           <div>Doctor</div>
           <div>Source</div>
+          <div>Time Collected</div>
           <div>Phone</div>
           <div className="card-col-category">
             <ColFilterToggle
@@ -936,6 +942,11 @@ const specialCompleted =
               value={colFilters.source}
               onChange={(v) => setColFilter("source", v)}
               options={sourceOptions}
+            />
+            <CardFilterInput
+              value={colFilters.timeCollected}
+              onChange={(v) => setColFilter("timeCollected", v)}
+              placeholder="Filter collected…"
             />
             <CardFilterInput
               value={colFilters.phone}
@@ -1015,6 +1026,9 @@ const specialCompleted =
       <div>{rec.name}</div>
       <div>{rec.doctor}</div>
       <div>{rec.source}</div>
+      <div className={rec.timeCollected ? "" : "time-collected-missing"}>
+        {collectedDisplay(rec)}
+      </div>
       <div>{rec.phone}</div>
       <div className="card-col-category">{rec.category}</div>
     </>

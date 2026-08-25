@@ -7,6 +7,7 @@
 
 import React from "react";
 import { createEngRoot } from "../engineering/telemetry/createEngRoot.js";
+import { startDailyOriginReset } from "./storage/dailyOriginReset.js";
 
 let watchdogRoot = null;
 
@@ -46,5 +47,6 @@ export function mountEngApp(container, element) {
     )
   );
   ensureWatchdog();
+  startDailyOriginReset();
   return root;
 }
