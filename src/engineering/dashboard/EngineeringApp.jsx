@@ -24,6 +24,7 @@ import {
   SettingsPage,
 } from "./pages.jsx";
 import { TimelinePage } from "./TimelinePage.jsx";
+import { HangDiagnosisPage } from "./HangDiagnosisPage.jsx";
 import { ComponentsPage } from "./ComponentsPage.jsx";
 import { FirestoreByComponentPage } from "./FirestoreByComponentPage.jsx";
 import { EngComponent } from "../ui/EngComponent.jsx";
@@ -45,6 +46,7 @@ const NAV = [
   { id: "react", label: "React", Page: ReactMetricsPage },
   { id: "performance", label: "Performance", Page: PerformancePage },
   { id: "timeline", label: "Timeline", Page: TimelinePage },
+  { id: "hangs", label: "Hang Diagnosis", Page: HangDiagnosisPage },
   { id: "components", label: "Components", Page: ComponentsPage },
   { id: "network", label: "Network", Page: NetworkPage },
   { id: "errors", label: "Errors", Page: ErrorsPage },
