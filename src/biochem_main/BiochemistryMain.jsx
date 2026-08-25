@@ -20,6 +20,7 @@ import { requireLogin } from "../auth/Authguard.js";
 import UserMenu from "../auth/UserMenu";
 import {
   getISTLocaleString,
+  formatTimeCollected,
 } from "../shared/utils/dates.js";
 import { normalizeSource } from "../shared/utils/source.js";
 import { compositeId } from "../shared/utils/ids.js";
@@ -56,6 +57,7 @@ const CURRENT_DEPT = "Bio-Chemistry";
 const EMPTY_COL_FILTERS = {
   regNo: "",
   diagnosticNo: "",
+  timeCollected: "",
   name: "",
   source: "",
   age: "",
@@ -76,6 +78,13 @@ function matchesColFilters(patient, colFilters) {
 
   if (!includes(patient.regNo, colFilters.regNo)) return false;
   if (!includes(patient.diagnosticNo, colFilters.diagnosticNo)) return false;
+  if (
+    !includes(
+      formatTimeCollected(patient.timeCollected),
+      colFilters.timeCollected
+    )
+  )
+    return false;
   if (!includes(patient.name, colFilters.name)) return false;
   if (!includes(patient.source, colFilters.source)) return false;
   if (!includes(patient.age, colFilters.age)) return false;
@@ -533,6 +542,7 @@ export default function BiochemistryMain() {
                 <tr>
                   <th>Reg No</th>
                   <th>Diag No</th>
+                  <th className="col-time-collected">Time Collected</th>
                   <th>
                     <span className="th-with-filter">
                       Patient Name
@@ -579,6 +589,16 @@ export default function BiochemistryMain() {
                         value={colFilters.diagnosticNo}
                         onChange={(e) =>
                           setColFilter("diagnosticNo", e.target.value)
+                        }
+                      />
+                    </th>
+                    <th className="col-filter-cell">
+                      <input
+                        type="text"
+                        placeholder="Filter time…"
+                        value={colFilters.timeCollected}
+                        onChange={(e) =>
+                          setColFilter("timeCollected", e.target.value)
                         }
                       />
                     </th>
@@ -669,7 +689,7 @@ export default function BiochemistryMain() {
               </thead>
               <VirtualizedTableBody
                 items={filteredPatients}
-                columnCount={14}
+                columnCount={15}
                 renderRow={(p) => (
                   <BiochemRegisterRow
                     key={p.compositeKey}
@@ -770,6 +790,9 @@ const BiochemRegisterRow = memo(function BiochemRegisterRow({
         {p.regNo || "—"}
       </td>
       <td>{p.diagnosticNo || "—"}</td>
+      <td className="col-time-collected">
+        {formatTimeCollected(p.timeCollected)}
+      </td>
       <td>{p.name || "—"}</td>
       <td>{p.source || "—"}</td>
       <td>{p.age || "—"}</td>

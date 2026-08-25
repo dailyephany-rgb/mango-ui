@@ -16,6 +16,7 @@ import coagRouting from "../coag_testRouting.json";
 // --- IMPORT FOR DEDUCTION ---
 import { handleInventoryDeduction } from "../inventory/inventorymapping";
 import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
+import { formatTimeCollected } from "../shared/utils/dates.js";
 import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
 import {
   EMPTY_DEPT_COL_FILTERS,
@@ -657,6 +658,7 @@ const logout = () => {
                 <tr>
                   <th className="sticky-col">Reg No</th>
                   <th className="sticky-col">Diag No</th>
+                  <th className="sticky-col">Time Collected</th>
                   <th className="sticky-col">
                     <ColFilterToggle
                       label="Patient Name"
@@ -691,6 +693,11 @@ const logout = () => {
                       value={colFilters.diagnosticNo}
                       onChange={(v) => setColFilter("diagnosticNo", v)}
                       placeholder="Filter diag…"
+                    />
+                    <ColFilterInput
+                      value={colFilters.timeCollected}
+                      onChange={(v) => setColFilter("timeCollected", v)}
+                      placeholder="Filter time…"
                     />
                     <ColFilterInput
                       value={colFilters.name}
@@ -743,7 +750,7 @@ const logout = () => {
               </thead>
               <VirtualizedTableBody
                 items={filteredPatients}
-                columnCount={17}
+                columnCount={18}
                 renderRow={(p) => (
                   <CoagRegisterRow
                     key={p.compositeKey}
@@ -894,6 +901,7 @@ const CoagRegisterRow = memo(function CoagRegisterRow({
         {p.regNo || "-"}
       </td>
       <td className="sticky-col">{p.diagnosticNo || "-"}</td>
+      <td className="sticky-col">{formatTimeCollected(p.timeCollected)}</td>
       <td className="sticky-col col-name">{p.name || "-"}</td>
       <td>
         {p.age} {p.ageUnit}

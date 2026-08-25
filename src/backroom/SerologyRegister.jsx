@@ -13,6 +13,7 @@ import {
 
 import routing from "../backroom_routing.json";
 import "./Backroom.css";
+import { formatTimeCollected } from "../shared/utils/dates.js";
 import { normalizeSource } from "../shared/utils/source.js";
 import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
 import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
@@ -513,9 +514,10 @@ const testsForRegister = routing.SerologyRegister || [
         <table className="backroom-table">
           <thead>
             <tr>
-              <th className="sticky-col">Reg No</th>
-              <th className="sticky-col">Diag No</th>
-              <th className="sticky-col">
+              <th className="sticky-col col-regno">Reg No</th>
+              <th className="sticky-col col-diagno">Diag No</th>
+              <th className="sticky-col col-time-collected">Time Collected</th>
+              <th className="sticky-col col-name">
                 <ColFilterToggle
                   label="Patient Name"
                   open={showColFilters}
@@ -540,16 +542,25 @@ const testsForRegister = routing.SerologyRegister || [
             {showColFilters ? (
               <tr className="col-filter-row">
                 <ColFilterInput
+                  className="sticky-col col-regno"
                   value={colFilters.regNo}
                   onChange={(v) => setColFilter("regNo", v)}
                   placeholder="Filter reg…"
                 />
                 <ColFilterInput
+                  className="sticky-col col-diagno"
                   value={colFilters.diagnosticNo}
                   onChange={(v) => setColFilter("diagnosticNo", v)}
                   placeholder="Filter diag…"
                 />
                 <ColFilterInput
+                  className="sticky-col col-time-collected"
+                  value={colFilters.timeCollected}
+                  onChange={(v) => setColFilter("timeCollected", v)}
+                  placeholder="Filter time…"
+                />
+                <ColFilterInput
+                  className="sticky-col col-name"
                   value={colFilters.name}
                   onChange={(v) => setColFilter("name", v)}
                   placeholder="Filter name…"
@@ -599,7 +610,7 @@ const testsForRegister = routing.SerologyRegister || [
           </thead>
           <VirtualizedTableBody
             items={filteredEntries}
-            columnCount={16}
+            columnCount={17}
             renderRow={(e) => {
               const compositeKey = e.compositeKey;
               const saved = e.status === "saved";
@@ -614,9 +625,10 @@ const testsForRegister = routing.SerologyRegister || [
 
               return (
                 <tr key={compositeKey} className={saved ? "row-green" : scanned ? "row-yellow" : "row-normal"}>
-                  <td className="sticky-col" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
-                  <td className="sticky-col" style={{ color: "#475569" }}>{e.diagnosticNo}</td>
-                  <td className="sticky-col">{e.name}</td>
+                  <td className="sticky-col col-regno" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
+                  <td className="sticky-col col-diagno" style={{ color: "#475569" }}>{e.diagnosticNo}</td>
+                  <td className="sticky-col col-time-collected">{formatTimeCollected(e.timeCollected)}</td>
+                  <td className="sticky-col col-name">{e.name}</td>
                   <td>{e.age} {e.ageUnit}</td>
                   <td>{e.gender}</td>
                   <td>{e.source}</td>

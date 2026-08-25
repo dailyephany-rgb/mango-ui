@@ -13,6 +13,7 @@ import {
 import { handleInventoryDeduction } from "../inventory/inventorymapping";
 import UserMenu from "../auth/UserMenu";
 import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
+import { formatTimeCollected } from "../shared/utils/dates.js";
 import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
 import {
   EMPTY_DEPT_COL_FILTERS,
@@ -507,6 +508,7 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
                   <tr>
                     <th className="sticky-col">Reg No</th>
                     <th className="sticky-col">Diag No</th>
+                    <th className="sticky-col">Time Collected</th>
                     <th className="sticky-col">
                       <ColFilterToggle
                         label="Patient Name"
@@ -540,6 +542,11 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
                         value={colFilters.diagnosticNo}
                         onChange={(v) => setColFilter("diagnosticNo", v)}
                         placeholder="Filter diag…"
+                      />
+                      <ColFilterInput
+                        value={colFilters.timeCollected}
+                        onChange={(v) => setColFilter("timeCollected", v)}
+                        placeholder="Filter time…"
                       />
                       <ColFilterInput
                         value={colFilters.name}
@@ -601,7 +608,7 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
                   <tbody>
                     <tr>
                       <td
-                        colSpan="15"
+                        colSpan="17"
                         style={{ textAlign: "center", padding: 20 }}
                       >
                         No Haematology entries found.
@@ -611,7 +618,7 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
                 ) : (
                 <VirtualizedTableBody
                   items={filteredPatients}
-                  columnCount={16}
+                  columnCount={17}
                   renderRow={(p) => (
                     <HaemRegisterRow
                       key={p.compositeKey}
@@ -692,6 +699,7 @@ const HaemRegisterRow = memo(function HaemRegisterRow({
         {p.regNo}
       </td>
       <td className="sticky-col">{p.diagnosticNo || p.accessionNo}</td>
+      <td className="sticky-col">{formatTimeCollected(p.timeCollected)}</td>
       <td className="sticky-col">{p.name}</td>
       <td>
         {p.age} {p.ageUnit ? `(${p.ageUnit})` : ""}

@@ -888,10 +888,10 @@ const specialCompleted =
         <div className={`card-header-row ${layoutClass}`}>
           <div>Reg No</div>
           <div>Diagnostic</div>
+          <div>Time Collected</div>
           <div>Name</div>
           <div>Doctor</div>
           <div>Source</div>
-          <div>Time Collected</div>
           <div>Phone</div>
           <div className="card-col-category">
             <ColFilterToggle
@@ -929,6 +929,11 @@ const specialCompleted =
               placeholder="Filter diag…"
             />
             <CardFilterInput
+              value={colFilters.timeCollected}
+              onChange={(v) => setColFilter("timeCollected", v)}
+              placeholder="Filter collected…"
+            />
+            <CardFilterInput
               value={colFilters.name}
               onChange={(v) => setColFilter("name", v)}
               placeholder="Filter name…"
@@ -942,11 +947,6 @@ const specialCompleted =
               value={colFilters.source}
               onChange={(v) => setColFilter("source", v)}
               options={sourceOptions}
-            />
-            <CardFilterInput
-              value={colFilters.timeCollected}
-              onChange={(v) => setColFilter("timeCollected", v)}
-              placeholder="Filter collected…"
             />
             <CardFilterInput
               value={colFilters.phone}
@@ -1023,12 +1023,18 @@ const specialCompleted =
     <>
       <div>{rec.regNo}</div>
       <div>{rec.diagnosticNo || "—"}</div>
+      <div
+        className={
+          rec.timeCollected
+            ? "card-col-time-collected"
+            : "card-col-time-collected time-collected-missing"
+        }
+      >
+        {collectedDisplay(rec)}
+      </div>
       <div>{rec.name}</div>
       <div>{rec.doctor}</div>
       <div>{rec.source}</div>
-      <div className={rec.timeCollected ? "" : "time-collected-missing"}>
-        {collectedDisplay(rec)}
-      </div>
       <div>{rec.phone}</div>
       <div className="card-col-category">{rec.category}</div>
     </>

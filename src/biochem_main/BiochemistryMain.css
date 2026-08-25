@@ -225,6 +225,11 @@
   background: #f1f5f9 !important;
 }
 
+.col-time-collected {
+  min-width: 190px;
+  white-space: nowrap;
+}
+
 .col-filter-actions {
   text-align: center;
 }

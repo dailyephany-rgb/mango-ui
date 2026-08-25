@@ -199,14 +199,23 @@
   min-width: 110px;
 }
 
-/* Column 3: Patient Name (220px left) */
+/* Column 3: Time Collected (220px left) */
 .haem-table th:nth-child(3),
 .haem-table td:nth-child(3) {
   left: 220px;
+  width: 190px;
+  min-width: 190px;
+  white-space: nowrap;
+}
+
+/* Column 4: Patient Name (410px left) */
+.haem-table th:nth-child(4),
+.haem-table td:nth-child(4) {
+  left: 410px;
   width: 180px;
   min-width: 180px;
   white-space: normal;
-  border-right: 2px solid #cbd5e1 !important; /* Visual separator */
+  border-right: 2px solid #cbd5e1 !important;
 }
 
 /* Sync Row Colors for Sticky Cells */
@@ -215,73 +224,73 @@
 
 /* --- MIDDLE COLUMNS (FIXED COMPRESSION) --- */
 
-/* 4. Age */
-.haem-table th:nth-child(4),
-.haem-table td:nth-child(4) {
+/* 5. Age */
+.haem-table th:nth-child(5),
+.haem-table td:nth-child(5) {
   width: 100px;
 }
 
-/* 5. Gender */
-.haem-table th:nth-child(5),
-.haem-table td:nth-child(5) {
+/* 6. Gender */
+.haem-table th:nth-child(6),
+.haem-table td:nth-child(6) {
   width: 90px;
 }
 
-/* 6. Source */
-.haem-table th:nth-child(6),
-.haem-table td:nth-child(6) {
+/* 7. Source */
+.haem-table th:nth-child(7),
+.haem-table td:nth-child(7) {
   width: 120px;
 }
 
-/* 7. Selected Tests */
-.haem-table th:nth-child(7),
-.haem-table td:nth-child(7) {
+/* 8. Selected Tests */
+.haem-table th:nth-child(8),
+.haem-table td:nth-child(8) {
   width: 260px; 
   white-space: normal; 
 }
 
-/* 8, 9, 10. Test Columns */
-.haem-table th:nth-child(8), .haem-table td:nth-child(8),
+/* 9, 10, 11. Test Columns */
 .haem-table th:nth-child(9), .haem-table td:nth-child(9),
-.haem-table th:nth-child(10), .haem-table td:nth-child(10) {
+.haem-table th:nth-child(10), .haem-table td:nth-child(10),
+.haem-table th:nth-child(11), .haem-table td:nth-child(11) {
   width: 120px; 
 }
 
-/* 11. SCANNED */
-.haem-table th:nth-child(11),
-.haem-table td:nth-child(11) {
+/* 12. SCANNED */
+.haem-table th:nth-child(12),
+.haem-table td:nth-child(12) {
   width: 100px;
 }
 
-/* 12. MACHINE */
-.haem-table th:nth-child(12),
-.haem-table td:nth-child(12) {
+/* 13. MACHINE */
+.haem-table th:nth-child(13),
+.haem-table td:nth-child(13) {
   width: 110px;
 }
 
-/* 13. STATUS */
-.haem-table th:nth-child(13),
-.haem-table td:nth-child(13) {
+/* 14. STATUS */
+.haem-table th:nth-child(14),
+.haem-table td:nth-child(14) {
   width: 120px;
 }
 
-/* 14. SAVED BY */
-.haem-table th:nth-child(14),
-.haem-table td:nth-child(14) {
+/* 15. SAVED BY */
+.haem-table th:nth-child(15),
+.haem-table td:nth-child(15) {
   width: 140px;
   min-width: 140px;
 }
 
-/* 15. CRITICAL */
-.haem-table th:nth-child(15),
-.haem-table td:nth-child(15) {
+/* 16. CRITICAL */
+.haem-table th:nth-child(16),
+.haem-table td:nth-child(16) {
 width: 170px;
 min-width: 170px;
 }
 
-/* 16. ACTION */
-.haem-table th:nth-child(16),
-.haem-table td:nth-child(16) {
+/* 17. ACTION */
+.haem-table th:nth-child(17),
+.haem-table td:nth-child(17) {
   width: 120px;
   min-width: 120px;
 }

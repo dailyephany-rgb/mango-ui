@@ -27,6 +27,7 @@ import {
   getLocalDateString,
   localDayStart,
   localDayEndExclusive,
+  formatTimeCollected,
 } from "../shared/utils/dates.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useScopedMasterEntries } from "../shared/hooks/useScopedMasterEntries.js";
@@ -433,6 +434,7 @@ export default function InsideLabRegister() {
             <tr>
               <th>Reg No</th>
               <th>Diagnostic No</th>
+              <th className="col-time-collected">Time Collected</th>
               <th>
                 <ColFilterToggle
                   label="Name"
@@ -459,6 +461,11 @@ export default function InsideLabRegister() {
                   value={colFilters.diagnosticNo}
                   onChange={(v) => setColFilter("diagnosticNo", v)}
                   placeholder="Filter diag…"
+                />
+                <ColFilterInput
+                  value={colFilters.timeCollected}
+                  onChange={(v) => setColFilter("timeCollected", v)}
+                  placeholder="Filter time…"
                 />
                 <ColFilterInput
                   value={colFilters.name}
@@ -511,6 +518,9 @@ export default function InsideLabRegister() {
                 <tr key={uniqueId} className={isSavedInDB ? "row-green" : hasLocalChanges ? "row-yellow" : ""}>
                   <td style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo || e.id}</td>
                   <td>{e.diagnosticNo || e.accNo || "—"}</td>
+                  <td className="col-time-collected">
+                    {formatTimeCollected(e.timeCollected)}
+                  </td>
                   <td>{e.name}</td>
                   <td>{e.age} {e.ageUnit} / {e.gender || e.sex}</td>
                   <td>{e.doctor}</td>

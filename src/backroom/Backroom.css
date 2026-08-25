@@ -199,23 +199,31 @@
 }
 
 /* Column 1: Reg No */
-.backroom-table th:nth-child(1), 
-.backroom-table td:nth-child(1) { 
+.backroom-table th.col-regno,
+.backroom-table td.col-regno { 
   left: 0; 
   min-width: 100px; 
 }
 
 /* Column 2: Diag No */
-.backroom-table th:nth-child(2), 
-.backroom-table td:nth-child(2) { 
+.backroom-table th.col-diagno,
+.backroom-table td.col-diagno { 
   left: 100px; 
   min-width: 100px; 
 }
 
-/* Column 3: Name - NARROWED BORDER HERE */
-.backroom-table th:nth-child(3), 
-.backroom-table td:nth-child(3) { 
+/* Column 3: Time Collected */
+.backroom-table th.col-time-collected,
+.backroom-table td.col-time-collected { 
   left: 200px; 
+  min-width: 190px;
+  white-space: nowrap;
+}
+
+/* Column 4: Name */
+.backroom-table th.col-name,
+.backroom-table td.col-name { 
+  left: 390px; 
   min-width: 180px; 
   border-right: 1px solid #e5e7eb !important; 
 }

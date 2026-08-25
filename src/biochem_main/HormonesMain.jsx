@@ -18,6 +18,7 @@ import {
   handleInventoryDeduction,
   getVitrosDeductibleTests
 } from "../inventory/inventorymapping";
+import { formatTimeCollected } from "../shared/utils/dates.js";
 import { normalizeSource } from "../shared/utils/source.js";
 import { compositeId } from "../shared/utils/ids.js";
 import { getTestName } from "../shared/utils/tests.js";
@@ -43,6 +44,7 @@ const CURRENT_DEPT = "Hormones";
 const EMPTY_COL_FILTERS = {
   regNo: "",
   diagnosticNo: "",
+  timeCollected: "",
   name: "",
   source: "",
   age: "",
@@ -63,6 +65,13 @@ function matchesColFilters(patient, colFilters) {
 
   if (!includes(patient.regNo, colFilters.regNo)) return false;
   if (!includes(patient.diagnosticNo, colFilters.diagnosticNo)) return false;
+  if (
+    !includes(
+      formatTimeCollected(patient.timeCollected),
+      colFilters.timeCollected
+    )
+  )
+    return false;
   if (!includes(patient.name, colFilters.name)) return false;
   if (!includes(patient.source, colFilters.source)) return false;
   if (!includes(patient.age, colFilters.age)) return false;
@@ -442,6 +451,7 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
                 <tr>
                   <th>Reg No</th>
                   <th>Diag No</th>
+                  <th className="col-time-collected">Time Collected</th>
                   <th>
                     <span className="th-with-filter">
                       Patient Name
@@ -487,6 +497,16 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
                         value={colFilters.diagnosticNo}
                         onChange={(e) =>
                           setColFilter("diagnosticNo", e.target.value)
+                        }
+                      />
+                    </th>
+                    <th className="col-filter-cell">
+                      <input
+                        type="text"
+                        placeholder="Filter time…"
+                        value={colFilters.timeCollected}
+                        onChange={(e) =>
+                          setColFilter("timeCollected", e.target.value)
                         }
                       />
                     </th>
@@ -576,7 +596,7 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
               </thead>
               <VirtualizedTableBody
                 items={filteredPatients}
-                columnCount={13}
+                columnCount={14}
                 renderRow={(p) => (
                   <HormonesRegisterRow
                     key={p.compositeKey}
@@ -637,6 +657,9 @@ const HormonesRegisterRow = memo(function HormonesRegisterRow({
         {p.regNo || "—"}
       </td>
       <td>{p.diagnosticNo || "—"}</td>
+      <td className="col-time-collected">
+        {formatTimeCollected(p.timeCollected)}
+      </td>
       <td>{p.name || "—"}</td>
       <td>{p.age || "—"}</td>
       <td>{p.gender || "-"}</td>

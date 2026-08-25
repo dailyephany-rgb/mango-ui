@@ -131,10 +131,10 @@
   grid-template-columns:
 110px   /* Reg */
 140px   /* Diagnostic */
+190px   /* Time Collected */
 240px   /* Name */
 220px   /* Doctor */
 120px   /* Source */
-130px   /* Time Collected */
 120px   /* Phone */
 260px   /* Category */
 260px   /* Status */
@@ -163,7 +163,7 @@
 
   box-shadow:none;
 
-  width:2350px;
+  width:2410px;
 }
 
 /* ===== Card ===== */
@@ -192,10 +192,10 @@
   grid-template-columns:
 110px
 140px
+190px
 240px
 220px
 120px
-130px
 120px
 260px
 260px   /* Status */
@@ -218,7 +218,7 @@
 
   transition:background .15s ease;
 
-  width:2350px;
+  width:2410px;
 }
 
 .card-top:hover{
@@ -246,16 +246,16 @@
     grid-template-columns:
         110px
         140px
+        190px
         240px
         220px
         120px
-        130px
         120px
         260px
         260px
         50px;
 
-    width:1550px;
+    width:1610px;
 }
 
 
@@ -267,10 +267,10 @@
     grid-template-columns:
         110px
         140px
+        190px
         240px
         220px
         120px
-        130px
         120px
         260px
         260px   /* Status */
@@ -278,7 +278,7 @@
         140px   /* Inside Lab Printed By */
         60px;   /* Expand */
 
-    width:2090px;
+    width:2150px;
 }
 
 /* ===== Status Tag ===== */
@@ -324,6 +324,12 @@
 
 .status-blue {
   background-color: #2563eb; /* Validated */
+}
+
+.card-header-row > .card-col-time-collected,
+.card-top > .card-col-time-collected{
+    overflow:visible;
+    text-overflow:clip;
 }
 
 .time-collected-missing {
@@ -645,10 +651,10 @@
   grid-template-columns:
 110px
 140px
+190px
 240px
 220px
 120px
-130px
 120px
 260px
 260px
@@ -665,7 +671,7 @@
   padding:0;
   border:1px solid #dbe3ef;
   border-top:none;
-  width:2350px;
+  width:2410px;
 }
 
 .card-filter-row > div{

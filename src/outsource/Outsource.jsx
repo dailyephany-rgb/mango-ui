@@ -36,6 +36,7 @@ import {
   getLocalDateString,
   localDayStart,
   localDayEndExclusive,
+  formatTimeCollected,
 } from "../shared/utils/dates.js";
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
@@ -578,6 +579,7 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
             <tr>
               <th className="sticky-col">Reg No</th>
               <th className="sticky-col">Diag No</th>
+              <th className="sticky-col">Time Collected</th>
               <th className="sticky-col">
                 <ColFilterToggle
                   label="Name"
@@ -615,6 +617,11 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
                   value={colFilters.diagnosticNo}
                   onChange={(v) => setColFilter("diagnosticNo", v)}
                   placeholder="Filter diag…"
+                />
+                <ColFilterInput
+                  value={colFilters.timeCollected}
+                  onChange={(v) => setColFilter("timeCollected", v)}
+                  placeholder="Filter time…"
                 />
                 <ColFilterInput
                   value={colFilters.name}
@@ -727,6 +734,7 @@ if (newStatus === "Scanned" && !existingDoc.exists()) {
                 >
                   <td className="sticky-col">{e.regNo}</td>
                   <td className="sticky-col">{e.accessionNo}</td>
+                  <td className="sticky-col">{formatTimeCollected(e.timeCollected)}</td>
                   <td className="sticky-col">{e.name}</td>
                   <td>{sTime ? sTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "—"}</td>
                   <td>{e.age} {e.ageUnit}</td>

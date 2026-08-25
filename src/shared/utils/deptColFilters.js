@@ -1,8 +1,11 @@
 /** Shared ▼ column-filter helpers for dept register tables. */
 
+import { formatTimeCollected } from "./dates.js";
+
 export const EMPTY_DEPT_COL_FILTERS = {
   regNo: "",
   diagnosticNo: "",
+  timeCollected: "",
   name: "",
   age: "",
   gender: "",
@@ -75,6 +78,14 @@ export function matchesDeptColFilters(patient, colFilters, options = {}) {
   if (!includesColFilter(patient.regNo, colFilters.regNo)) return false;
   if (!includesColFilter(getDiag(patient), colFilters.diagnosticNo))
     return false;
+  if (
+    !includesColFilter(
+      formatTimeCollected(patient.timeCollected),
+      colFilters.timeCollected
+    )
+  ) {
+    return false;
+  }
   if (!includesColFilter(patient.name, colFilters.name)) return false;
   if (!includesColFilter(getAge(patient), colFilters.age)) return false;
   if (!includesColFilter(patient.gender || patient.sex, colFilters.gender))

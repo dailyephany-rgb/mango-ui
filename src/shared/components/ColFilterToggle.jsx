@@ -26,9 +26,9 @@ export default function ColFilterToggle({
   );
 }
 
-export function ColFilterInput({ value, onChange, placeholder }) {
+export function ColFilterInput({ value, onChange, placeholder, className }) {
   return (
-    <th className="col-filter-cell">
+    <th className={`col-filter-cell${className ? ` ${className}` : ""}`}>
       <input
         type="text"
         placeholder={placeholder}

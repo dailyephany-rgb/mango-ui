@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import routing from "../backroom_routing.json";
 import "./Backroom.css";
+import { formatTimeCollected } from "../shared/utils/dates.js";
 import { normalizeSource } from "../shared/utils/source.js";
 import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
 import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
@@ -59,8 +60,9 @@ const tableFixStyles = `
   white-space: nowrap; 
 }
 .col-regno { left: 0px; min-width: 90px; }
-.col-diagno { left: 90px; min-width: 110px; } 
-.col-name  { left: 200px; min-width: 180px; } 
+.col-diagno { left: 90px; min-width: 110px; }
+.col-time-collected { left: 200px; min-width: 190px; }
+.col-name  { left: 390px; min-width: 180px; } 
 .backroom-table thead th.sticky-col {
   z-index: 3;
   background-color: #f8fafc; 
@@ -491,7 +493,7 @@ export default function UrineAnalysisRegister() {
   }, [mergedEntries, regSearch, sourceFilter, dateFrom, dateTo, colFilters]);
 
   const urineTableColumnCount =
-    7 + parameterFields.length + routineExtraFields.length + 5;
+    8 + parameterFields.length + routineExtraFields.length + 5;
 
   return (
     <div className="register-section">
@@ -520,6 +522,7 @@ export default function UrineAnalysisRegister() {
             <tr>
               <th className="sticky-col col-regno">Reg No</th>
               <th className="sticky-col col-diagno">Diag No</th>
+              <th className="sticky-col col-time-collected">Time Collected</th>
               <th className="sticky-col col-name">
                 <ColFilterToggle
                   label="Name"
@@ -540,16 +543,25 @@ export default function UrineAnalysisRegister() {
             {showColFilters ? (
               <tr className="col-filter-row">
                 <ColFilterInput
+                  className="sticky-col col-regno"
                   value={colFilters.regNo}
                   onChange={(v) => setColFilter("regNo", v)}
                   placeholder="Filter reg…"
                 />
                 <ColFilterInput
+                  className="sticky-col col-diagno"
                   value={colFilters.diagnosticNo}
                   onChange={(v) => setColFilter("diagnosticNo", v)}
                   placeholder="Filter diag…"
                 />
                 <ColFilterInput
+                  className="sticky-col col-time-collected"
+                  value={colFilters.timeCollected}
+                  onChange={(v) => setColFilter("timeCollected", v)}
+                  placeholder="Filter time…"
+                />
+                <ColFilterInput
+                  className="sticky-col col-name"
                   value={colFilters.name}
                   onChange={(v) => setColFilter("name", v)}
                   placeholder="Filter name…"
@@ -627,6 +639,7 @@ export default function UrineAnalysisRegister() {
                 <tr key={compositeKey} className={rowClass}>
                   <td className="sticky-col col-regno" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
                   <td className="sticky-col col-diagno">{e.diagnosticNo}</td>
+                  <td className="sticky-col col-time-collected">{formatTimeCollected(e.timeCollected)}</td>
                   <td className="sticky-col col-name">{e.name}</td>
                   <td>{e.age} {e.ageUnit}</td><td>{e.gender}</td><td>{e.source}</td>
                   <td>{getUrineSelectedTests(e).map((t) => (typeof t === "object" ? t.test : t)).join(", ") || "—"}</td>

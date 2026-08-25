@@ -162,26 +162,27 @@ thead .sticky-col {
 
 .backroom-table th:nth-child(1), .backroom-table td:nth-child(1) { left: 0; min-width: 100px; }
 .backroom-table th:nth-child(2), .backroom-table td:nth-child(2) { left: 100px; min-width: 100px; }
-.backroom-table th:nth-child(3), .backroom-table td:nth-child(3) { left: 200px; min-width: 150px; }
-.backroom-table th:nth-child(4), .backroom-table td:nth-child(4) { 
-  left: 350px; 
+.backroom-table th:nth-child(3), .backroom-table td:nth-child(3) { left: 200px; min-width: 190px; white-space: nowrap; }
+.backroom-table th:nth-child(4), .backroom-table td:nth-child(4) { left: 390px; min-width: 150px; }
+.backroom-table th:nth-child(5), .backroom-table td:nth-child(5) { 
+  left: 540px; 
   min-width: 100px; 
   border-right: 1px solid #ddd; 
 }
 
 /* Widths for non-sticky columns */
-.backroom-table th:nth-child(10), .backroom-table td:nth-child(10) { min-width: 150px; }
-.backroom-table th:nth-child(11), .backroom-table td:nth-child(11) { min-width: 120px; }
-.backroom-table th:nth-child(12), .backroom-table td:nth-child(12) { min-width: 140px; }
-.backroom-table th:nth-child(13), .backroom-table td:nth-child(13) { min-width: 100px; } /* TAT Column */
+.backroom-table th:nth-child(11), .backroom-table td:nth-child(11) { min-width: 150px; }
+.backroom-table th:nth-child(12), .backroom-table td:nth-child(12) { min-width: 120px; }
+.backroom-table th:nth-child(13), .backroom-table td:nth-child(13) { min-width: 140px; }
+.backroom-table th:nth-child(14), .backroom-table td:nth-child(14) { min-width: 100px; }
 
-/* 🔹 FIX: Status column (14th) min-width to prevent dropdown clipping */
-.backroom-table th:nth-child(14), .backroom-table td:nth-child(14) { 
+/* Status / action columns min-width to prevent dropdown clipping */
+.backroom-table th:nth-child(15), .backroom-table td:nth-child(15) { 
     min-width: 130px !important; 
 }
-.backroom-table td:nth-child(12),
 .backroom-table td:nth-child(13),
-.backroom-table td:nth-child(14) {
+.backroom-table td:nth-child(14),
+.backroom-table td:nth-child(15) {
   text-align: center;
   vertical-align: middle;
 }

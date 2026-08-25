@@ -33,6 +33,7 @@ export const DEPT_REGISTER_ROW_FIELDS = [
   "regNo",
   "diagnosticNo",
   "accessionNo",
+  "timeCollected",
   "name",
   "source",
   "age",

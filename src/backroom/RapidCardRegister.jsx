@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import routing from "../backroom_routing.json";
 import "./Backroom.css";
+import { formatTimeCollected } from "../shared/utils/dates.js";
 import { normalizeSource } from "../shared/utils/source.js";
 import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
 import { filterAndSortRegisterPatients } from "../shared/utils/filterRegisterPatients.js";
@@ -86,9 +87,10 @@ const overflowStyles = `
     z-index: 10;
     background-color: #eff6ff !important;
   }
-  .backroom-table th:nth-child(1), .backroom-table td:nth-child(1) { left: 0; min-width: 100px; }
-  .backroom-table th:nth-child(2), .backroom-table td:nth-child(2) { left: 100px; min-width: 110px; }
-  .backroom-table th:nth-child(3), .backroom-table td:nth-child(3) { left: 210px; min-width: 180px; box-shadow: 2px 0 5px -2px rgba(0,0,0,0.1); }
+  .backroom-table .col-regno { left: 0; min-width: 100px; }
+  .backroom-table .col-diagno { left: 100px; min-width: 110px; }
+  .backroom-table .col-time-collected { left: 210px; min-width: 190px; white-space: nowrap; }
+  .backroom-table .col-name { left: 400px; min-width: 180px; box-shadow: 2px 0 5px -2px rgba(0,0,0,0.1); }
   .row-green .sticky-col { background-color: #dcfce7 !important; }
   .row-yellow .sticky-col { background-color: #fff7cc !important; }
   .row-normal .sticky-col { background-color: white !important; }
@@ -589,9 +591,10 @@ const [pendingCriticalMap, setPendingCriticalMap] = usePersistedObjectState("rap
         <table className="backroom-table">
            <thead>
             <tr>
-              <th className="sticky-col" rowSpan={2}>Reg No</th>
-              <th className="sticky-col" rowSpan={2}>Diag No</th>
-              <th className="sticky-col" rowSpan={2}>
+              <th className="sticky-col col-regno" rowSpan={2}>Reg No</th>
+              <th className="sticky-col col-diagno" rowSpan={2}>Diag No</th>
+              <th className="sticky-col col-time-collected" rowSpan={2}>Time Collected</th>
+              <th className="sticky-col col-name" rowSpan={2}>
                 <ColFilterToggle
                   label="Name"
                   open={showColFilters}
@@ -637,16 +640,25 @@ const [pendingCriticalMap, setPendingCriticalMap] = usePersistedObjectState("rap
             {showColFilters ? (
               <tr className="col-filter-row">
                 <ColFilterInput
+                  className="sticky-col col-regno"
                   value={colFilters.regNo}
                   onChange={(v) => setColFilter("regNo", v)}
                   placeholder="Filter reg…"
                 />
                 <ColFilterInput
+                  className="sticky-col col-diagno"
                   value={colFilters.diagnosticNo}
                   onChange={(v) => setColFilter("diagnosticNo", v)}
                   placeholder="Filter diag…"
                 />
                 <ColFilterInput
+                  className="sticky-col col-time-collected"
+                  value={colFilters.timeCollected}
+                  onChange={(v) => setColFilter("timeCollected", v)}
+                  placeholder="Filter time…"
+                />
+                <ColFilterInput
+                  className="sticky-col col-name"
                   value={colFilters.name}
                   onChange={(v) => setColFilter("name", v)}
                   placeholder="Filter name…"
@@ -689,7 +701,7 @@ const [pendingCriticalMap, setPendingCriticalMap] = usePersistedObjectState("rap
           </thead>
           <VirtualizedTableBody
             items={filteredEntries}
-            columnCount={25}
+            columnCount={26}
             renderRow={(e) => {
              const scanned = e.scanned === "Yes";
              const saved = e.status === "saved";
@@ -707,9 +719,10 @@ const [pendingCriticalMap, setPendingCriticalMap] = usePersistedObjectState("rap
               const activeKeys = mapSelectedTestsToResultKeys(e);
               return (
                 <tr key={e.compositeKey} className={saved ? "row-green" : scanned ? "row-yellow" : "row-normal"}>
-                  <td className="sticky-col" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
-                  <td className="sticky-col" style={{ color: "#475569" }}>{e.diagnosticNo}</td>
-                  <td className="sticky-col">{e.name}</td>
+                  <td className="sticky-col col-regno" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
+                  <td className="sticky-col col-diagno" style={{ color: "#475569" }}>{e.diagnosticNo}</td>
+                  <td className="sticky-col col-time-collected">{formatTimeCollected(e.timeCollected)}</td>
+                  <td className="sticky-col col-name">{e.name}</td>
                   <td>{e.age} {e.ageUnit}</td>
                   <td>{e.source}</td>
                   <td style={{fontSize:'11px'}}>{getRapidSelectedTests(e.selectedTests || []).map(t => (typeof t === "object" ? t.test : t)).join(", ")}</td>

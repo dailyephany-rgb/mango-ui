@@ -48,6 +48,19 @@ export function parseDateField(field) {
   return null;
 }
 
+/** Display master_register.timeCollected in department tables (or "—"). */
+export function formatTimeCollected(ts) {
+  const date = parseDateField(ts);
+  if (!date || isNaN(date.getTime())) return "—";
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 const DEFAULT_ENTRY_DATE_FIELDS = [
   "timePrinted",
   "timeCollected",

@@ -19,6 +19,7 @@ import {
   getLocalDateString,
   localDayStart,
   localDayEndExclusive,
+  formatTimeCollected,
 } from "../shared/utils/dates.js";
 import { normalizeSource } from "../shared/utils/source.js";
 import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
@@ -444,9 +445,10 @@ export default function BloodGroupRegister() {
         <table className="backroom-table">
           <thead>
             <tr>
-              <th className="sticky-col">Reg No</th>
-              <th className="sticky-col">Diag No</th>
-              <th className="sticky-col">
+              <th className="sticky-col col-regno">Reg No</th>
+              <th className="sticky-col col-diagno">Diag No</th>
+              <th className="sticky-col col-time-collected">Time Collected</th>
+              <th className="sticky-col col-name">
                 <ColFilterToggle
                   label="Name"
                   open={showColFilters}
@@ -467,16 +469,25 @@ export default function BloodGroupRegister() {
             {showColFilters ? (
               <tr className="col-filter-row">
                 <ColFilterInput
+                  className="sticky-col col-regno"
                   value={colFilters.regNo}
                   onChange={(v) => setColFilter("regNo", v)}
                   placeholder="Filter reg…"
                 />
                 <ColFilterInput
+                  className="sticky-col col-diagno"
                   value={colFilters.diagnosticNo}
                   onChange={(v) => setColFilter("diagnosticNo", v)}
                   placeholder="Filter diag…"
                 />
                 <ColFilterInput
+                  className="sticky-col col-time-collected"
+                  value={colFilters.timeCollected}
+                  onChange={(v) => setColFilter("timeCollected", v)}
+                  placeholder="Filter time…"
+                />
+                <ColFilterInput
+                  className="sticky-col col-name"
                   value={colFilters.name}
                   onChange={(v) => setColFilter("name", v)}
                   placeholder="Filter name…"
@@ -514,7 +525,7 @@ export default function BloodGroupRegister() {
           </thead>
           <VirtualizedTableBody
             items={filteredEntries}
-            columnCount={12}
+            columnCount={13}
             renderRow={(e) => (
               <BloodGroupRegisterRow
                 key={`${e.compositeKey}_${activeTab}`}
@@ -551,15 +562,18 @@ const BloodGroupRegisterRow = memo(function BloodGroupRegisterRow({
       }
     >
       <td
-        className="sticky-col"
+        className="sticky-col col-regno"
         style={e.urgent ? { borderLeft: "4px solid red" } : {}}
       >
         {e.regNo}
       </td>
-      <td className="sticky-col" style={{ color: "#475569" }}>
+      <td className="sticky-col col-diagno" style={{ color: "#475569" }}>
         {e.diagnosticNo}
       </td>
-      <td className="sticky-col">{e.name}</td>
+      <td className="sticky-col col-time-collected">
+        {formatTimeCollected(e.timeCollected)}
+      </td>
+      <td className="sticky-col col-name">{e.name}</td>
       <td>{e.age}</td>
       <td>{e.gender}</td>
       <td>{e.source}</td>
