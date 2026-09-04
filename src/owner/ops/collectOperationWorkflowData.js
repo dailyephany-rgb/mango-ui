@@ -329,10 +329,21 @@ function resolvePlanned(assignments, roleKey, field) {
   return [];
 }
 
-/** Planned names for a role in a single hour. */
+/** Planned names for a role in a single hour; empty hours inherit the slot template. */
 function resolvePlannedForHour(dayPlan, hourKey, roleKey, field) {
-  return resolvePlanned(
+  const hourPlanned = resolvePlanned(
     normalizeAssignments(dayPlan?.hours?.[hourKey]?.assignments),
+    roleKey,
+    field
+  );
+  if (hourPlanned.length) return hourPlanned;
+  const slot = findSlotForHour(dayPlan, hourKey);
+  const templateHk = slot
+    ? hoursForSlot(slot.startTime, slot.endTime)[0]
+    : null;
+  if (!templateHk || templateHk === hourKey) return hourPlanned;
+  return resolvePlanned(
+    normalizeAssignments(dayPlan?.hours?.[templateHk]?.assignments),
     roleKey,
     field
   );

@@ -13,6 +13,8 @@ import {
   hoursForSlot,
   newSlotId,
   normalizeAssignments,
+  canonicalHourKey,
+  propagateSlotTemplates,
   asStaffList,
   COMMAND_ROLES,
   SECOND_LAYER_ROLES,
@@ -91,9 +93,18 @@ export async function saveStaffMeta(staffId, meta, actor) {
 export function ensureHoursForSlots(dayPlan) {
   const next = {
     ...dayPlan,
-    hours: { ...(dayPlan.hours || {}) },
+    hours: {},
   };
   const keep = new Set();
+
+  Object.entries(dayPlan?.hours || {}).forEach(([hk, val]) => {
+    const canon = canonicalHourKey(hk) || hk;
+    const prev = next.hours[canon];
+    const incomingEmpty = !val?.assignments;
+    if (!prev || incomingEmpty === false) {
+      next.hours[canon] = val;
+    }
+  });
 
   (dayPlan.slots || []).forEach((slot) => {
     hoursForSlot(slot.startTime, slot.endTime).forEach((hourKey) => {
@@ -117,7 +128,7 @@ export function ensureHoursForSlots(dayPlan) {
     if (!keep.has(hk)) delete next.hours[hk];
   });
 
-  return next;
+  return propagateSlotTemplates(next).plan;
 }
 
 export function addSlotToPlan(dayPlan, { startTime, endTime, label }) {

@@ -17,6 +17,8 @@ import {
   uniqueAssignedStaffIds,
   staffAssignedInHour,
   assignmentFingerprint,
+  isEmptyAssignments,
+  isHourOverrideOfSlot,
 } from "./roleConfig.js";
 import {
   loadDayPlan,
@@ -123,10 +125,11 @@ export default function OperationMapApp({ mode = "owner" }) {
     setLoading(true);
     setError("");
     try {
-      const [plan, approved] = await Promise.all([
-        loadDayPlan(dateStr).then(ensureHoursForSlots),
+      const [rawPlan, approved] = await Promise.all([
+        loadDayPlan(dateStr),
         loadApprovedLeaveForDate(dateStr),
       ]);
+      const plan = ensureHoursForSlots(rawPlan);
       setDayPlan(plan);
       setApprovedLeave(approved);
       setDirty(false);
@@ -136,13 +139,20 @@ export default function OperationMapApp({ mode = "owner" }) {
         ? hoursForSlot(firstSlot.startTime, firstSlot.endTime)
         : [];
       setActiveHour(hours[0] || null);
+
+      if (
+        !isStaff &&
+        JSON.stringify(rawPlan?.hours || {}) !== JSON.stringify(plan.hours || {})
+      ) {
+        await saveDayPlan(plan, actor);
+      }
     } catch (err) {
       console.error(err);
       setError(err?.message || String(err));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isStaff, actor]);
 
   useEffect(() => {
     if (isStaff || view === "map") load(date);
@@ -195,16 +205,12 @@ export default function OperationMapApp({ mode = "owner" }) {
       ? hoursForSlot(activeSlot.startTime, activeSlot.endTime)
       : [activeHour];
     const templateHour = targetHours[0] || activeHour;
-    const emptyFp = assignmentFingerprint(emptyAssignments());
-    // First hour is the slot template: copy to hours that still match it,
-    // and to empty hours that were never filled.
     const hoursToWrite =
       activeHour === templateHour
         ? targetHours.filter((hk) => {
-            const fp = assignmentFingerprint(
-              dayPlan.hours?.[hk]?.assignments
-            );
-            return fp === currentFp || fp === emptyFp;
+            const existing = dayPlan.hours?.[hk]?.assignments;
+            const fp = assignmentFingerprint(existing);
+            return fp === currentFp || isEmptyAssignments(existing);
           })
         : [activeHour];
     const nextHours = { ...(dayPlan.hours || {}) };
@@ -642,16 +648,11 @@ export default function OperationMapApp({ mode = "owner" }) {
                     : "Select a slot"}
                 </span>
                 {slotHours.map((hk) => {
-                  const templateHk = slotHours[0];
-                  const isChanged =
-                    Boolean(templateHk) &&
-                    hk !== templateHk &&
-                    assignmentFingerprint(
-                      dayPlan.hours?.[hk]?.assignments
-                    ) !==
-                      assignmentFingerprint(
-                        dayPlan.hours?.[templateHk]?.assignments
-                      );
+                  const isChanged = isHourOverrideOfSlot(
+                    dayPlan,
+                    activeSlot,
+                    hk
+                  );
                   return (
                     <button
                       key={hk}
@@ -941,7 +942,7 @@ export default function OperationMapApp({ mode = "owner" }) {
               <p className="om-footer-hint">
                 {isStaff
                   ? "Follow the assigned roles for each hour. Use Apply Leave to request time off (owner approval required)."
-                  : "Assigning on the first hour copies to every hour that still matches the slot. Change a later hour (marked *) to override only that hour. Save Schedule when done."}
+                  : "Slot assignments copy into every hour. Change a later hour (marked *) to override only that hour. Save Schedule when done."}
               </p>
             </>
           )}

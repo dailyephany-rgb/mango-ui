@@ -209,6 +209,10 @@ export function assignmentFingerprint(assignments) {
   return JSON.stringify(normalizeAssignments(assignments));
 }
 
+export function isEmptyAssignments(assignments) {
+  return collectAssignmentStaff(normalizeAssignments(assignments)).size === 0;
+}
+
 export function hourAssignmentFingerprint(dayPlan, hourKey) {
   return assignmentFingerprint(dayPlan?.hours?.[hourKey]?.assignments);
 }
@@ -224,10 +228,55 @@ export function isHourOverrideOfSlot(dayPlan, slot, hourKey) {
   const hours = slot ? hoursForSlot(slot.startTime, slot.endTime) : [];
   const template = hours[0];
   if (!template || !hourKey || hourKey === template) return false;
+  if (isEmptyAssignments(dayPlan?.hours?.[hourKey]?.assignments)) return false;
   return (
     hourAssignmentFingerprint(dayPlan, hourKey) !==
     hourAssignmentFingerprint(dayPlan, template)
   );
+}
+
+export function canonicalHourKey(hourKey) {
+  const mins = timeToMinutes(hourKey);
+  return mins == null ? String(hourKey || "") : minutesToTime(mins);
+}
+
+/**
+ * Copy the first hour's assignments onto every other hour in the slot that has
+ * nobody assigned yet. Hours that already have different staff stay overrides.
+ */
+export function propagateSlotTemplates(dayPlan) {
+  const next = {
+    ...dayPlan,
+    hours: { ...(dayPlan?.hours || {}) },
+  };
+  let copied = 0;
+  (dayPlan?.slots || []).forEach((slot) => {
+    const hourKeys = hoursForSlot(slot.startTime, slot.endTime);
+    const templateHk = hourKeys[0];
+    if (!templateHk) return;
+    const templateAssign = normalizeAssignments(
+      next.hours[templateHk]?.assignments
+    );
+    if (isEmptyAssignments(templateAssign)) return;
+    const templateFp = assignmentFingerprint(templateAssign);
+    hourKeys.forEach((hk) => {
+      if (hk === templateHk) return;
+      const existing = normalizeAssignments(next.hours[hk]?.assignments);
+      if (!isEmptyAssignments(existing)) {
+        if (assignmentFingerprint(existing) === templateFp) return;
+        return;
+      }
+      next.hours[hk] = {
+        ...(next.hours[hk] || {}),
+        slotId: slot.id,
+        assignments: normalizeAssignments(
+          JSON.parse(JSON.stringify(templateAssign))
+        ),
+      };
+      copied += 1;
+    });
+  });
+  return { plan: next, copied };
 }
 
 export function formatHourRange(hourKey) {
