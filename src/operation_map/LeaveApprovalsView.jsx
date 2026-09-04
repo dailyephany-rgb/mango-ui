@@ -354,7 +354,7 @@ export function ApplyLeaveModal({
         <h2>Apply Leave</h2>
         <p className="om-leave-modal-hint">
           {locked
-            ? "Creates a pending application for you. An owner will approve or reject it."
+            ? "Check Approved Leaves on the right first. This creates a pending application for you. An owner will approve or reject it."
             : "Creates a pending application. Approve it under Leave Approvals."}
         </p>
         {error ? <p className="om-error">{error}</p> : null}

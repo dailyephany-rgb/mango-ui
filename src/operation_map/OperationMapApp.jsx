@@ -41,6 +41,7 @@ import {
   loadApprovedLeaveForDate,
   approvedRequestsToLeaveEntries,
   listLeaveRequestsForStaff,
+  listLeaveRequestsByStatus,
 } from "./leaveRequestStore.js";
 import LeaveApprovalsView, { ApplyLeaveModal } from "./LeaveApprovalsView.jsx";
 import "./operation_map.css";
@@ -52,6 +53,12 @@ function initials(name) {
     .join("")
     .slice(0, 2)
     .toUpperCase();
+}
+
+function formatLeaveRange(fromDate, toDate) {
+  if (!fromDate) return "—";
+  if (!toDate || toDate === fromDate) return fromDate;
+  return `${fromDate} → ${toDate}`;
 }
 
 function formatDateHeading(dateStr) {
@@ -79,10 +86,14 @@ export default function OperationMapApp({ mode = "owner" }) {
   const isStaff = mode === "staff";
   const actor = sessionStorage.getItem("loggedUser") || "Unknown";
   const [view, setView] = useState("map"); // map | leave (owner only)
+  const [rightTab, setRightTab] = useState(
+    mode === "staff" ? "approved" : "summary"
+  );
   const [date, setDate] = useState(getLocalDateString());
   const [dayPlan, setDayPlan] = useState(null);
   const [approvedLeave, setApprovedLeave] = useState([]);
   const [myLeave, setMyLeave] = useState([]);
+  const [approvedRoster, setApprovedRoster] = useState([]);
   const [myLeaveTick, setMyLeaveTick] = useState(0);
   const [loading, setLoading] = useState(true);
   const [dirty, setDirty] = useState(false);
@@ -176,6 +187,32 @@ export default function OperationMapApp({ mode = "owner" }) {
       cancelled = true;
     };
   }, [isStaff, actor, myLeaveTick]);
+
+  useEffect(() => {
+    if (!isStaff) {
+      setApprovedRoster([]);
+      return;
+    }
+    let cancelled = false;
+    listLeaveRequestsByStatus("approved")
+      .then((rows) => {
+        if (cancelled) return;
+        const today = getLocalDateString();
+        const upcoming = (rows || [])
+          .filter((r) => (r.toDate || r.fromDate) >= today)
+          .sort((a, b) =>
+            String(a.fromDate).localeCompare(String(b.fromDate))
+          );
+        setApprovedRoster(upcoming);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) setApprovedRoster([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isStaff, myLeaveTick]);
 
   const markDirty = (nextPlan) => {
     if (isStaff) return;
@@ -464,9 +501,22 @@ export default function OperationMapApp({ mode = "owner" }) {
         </div>
         <div className="om-nav-label">OPERATIONS</div>
         {isStaff ? (
-          <button type="button" className="om-nav-item active">
-            Operation Schedule
-          </button>
+          <>
+            <button
+              type="button"
+              className={`om-nav-item ${rightTab !== "approved" ? "active" : ""}`}
+              onClick={() => setRightTab("summary")}
+            >
+              Operation Schedule
+            </button>
+            <button
+              type="button"
+              className={`om-nav-item ${rightTab === "approved" ? "active" : ""}`}
+              onClick={() => setRightTab("approved")}
+            >
+              Approved Leaves
+            </button>
+          </>
         ) : (
           <>
             <button
@@ -828,6 +878,27 @@ export default function OperationMapApp({ mode = "owner" }) {
                 </section>
 
                 <aside className="om-panel om-right">
+                  {isStaff ? (
+                    <div className="om-right-tabs">
+                      <button
+                        type="button"
+                        className={rightTab === "summary" ? "active" : ""}
+                        onClick={() => setRightTab("summary")}
+                      >
+                        Summary
+                      </button>
+                      <button
+                        type="button"
+                        className={rightTab === "approved" ? "active" : ""}
+                        onClick={() => setRightTab("approved")}
+                      >
+                        Approved Leaves
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {!isStaff || rightTab === "summary" ? (
+                    <>
                   <h3>Slot Summary</h3>
                   {[
                     ["Total Staff", summary.total],
@@ -876,6 +947,49 @@ export default function OperationMapApp({ mode = "owner" }) {
                       </div>
                     ))
                   )}
+                    </>
+                  ) : null}
+
+                  {isStaff && rightTab === "approved" ? (
+                    <>
+                      <h3>Approved Leaves</h3>
+                      <p className="om-approved-hint">
+                        Check who already has approved leave before you apply.
+                      </p>
+                      {approvedRoster.length === 0 ? (
+                        <div className="om-placeholder">
+                          No upcoming approved leave
+                        </div>
+                      ) : (
+                        approvedRoster.map((row) => {
+                          const mine =
+                            String(row.staffId) === String(actor) ||
+                            String(row.staffName).toLowerCase() ===
+                              String(actor).toLowerCase();
+                          return (
+                            <div
+                              className={`om-leave-item ${mine ? "om-leave-item-mine" : ""}`}
+                              key={row.id}
+                            >
+                              <strong>
+                                {row.staffName ||
+                                  staffById[row.staffId]?.name ||
+                                  row.staffId}
+                                {mine ? " (you)" : ""}
+                              </strong>
+                              <span>
+                                {formatLeaveRange(row.fromDate, row.toDate)}
+                                {" · "}
+                                {row.type === "partial"
+                                  ? `Partial (${row.startTime || "?"}–${row.endTime || "?"})`
+                                  : "Full day"}
+                              </span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </>
+                  ) : null}
 
                   {isStaff ? (
                     <>
@@ -886,10 +1000,7 @@ export default function OperationMapApp({ mode = "owner" }) {
                         myLeave.slice(0, 8).map((row) => (
                           <div className="om-leave-item" key={row.id}>
                             <strong>
-                              {row.fromDate}
-                              {row.toDate && row.toDate !== row.fromDate
-                                ? ` → ${row.toDate}`
-                                : ""}
+                              {formatLeaveRange(row.fromDate, row.toDate)}
                             </strong>
                             <span className={`om-leave-status-pill ${row.status}`}>
                               {row.status}
@@ -941,7 +1052,7 @@ export default function OperationMapApp({ mode = "owner" }) {
 
               <p className="om-footer-hint">
                 {isStaff
-                  ? "Follow the assigned roles for each hour. Use Apply Leave to request time off (owner approval required)."
+                  ? "Check Approved Leaves on the right before you apply. Owner approval is required."
                   : "Slot assignments copy into every hour. Change a later hour (marked *) to override only that hour. Save Schedule when done."}
               </p>
             </>
