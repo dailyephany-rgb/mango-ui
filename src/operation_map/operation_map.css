@@ -697,7 +697,11 @@
 }
 
 .om-staff-leave-body {
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.om-staff-leave-mine {
+  grid-column: 1 / -1;
 }
 
 @media (max-width: 900px) {
@@ -826,6 +830,11 @@
 .om-leave-status-pill.approved {
   background: #dcfce7;
   color: #166534;
+}
+
+.om-leave-status-pill.pending {
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .om-leave-status-pill.rejected {

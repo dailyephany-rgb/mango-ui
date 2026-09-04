@@ -94,6 +94,7 @@ export default function OperationMapApp({ mode = "owner" }) {
   const [approvedLeave, setApprovedLeave] = useState([]);
   const [myLeave, setMyLeave] = useState([]);
   const [approvedRoster, setApprovedRoster] = useState([]);
+  const [pendingRoster, setPendingRoster] = useState([]);
   const [myLeaveTick, setMyLeaveTick] = useState(0);
   const [loading, setLoading] = useState(true);
   const [dirty, setDirty] = useState(false);
@@ -191,23 +192,30 @@ export default function OperationMapApp({ mode = "owner" }) {
   useEffect(() => {
     if (!isStaff) {
       setApprovedRoster([]);
+      setPendingRoster([]);
       return;
     }
     let cancelled = false;
-    listLeaveRequestsByStatus("approved")
-      .then((rows) => {
+    const today = getLocalDateString();
+    const upcoming = (rows) =>
+      (rows || [])
+        .filter((r) => (r.toDate || r.fromDate) >= today)
+        .sort((a, b) => String(a.fromDate).localeCompare(String(b.fromDate)));
+    Promise.all([
+      listLeaveRequestsByStatus("approved"),
+      listLeaveRequestsByStatus("pending"),
+    ])
+      .then(([approved, pending]) => {
         if (cancelled) return;
-        const today = getLocalDateString();
-        const upcoming = (rows || [])
-          .filter((r) => (r.toDate || r.fromDate) >= today)
-          .sort((a, b) =>
-            String(a.fromDate).localeCompare(String(b.fromDate))
-          );
-        setApprovedRoster(upcoming);
+        setApprovedRoster(upcoming(approved));
+        setPendingRoster(upcoming(pending));
       })
       .catch((err) => {
         console.error(err);
-        if (!cancelled) setApprovedRoster([]);
+        if (!cancelled) {
+          setApprovedRoster([]);
+          setPendingRoster([]);
+        }
       });
     return () => {
       cancelled = true;
@@ -557,6 +565,7 @@ export default function OperationMapApp({ mode = "owner" }) {
         <StaffApprovedLeavesView
           actor={actor}
           roster={approvedRoster}
+          pendingRoster={pendingRoster}
           myLeave={myLeave}
           onApply={() => setModal("addLeave")}
         />

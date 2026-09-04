@@ -317,11 +317,37 @@ export default function LeaveApprovalsView({
 }
 
 /**
- * Staff-only full page: upcoming approved leave for the lab.
+ * Staff-only full page: upcoming approved + pending leave for the lab.
  */
+function StaffLeaveRow({ row, actor, statusClass }) {
+  const mine =
+    String(row.staffId) === String(actor) ||
+    String(row.staffName).toLowerCase() === String(actor).toLowerCase();
+  return (
+    <div
+      className={`om-leave-request ${mine ? "om-leave-item-mine" : ""}`}
+    >
+      <div className="om-leave-request-main">
+        <strong>
+          {row.staffName || row.staffId}
+          {mine ? " (you)" : ""}
+        </strong>
+        <span>{formatRange(row.fromDate, row.toDate)}</span>
+        <span>
+          <LeaveTypeLabel row={row} />
+        </span>
+      </div>
+      <span className={`om-leave-status-pill ${statusClass || row.status}`}>
+        {row.status}
+      </span>
+    </div>
+  );
+}
+
 export function StaffApprovedLeavesView({
   actor,
   roster = [],
+  pendingRoster = [],
   myLeave = [],
   onApply,
 }) {
@@ -330,7 +356,7 @@ export function StaffApprovedLeavesView({
       <header className="om-header om-leave-header">
         <div>
           <h1>Approved Leaves</h1>
-          <p>See who already has approved leave before you apply</p>
+          <p>See approved and pending leave before you apply</p>
         </div>
         <div className="om-header-actions">
           <button
@@ -350,35 +376,37 @@ export function StaffApprovedLeavesView({
             <p className="om-placeholder">No upcoming approved leave.</p>
           ) : (
             <div className="om-leave-list">
-              {roster.map((row) => {
-                const mine =
-                  String(row.staffId) === String(actor) ||
-                  String(row.staffName).toLowerCase() ===
-                    String(actor).toLowerCase();
-                return (
-                  <div
-                    className={`om-leave-request ${mine ? "om-leave-item-mine" : ""}`}
-                    key={row.id}
-                  >
-                    <div className="om-leave-request-main">
-                      <strong>
-                        {row.staffName || row.staffId}
-                        {mine ? " (you)" : ""}
-                      </strong>
-                      <span>{formatRange(row.fromDate, row.toDate)}</span>
-                      <span>
-                        <LeaveTypeLabel row={row} />
-                      </span>
-                    </div>
-                    <span className="om-leave-status-pill approved">approved</span>
-                  </div>
-                );
-              })}
+              {roster.map((row) => (
+                <StaffLeaveRow
+                  key={row.id}
+                  row={row}
+                  actor={actor}
+                  statusClass="approved"
+                />
+              ))}
             </div>
           )}
         </section>
 
-        <section className="om-leave-card">
+        <section className="om-leave-card om-leave-queue">
+          <h2>Pending leave</h2>
+          {pendingRoster.length === 0 ? (
+            <p className="om-placeholder">No pending leave requests.</p>
+          ) : (
+            <div className="om-leave-list">
+              {pendingRoster.map((row) => (
+                <StaffLeaveRow
+                  key={row.id}
+                  row={row}
+                  actor={actor}
+                  statusClass="pending"
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="om-leave-card om-staff-leave-mine">
           <h2>My leave requests</h2>
           {myLeave.length === 0 ? (
             <p className="om-placeholder">You have not applied for leave yet.</p>
