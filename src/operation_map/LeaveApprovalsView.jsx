@@ -317,6 +317,95 @@ export default function LeaveApprovalsView({
 }
 
 /**
+ * Staff-only full page: upcoming approved leave for the lab.
+ */
+export function StaffApprovedLeavesView({
+  actor,
+  roster = [],
+  myLeave = [],
+  onApply,
+}) {
+  return (
+    <div className="om-main">
+      <header className="om-header om-leave-header">
+        <div>
+          <h1>Approved Leaves</h1>
+          <p>See who already has approved leave before you apply</p>
+        </div>
+        <div className="om-header-actions">
+          <button
+            type="button"
+            className="om-btn om-btn-primary"
+            onClick={onApply}
+          >
+            Apply Leave
+          </button>
+        </div>
+      </header>
+
+      <div className="om-leave-body om-staff-leave-body">
+        <section className="om-leave-card om-leave-queue">
+          <h2>Upcoming approved leave</h2>
+          {roster.length === 0 ? (
+            <p className="om-placeholder">No upcoming approved leave.</p>
+          ) : (
+            <div className="om-leave-list">
+              {roster.map((row) => {
+                const mine =
+                  String(row.staffId) === String(actor) ||
+                  String(row.staffName).toLowerCase() ===
+                    String(actor).toLowerCase();
+                return (
+                  <div
+                    className={`om-leave-request ${mine ? "om-leave-item-mine" : ""}`}
+                    key={row.id}
+                  >
+                    <div className="om-leave-request-main">
+                      <strong>
+                        {row.staffName || row.staffId}
+                        {mine ? " (you)" : ""}
+                      </strong>
+                      <span>{formatRange(row.fromDate, row.toDate)}</span>
+                      <span>
+                        <LeaveTypeLabel row={row} />
+                      </span>
+                    </div>
+                    <span className="om-leave-status-pill approved">approved</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section className="om-leave-card">
+          <h2>My leave requests</h2>
+          {myLeave.length === 0 ? (
+            <p className="om-placeholder">You have not applied for leave yet.</p>
+          ) : (
+            <div className="om-leave-list">
+              {myLeave.map((row) => (
+                <div className="om-leave-request" key={row.id}>
+                  <div className="om-leave-request-main">
+                    <strong>{formatRange(row.fromDate, row.toDate)}</strong>
+                    <span>
+                      <LeaveTypeLabel row={row} />
+                    </span>
+                  </div>
+                  <span className={`om-leave-status-pill ${row.status}`}>
+                    {row.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Modal to submit a leave application from Operation Map Quick Actions.
  * When lockedStaffId is set, staff cannot apply for someone else.
  */
@@ -354,7 +443,7 @@ export function ApplyLeaveModal({
         <h2>Apply Leave</h2>
         <p className="om-leave-modal-hint">
           {locked
-            ? "Check Approved Leaves on the right first. This creates a pending application for you. An owner will approve or reject it."
+            ? "Check Approved Leaves first. This creates a pending application for you. An owner will approve or reject it."
             : "Creates a pending application. Approve it under Leave Approvals."}
         </p>
         {error ? <p className="om-error">{error}</p> : null}

@@ -696,6 +696,10 @@
   padding: 16px 20px 28px;
 }
 
+.om-staff-leave-body {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+}
+
 @media (max-width: 900px) {
   .om-leave-body {
     grid-template-columns: 1fr;
