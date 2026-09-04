@@ -67,6 +67,65 @@ function sectionBar(doc, text, y) {
   return y + barH + 2;
 }
 
+function writeLayerHeading(doc, y, title, { indent = false } = {}) {
+  y = ensureSpace(doc, y, 20);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42);
+  doc.text(title, indent ? 18 : 10, y);
+  return y + 4;
+}
+
+function writeRoleTable(doc, y, roles, { indent = false } = {}) {
+  const left = indent ? 16 : 8;
+  if (!roles?.length) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text("No mapped activity fell into this layer.", indent ? 18 : 10, y);
+    doc.setTextColor(15, 23, 42);
+    return y + 6;
+  }
+
+  const body = roles.map((role) => [
+    cell(role.roleLabel),
+    formatNames(role.plannedNames),
+    String(role.entries ?? 0),
+    String(role.followedCount ?? 0),
+    pctLabel(role.followPct),
+    formatNames(role.followedBy),
+    String(role.notFollowedCount ?? 0),
+    formatNames(role.disfollowedBy),
+  ]);
+
+  autoTable(doc, {
+    startY: y,
+    head: [ROLE_HEAD],
+    body,
+    margin: { left, right: 8 },
+    styles: {
+      fontSize: 7,
+      cellPadding: 1.2,
+      overflow: "linebreak",
+      valign: "top",
+    },
+    headStyles: {
+      fillColor: [37, 99, 235],
+      textColor: 255,
+      fontStyle: "bold",
+      fontSize: 7,
+    },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      2: { halign: "right" },
+      3: { halign: "right" },
+      4: { halign: "right" },
+      6: { halign: "right" },
+    },
+  });
+  return (doc.lastAutoTable?.finalY || y) + 6;
+}
+
 /**
  * @param {{
  *   dateFrom?: string,
@@ -115,12 +174,12 @@ export async function downloadOperationWorkflowPdf(opts = {}) {
   doc.setFontSize(8);
   doc.setTextColor(71, 85, 105);
   doc.text(
-    "Match rule (IST / Asia/Kolkata): register actor + activity timestamp → Operation Map slot; Followed if actor is among anyone planned for that map role in the slot. Day filters and hours are always India time so Mac and other PCs match. Mango print/WhatsApp and Outsource stages use their own activity times. Actor Unknown counts as Not followed.",
+    "Match rule (IST / Asia/Kolkata): register actor + activity hour → Operation Map hour. Slot N covers hours that still match the slot's first-hour plan. Changed hours appear under that slot as Operation Map N.M and match only that hour's planned staff. Day filters and hours are always India time so Mac and other PCs match. Mango print/WhatsApp and Outsource stages use their own activity times. Actor Unknown counts as Not followed.",
     10,
     y,
     { maxWidth: pageWidth - 20 }
   );
-  y += 8;
+  y += 10;
   doc.setFontSize(9);
   doc.setTextColor(51, 65, 85);
 
@@ -160,60 +219,14 @@ export async function downloadOperationWorkflowPdf(opts = {}) {
 
     day.slots.forEach((slot) => {
       const slotTitle = `${slot.label || "Slot"} (${slot.rangeLabel || ""}) · Entries ${slot.entries ?? 0} · Followed ${slot.followedCount ?? 0} · Not followed ${slot.notFollowedCount ?? 0} · ${pctLabel(slot.followPct)}`;
-      y = ensureSpace(doc, y, 20);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.setTextColor(15, 23, 42);
-      doc.text(slotTitle, 10, y);
-      y += 4;
+      y = writeLayerHeading(doc, y, slotTitle);
+      y = writeRoleTable(doc, y, slot.roles);
 
-      if (!slot.roles?.length) {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(8);
-        doc.setTextColor(100, 116, 139);
-        doc.text("No mapped activity fell into this slot.", 10, y);
-        doc.setTextColor(15, 23, 42);
-        y += 6;
-        return;
-      }
-
-      const body = slot.roles.map((role) => [
-        cell(role.roleLabel),
-        formatNames(role.plannedNames),
-        String(role.entries ?? 0),
-        String(role.followedCount ?? 0),
-        pctLabel(role.followPct),
-        formatNames(role.followedBy),
-        String(role.notFollowedCount ?? 0),
-        formatNames(role.disfollowedBy),
-      ]);
-
-      autoTable(doc, {
-        startY: y,
-        head: [ROLE_HEAD],
-        body,
-        margin: { left: 8, right: 8 },
-        styles: {
-          fontSize: 7,
-          cellPadding: 1.2,
-          overflow: "linebreak",
-          valign: "top",
-        },
-        headStyles: {
-          fillColor: [37, 99, 235],
-          textColor: 255,
-          fontStyle: "bold",
-          fontSize: 7,
-        },
-        alternateRowStyles: { fillColor: [248, 250, 252] },
-        columnStyles: {
-          2: { halign: "right" },
-          3: { halign: "right" },
-          4: { halign: "right" },
-          6: { halign: "right" },
-        },
+      (slot.hourOverrides || []).forEach((ov) => {
+        const ovTitle = `${ov.label || "Operation Map"} (${ov.rangeLabel || ""}) · Entries ${ov.entries ?? 0} · Followed ${ov.followedCount ?? 0} · Not followed ${ov.notFollowedCount ?? 0} · ${pctLabel(ov.followPct)}`;
+        y = writeLayerHeading(doc, y, ovTitle, { indent: true });
+        y = writeRoleTable(doc, y, ov.roles, { indent: true });
       });
-      y = (doc.lastAutoTable?.finalY || y) + 6;
     });
   });
 

@@ -16,6 +16,7 @@ import {
   hoursForSlot,
   uniqueAssignedStaffIds,
   staffAssignedInHour,
+  assignmentFingerprint,
 } from "./roleConfig.js";
 import {
   loadDayPlan,
@@ -189,17 +190,36 @@ export default function OperationMapApp({ mode = "owner" }) {
       assignments: emptyAssignments(),
     };
     const nextAssign = mutator(cloneAssignments(current.assignments));
-    markDirty({
-      ...dayPlan,
-      hours: {
-        ...dayPlan.hours,
-        [activeHour]: {
-          ...current,
-          slotId: activeSlotId || current.slotId,
-          assignments: nextAssign,
-        },
-      },
+    const currentFp = assignmentFingerprint(current.assignments);
+    const targetHours = activeSlot
+      ? hoursForSlot(activeSlot.startTime, activeSlot.endTime)
+      : [activeHour];
+    const templateHour = targetHours[0] || activeHour;
+    const emptyFp = assignmentFingerprint(emptyAssignments());
+    // First hour is the slot template: copy to hours that still match it,
+    // and to empty hours that were never filled.
+    const hoursToWrite =
+      activeHour === templateHour
+        ? targetHours.filter((hk) => {
+            const fp = assignmentFingerprint(
+              dayPlan.hours?.[hk]?.assignments
+            );
+            return fp === currentFp || fp === emptyFp;
+          })
+        : [activeHour];
+    const nextHours = { ...(dayPlan.hours || {}) };
+    hoursToWrite.forEach((hk) => {
+      const prev = nextHours[hk] || {
+        slotId: activeSlotId,
+        assignments: emptyAssignments(),
+      };
+      nextHours[hk] = {
+        ...prev,
+        slotId: activeSlotId || prev.slotId,
+        assignments: cloneAssignments(nextAssign),
+      };
     });
+    markDirty({ ...dayPlan, hours: nextHours });
   };
 
   const assignStaff = (staffId, roleKey, field = "staff") => {
@@ -621,18 +641,31 @@ export default function OperationMapApp({ mode = "owner" }) {
                     ? `Hours · ${activeSlot.label || "Slot"}`
                     : "Select a slot"}
                 </span>
-                {slotHours.map((hk) => (
-                  <button
-                    key={hk}
-                    type="button"
-                    className={`om-hour-chip ${
-                      hk === activeHour ? "active" : ""
-                    }`}
-                    onClick={() => setActiveHour(hk)}
-                  >
-                    {formatHourLabel(hk)}
-                  </button>
-                ))}
+                {slotHours.map((hk) => {
+                  const templateHk = slotHours[0];
+                  const isChanged =
+                    Boolean(templateHk) &&
+                    hk !== templateHk &&
+                    assignmentFingerprint(
+                      dayPlan.hours?.[hk]?.assignments
+                    ) !==
+                      assignmentFingerprint(
+                        dayPlan.hours?.[templateHk]?.assignments
+                      );
+                  return (
+                    <button
+                      key={hk}
+                      type="button"
+                      className={`om-hour-chip ${
+                        hk === activeHour ? "active" : ""
+                      } ${isChanged ? "changed" : ""}`}
+                      onClick={() => setActiveHour(hk)}
+                    >
+                      {formatHourLabel(hk)}
+                      {isChanged ? " *" : ""}
+                    </button>
+                  );
+                })}
               </div>
 
               <div className={`om-workspace ${isStaff ? "om-workspace-staff" : ""}`}>
@@ -908,7 +941,7 @@ export default function OperationMapApp({ mode = "owner" }) {
               <p className="om-footer-hint">
                 {isStaff
                   ? "Follow the assigned roles for each hour. Use Apply Leave to request time off (owner approval required)."
-                  : "Drag staff onto roles for the selected hour. Changes stay local until you click Save Schedule. Future dates (week+) use their own Firebase day documents."}
+                  : "Assigning on the first hour copies to every hour that still matches the slot. Change a later hour (marked *) to override only that hour. Save Schedule when done."}
               </p>
             </>
           )}

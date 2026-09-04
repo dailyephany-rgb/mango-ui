@@ -277,6 +277,16 @@
   color: #fff;
 }
 
+.om-hour-chip.changed {
+  border-color: #d97706;
+  box-shadow: inset 0 0 0 1px #fbbf24;
+}
+
+.om-hour-chip.changed.active {
+  border-color: #fbbf24;
+  box-shadow: inset 0 0 0 2px #fcd34d;
+}
+
 .om-workspace {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr) 220px;

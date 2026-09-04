@@ -18,6 +18,40 @@ function formatNames(list) {
     .join(", ");
 }
 
+function RolesTable({ roles, emptyText }) {
+  if (!roles?.length) {
+    return <p className="ow-muted">{emptyText}</p>;
+  }
+  return (
+    <div className="ow-table-wrap">
+      <table className="ow-table">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Planned</th>
+            <th>Followed</th>
+            <th>Who followed</th>
+            <th>Not followed</th>
+            <th>Who disfollowed</th>
+          </tr>
+        </thead>
+        <tbody>
+          {roles.map((role) => (
+            <tr key={`${role.roleKey}-${role.field}-${role.reportKey}`}>
+              <td>{role.roleLabel}</td>
+              <td>{formatNames(role.plannedNames)}</td>
+              <td>{role.followedCount}</td>
+              <td>{formatNames(role.followedBy)}</td>
+              <td>{role.notFollowedCount}</td>
+              <td>{formatNames(role.disfollowedBy)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function Kpi({ label, value, tone }) {
   return (
     <div className={`ow-kpi ${tone || ""}`}>
@@ -52,7 +86,8 @@ export default function OperationWorkflowReport({ data, loading, error }) {
       <div className="ow-report">
         <p className="ow-muted">
           Click View to compare planned Operation Map staffing with actual
-          entries for the selected date range.
+          entries for the selected date range. Slot N is the default plan;
+          changed hours appear underneath as Operation Map N.M.
         </p>
       </div>
     );
@@ -170,38 +205,33 @@ export default function OperationWorkflowReport({ data, loading, error }) {
                   </div>
                 </div>
 
-                {!slot.roles?.length ? (
-                  <p className="ow-muted">
-                    No mapped activity fell into this slot.
-                  </p>
-                ) : (
-                  <div className="ow-table-wrap">
-                    <table className="ow-table">
-                      <thead>
-                        <tr>
-                          <th>Role</th>
-                          <th>Planned</th>
-                          <th>Followed</th>
-                          <th>Who followed</th>
-                          <th>Not followed</th>
-                          <th>Who disfollowed</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {slot.roles.map((role) => (
-                          <tr key={`${role.roleKey}-${role.field}`}>
-                            <td>{role.roleLabel}</td>
-                            <td>{formatNames(role.plannedNames)}</td>
-                            <td>{role.followedCount}</td>
-                            <td>{formatNames(role.followedBy)}</td>
-                            <td>{role.notFollowedCount}</td>
-                            <td>{formatNames(role.disfollowedBy)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                <RolesTable
+                  roles={slot.roles}
+                  emptyText="No mapped activity fell into this slot's default hours."
+                />
+
+                {(slot.hourOverrides || []).map((ov) => (
+                  <div key={ov.id} className="ow-hour-override">
+                    <div className="ow-slot-head">
+                      <div>
+                        <div className="ow-slot-name">{ov.label}</div>
+                        <div className="ow-slot-meta">{ov.rangeLabel}</div>
+                      </div>
+                      <div className="ow-slot-counts">
+                        <span className="ow-pill ok">
+                          {ov.followedCount} followed
+                        </span>
+                        <span className="ow-pill bad">
+                          {ov.notFollowedCount} not followed
+                        </span>
+                      </div>
+                    </div>
+                    <RolesTable
+                      roles={ov.roles}
+                      emptyText="No mapped activity in this hour."
+                    />
                   </div>
-                )}
+                ))}
               </div>
             ))
           )}

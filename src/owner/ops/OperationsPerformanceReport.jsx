@@ -252,7 +252,7 @@ export default function OperationsPerformanceReport({
             <div className="ops-report-meta">
               Date range: {dateLabel}
               {source && source !== "All" ? ` · Source: ${source}` : ""}
-              {" · "}Planned vs actual by slot / role (entries, follow %, disfollowed)
+              {" · "}Planned vs actual by slot (changed hours as Operation Map N.M)
             </div>
           </div>
           <button

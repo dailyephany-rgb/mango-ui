@@ -1,10 +1,12 @@
 /**
  * Operation Workflow compliance: join clinical activity to Operation Map plans.
  *
- * Way B (slot match): for each register stage:
+ * For each register stage:
  *   1. Floor the stage timestamp → IST date + hour → find Operation Map slot
- *   2. Planned = union of assignees for that map role across all hours in the slot
- *   3. Followed iff the actor is in that slot-wide planned list
+ *   2. Planned = assignees for that map role in that hour (not a slot-wide union)
+ *   3. Followed iff the actor is in that hour's planned list
+ *   4. Report: Slot N for hours that still match the slot's first-hour template;
+ *      overridden hours nest as Operation Map N.M (1-based slot.hour index)
  *
  * All day bounds and hour bucketing use Asia/Kolkata (IST) so the same date
  * range yields the same counts on every machine (Mac / Windows / any TZ).
@@ -26,6 +28,9 @@ import {
   hoursForSlot,
   asStaffList,
   normalizeAssignments,
+  isHourOverrideOfSlot,
+  slotHourIndex,
+  formatHourRange,
 } from "../../operation_map/roleConfig.js";
 import {
   parseDateField,
@@ -324,19 +329,67 @@ function resolvePlanned(assignments, roleKey, field) {
   return [];
 }
 
-/** Union of planned names for a role across every hour in the slot. */
-function resolvePlannedForSlot(dayPlan, slot, roleKey, field) {
-  const names = new Set();
-  if (!dayPlan || !slot) return [];
-  for (const hk of hoursForSlot(slot.startTime, slot.endTime)) {
-    const planned = resolvePlanned(
-      normalizeAssignments(dayPlan.hours?.[hk]?.assignments),
-      roleKey,
-      field
-    );
-    planned.forEach((p) => names.add(p));
+/** Planned names for a role in a single hour. */
+function resolvePlannedForHour(dayPlan, hourKey, roleKey, field) {
+  return resolvePlanned(
+    normalizeAssignments(dayPlan?.hours?.[hourKey]?.assignments),
+    roleKey,
+    field
+  );
+}
+
+function slotOrdinal(dayPlan, slot) {
+  const idx = (dayPlan?.slots || []).findIndex((s) => s.id === slot?.id);
+  return idx >= 0 ? idx + 1 : 1;
+}
+
+function workflowLayerLabel(slotN, hourIndex, isOverride) {
+  if (!isOverride) return `Slot ${slotN}`;
+  return `Operation Map ${slotN}.${hourIndex}`;
+}
+
+function rolesFromAggs(slotRoleMap, prefix) {
+  const roles = [];
+  for (const [key, agg] of slotRoleMap.entries()) {
+    if (!key.startsWith(prefix)) continue;
+    roles.push({
+      roleKey: agg.roleKey,
+      reportKey: agg.reportKey,
+      field: agg.field,
+      roleLabel: agg.roleLabel,
+      plannedNames: Array.from(agg.plannedNames).sort(),
+      followedCount: agg.followedCount,
+      notFollowedCount: agg.notFollowedCount,
+      entries: agg.followedCount + agg.notFollowedCount,
+      followPct:
+        agg.followedCount + agg.notFollowedCount
+          ? Math.round(
+              (agg.followedCount /
+                (agg.followedCount + agg.notFollowedCount)) *
+                100
+            )
+          : null,
+      followedBy: nameCountList(agg.followedBy),
+      disfollowedBy: nameCountList(agg.disfollowedBy),
+      skippedNoPlan: agg.skippedNoPlan,
+    });
   }
-  return Array.from(names);
+  roles.sort((a, b) => a.roleLabel.localeCompare(b.roleLabel));
+  return roles;
+}
+
+function roleTotalsFromList(roles) {
+  const followedCount = roles.reduce((s, r) => s + r.followedCount, 0);
+  const notFollowedCount = roles.reduce((s, r) => s + r.notFollowedCount, 0);
+  const entries = followedCount + notFollowedCount;
+  return {
+    followedCount,
+    notFollowedCount,
+    entries,
+    followPct: entries
+      ? Math.round((followedCount / entries) * 100)
+      : null,
+  };
 }
 
 function findSlotForHour(dayPlan, hourKey) {
@@ -646,21 +699,27 @@ export async function collectOperationWorkflowData({
       return;
     }
 
-    // Way B: match against slot-wide planned union for the Operation Map role.
-    // reportKey only splits PDF/aggregation rows — duties stay on roleKey.
-    const planned = resolvePlannedForSlot(
+    const planned = resolvePlannedForHour(
       dayPlan,
-      slot,
+      hourKey,
       ev.roleKey,
       ev.field
     );
     const reportKey = ev.reportKey || ev.roleKey;
-    const aggKey = `${dateStr}|${slot.id}|${ev.roleKey}|${ev.field}|${reportKey}`;
+    const slotN = slotOrdinal(dayPlan, slot);
+    const hourIndex = slotHourIndex(slot, hourKey) || 1;
+    const isOverride = isHourOverrideOfSlot(dayPlan, slot, hourKey);
+    const layerKey = isOverride ? `hour:${hourKey}` : "base";
+    const layerLabel = workflowLayerLabel(slotN, hourIndex, isOverride);
+    const aggKey = `${dateStr}|${slot.id}|${layerKey}|${ev.roleKey}|${ev.field}|${reportKey}`;
 
     if (!slotRoleMap.has(aggKey)) {
       slotRoleMap.set(aggKey, {
         date: dateStr,
         slot,
+        hourKey,
+        isOverride,
+        layerLabel,
         ...emptyRoleAgg(ev.roleKey, ev.field, reportKey),
       });
     }
@@ -688,7 +747,7 @@ export async function collectOperationWorkflowData({
       bumpNameCount(agg.disfollowedBy, ev.actor);
       detailMisses.push({
         date: dateStr,
-        slotLabel: slot.label || formatSlotRange(slot.startTime, slot.endTime),
+        slotLabel: layerLabel,
         hourKey,
         roleLabel: roleLabel(ev.roleKey, ev.field, reportKey),
         planned: planned.join(", "),
@@ -702,54 +761,44 @@ export async function collectOperationWorkflowData({
 
   const days = dates.map((date) => {
     const dayPlan = dayPlans[date] || { slots: [] };
-    const slots = (dayPlan.slots || []).map((slot) => {
-      const roles = [];
-      for (const [key, agg] of slotRoleMap.entries()) {
-        if (!key.startsWith(`${date}|${slot.id}|`)) continue;
-        roles.push({
-          roleKey: agg.roleKey,
-          reportKey: agg.reportKey,
-          field: agg.field,
-          roleLabel: agg.roleLabel,
-          plannedNames: Array.from(agg.plannedNames).sort(),
-          followedCount: agg.followedCount,
-          notFollowedCount: agg.notFollowedCount,
-          entries: agg.followedCount + agg.notFollowedCount,
-          followPct:
-            agg.followedCount + agg.notFollowedCount
-              ? Math.round(
-                  (agg.followedCount /
-                    (agg.followedCount + agg.notFollowedCount)) *
-                    100
-                )
-              : null,
-          followedBy: nameCountList(agg.followedBy),
-          disfollowedBy: nameCountList(agg.disfollowedBy),
-          skippedNoPlan: agg.skippedNoPlan,
-        });
-      }
-      roles.sort((a, b) => a.roleLabel.localeCompare(b.roleLabel));
+    const slots = (dayPlan.slots || []).map((slot, slotIdx) => {
+      const slotN = slotIdx + 1;
+      const hourKeys = hoursForSlot(slot.startTime, slot.endTime);
+      const roles = rolesFromAggs(slotRoleMap, `${date}|${slot.id}|base|`);
+      const totals = roleTotalsFromList(roles);
 
-      const followedCount = roles.reduce((s, r) => s + r.followedCount, 0);
-      const notFollowedCount = roles.reduce(
-        (s, r) => s + r.notFollowedCount,
-        0
-      );
-      const entries = followedCount + notFollowedCount;
+      const hourOverrides = hourKeys
+        .map((hk, hourIdx) => {
+          if (!isHourOverrideOfSlot(dayPlan, slot, hk)) return null;
+          const ovRoles = rolesFromAggs(
+            slotRoleMap,
+            `${date}|${slot.id}|hour:${hk}|`
+          );
+          if (!ovRoles.length) return null;
+          const ovTotals = roleTotalsFromList(ovRoles);
+          const hourIndex = hourIdx + 1;
+          return {
+            id: `${slot.id}-${hk}`,
+            hourKey: hk,
+            hourIndex,
+            label: workflowLayerLabel(slotN, hourIndex, true),
+            rangeLabel: formatHourRange(hk),
+            ...ovTotals,
+            roles: ovRoles,
+          };
+        })
+        .filter(Boolean);
 
       return {
         id: slot.id,
-        label: slot.label || formatSlotRange(slot.startTime, slot.endTime),
+        slotIndex: slotN,
+        label: `Slot ${slotN}`,
         rangeLabel: formatSlotRange(slot.startTime, slot.endTime),
         startTime: slot.startTime,
         endTime: slot.endTime,
-        followedCount,
-        notFollowedCount,
-        entries,
-        followPct: entries
-          ? Math.round((followedCount / entries) * 100)
-          : null,
+        ...totals,
         roles,
+        hourOverrides,
       };
     });
 
@@ -763,6 +812,13 @@ export async function collectOperationWorkflowData({
         name: `${day.date.slice(5)} ${slot.label}`,
         followed: slot.followedCount,
         notFollowed: slot.notFollowedCount,
+      });
+      (slot.hourOverrides || []).forEach((ov) => {
+        slotChart.push({
+          name: `${day.date.slice(5)} ${ov.label}`,
+          followed: ov.followedCount,
+          notFollowed: ov.notFollowedCount,
+        });
       });
     });
   });

@@ -204,6 +204,38 @@ export function hoursForSlot(startTime, endTime) {
   return hours;
 }
 
+/** Stable JSON of normalized assignments — used to detect slot-wide vs hour overrides. */
+export function assignmentFingerprint(assignments) {
+  return JSON.stringify(normalizeAssignments(assignments));
+}
+
+export function hourAssignmentFingerprint(dayPlan, hourKey) {
+  return assignmentFingerprint(dayPlan?.hours?.[hourKey]?.assignments);
+}
+
+/** 1-based index of hourKey inside the slot, or null if not in range. */
+export function slotHourIndex(slot, hourKey) {
+  if (!slot || !hourKey) return null;
+  const idx = hoursForSlot(slot.startTime, slot.endTime).indexOf(hourKey);
+  return idx < 0 ? null : idx + 1;
+}
+
+export function isHourOverrideOfSlot(dayPlan, slot, hourKey) {
+  const hours = slot ? hoursForSlot(slot.startTime, slot.endTime) : [];
+  const template = hours[0];
+  if (!template || !hourKey || hourKey === template) return false;
+  return (
+    hourAssignmentFingerprint(dayPlan, hourKey) !==
+    hourAssignmentFingerprint(dayPlan, template)
+  );
+}
+
+export function formatHourRange(hourKey) {
+  const start = timeToMinutes(hourKey);
+  if (start == null) return hourKey || "";
+  return `${formatHourLabel(hourKey)} - ${formatHourLabel(minutesToTime(start + 60))}`;
+}
+
 export function newSlotId() {
   return `slot_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
