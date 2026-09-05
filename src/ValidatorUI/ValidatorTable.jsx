@@ -37,7 +37,31 @@ function hasEditableResult(item) {
   );
 }
 
-function labelizeKey(key) {
+const URINE_RESULT_FIELDS = [
+  ["volume", "Volume"],
+  ["color", "Color"],
+  ["appearance", "Appearance"],
+  ["sg", "SG"],
+  ["ph", "pH"],
+  ["albumin", "Protein"],
+  ["sugar", "Glucose"],
+  ["ketoneBodies", "Ketones"],
+  ["rbc", "RBC"],
+  ["pus", "Pus"],
+  ["epithelium", "Epi"],
+  ["crystals", "Crystals"],
+  ["bacteria", "Bacteria"],
+  ["casts", "Casts"],
+  ["yeastCells", "Yeast"],
+  ["others", "Others"],
+];
+
+function formatUrineRoutine(results = {}) {
+  if (!results || typeof results !== "object") return "—";
+  return URINE_RESULT_FIELDS.map(
+    ([key, label]) => `${label}: ${results[key] || "—"}`
+  ).join(" · ");
+}
   return String(key)
     .replace(/([A-Z])/g, " $1")
     .replace(/^./, (str) => str.toUpperCase());
@@ -297,38 +321,7 @@ const ValidatorTableRow = memo(function ValidatorTableRow({
   onValidate,
   onEditResult,
 }) {
-  const hasUrineRoutine =
-    title.includes("Urine") &&
-    Array.isArray(item.selectedTests) &&
-    item.selectedTests.some((t) => {
-      const name =
-        typeof t === "string" ? t : t.name || t.test || "";
-      return name.toUpperCase().includes("URINE ANALYSIS");
-    });
-
-  const renderUrineRoutine = (results = {}) => (
-    <div style={{ lineHeight: "1.5" }}>
-      <div>Volume: {results.volume || "—"}</div>
-      <div>Color: {results.color || "—"}</div>
-      <div>Appearance: {results.appearance || "—"}</div>
-      <br />
-      <div>SG: {results.sg || "—"}</div>
-      <div>Reaction (pH): {results.ph || "—"}</div>
-      <div>Protein: {results.albumin || "—"}</div>
-      <div>Glucose: {results.sugar || "—"}</div>
-      <div>Ketone Bodies: {results.ketoneBodies || "—"}</div>
-      <br />
-      <div>RBC: {results.rbc || "—"}</div>
-      <div>Pus Cells: {results.pus || "—"}</div>
-      <div>Epithelial Cells: {results.epithelium || "—"}</div>
-      <br />
-      <div>Crystals: {results.crystals || "—"}</div>
-      <div>Bacteria: {results.bacteria || "—"}</div>
-      <div>Casts: {results.casts || "—"}</div>
-      <div>Yeast Cells: {results.yeastCells || "—"}</div>
-      <div>Others: {results.others || "—"}</div>
-    </div>
-  );
+  const hasUrineRoutine = title.includes("Urine");
 
   const renderResult = (val) => {
     if (!val) return "—";
@@ -384,11 +377,14 @@ const ValidatorTableRow = memo(function ValidatorTableRow({
         </td>
       )}
       {shouldShowResult && (
-        <td style={{ fontWeight: "bold", color: "#1e3a8a", fontSize: "13px" }}>
+        <td
+          className="validator-result-cell"
+          style={{ fontWeight: "bold", color: "#1e3a8a", fontSize: "13px" }}
+        >
           {item.criticalParameter
             ? `CRITICAL: ${item.criticalParameter}`
             : hasUrineRoutine
-            ? renderUrineRoutine(item.results)
+            ? formatUrineRoutine(item.results)
             : renderResult(item.result || item.results)}
         </td>
       )}
@@ -599,7 +595,8 @@ export default function ValidatorTable({
             <VirtualizedTableBody
               items={finalData}
               columnCount={finalColumnCount}
-              scrollParentSelector=".validator-table-scroll, .table-wrapper, .haem-table-wrapper, .table-card, .dept-table-wrapper"
+              estimateRowHeight={title.includes("Urine") ? 64 : 52}
+              scrollParentSelector=".validator-table-scroll, .table-wrapper, .haem-table-wrapper, .table-card, .dept-table-wrapper, .table-scroll-container"
               renderRow={renderRow}
             />
           ) : (

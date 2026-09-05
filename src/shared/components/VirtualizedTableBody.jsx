@@ -7,9 +7,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 const DEFAULT_ROW_HEIGHT = 52;
-const DEFAULT_OVERSCAN = 10;
+const DEFAULT_OVERSCAN = 8;
 /** Below this, render all rows (cheaper than virtualizing). */
-const VIRTUALIZE_MIN_ROWS = 40;
+const VIRTUALIZE_MIN_ROWS = 20;
 
 /**
  * @param {{

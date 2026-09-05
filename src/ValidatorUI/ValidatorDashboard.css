@@ -67,6 +67,15 @@ h2 {
 .validator-table-scroll {
   max-height: min(70vh, 720px);
   overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.validator-result-cell {
+  max-width: 420px;
+  white-space: normal;
+  word-break: break-word;
+  font-weight: 600;
+  text-align: left;
 }
 
 .validator-table-title {
