@@ -2,12 +2,15 @@
  * Virtualized <tbody> for large register tables.
  * Same row content / keys — only limits mounted DOM nodes.
  * Scroll parent should be an ancestor with overflow auto (table-wrapper).
+ *
+ * Row height must stay close to estimateRowHeight (nowrap / fixed td height),
+ * otherwise spacer math fights the real layout and the list blinks / jumps.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-const DEFAULT_ROW_HEIGHT = 52;
-const DEFAULT_OVERSCAN = 8;
+const DEFAULT_ROW_HEIGHT = 48;
+const DEFAULT_OVERSCAN = 10;
 /** Below this, render all rows (cheaper than virtualizing). */
 const VIRTUALIZE_MIN_ROWS = 20;
 
@@ -30,6 +33,7 @@ export default function VirtualizedTableBody({
   columnCount = 16,
 }) {
   const [range, setRange] = useState({ start: 0, end: VIRTUALIZE_MIN_ROWS });
+  const rafRef = useRef(0);
 
   const findScrollParent = useCallback(
     (el) => {
@@ -61,7 +65,7 @@ export default function VirtualizedTableBody({
 
   const itemCount = items?.length || 0;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!tbodyEl || !itemCount) return undefined;
     if (itemCount < VIRTUALIZE_MIN_ROWS) {
       setRange({ start: 0, end: itemCount });
@@ -70,9 +74,9 @@ export default function VirtualizedTableBody({
 
     const scrollParent = findScrollParent(tbodyEl) || window;
     const isWindow = scrollParent === window;
+    const rowH = Math.max(1, estimateRowHeight);
 
     const update = () => {
-      const rowH = estimateRowHeight;
       let viewTop = 0;
       let viewH = window.innerHeight;
       if (isWindow) {
@@ -81,8 +85,10 @@ export default function VirtualizedTableBody({
         viewH = window.innerHeight;
       } else {
         const parent = /** @type {HTMLElement} */ (scrollParent);
-        // Sticky thead: window by parent scrollTop / clientHeight
-        viewTop = parent.scrollTop;
+        viewTop = Math.max(
+          0,
+          parent.getBoundingClientRect().top - tbodyEl.getBoundingClientRect().top
+        );
         viewH = parent.clientHeight;
       }
       const start = Math.max(0, Math.floor(viewTop / rowH) - overscan);
@@ -95,13 +101,23 @@ export default function VirtualizedTableBody({
       );
     };
 
+    const onScroll = () => {
+      if (rafRef.current) return;
+      rafRef.current = window.requestAnimationFrame(() => {
+        rafRef.current = 0;
+        update();
+      });
+    };
+
     update();
     const target = isWindow ? window : scrollParent;
-    target.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
+    target.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
     return () => {
-      target.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
+      if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+      target.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
     };
   }, [tbodyEl, itemCount, estimateRowHeight, overscan, findScrollParent]);
 
@@ -126,19 +142,19 @@ export default function VirtualizedTableBody({
   return (
     <tbody ref={setRef}>
       {topPad > 0 && (
-        <tr aria-hidden="true" style={{ height: topPad }}>
+        <tr aria-hidden="true" className="vtb-pad" style={{ height: topPad }}>
           <td
             colSpan={columnCount}
-            style={{ padding: 0, border: 0, height: topPad, lineHeight: 0 }}
+            style={{ padding: 0, border: 0, height: topPad, maxHeight: topPad, lineHeight: 0 }}
           />
         </tr>
       )}
       {slice.map((item, i) => renderRow(item, range.start + i))}
       {bottomPad > 0 && (
-        <tr aria-hidden="true" style={{ height: bottomPad }}>
+        <tr aria-hidden="true" className="vtb-pad" style={{ height: bottomPad }}>
           <td
             colSpan={columnCount}
-            style={{ padding: 0, border: 0, height: bottomPad, lineHeight: 0 }}
+            style={{ padding: 0, border: 0, height: bottomPad, maxHeight: bottomPad, lineHeight: 0 }}
           />
         </tr>
       )}

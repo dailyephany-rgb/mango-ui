@@ -58,10 +58,15 @@ const URINE_RESULT_FIELDS = [
 
 function formatUrineRoutine(results = {}) {
   if (!results || typeof results !== "object") return "—";
-  return URINE_RESULT_FIELDS.map(
-    ([key, label]) => `${label}: ${results[key] || "—"}`
-  ).join(" · ");
+  const parts = URINE_RESULT_FIELDS.map(([key, label]) => {
+    const v = results[key];
+    if (v == null || String(v).trim() === "" || String(v) === "—") return null;
+    return `${label}: ${v}`;
+  }).filter(Boolean);
+  return parts.length ? parts.join(" · ") : "—";
 }
+
+function labelizeKey(key) {
   return String(key)
     .replace(/([A-Z])/g, " $1")
     .replace(/^./, (str) => str.toUpperCase());
@@ -312,6 +317,7 @@ function ResultEditModal({ item, title, saving, onClose, onSave }) {
 
 const ValidatorTableRow = memo(function ValidatorTableRow({
   item,
+  index = 0,
   title,
   supportsCritical,
   shouldShowResult,
@@ -338,7 +344,11 @@ const ValidatorTableRow = memo(function ValidatorTableRow({
   const editEnabled = canEditResult && hasEditableResult(item);
 
   return (
-    <tr className={item.validated ? "row-validated" : "row-saved"}>
+    <tr
+      className={`${item.validated ? "row-validated" : "row-saved"}${
+        index % 2 === 1 ? " row-stripe" : ""
+      }`}
+    >
       <td>{item.regNo || "—"}</td>
       <td>{item.diagnosticNo || item.accessionNo || "—"}</td>
       <td>{item.name || "—"}</td>
@@ -423,6 +433,7 @@ const ValidatorTableRow = memo(function ValidatorTableRow({
     </tr>
   );
 }, (prev, next) => {
+  if (prev.index !== next.index) return false;
   if (prev.title !== next.title) return false;
   if (prev.supportsCritical !== next.supportsCritical) return false;
   if (prev.shouldShowResult !== next.shouldShowResult) return false;
@@ -515,10 +526,11 @@ export default function ValidatorTable({
   };
 
   const renderRow = useCallback(
-    (item) => (
+    (item, index) => (
       <ValidatorTableRow
         key={item.id}
         item={item}
+        index={index}
         title={title}
         supportsCritical={supportsCritical}
         shouldShowResult={shouldShowResult}
@@ -595,7 +607,7 @@ export default function ValidatorTable({
             <VirtualizedTableBody
               items={finalData}
               columnCount={finalColumnCount}
-              estimateRowHeight={title.includes("Urine") ? 64 : 52}
+              estimateRowHeight={48}
               scrollParentSelector=".validator-table-scroll, .table-wrapper, .haem-table-wrapper, .table-card, .dept-table-wrapper, .table-scroll-container"
               renderRow={renderRow}
             />

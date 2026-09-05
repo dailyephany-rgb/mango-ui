@@ -102,12 +102,30 @@ export default function ValidatorDashboard() {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setRawData(
-          snap.docs.map((d) => ({
-            id: d.id,
-            ...d.data(),
-          }))
-        );
+        const next = snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }));
+        setRawData((prev) => {
+          if (prev.length !== next.length) return next;
+          for (let i = 0; i < next.length; i++) {
+            const a = prev[i];
+            const b = next[i];
+            if (
+              a.id !== b.id ||
+              a.validated !== b.validated ||
+              a.validatedBy !== b.validatedBy ||
+              a.savedBy !== b.savedBy ||
+              a.result !== b.result ||
+              a.results !== b.results ||
+              a.duration !== b.duration ||
+              a.critical !== b.critical
+            ) {
+              return next;
+            }
+          }
+          return prev;
+        });
       },
       (err) => {
         console.error(

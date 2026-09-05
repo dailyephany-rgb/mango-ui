@@ -70,10 +70,19 @@ h2 {
   overscroll-behavior: contain;
 }
 
+.validator-table tbody tr:not(.vtb-pad) td {
+  height: 48px;
+  max-height: 48px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .validator-result-cell {
-  max-width: 420px;
-  white-space: normal;
-  word-break: break-word;
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-weight: 600;
   text-align: left;
 }
@@ -111,7 +120,7 @@ h2 {
   text-align: center;
 }
 
-.validator-table tr:nth-child(even) {
+.validator-table tbody tr.row-stripe:not(.row-validated) {
   background-color: #f8f9fa;
 }
 
