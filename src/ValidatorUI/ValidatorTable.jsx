@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState, memo } from "react";
+import React, { useCallback, useEffect, useMemo, useState, memo, useRef } from "react";
+import { createPortal } from "react-dom";
 import VirtualizedTableBody from "../shared/components/VirtualizedTableBody.jsx";
 import { useStableCallback } from "../shared/hooks/useStableCallback.js";
 import SafeDateInput from "../shared/components/SafeDateInput.jsx";
@@ -70,6 +71,148 @@ function labelizeKey(key) {
   return String(key)
     .replace(/([A-Z])/g, " $1")
     .replace(/^./, (str) => str.toUpperCase());
+}
+
+function urineResultPairs(results = {}) {
+  return URINE_RESULT_FIELDS.map(([key, label]) => {
+    const v = results?.[key];
+    const text = v == null || String(v).trim() === "" ? "—" : String(v);
+    return { label, value: text };
+  });
+}
+
+function objectResultPairs(val) {
+  if (val == null || val === "") return [];
+  if (typeof val !== "object") return [{ label: "Result", value: String(val) }];
+  return Object.entries(val)
+    .filter(([, value]) => value != null && String(value).trim() !== "")
+    .map(([key, value]) => ({ label: labelizeKey(key), value: String(value) }));
+}
+
+function ResultPeekCell({ summary, pairs, criticalText }) {
+  const cellRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const [pos, setPos] = useState({ top: 8, left: 8 });
+  const hideTimer = useRef(0);
+
+  const place = useCallback(() => {
+    const el = cellRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const width = 420;
+    const estimatedH = Math.min(480, 56 + (pairs?.length || 1) * 28);
+    let left = r.left;
+    if (left + width > window.innerWidth - 8) left = window.innerWidth - width - 8;
+    if (left < 8) left = 8;
+    let top = r.bottom + 6;
+    if (top + estimatedH > window.innerHeight - 8) {
+      top = Math.max(8, r.top - estimatedH - 6);
+    }
+    setPos({ top, left });
+  }, [pairs?.length]);
+
+  const show = () => {
+    window.clearTimeout(hideTimer.current);
+    place();
+    setOpen(true);
+  };
+
+  const hideSoon = () => {
+    if (pinned) return;
+    hideTimer.current = window.setTimeout(() => setOpen(false), 180);
+  };
+
+  useEffect(() => () => window.clearTimeout(hideTimer.current), []);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        setPinned(false);
+        setOpen(false);
+      }
+    };
+    const onScroll = () => {
+      if (pinned) place();
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("resize", place);
+    document.addEventListener("scroll", onScroll, true);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", place);
+      document.removeEventListener("scroll", onScroll, true);
+    };
+  }, [open, pinned, place]);
+
+  const display = criticalText || summary || "—";
+  const rows = criticalText
+    ? [{ label: "Critical", value: criticalText }, ...pairs]
+    : pairs;
+
+  return (
+    <td
+      ref={cellRef}
+      className="validator-result-cell"
+      onMouseEnter={show}
+      onMouseLeave={hideSoon}
+    >
+      <button
+        type="button"
+        className="validator-result-summary"
+        title="Hover or click to see all results"
+        onClick={(e) => {
+          e.stopPropagation();
+          place();
+          setPinned((p) => {
+            const next = !p;
+            setOpen(true);
+            return next;
+          });
+        }}
+      >
+        {display}
+      </button>
+      {open && rows.length > 0
+        ? createPortal(
+            <div
+              className={`validator-result-popover${pinned ? " is-pinned" : ""}`}
+              style={{ top: pos.top, left: pos.left }}
+              onMouseEnter={() => window.clearTimeout(hideTimer.current)}
+              onMouseLeave={hideSoon}
+            >
+              <div className="validator-result-popover-head">
+                <span>Full result</span>
+                {pinned ? (
+                  <button
+                    type="button"
+                    className="validator-result-popover-close"
+                    onClick={() => {
+                      setPinned(false);
+                      setOpen(false);
+                    }}
+                  >
+                    Close
+                  </button>
+                ) : (
+                  <span className="validator-result-popover-hint">Click result to pin</span>
+                )}
+              </div>
+              <div className="validator-result-popover-grid">
+                {rows.map((row) => (
+                  <div key={row.label} className="validator-result-popover-row">
+                    <span>{row.label}</span>
+                    <strong>{row.value}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+    </td>
+  );
 }
 
 function buildCoagResultsString(fields) {
@@ -387,16 +530,21 @@ const ValidatorTableRow = memo(function ValidatorTableRow({
         </td>
       )}
       {shouldShowResult && (
-        <td
-          className="validator-result-cell"
-          style={{ fontWeight: "bold", color: "#1e3a8a", fontSize: "13px" }}
-        >
-          {item.criticalParameter
-            ? `CRITICAL: ${item.criticalParameter}`
-            : hasUrineRoutine
-            ? formatUrineRoutine(item.results)
-            : renderResult(item.result || item.results)}
-        </td>
+        <ResultPeekCell
+          summary={
+            hasUrineRoutine
+              ? formatUrineRoutine(item.results)
+              : renderResult(item.result || item.results)
+          }
+          pairs={
+            hasUrineRoutine
+              ? urineResultPairs(item.results)
+              : objectResultPairs(item.result || item.results)
+          }
+          criticalText={
+            item.criticalParameter ? `CRITICAL: ${item.criticalParameter}` : ""
+          }
+        />
       )}
       {isESR && (
         <td style={{ fontWeight: "600", color: "#dc2626" }}>
