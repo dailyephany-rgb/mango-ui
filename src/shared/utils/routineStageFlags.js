@@ -12,6 +12,7 @@ import {
   FieldPath,
 } from "firebase/firestore";
 import { trackedGetDoc as getDoc } from "../firestore/trackedFirestore.js";
+import { reportDetailsDocId } from "./ids.js";
 
 const STAGE_MAPS = [
   "routineReportsScanned",
@@ -192,6 +193,37 @@ export async function patchReportDetailsRoutineMaps(
     { ...flagsToNestedCreate(dept, flags), ...extraSafe },
     { merge: true }
   );
+}
+
+/**
+ * Prefer the Mango slip id `{regNo}_{accession}`. Fall back to the department
+ * row id only if that report_details doc already exists (legacy / haem safeKey).
+ */
+export async function resolveReportDetailsRef(db, entry) {
+  const mangoId = reportDetailsDocId(entry);
+  const fallbackId = String(entry?.id || entry?.compositeKey || "").trim();
+  const ids = [...new Set([mangoId, fallbackId].filter(Boolean))];
+
+  let preferredRef = null;
+  let preferredSnap = null;
+
+  for (const id of ids) {
+    const ref = doc(db, "report_details", id);
+    const snap = await getDoc(ref);
+    if (!preferredRef) {
+      preferredRef = ref;
+      preferredSnap = snap;
+    }
+    if (snap.exists()) {
+      return { ref, snap, id };
+    }
+  }
+
+  return {
+    ref: preferredRef,
+    snap: preferredSnap,
+    id: mangoId || fallbackId,
+  };
 }
 
 /**

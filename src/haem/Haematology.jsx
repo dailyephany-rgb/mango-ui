@@ -21,7 +21,7 @@ import {
   hasActiveDeptColFilters,
 } from "../shared/utils/deptColFilters.js";
 import { normalizeSource } from "../shared/utils/source.js";
-import { compositeId, safeKey } from "../shared/utils/ids.js";
+import { compositeId, safeKey, reportDetailsDocId } from "../shared/utils/ids.js";
 import { patchReportDetailsRoutineMaps } from "../shared/utils/routineStageFlags.js";
 import {
   extractTestName,
@@ -217,9 +217,14 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
     }));
   
     try {
-      await patchReportDetailsRoutineMaps(db, regKey, CURRENT_DEPT, {
-        scanned: value === "Yes",
-      });
+      await patchReportDetailsRoutineMaps(
+        db,
+        reportDetailsDocId(patient) || regKey,
+        CURRENT_DEPT,
+        {
+          scanned: value === "Yes",
+        }
+      );
     } catch (err) {
       console.error(
         "Failed to update scan status:",
@@ -365,10 +370,15 @@ const [criticalParams, setCriticalParams] = usePersistedObjectState(
         { merge: true }
       );
 
-      await patchReportDetailsRoutineMaps(db, compositeKey, CURRENT_DEPT, {
-        scanned: true,
-        saved: true,
-      });
+      await patchReportDetailsRoutineMaps(
+        db,
+        reportDetailsDocId(patient) || compositeKey,
+        CURRENT_DEPT,
+        {
+          scanned: true,
+          saved: true,
+        }
+      );
       
       setLocalScans((prev) => {
         const updated = { ...prev }; delete updated[compositeKey];

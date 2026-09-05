@@ -26,7 +26,7 @@ export default function VirtualizedTableBody({
   renderRow,
   estimateRowHeight = DEFAULT_ROW_HEIGHT,
   overscan = DEFAULT_OVERSCAN,
-  scrollParentSelector = ".table-wrapper, .haem-table-wrapper, .table-card, .dept-table-wrapper, .validator-table-scroll",
+  scrollParentSelector = ".table-wrapper, .haem-table-wrapper, .table-card, .dept-table-wrapper, .validator-table-scroll, .table-scroll-container, .table-container",
   columnCount = 16,
 }) {
   const [range, setRange] = useState({ start: 0, end: VIRTUALIZE_MIN_ROWS });

@@ -42,7 +42,8 @@ const overflowStyles = `
   .table-scroll-container {
     width: 100%;
     overflow-x: auto; 
-    overflow-y: hidden;
+    overflow-y: auto;
+    max-height: 80vh;
     display: block;
     border: 1px solid #e5e7eb;
     border-radius: 8px;

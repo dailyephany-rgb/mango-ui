@@ -13,11 +13,11 @@ import {
 } from "firebase/firestore";
 import {
   trackedOnSnapshot as onSnapshot,
-  trackedGetDoc as getDoc,
 } from "../shared/firestore/trackedFirestore.js";
 
 import { db } from "../firebaseConfig.js";
 import ValidatorTable from "./ValidatorTable.jsx";
+import { visitDiagnosticNo } from "../shared/utils/ids.js";
 import UserMenu from "../auth/UserMenu";
 import {
   COMPLETION_FIELDS,
@@ -28,7 +28,10 @@ import {
   localDayStart,
   localDayEndExclusive,
 } from "../shared/utils/dates.js";
-import { applyReportDetailsStageToBatch } from "../shared/utils/routineStageFlags.js";
+import {
+  applyReportDetailsStageToBatch,
+  resolveReportDetailsRef,
+} from "../shared/utils/routineStageFlags.js";
 import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 
 function getActiveCollection(
@@ -126,10 +129,14 @@ export default function ValidatorDashboard() {
     try {
       const ref = doc(db, collectionName, entry.id);
       const completionField = COMPLETION_FIELDS[collectionName];
-      const reportRef = doc(db, "report_details", entry.id);
       const dept = ROUTINE_DEPARTMENTS[collectionName];
+      const { ref: reportRef, snap: reportSnap } =
+        await resolveReportDetailsRef(db, entry);
 
-      const reportSnap = await getDoc(reportRef);
+      if (!reportRef) {
+        throw new Error("Missing report_details id (regNo + accession)");
+      }
+
       const batch = writeBatch(db);
 
       batch.update(ref, {
@@ -141,17 +148,26 @@ export default function ValidatorDashboard() {
 
       const reportUpdates = {};
 
-      if (
-        completionField &&
-        (!reportSnap.exists() || !reportSnap.data()[completionField])
-      ) {
+      const exists = reportSnap?.exists?.() === true;
+
+      if (completionField && (!exists || !reportSnap.data()[completionField])) {
         reportUpdates[completionField] = serverTimestamp();
+      }
+
+      if (!exists) {
+        reportUpdates.regNo = String(entry.regNo || "").trim();
+        reportUpdates.diagnosticNo = visitDiagnosticNo(entry);
+        if (entry.timePrinted) reportUpdates.timePrinted = entry.timePrinted;
+        if (entry.selectedTests) {
+          reportUpdates.selectedTests = entry.selectedTests;
+        }
+        if (entry.name) reportUpdates.name = entry.name;
       }
 
       applyReportDetailsStageToBatch(
         batch,
         reportRef,
-        reportSnap.exists(),
+        exists,
         dept,
         "validated",
         reportUpdates
