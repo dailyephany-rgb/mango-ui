@@ -148,15 +148,19 @@ export default function CriticalAlertDashboard() {
   });
 
   const persistReportedTo = useStableCallback(async (alert, value) => {
-    if (alert.status === "Reported") return;
     const next = String(value ?? "").trim();
-    if (!next || next === (alert.reportedTo || "").trim()) return;
+    if (!next) {
+      window.alert("Enter doctor / nurse name in Reported To.");
+      return;
+    }
+    if (next === (alert.reportedTo || "").trim()) return;
     try {
       await updateDoc(doc(db, "critical_alerts", alert.id), {
         reportedTo: next,
       });
     } catch (err) {
       console.error("Failed to save reported-to name:", err);
+      window.alert("Failed to save doctor / nurse name.");
     }
   });
 
@@ -471,18 +475,26 @@ const CriticalAlertRow = memo(function CriticalAlertRow({
         {alert.reportedBy || "—"}
       </td>
       <td>
-        {alert.status === "Reported" ? (
+        {alert.reportedTo ? (
           <span style={{ fontWeight: 600, color: "#1e3a8a" }}>
-            {alert.reportedTo || reportedToValue || "—"}
+            {alert.reportedTo}
           </span>
         ) : (
-          <input
-            type="text"
-            value={reportedToValue}
-            placeholder="Doctor / Nurse"
-            onChange={(e) => onReportedToChange(alert.id, e.target.value)}
-            onBlur={(e) => onPersistReportedTo(alert, e.target.value)}
-          />
+          <div className="reported-to-edit">
+            <input
+              type="text"
+              value={reportedToValue}
+              placeholder="Doctor / Nurse"
+              onChange={(e) => onReportedToChange(alert.id, e.target.value)}
+            />
+            <button
+              type="button"
+              className="reported-to-save"
+              onClick={() => onPersistReportedTo(alert, reportedToValue)}
+            >
+              Save
+            </button>
+          </div>
         )}
       </td>
       <td>
