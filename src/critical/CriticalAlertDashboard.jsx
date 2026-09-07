@@ -147,16 +147,36 @@ export default function CriticalAlertDashboard() {
     setCommMethods((prev) => ({ ...prev, [alertId]: value }));
   });
 
+  const persistReportedTo = useStableCallback(async (alert, value) => {
+    if (alert.status === "Reported") return;
+    const next = String(value ?? "").trim();
+    if (!next || next === (alert.reportedTo || "").trim()) return;
+    try {
+      await updateDoc(doc(db, "critical_alerts", alert.id), {
+        reportedTo: next,
+      });
+    } catch (err) {
+      console.error("Failed to save reported-to name:", err);
+    }
+  });
+
   
   const handleMarkDone = async (alert) => {
-    const method = commMethods[alert.id];
+    const method = commMethods[alert.id] || alert.communicatedVia;
+    const reportedToName = (
+      reportedTo[alert.id] ??
+      alert.reportedTo ??
+      ""
+    ).trim();
     if (!method) return alert("Select communication method.");
+    if (!reportedToName) return alert("Enter doctor / nurse name in Reported To.");
     
     try {
       const reportTime = new Date();
       await updateDoc(doc(db, "critical_alerts", alert.id), {
         status: "Reported",
         communicatedVia: method,
+        reportedTo: reportedToName,
         reportedAt: serverTimestamp(),
       });
 
@@ -183,6 +203,7 @@ export default function CriticalAlertDashboard() {
         ["AGE:", alert.age || "-"],
         ["SEX:", alert.gender || "-"],
         ["DOCTOR:", alert.doctor || "-"],
+        ["REPORTED TO:", reportedToName || "-"],
         ["SELECTED TESTS:", Array.isArray(alert.selectedTests) ? alert.selectedTests.join(", ") : alert.selectedTests || "-"],
         ["CRITICAL FINDING:", alert.criticalParameter || "-"],
         ["COMMUNICATED VIA:", method],
@@ -235,6 +256,9 @@ export default function CriticalAlertDashboard() {
   });
   const onMarkDone = useStableCallback((alert) => {
     handleMarkDone(alert);
+  });
+  const onPersistReportedTo = useStableCallback((alert, value) => {
+    persistReportedTo(alert, value);
   });
 
   const filteredAlerts = useMemo(() => {
@@ -380,6 +404,7 @@ export default function CriticalAlertDashboard() {
                 commMethodValue={commMethods[alert.id] || alert.communicatedVia || ""}
                 onReportedToChange={onReportedToChange}
                 onCommMethodChange={onCommMethodChange}
+                onPersistReportedTo={onPersistReportedTo}
                 onCrossCheck={onCrossCheck}
                 onMarkDone={onMarkDone}
               />
@@ -410,6 +435,7 @@ const CriticalAlertRow = memo(function CriticalAlertRow({
   commMethodValue,
   onReportedToChange,
   onCommMethodChange,
+  onPersistReportedTo,
   onCrossCheck,
   onMarkDone,
 }) {
@@ -445,13 +471,19 @@ const CriticalAlertRow = memo(function CriticalAlertRow({
         {alert.reportedBy || "—"}
       </td>
       <td>
-        <input
-          type="text"
-          value={reportedToValue}
-          placeholder="Doctor / Nurse"
-          disabled={alert.status === "Reported"}
-          onChange={(e) => onReportedToChange(alert.id, e.target.value)}
-        />
+        {alert.status === "Reported" ? (
+          <span style={{ fontWeight: 600, color: "#1e3a8a" }}>
+            {alert.reportedTo || reportedToValue || "—"}
+          </span>
+        ) : (
+          <input
+            type="text"
+            value={reportedToValue}
+            placeholder="Doctor / Nurse"
+            onChange={(e) => onReportedToChange(alert.id, e.target.value)}
+            onBlur={(e) => onPersistReportedTo(alert, e.target.value)}
+          />
+        )}
       </td>
       <td>
         <select
@@ -510,6 +542,7 @@ const CriticalAlertRow = memo(function CriticalAlertRow({
   if (prev.commMethodValue !== next.commMethodValue) return false;
   if (prev.onReportedToChange !== next.onReportedToChange) return false;
   if (prev.onCommMethodChange !== next.onCommMethodChange) return false;
+  if (prev.onPersistReportedTo !== next.onPersistReportedTo) return false;
   if (prev.onCrossCheck !== next.onCrossCheck) return false;
   if (prev.onMarkDone !== next.onMarkDone) return false;
   const a = prev.alert;
@@ -526,6 +559,7 @@ const CriticalAlertRow = memo(function CriticalAlertRow({
     a.doctor === b.doctor &&
     a.criticalParameter === b.criticalParameter &&
     a.reportedBy === b.reportedBy &&
+    a.reportedTo === b.reportedTo &&
     a.crossChecked === b.crossChecked &&
     a.crossCheckedBy === b.crossCheckedBy &&
     a.flaggedAt === b.flaggedAt &&
