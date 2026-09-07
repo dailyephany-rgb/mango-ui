@@ -275,34 +275,7 @@
 /* Reported To */
 .backroom-table th:nth-child(10),
 .backroom-table td:nth-child(10) {
-  min-width: 220px;
-}
-
-.reported-to-edit {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.reported-to-edit input {
-  min-width: 120px;
-  flex: 1;
-}
-
-.reported-to-save {
-  border: none;
-  border-radius: 4px;
-  background: #1e3a8a;
-  color: #fff;
-  font-weight: 600;
-  font-size: 12px;
-  padding: 6px 10px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.reported-to-save:hover {
-  background: #1d4ed8;
+  min-width: 180px;
 }
 
 /* Communicated Via */

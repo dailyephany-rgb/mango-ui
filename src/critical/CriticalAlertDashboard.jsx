@@ -147,23 +147,6 @@ export default function CriticalAlertDashboard() {
     setCommMethods((prev) => ({ ...prev, [alertId]: value }));
   });
 
-  const persistReportedTo = useStableCallback(async (alert, value) => {
-    const next = String(value ?? "").trim();
-    if (!next) {
-      window.alert("Enter doctor / nurse name in Reported To.");
-      return;
-    }
-    if (next === (alert.reportedTo || "").trim()) return;
-    try {
-      await updateDoc(doc(db, "critical_alerts", alert.id), {
-        reportedTo: next,
-      });
-    } catch (err) {
-      console.error("Failed to save reported-to name:", err);
-      window.alert("Failed to save doctor / nurse name.");
-    }
-  });
-
   
   const handleMarkDone = async (alert) => {
     const method = commMethods[alert.id] || alert.communicatedVia;
@@ -172,8 +155,8 @@ export default function CriticalAlertDashboard() {
       alert.reportedTo ??
       ""
     ).trim();
-    if (!method) return alert("Select communication method.");
-    if (!reportedToName) return alert("Enter doctor / nurse name in Reported To.");
+    if (!method) return window.alert("Select communication method.");
+    if (!reportedToName) return window.alert("Enter doctor / nurse name in Reported To.");
     
     try {
       const reportTime = new Date();
@@ -260,9 +243,6 @@ export default function CriticalAlertDashboard() {
   });
   const onMarkDone = useStableCallback((alert) => {
     handleMarkDone(alert);
-  });
-  const onPersistReportedTo = useStableCallback((alert, value) => {
-    persistReportedTo(alert, value);
   });
 
   const filteredAlerts = useMemo(() => {
@@ -408,7 +388,6 @@ export default function CriticalAlertDashboard() {
                 commMethodValue={commMethods[alert.id] || alert.communicatedVia || ""}
                 onReportedToChange={onReportedToChange}
                 onCommMethodChange={onCommMethodChange}
-                onPersistReportedTo={onPersistReportedTo}
                 onCrossCheck={onCrossCheck}
                 onMarkDone={onMarkDone}
               />
@@ -439,7 +418,6 @@ const CriticalAlertRow = memo(function CriticalAlertRow({
   commMethodValue,
   onReportedToChange,
   onCommMethodChange,
-  onPersistReportedTo,
   onCrossCheck,
   onMarkDone,
 }) {
@@ -475,26 +453,17 @@ const CriticalAlertRow = memo(function CriticalAlertRow({
         {alert.reportedBy || "—"}
       </td>
       <td>
-        {alert.reportedTo ? (
+        {alert.status === "Reported" ? (
           <span style={{ fontWeight: 600, color: "#1e3a8a" }}>
-            {alert.reportedTo}
+            {alert.reportedTo || "—"}
           </span>
         ) : (
-          <div className="reported-to-edit">
-            <input
-              type="text"
-              value={reportedToValue}
-              placeholder="Doctor / Nurse"
-              onChange={(e) => onReportedToChange(alert.id, e.target.value)}
-            />
-            <button
-              type="button"
-              className="reported-to-save"
-              onClick={() => onPersistReportedTo(alert, reportedToValue)}
-            >
-              Save
-            </button>
-          </div>
+          <input
+            type="text"
+            value={reportedToValue}
+            placeholder="Doctor / Nurse"
+            onChange={(e) => onReportedToChange(alert.id, e.target.value)}
+          />
         )}
       </td>
       <td>
@@ -540,7 +509,7 @@ const CriticalAlertRow = memo(function CriticalAlertRow({
         ) : (
           <button
             className="save-btn"
-            disabled={!commMethodValue}
+            disabled={!commMethodValue || !reportedToValue.trim()}
             onClick={() => onMarkDone(alert)}
           >
             Report
@@ -554,7 +523,6 @@ const CriticalAlertRow = memo(function CriticalAlertRow({
   if (prev.commMethodValue !== next.commMethodValue) return false;
   if (prev.onReportedToChange !== next.onReportedToChange) return false;
   if (prev.onCommMethodChange !== next.onCommMethodChange) return false;
-  if (prev.onPersistReportedTo !== next.onPersistReportedTo) return false;
   if (prev.onCrossCheck !== next.onCrossCheck) return false;
   if (prev.onMarkDone !== next.onMarkDone) return false;
   const a = prev.alert;
