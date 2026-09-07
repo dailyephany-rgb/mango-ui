@@ -41,6 +41,26 @@ import "../shared/styles/colFilters.css";
 export const DOUBLE_CHECK_TAB = "Double Checking";
 export const DOUBLE_CHECK_COLLECTION = "double_check_outsource";
 
+/** Date bar matches when the double-check row was created (Firestore createdAt). */
+const DOUBLE_CHECK_CREATED_FIELD = "createdAt";
+
+function normalizeDateRange(fromStr, toStr) {
+  const from = fromStr || getLocalDateString();
+  const to = toStr || from;
+  return from <= to ? [from, to] : [to, from];
+}
+
+function mapDoubleCheckDoc(docSnap) {
+  const data = docSnap.data();
+  return {
+    id: docSnap.id,
+    uniqueTrackingId: docSnap.id,
+    accessionNo: data.diagnosticNo || "—",
+    displayTests: data.selectedTests || data.tests || [],
+    ...data,
+  };
+}
+
 const LAB_OPTIONS = Object.keys(OUTSOURCE_MAP);
 const OUTSOURCE_DEPT_KEYS = new Set(LAB_OPTIONS);
 
@@ -169,8 +189,7 @@ export default function DoubleCheckingPanel({
   }, [focusedIndex]);
 
   useEffect(() => {
-    const fromStr = dateFrom || getLocalDateString();
-    const toStr = dateTo || getLocalDateString();
+    const [fromStr, toStr] = normalizeDateRange(dateFrom, dateTo);
     const start = localDayStart(fromStr);
     const endExclusive = localDayEndExclusive(toStr);
     if (!start || !endExclusive) {
@@ -180,32 +199,24 @@ export default function DoubleCheckingPanel({
 
     const q = query(
       collection(db, DOUBLE_CHECK_COLLECTION),
-      where("timePrinted", ">=", Timestamp.fromDate(start)),
-      where("timePrinted", "<", Timestamp.fromDate(endExclusive)),
-      orderBy("timePrinted", "asc")
+      where(DOUBLE_CHECK_CREATED_FIELD, ">=", Timestamp.fromDate(start)),
+      where(DOUBLE_CHECK_CREATED_FIELD, "<", Timestamp.fromDate(endExclusive)),
+      orderBy(DOUBLE_CHECK_CREATED_FIELD, "asc")
     );
 
     const unsub = onSnapshot(
       q,
       (snap) => {
         setRows(
-          snap.docs.map((d) => {
-            const data = d.data();
-            const buffered = bufferRef.current[d.id] || {};
-            return {
-              id: d.id,
-              uniqueTrackingId: d.id,
-              accessionNo: data.diagnosticNo || "—",
-              displayTests: data.selectedTests || data.tests || [],
-              ...data,
-              ...buffered,
-            };
-          })
+          snap.docs.map((d) => ({
+            ...mapDoubleCheckDoc(d),
+            ...(bufferRef.current[d.id] || {}),
+          }))
         );
       },
       (err) => {
         console.error(
-          "[DoubleChecking] double_check_outsource query failed:",
+          "[DoubleChecking] double_check_outsource createdAt query failed:",
           err
         );
         setRows([]);
@@ -239,8 +250,8 @@ export default function DoubleCheckingPanel({
         return true;
       })
       .sort((a, b) => {
-        const dateA = parseEntryDate(a, ["timePrinted"]);
-        const dateB = parseEntryDate(b, ["timePrinted"]);
+        const dateA = parseEntryDate(a, [DOUBLE_CHECK_CREATED_FIELD]);
+        const dateB = parseEntryDate(b, [DOUBLE_CHECK_CREATED_FIELD]);
         if (!dateA) return 1;
         if (!dateB) return -1;
         return dateA - dateB;
@@ -355,7 +366,6 @@ export default function DoubleCheckingPanel({
         return;
       }
 
-      const now = new Date();
       await setDoc(ref, {
         compositeId: docId,
         regNo,
@@ -382,7 +392,6 @@ export default function DoubleCheckingPanel({
         receivedBy: "",
         deliveredBy: "",
         status: "Pending",
-        timePrinted: Timestamp.fromDate(now),
         createdAt: serverTimestamp(),
         createdBy: currentUser,
       });
@@ -931,7 +940,8 @@ export default function DoubleCheckingPanel({
         </table>
         {!filtered.length ? (
           <p className="double-check-empty">
-            No double-check entries for this date range. Create one above.
+            No double-check entries created in this date range. Create one above
+            or widen the dates.
           </p>
         ) : null}
       </div>
