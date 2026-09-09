@@ -204,71 +204,43 @@ if (activeColl === "biochemistry_combo") {
 
   displayStats = [];
 
+  const entryHasComboTest = (entry, test) =>
+    (entry.selectedTests || []).some(
+      (t) =>
+        (typeof t === "string" ? t : t.test || "")
+          .toUpperCase()
+          .trim() === test.toUpperCase().trim()
+    );
+
   COMBO_TESTS.forEach((test) => {
-
-    // If a single category is selected
+    // Date/source already applied via Firestore query + filteredEntries.
     if (comboCategory !== "All") {
-
-      const count = filteredEntries.filter(entry =>
-        (entry.selectedTests || []).some(
-          t => (typeof t === "string" ? t : t.test || "")
-            .toUpperCase()
-            .trim() === test.toUpperCase().trim()
-        )
+      const count = filteredEntries.filter((entry) =>
+        entryHasComboTest(entry, test)
       ).length;
 
-      if (
-        test.toLowerCase().includes(testSearch.toLowerCase())
-      ) {
+      if (test.toLowerCase().includes(testSearch.toLowerCase())) {
         displayStats.push([test, count]);
       }
-
-    } else {
-
-      // Show every category separately
-      categories.forEach(category => {
-
-        const count = entries.filter(entry => {
-
-          if ((entry.category || "").toLowerCase() !== category.toLowerCase()) {
-            return false;
-          }
-
-          // Existing filters
-          const entryDateStr = parseDateForFilter(
-            entry.timePrinted || entry.timeCollected || entry.savedTime
-          );
-
-          const inRange =
-            !entryDateStr ||
-            (entryDateStr >= dateFrom && entryDateStr <= dateTo);
-
-          const matchesSource =
-            sourceFilter === "All" ||
-            entry.source?.toLowerCase() === sourceFilter.toLowerCase();
-
-          const hasTest = (entry.selectedTests || []).some(
-            t =>
-              (typeof t === "string" ? t : t.test || "")
-                .toUpperCase()
-                .trim() === test.toUpperCase().trim()
-          );
-
-          return inRange && matchesSource && hasTest;
-
-        }).length;
-
-        const cardName = `${test} - ${category}`;
-    if (
-            cardName.toLowerCase().includes(testSearch.toLowerCase())
-          ) {
-            displayStats.push([cardName, count]);
-          }
-
-      });
-
+      return;
     }
 
+    // Show every category separately
+    categories.forEach((category) => {
+      const count = filteredEntries.filter((entry) => {
+        if (
+          (entry.category || "").toLowerCase() !== category.toLowerCase()
+        ) {
+          return false;
+        }
+        return entryHasComboTest(entry, test);
+      }).length;
+
+      const cardName = `${test} - ${category}`;
+      if (cardName.toLowerCase().includes(testSearch.toLowerCase())) {
+        displayStats.push([cardName, count]);
+      }
+    });
   });
 
 } else {
