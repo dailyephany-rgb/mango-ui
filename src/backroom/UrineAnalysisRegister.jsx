@@ -5,6 +5,7 @@ import {
   setDoc,
   doc,
   updateDoc,
+  getDoc,
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
@@ -20,6 +21,10 @@ import {
   hasActiveDeptColFilters,
 } from "../shared/utils/deptColFilters.js";
 import { compositeId } from "../shared/utils/ids.js";
+import {
+  patchReportDetailsRoutineMaps,
+  resolveReportDetailsRef,
+} from "../shared/utils/routineStageFlags.js";
 import { usePersistedObjectState } from "../shared/hooks/usePersistedObjectState.js";
 import { useRegisterFilters } from "../shared/hooks/useRegisterFilters.js";
 import { useMasterDeptSnapshots } from "../shared/hooks/useMasterDeptSnapshots.js";
@@ -273,34 +278,41 @@ export default function UrineAnalysisRegister() {
   const handleScan = async (entry, value) => {
     const now = new Date().toISOString();
     const regKey = entry.compositeKey;
-  
-    setLocalScans((prev) => {
-      const updated = {
-        ...prev,
-        [regKey]: {
-          scanned: value,
-          scannedTime:
-            value === "Yes"
-              ? now
-              : null,
-        },
-      };
-  
-      return updated;
-    });
-  
+    const scannedYes = value === "Yes";
+
+    setLocalScans((prev) => ({
+      ...prev,
+      [regKey]: {
+        scanned: value,
+        scannedTime: scannedYes ? now : null,
+      },
+    }));
+
     try {
-      await updateDoc(
-        doc(db, "report_details", regKey),
-        {
-          [`routineReportsScanned.${CURRENT_DEPT}`]:
-            value === "Yes",
+      const { id: reportId } = await resolveReportDetailsRef(db, entry);
+      if (!reportId) {
+        throw new Error("Missing report_details id (regNo + accession)");
+      }
+      await patchReportDetailsRoutineMaps(db, reportId, CURRENT_DEPT, {
+        scanned: scannedYes,
+      });
+
+      if (!scannedYes) {
+        const urineRef = doc(db, "urine_analysis_register", regKey);
+        const urineSnap = await getDoc(urineRef);
+        if (urineSnap.exists()) {
+          const alreadySaved = urineSnap.data()?.saved === "Yes";
+          await updateDoc(urineRef, {
+            scanned: "No",
+            scannedTime: null,
+            ...(alreadySaved ? {} : { status: "pending" }),
+          });
         }
-      );
+      }
     } catch (err) {
-      console.error(
-        "Failed to update scan status:",
-        err
+      console.error("Failed to update scan status:", err);
+      alert(
+        "Failed to update scan status on report details. Check the connection and try again."
       );
     }
   };
@@ -414,13 +426,14 @@ export default function UrineAnalysisRegister() {
         { merge: true }
       );
 
-      await updateDoc(
-        doc(db, "report_details", compositeKey),
-        {
-          [`routineReportsScanned.${CURRENT_DEPT}`]: true,
-          [`routineReportsSaved.${CURRENT_DEPT}`]: true,
-        }
-      );
+      const { id: reportId } = await resolveReportDetailsRef(db, entry);
+      if (!reportId) {
+        throw new Error("Missing report_details id (regNo + accession)");
+      }
+      await patchReportDetailsRoutineMaps(db, reportId, CURRENT_DEPT, {
+        scanned: true,
+        saved: true,
+      });
 
 
       try {

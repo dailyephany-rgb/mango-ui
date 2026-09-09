@@ -14,6 +14,7 @@ import { MASTER_ADMIN_DEPARTMENTS } from "../shared/config/collections.js";
 import { EngComponent } from "../engineering/ui/EngComponent.jsx";
 import SafeDateInput from "../shared/components/SafeDateInput.jsx";
 import { downloadCompareReconPdf } from "./exportCompareReconPdf.js";
+import { downloadCompareReconExcel } from "./exportCompareReconExcel.js";
 
 const DEPARTMENTS = MASTER_ADMIN_DEPARTMENTS;
 
@@ -39,6 +40,7 @@ export default function MasterAdminPanel() {
   const [reconData, setReconData] = useState(null);
   const [reconTab, setReconTab] = useState("missing");
   const [comparePdfBusy, setComparePdfBusy] = useState(false);
+  const [compareExcelBusy, setCompareExcelBusy] = useState(false);
 
   const parseDateForFilter = (field) => {
     if (!field) return null;
@@ -463,22 +465,48 @@ if (mappedLabNames && mappedLabNames.length > 0) {
                     <span><strong>Match Rate:</strong> {reconData.stats.rate}%</span>
                     <span><strong>Total Hospital Bills:</strong> {reconData.stats.total}</span>
                     <span><strong>Lab Total (Filtered):</strong> {reconData.stats.labTotal}</span>
-                    <button
-                      type="button"
-                      className="btn-update"
-                      style={{ backgroundColor: "#1e3a8a", marginLeft: "auto" }}
-                      disabled={comparePdfBusy}
-                      onClick={() => {
-                        setComparePdfBusy(true);
-                        try {
-                          downloadCompareReconPdf(reconData);
-                        } finally {
-                          setComparePdfBusy(false);
-                        }
+                    <div
+                      style={{
+                        marginLeft: "auto",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "8px",
+                        alignItems: "stretch",
                       }}
                     >
-                      {comparePdfBusy ? "Preparing…" : "Print Report"}
-                    </button>
+                      <button
+                        type="button"
+                        className="btn-update"
+                        style={{ backgroundColor: "#1e3a8a" }}
+                        disabled={comparePdfBusy}
+                        onClick={() => {
+                          setComparePdfBusy(true);
+                          try {
+                            downloadCompareReconPdf(reconData);
+                          } finally {
+                            setComparePdfBusy(false);
+                          }
+                        }}
+                      >
+                        {comparePdfBusy ? "Preparing…" : "Print Report"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-update"
+                        style={{ backgroundColor: "#0f766e" }}
+                        disabled={compareExcelBusy}
+                        onClick={() => {
+                          setCompareExcelBusy(true);
+                          try {
+                            downloadCompareReconExcel(reconData);
+                          } finally {
+                            setCompareExcelBusy(false);
+                          }
+                        }}
+                      >
+                        {compareExcelBusy ? "Preparing…" : "Export to Excel"}
+                      </button>
+                    </div>
                 </div>
                 <div className="source-buttons">
                  

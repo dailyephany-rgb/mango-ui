@@ -1,6 +1,6 @@
 /**
- * Hang Diagnosis — join hung page loads with FS-by-load, components, errors.
- * Observer-only. Does not change clinical listeners or queries.
+ * Hang Diagnosis — join hung page loads with FS-by-load, components, errors,
+ * same-day memory and network. Observer-only.
  */
 
 import React, { useMemo, useState } from "react";
@@ -25,6 +25,8 @@ import {
   causeCounts,
   diagnoseHungLoad,
   isDiagnosableHang,
+  matchMemoryForLoad,
+  matchNetworkForLoad,
 } from "./diagnoseHungLoad.js";
 
 function DeviceName({ id }) {
@@ -59,6 +61,16 @@ function loadKey(row) {
   return String(row.loadId || row.id || "");
 }
 
+function fmtPct(ratio) {
+  if (ratio == null || !Number.isFinite(ratio)) return "";
+  return `${(ratio * 100).toFixed(0)}%`;
+}
+
+function fmtMb(n) {
+  if (n == null || !Number.isFinite(n)) return "";
+  return n.toFixed(1);
+}
+
 export function HangDiagnosisPage() {
   const configured = useEngConfigured();
   const { range } = useEngFilters();
@@ -78,6 +90,14 @@ export function HangDiagnosisPage() {
     limitN: 300,
     timeMode: "ts",
   });
+  const { rows: memoryRows } = useFilteredEngCollection(ENG_COLLECTIONS.memory, {
+    limitN: 400,
+    timeMode: "day",
+  });
+  const { rows: networkRows } = useFilteredEngCollection(
+    ENG_COLLECTIONS.network,
+    { limitN: 400, timeMode: "day" }
+  );
 
   const [includeIncomplete, setIncludeIncomplete] = useState(false);
   const [causeOnly, setCauseOnly] = useState("");
@@ -114,12 +134,22 @@ export function HangDiagnosisPage() {
         fsLoad: fsByLoad.get(id) || null,
         componentsDoc: compsByLoad.get(id) || null,
         errors,
+        memoryDoc: matchMemoryForLoad(load, memoryRows),
+        networkDoc: matchNetworkForLoad(load, networkRows),
       });
       rows.push({ load, diagnosis });
     }
     rows.sort((a, b) => (b.load.ts || 0) - (a.load.ts || 0));
     return rows;
-  }, [loads, includeIncomplete, fsByLoad, compsByLoad, errors]);
+  }, [
+    loads,
+    includeIncomplete,
+    fsByLoad,
+    compsByLoad,
+    errors,
+    memoryRows,
+    networkRows,
+  ]);
 
   const filtered = useMemo(() => {
     if (!causeOnly) return diagnosed;
@@ -135,10 +165,10 @@ export function HangDiagnosisPage() {
         <div className="meta">{range.label}</div>
       </div>
       <p className="eng-muted" style={{ fontSize: "0.8rem", maxWidth: 72 * 16 }}>
-        Hung Timeline rows joined to the same Load ID on Components, FS by
-        Component (per-load timeline / queries), and Errors. Daily FS aggregates
-        cannot replace a missing per-load FS doc. This tab does not change
-        clinical Firestore listens.
+        Hung Timeline rows joined to Components, FS-by-load, Errors, and
+        same-day Memory / Network for the device. Missing FS-by-load is a
+        telemetry gap — primary cause prefers waiting listeners, offline, or
+        heap pressure when those signals exist. Observer-only.
       </p>
 
       <div className="eng-grid" style={{ marginTop: "0.75rem" }}>
@@ -197,6 +227,7 @@ export function HangDiagnosisPage() {
                 firstSnapshotMs: load.firstSnapshotMs,
                 totalMs: load.totalMs,
                 waitingListeners: load.waitingListeners,
+                online: load.online,
                 classification: load.classification,
                 hungComponents: (diagnosis.hungComponents || [])
                   .map((c) => c.name)
@@ -205,6 +236,15 @@ export function HangDiagnosisPage() {
                 gateFirstSnaps: diagnosis.gate?.firstSnaps,
                 hasFs: diagnosis.hasFs,
                 errorCount: diagnosis.matchedErrors?.length || 0,
+                heapUsedMB: fmtMb(diagnosis.memory?.heapUsedMB),
+                heapLimitMB: fmtMb(diagnosis.memory?.heapLimitMB),
+                heapPct: fmtPct(diagnosis.memory?.heapPct),
+                heapGrowthMBPerHour:
+                  diagnosis.memory?.heapGrowthMBPerHour != null
+                    ? Number(diagnosis.memory.heapGrowthMBPerHour).toFixed(1)
+                    : "",
+                offlineEvents: diagnosis.network?.offlineEvents ?? "",
+                evidence: (diagnosis.evidence || []).join(" || "),
               }))
             )
           }
@@ -304,6 +344,69 @@ export function HangDiagnosisPage() {
                                   <li key={i}>{line}</li>
                                 ))}
                               </ul>
+                              {(diagnosis.memory && !diagnosis.memory.unavailable) ||
+                              diagnosis.network?.matched ? (
+                                <div>
+                                  <strong>Memory / network (device day)</strong>
+                                  <table className="eng-table">
+                                    <thead>
+                                      <tr>
+                                        <th>Heap used</th>
+                                        <th>Limit</th>
+                                        <th>Pct</th>
+                                        <th>Growth MB/h</th>
+                                        <th>Offline events</th>
+                                        <th>Reconnects</th>
+                                        <th>Online at hang</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      <tr>
+                                        <td>
+                                          {diagnosis.memory?.heapUsedMB != null
+                                            ? `${fmtMb(diagnosis.memory.heapUsedMB)} MB`
+                                            : "—"}
+                                        </td>
+                                        <td>
+                                          {diagnosis.memory?.heapLimitMB != null
+                                            ? `${fmtMb(diagnosis.memory.heapLimitMB)} MB`
+                                            : "—"}
+                                        </td>
+                                        <td>
+                                          {fmtPct(diagnosis.memory?.heapPct) ||
+                                            "—"}
+                                        </td>
+                                        <td>
+                                          {diagnosis.memory?.heapGrowthMBPerHour !=
+                                          null
+                                            ? Number(
+                                                diagnosis.memory
+                                                  .heapGrowthMBPerHour
+                                              ).toFixed(1)
+                                            : "—"}
+                                        </td>
+                                        <td>
+                                          {diagnosis.network?.matched
+                                            ? diagnosis.network.offlineEvents
+                                            : "—"}
+                                        </td>
+                                        <td>
+                                          {diagnosis.network?.matched
+                                            ? diagnosis.network.reconnects
+                                            : "—"}
+                                        </td>
+                                        <td>
+                                          {load.online === false
+                                            ? "offline"
+                                            : load.online === true
+                                              ? "online"
+                                              : "—"}
+                                        </td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                </div>
+                              ) : null}
                               <WaterfallPanel load={load} />
                               {!!diagnosis.hungComponents?.length && (
                                 <div>
