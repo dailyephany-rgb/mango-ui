@@ -91,9 +91,6 @@ export default function OperationMapApp({ mode = "owner" }) {
   const actor = sessionStorage.getItem("loggedUser") || "Unknown";
   const [view, setView] = useState("map"); // map | leave
   const [date, setDate] = useState(getLocalDateString());
-  const [scheduleTo, setScheduleTo] = useState(() =>
-    shiftDateStr(getLocalDateString(), 30)
-  );
   const [dayPlan, setDayPlan] = useState(null);
   const [approvedLeave, setApprovedLeave] = useState([]);
   const [myLeave, setMyLeave] = useState([]);
@@ -224,8 +221,8 @@ export default function OperationMapApp({ mode = "owner" }) {
   }, [isStaff, myLeaveTick]);
 
   const myLeaveInRange = useMemo(
-    () => myLeave.filter((r) => leaveOverlapsRange(r, date, scheduleTo)),
-    [myLeave, date, scheduleTo]
+    () => myLeave.filter((r) => leaveOverlapsRange(r, date, date)),
+    [myLeave, date]
   );
 
   const markDirty = (nextPlan) => {
@@ -590,56 +587,26 @@ export default function OperationMapApp({ mode = "owner" }) {
             <div className="om-date-nav">
               <button
                 type="button"
-                onClick={() => {
-                  setDate((d) => {
-                    const next = shiftDateStr(d, -1);
-                    if (scheduleTo < next) setScheduleTo(next);
-                    return next;
-                  });
-                }}
+                onClick={() => setDate((d) => shiftDateStr(d, -1))}
                 aria-label="Previous day"
               >
                 ‹
               </button>
-              <div className="om-date-filter om-date-filter-inline">
-                <label>
-                  From
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setDate(v);
-                      if (scheduleTo < v) setScheduleTo(v);
-                    }}
-                  />
-                </label>
-                <label>
-                  To
-                  <input
-                    type="date"
-                    value={scheduleTo}
-                    min={date}
-                    onChange={(e) => setScheduleTo(e.target.value)}
-                  />
-                </label>
-              </div>
+              <input
+                type="date"
+                className="om-date-input"
+                value={date}
+                onChange={(e) => e.target.value && setDate(e.target.value)}
+                aria-label="Schedule date"
+              />
+              <div className="om-date-label">{formatDateHeading(date)}</div>
               <button
                 type="button"
-                onClick={() => {
-                  setDate((d) => {
-                    const next = shiftDateStr(d, 1);
-                    if (scheduleTo < next) setScheduleTo(next);
-                    return next;
-                  });
-                }}
+                onClick={() => setDate((d) => shiftDateStr(d, 1))}
                 aria-label="Next day"
               >
                 ›
               </button>
-            </div>
-            <div className="om-date-label om-date-label-sub">
-              Schedule day: {formatDateHeading(date)}
             </div>
             {isStaff ? (
               <button

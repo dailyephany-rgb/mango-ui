@@ -290,6 +290,15 @@ export default function LeaveApprovalsView({
           <div className="om-leave-queue-toolbar">
             <div className="om-date-filter">
               <label>
+                To
+                <input
+                  type="date"
+                  value={filterTo}
+                  min={filterFrom}
+                  onChange={(e) => setFilterTo(e.target.value)}
+                />
+              </label>
+              <label>
                 From
                 <input
                   type="date"
@@ -299,15 +308,6 @@ export default function LeaveApprovalsView({
                     setFilterFrom(v);
                     if (filterTo < v) setFilterTo(v);
                   }}
-                />
-              </label>
-              <label>
-                To
-                <input
-                  type="date"
-                  value={filterTo}
-                  min={filterFrom}
-                  onChange={(e) => setFilterTo(e.target.value)}
                 />
               </label>
             </div>
@@ -463,6 +463,15 @@ export function StaffApprovedLeavesView({
         <div className="om-header-actions">
           <div className="om-date-filter">
             <label>
+              To
+              <input
+                type="date"
+                value={filterTo}
+                min={filterFrom}
+                onChange={(e) => setFilterTo(e.target.value)}
+              />
+            </label>
+            <label>
               From
               <input
                 type="date"
@@ -472,15 +481,6 @@ export function StaffApprovedLeavesView({
                   setFilterFrom(v);
                   if (filterTo < v) setFilterTo(v);
                 }}
-              />
-            </label>
-            <label>
-              To
-              <input
-                type="date"
-                value={filterTo}
-                min={filterFrom}
-                onChange={(e) => setFilterTo(e.target.value)}
               />
             </label>
           </div>
