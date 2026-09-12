@@ -290,15 +290,6 @@ export default function LeaveApprovalsView({
           <div className="om-leave-queue-toolbar">
             <div className="om-date-filter">
               <label>
-                To
-                <input
-                  type="date"
-                  value={filterTo}
-                  min={filterFrom}
-                  onChange={(e) => setFilterTo(e.target.value)}
-                />
-              </label>
-              <label>
                 From
                 <input
                   type="date"
@@ -308,6 +299,15 @@ export default function LeaveApprovalsView({
                     setFilterFrom(v);
                     if (filterTo < v) setFilterTo(v);
                   }}
+                />
+              </label>
+              <label>
+                To
+                <input
+                  type="date"
+                  value={filterTo}
+                  min={filterFrom}
+                  onChange={(e) => setFilterTo(e.target.value)}
                 />
               </label>
             </div>
@@ -416,10 +416,9 @@ function StaffLeaveRow({ row, actor, statusClass }) {
           {row.staffName || row.staffId}
           {mine ? " (you)" : ""}
         </strong>
-        <span>{formatRange(row.fromDate, row.toDate)}</span>
-        <span>
-          <LeaveTypeLabel row={row} />
-        </span>
+        <div className="om-leave-request-meta">
+          {formatRange(row.fromDate, row.toDate)} · <LeaveTypeLabel row={row} />
+        </div>
       </div>
       <span className={`om-leave-status-pill ${statusClass || row.status}`}>
         {row.status}
@@ -463,15 +462,6 @@ export function StaffApprovedLeavesView({
         <div className="om-header-actions">
           <div className="om-date-filter">
             <label>
-              To
-              <input
-                type="date"
-                value={filterTo}
-                min={filterFrom}
-                onChange={(e) => setFilterTo(e.target.value)}
-              />
-            </label>
-            <label>
               From
               <input
                 type="date"
@@ -481,6 +471,15 @@ export function StaffApprovedLeavesView({
                   setFilterFrom(v);
                   if (filterTo < v) setFilterTo(v);
                 }}
+              />
+            </label>
+            <label>
+              To
+              <input
+                type="date"
+                value={filterTo}
+                min={filterFrom}
+                onChange={(e) => setFilterTo(e.target.value)}
               />
             </label>
           </div>

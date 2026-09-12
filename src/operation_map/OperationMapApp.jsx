@@ -506,10 +506,6 @@ export default function OperationMapApp({ mode = "owner" }) {
   return (
     <div className={`om-root ${isStaff ? "om-staff-mode" : ""}`}>
       <aside className="om-sidebar">
-        <div className="om-brand">
-          Jodhpur Dairy
-          <small>Diagnostics Lab</small>
-        </div>
         <div className="om-nav-label">OPERATIONS</div>
         {isStaff ? (
           <>
