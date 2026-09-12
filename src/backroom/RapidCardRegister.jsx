@@ -88,10 +88,11 @@ const overflowStyles = `
     z-index: 10;
     background-color: #eff6ff !important;
   }
-  .backroom-table .col-regno { left: 0; min-width: 100px; }
-  .backroom-table .col-diagno { left: 100px; min-width: 110px; }
-  .backroom-table .col-time-collected { left: 210px; min-width: 190px; white-space: nowrap; }
-  .backroom-table .col-name { left: 400px; min-width: 180px; box-shadow: 2px 0 5px -2px rgba(0,0,0,0.1); }
+  .backroom-table .col-sno { left: 0; min-width: 48px; width: 48px; text-align: center; font-weight: 600; color: #475569; }
+  .backroom-table .col-regno { left: 48px; min-width: 100px; }
+  .backroom-table .col-diagno { left: 148px; min-width: 110px; }
+  .backroom-table .col-time-collected { left: 258px; min-width: 190px; white-space: nowrap; }
+  .backroom-table .col-name { left: 448px; min-width: 180px; box-shadow: 2px 0 5px -2px rgba(0,0,0,0.1); }
   .row-green .sticky-col { background-color: #dcfce7 !important; }
   .row-yellow .sticky-col { background-color: #fff7cc !important; }
   .row-normal .sticky-col { background-color: white !important; }
@@ -592,6 +593,7 @@ const [pendingCriticalMap, setPendingCriticalMap] = usePersistedObjectState("rap
         <table className="backroom-table">
            <thead>
             <tr>
+              <th className="sticky-col col-sno" rowSpan={2}>S.No</th>
               <th className="sticky-col col-regno" rowSpan={2}>Reg No</th>
               <th className="sticky-col col-diagno" rowSpan={2}>Diag No</th>
               <th className="sticky-col col-time-collected" rowSpan={2}>Time Collected</th>
@@ -640,6 +642,7 @@ const [pendingCriticalMap, setPendingCriticalMap] = usePersistedObjectState("rap
             </tr>
             {showColFilters ? (
               <tr className="col-filter-row">
+                <ColFilterLocked className="sticky-col col-sno" />
                 <ColFilterInput
                   className="sticky-col col-regno"
                   value={colFilters.regNo}
@@ -702,8 +705,8 @@ const [pendingCriticalMap, setPendingCriticalMap] = usePersistedObjectState("rap
           </thead>
           <VirtualizedTableBody
             items={filteredEntries}
-            columnCount={26}
-            renderRow={(e) => {
+            columnCount={27}
+            renderRow={(e, rowIndex) => {
              const scanned = e.scanned === "Yes";
              const saved = e.status === "saved";
              
@@ -720,7 +723,13 @@ const [pendingCriticalMap, setPendingCriticalMap] = usePersistedObjectState("rap
               const activeKeys = mapSelectedTestsToResultKeys(e);
               return (
                 <tr key={e.compositeKey} className={saved ? "row-green" : scanned ? "row-yellow" : "row-normal"}>
-                  <td className="sticky-col col-regno" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
+                  <td
+                    className="sticky-col col-sno"
+                    style={e.urgent ? { borderLeft: "4px solid red" } : undefined}
+                  >
+                    {rowIndex + 1}
+                  </td>
+                  <td className="sticky-col col-regno">{e.regNo}</td>
                   <td className="sticky-col col-diagno" style={{ color: "#475569" }}>{e.diagnosticNo}</td>
                   <td className="sticky-col col-time-collected">{formatTimeCollected(e.timeCollected)}</td>
                   <td className="sticky-col col-name">{e.name}</td>

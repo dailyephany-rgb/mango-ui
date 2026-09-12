@@ -445,6 +445,7 @@ export default function BloodGroupRegister() {
         <table className="backroom-table">
           <thead>
             <tr>
+              <th className="sticky-col col-sno">S.No</th>
               <th className="sticky-col col-regno">Reg No</th>
               <th className="sticky-col col-diagno">Diag No</th>
               <th className="sticky-col col-time-collected">Time Collected</th>
@@ -468,6 +469,7 @@ export default function BloodGroupRegister() {
             </tr>
             {showColFilters ? (
               <tr className="col-filter-row">
+                <ColFilterLocked className="sticky-col col-sno" />
                 <ColFilterInput
                   className="sticky-col col-regno"
                   value={colFilters.regNo}
@@ -525,11 +527,12 @@ export default function BloodGroupRegister() {
           </thead>
           <VirtualizedTableBody
             items={filteredEntries}
-            columnCount={13}
-            renderRow={(e) => (
+            columnCount={14}
+            renderRow={(e, rowIndex) => (
               <BloodGroupRegisterRow
                 key={`${e.compositeKey}_${activeTab}`}
                 patient={e}
+                serialNo={rowIndex + 1}
                 activeTab={activeTab}
                 saving={saving}
                 onChange={onChange}
@@ -549,6 +552,7 @@ const RH_FACTORS = ["Positive", "Negative"];
 
 const BloodGroupRegisterRow = memo(function BloodGroupRegisterRow({
   patient: e,
+  serialNo,
   activeTab,
   saving,
   onChange,
@@ -562,11 +566,12 @@ const BloodGroupRegisterRow = memo(function BloodGroupRegisterRow({
       }
     >
       <td
-        className="sticky-col col-regno"
-        style={e.urgent ? { borderLeft: "4px solid red" } : {}}
+        className="sticky-col col-sno"
+        style={e.urgent ? { borderLeft: "4px solid red" } : undefined}
       >
-        {e.regNo}
+        {serialNo}
       </td>
+      <td className="sticky-col col-regno">{e.regNo}</td>
       <td className="sticky-col col-diagno" style={{ color: "#475569" }}>
         {e.diagnosticNo}
       </td>

@@ -198,32 +198,43 @@
   background-color: #eff6ff !important;
 }
 
-/* Column 1: Reg No */
+/* Column 1: Serial No */
+.backroom-table th.col-sno,
+.backroom-table td.col-sno {
+  left: 0;
+  min-width: 48px;
+  width: 48px;
+  text-align: center;
+  font-weight: 600;
+  color: #475569;
+}
+
+/* Column 2: Reg No */
 .backroom-table th.col-regno,
 .backroom-table td.col-regno { 
-  left: 0; 
+  left: 48px; 
   min-width: 100px; 
 }
 
-/* Column 2: Diag No */
+/* Column 3: Diag No */
 .backroom-table th.col-diagno,
 .backroom-table td.col-diagno { 
-  left: 100px; 
+  left: 148px; 
   min-width: 100px; 
 }
 
-/* Column 3: Time Collected */
+/* Column 4: Time Collected */
 .backroom-table th.col-time-collected,
 .backroom-table td.col-time-collected { 
-  left: 200px; 
+  left: 248px; 
   min-width: 190px;
   white-space: nowrap;
 }
 
-/* Column 4: Name */
+/* Column 5: Name */
 .backroom-table th.col-name,
 .backroom-table td.col-name { 
-  left: 390px; 
+  left: 438px; 
   min-width: 180px; 
   border-right: 1px solid #e5e7eb !important; 
 }

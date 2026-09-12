@@ -450,6 +450,7 @@ const [pendingCritical, setPendingCritical] = usePersistedObjectState("esr_pendi
         <table className="backroom-table">
           <thead>
             <tr>
+              <th className="sticky-col col-sno">S.No</th>
               <th className="sticky-col col-regno">Reg No</th>
               <th className="sticky-col col-diagno">Diag No</th>
               <th className="sticky-col col-time-collected">Time Collected</th>
@@ -471,6 +472,7 @@ const [pendingCritical, setPendingCritical] = usePersistedObjectState("esr_pendi
             </tr>
             {showColFilters ? (
               <tr className="col-filter-row">
+                <ColFilterLocked className="sticky-col col-sno" />
                 <ColFilterInput
                   className="sticky-col col-regno"
                   value={colFilters.regNo}
@@ -535,8 +537,8 @@ const [pendingCritical, setPendingCritical] = usePersistedObjectState("esr_pendi
           </thead>
           <VirtualizedTableBody
             items={filteredEntries}
-            columnCount={16}
-            renderRow={(e) => {
+            columnCount={17}
+            renderRow={(e, rowIndex) => {
              const saved = e.status === "saved";
              const scanned = e.scanned === "Yes";
              
@@ -551,7 +553,13 @@ const [pendingCritical, setPendingCritical] = usePersistedObjectState("esr_pendi
              const ready = isEntryReadyToSave(e);
               return (
                 <tr key={e.compositeKey} className={saved ? "row-green" : scanned ? "row-yellow" : ""}>
-                  <td className="sticky-col col-regno" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
+                  <td
+                    className="sticky-col col-sno"
+                    style={e.urgent ? { borderLeft: "4px solid red" } : undefined}
+                  >
+                    {rowIndex + 1}
+                  </td>
+                  <td className="sticky-col col-regno">{e.regNo}</td>
                   <td className="sticky-col col-diagno" style={{ color: "#475569" }}>{e.diagnosticNo}</td>
                   <td className="sticky-col col-time-collected">{formatTimeCollected(e.timeCollected)}</td>
                   <td className="sticky-col col-name">{e.name}</td>

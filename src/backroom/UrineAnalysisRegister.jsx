@@ -64,10 +64,11 @@ const tableFixStyles = `
   border-right: 1px solid #e5e7eb;
   white-space: nowrap; 
 }
-.col-regno { left: 0px; min-width: 90px; }
-.col-diagno { left: 90px; min-width: 110px; }
-.col-time-collected { left: 200px; min-width: 190px; }
-.col-name  { left: 390px; min-width: 180px; } 
+.col-sno { left: 0px; min-width: 48px; width: 48px; text-align: center; font-weight: 600; color: #475569; }
+.col-regno { left: 48px; min-width: 90px; }
+.col-diagno { left: 138px; min-width: 110px; }
+.col-time-collected { left: 248px; min-width: 190px; }
+.col-name  { left: 438px; min-width: 180px; } 
 .backroom-table thead th.sticky-col {
   z-index: 3;
   background-color: #f8fafc; 
@@ -506,7 +507,7 @@ export default function UrineAnalysisRegister() {
   }, [mergedEntries, regSearch, sourceFilter, dateFrom, dateTo, colFilters]);
 
   const urineTableColumnCount =
-    8 + parameterFields.length + routineExtraFields.length + 5;
+    9 + parameterFields.length + routineExtraFields.length + 5;
 
   return (
     <div className="register-section">
@@ -533,6 +534,7 @@ export default function UrineAnalysisRegister() {
         <table className="backroom-table">
           <thead>
             <tr>
+              <th className="sticky-col col-sno">S.No</th>
               <th className="sticky-col col-regno">Reg No</th>
               <th className="sticky-col col-diagno">Diag No</th>
               <th className="sticky-col col-time-collected">Time Collected</th>
@@ -555,6 +557,7 @@ export default function UrineAnalysisRegister() {
             </tr>
             {showColFilters ? (
               <tr className="col-filter-row">
+                <ColFilterLocked className="sticky-col col-sno" />
                 <ColFilterInput
                   className="sticky-col col-regno"
                   value={colFilters.regNo}
@@ -627,7 +630,7 @@ export default function UrineAnalysisRegister() {
           <VirtualizedTableBody
             items={filteredEntries}
             columnCount={urineTableColumnCount}
-            renderRow={(e) => {
+            renderRow={(e, rowIndex) => {
               const compositeKey = e.compositeKey;
               const isSaved = savedSet.has(compositeKey);
               const isScanned = e.scanned === "Yes";
@@ -650,7 +653,13 @@ export default function UrineAnalysisRegister() {
 
               return (
                 <tr key={compositeKey} className={rowClass}>
-                  <td className="sticky-col col-regno" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
+                  <td
+                    className="sticky-col col-sno"
+                    style={e.urgent ? { borderLeft: "4px solid red" } : undefined}
+                  >
+                    {rowIndex + 1}
+                  </td>
+                  <td className="sticky-col col-regno">{e.regNo}</td>
                   <td className="sticky-col col-diagno">{e.diagnosticNo}</td>
                   <td className="sticky-col col-time-collected">{formatTimeCollected(e.timeCollected)}</td>
                   <td className="sticky-col col-name">{e.name}</td>

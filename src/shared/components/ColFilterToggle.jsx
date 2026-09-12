@@ -54,8 +54,14 @@ export function ColFilterSelect({ value, onChange, options, placeholder = "All" 
   );
 }
 
-export function ColFilterLocked() {
-  return <th className="col-filter-cell col-filter-locked" />;
+export function ColFilterLocked({ className }) {
+  return (
+    <th
+      className={`col-filter-cell col-filter-locked${
+        className ? ` ${className}` : ""
+      }`}
+    />
+  );
 }
 
 export function ColFilterClearCell({ show, onClear }) {

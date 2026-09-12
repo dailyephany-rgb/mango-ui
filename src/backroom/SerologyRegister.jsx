@@ -514,6 +514,7 @@ const testsForRegister = routing.SerologyRegister || [
         <table className="backroom-table">
           <thead>
             <tr>
+              <th className="sticky-col col-sno">S.No</th>
               <th className="sticky-col col-regno">Reg No</th>
               <th className="sticky-col col-diagno">Diag No</th>
               <th className="sticky-col col-time-collected">Time Collected</th>
@@ -541,6 +542,7 @@ const testsForRegister = routing.SerologyRegister || [
             </tr>
             {showColFilters ? (
               <tr className="col-filter-row">
+                <ColFilterLocked className="sticky-col col-sno" />
                 <ColFilterInput
                   className="sticky-col col-regno"
                   value={colFilters.regNo}
@@ -610,8 +612,8 @@ const testsForRegister = routing.SerologyRegister || [
           </thead>
           <VirtualizedTableBody
             items={filteredEntries}
-            columnCount={17}
-            renderRow={(e) => {
+            columnCount={18}
+            renderRow={(e, rowIndex) => {
               const compositeKey = e.compositeKey;
               const saved = e.status === "saved";
               const scanned = e.scanned === "Yes";
@@ -625,7 +627,13 @@ const testsForRegister = routing.SerologyRegister || [
 
               return (
                 <tr key={compositeKey} className={saved ? "row-green" : scanned ? "row-yellow" : "row-normal"}>
-                  <td className="sticky-col col-regno" style={e.urgent ? { borderLeft: "4px solid red" } : {}}>{e.regNo}</td>
+                  <td
+                    className="sticky-col col-sno"
+                    style={e.urgent ? { borderLeft: "4px solid red" } : undefined}
+                  >
+                    {rowIndex + 1}
+                  </td>
+                  <td className="sticky-col col-regno">{e.regNo}</td>
                   <td className="sticky-col col-diagno" style={{ color: "#475569" }}>{e.diagnosticNo}</td>
                   <td className="sticky-col col-time-collected">{formatTimeCollected(e.timeCollected)}</td>
                   <td className="sticky-col col-name">{e.name}</td>

@@ -8,6 +8,7 @@ export function arePatientRowEqual(fieldList) {
     if (prev.isPendingCritical !== next.isPendingCritical) return false;
     if (prev.saving !== next.saving) return false;
     if (prev.activeTab !== next.activeTab) return false;
+    if (prev.serialNo !== next.serialNo) return false;
 
     for (const key of Object.keys(prev)) {
       if (typeof prev[key] === "function") {
