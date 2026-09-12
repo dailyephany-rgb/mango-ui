@@ -178,7 +178,10 @@ export function approvedRequestsToLeaveEntries(requests) {
 }
 
 /**
- * Reject a pending leave request.
+ * Reject a leave request (pending or previously approved).
+ * Revoking approved leave removes it from approved status so staff maps
+ * stop treating the person as on leave. Day-plan assignments are not
+ * auto-restored — reassign on the Operation Map if needed.
  */
 export async function rejectLeaveRequest(requestId, actor, reviewNote = "") {
   if (!requestId) throw new Error("Missing leave request id");
@@ -188,6 +191,18 @@ export async function rejectLeaveRequest(requestId, actor, reviewNote = "") {
     reviewedAt: serverTimestamp(),
     reviewNote: String(reviewNote || "").trim(),
   });
+}
+
+/**
+ * Revoke an approved leave (approved → rejected). Same write as reject;
+ * kept as a named API for the Approvals UI.
+ */
+export async function revokeApprovedLeaveRequest(
+  requestId,
+  actor,
+  reviewNote = "Revoked after approval (staff available)"
+) {
+  return rejectLeaveRequest(requestId, actor, reviewNote);
 }
 
 /**

@@ -869,6 +869,19 @@
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.om-btn-danger {
+  background: #fff;
+  border-color: #dc2626;
+  color: #b91c1c;
+}
+
+.om-btn-danger:hover:not(:disabled) {
+  background: #fef2f2;
 }
 
 .om-leave-status-pill {

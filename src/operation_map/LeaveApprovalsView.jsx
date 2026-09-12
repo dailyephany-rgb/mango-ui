@@ -5,6 +5,7 @@ import {
   listLeaveRequestsByStatus,
   approveLeaveRequest,
   rejectLeaveRequest,
+  revokeApprovedLeaveRequest,
 } from "./leaveRequestStore.js";
 import { shiftDateStr } from "./operationMapStore.js";
 
@@ -151,6 +152,31 @@ export default function LeaveApprovalsView({
       await rejectLeaveRequest(row.id, actor);
       setNotice(`Rejected leave for ${row.staffName}.`);
       await reload();
+    } catch (err) {
+      console.error(err);
+      setError(err?.message || String(err));
+    } finally {
+      setBusyId("");
+    }
+  };
+
+  const handleRevokeApproved = async (row) => {
+    if (
+      !window.confirm(
+        `Revoke approved leave for ${row.staffName} (${formatRange(row.fromDate, row.toDate)})?\n\nThey will no longer show as on leave. Re-assign them on the Operation Map if needed.`
+      )
+    ) {
+      return;
+    }
+    setBusyId(row.id);
+    setError("");
+    try {
+      await revokeApprovedLeaveRequest(row.id, actor);
+      setNotice(
+        `Revoked leave for ${row.staffName} — moved to Rejected. They no longer count as on leave.`
+      );
+      await reload();
+      if (typeof onApproved === "function") onApproved(row);
     } catch (err) {
       console.error(err);
       setError(err?.message || String(err));
@@ -342,6 +368,21 @@ export default function LeaveApprovalsView({
                         onClick={() => handleReject(row)}
                       >
                         Reject
+                      </button>
+                    </div>
+                  ) : tab === "approved" ? (
+                    <div className="om-leave-request-actions">
+                      <span className={`om-leave-status-pill ${row.status}`}>
+                        {row.status}
+                      </span>
+                      <button
+                        type="button"
+                        className="om-btn om-btn-danger"
+                        disabled={busyId === row.id}
+                        onClick={() => handleRevokeApproved(row)}
+                        title="If staff is available, revoke leave so they are not marked off"
+                      >
+                        {busyId === row.id ? "…" : "Revoke → Rejected"}
                       </button>
                     </div>
                   ) : (
