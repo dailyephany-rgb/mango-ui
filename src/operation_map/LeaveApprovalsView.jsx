@@ -48,6 +48,8 @@ export default function LeaveApprovalsView({
   const [busyId, setBusyId] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [filterFrom, setFilterFrom] = useState(today);
+  const [filterTo, setFilterTo] = useState(() => shiftDateStr(today, 30));
 
   const [staffId, setStaffId] = useState(staffList[0]?.id || "");
   const [fromDate, setFromDate] = useState(today);
@@ -80,6 +82,11 @@ export default function LeaveApprovalsView({
   useEffect(() => {
     reload();
   }, [reload]);
+
+  const filteredRows = useMemo(
+    () => rows.filter((r) => leaveOverlapsRange(r, filterFrom, filterTo)),
+    [rows, filterFrom, filterTo]
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -254,26 +261,53 @@ export default function LeaveApprovalsView({
         </section>
 
         <section className="om-leave-card om-leave-queue">
-          <div className="om-leave-tabs">
-            {["pending", "approved", "rejected"].map((t) => (
-              <button
-                key={t}
-                type="button"
-                className={`om-leave-tab ${tab === t ? "active" : ""}`}
-                onClick={() => setTab(t)}
-              >
-                {t.charAt(0).toUpperCase() + t.slice(1)}
-              </button>
-            ))}
+          <div className="om-leave-queue-toolbar">
+            <div className="om-date-filter">
+              <label>
+                From
+                <input
+                  type="date"
+                  value={filterFrom}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setFilterFrom(v);
+                    if (filterTo < v) setFilterTo(v);
+                  }}
+                />
+              </label>
+              <label>
+                To
+                <input
+                  type="date"
+                  value={filterTo}
+                  min={filterFrom}
+                  onChange={(e) => setFilterTo(e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="om-leave-tabs">
+              {["pending", "approved", "rejected"].map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  className={`om-leave-tab ${tab === t ? "active" : ""}`}
+                  onClick={() => setTab(t)}
+                >
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
 
           {loading ? (
             <p className="om-footer-hint">Loading requests…</p>
-          ) : rows.length === 0 ? (
-            <p className="om-placeholder">No {tab} leave requests.</p>
+          ) : filteredRows.length === 0 ? (
+            <p className="om-placeholder">
+              No {tab} leave requests in this date range.
+            </p>
           ) : (
             <div className="om-leave-list">
-              {rows.map((row) => (
+              {filteredRows.map((row) => (
                 <div className="om-leave-request" key={row.id}>
                   <div className="om-leave-request-main">
                     <strong>{row.staffName || row.staffId}</strong>
