@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getLocalDateString } from "../shared/utils/dates.js";
 import {
   createLeaveRequest,
@@ -6,11 +6,20 @@ import {
   approveLeaveRequest,
   rejectLeaveRequest,
 } from "./leaveRequestStore.js";
+import { shiftDateStr } from "./operationMapStore.js";
 
 function formatRange(fromDate, toDate) {
   if (!fromDate) return "—";
   if (!toDate || toDate === fromDate) return fromDate;
   return `${fromDate} → ${toDate}`;
+}
+
+/** Leave overlaps [rangeFrom, rangeTo] inclusive (YYYY-MM-DD). */
+export function leaveOverlapsRange(row, rangeFrom, rangeTo) {
+  const from = String(row?.fromDate || "").trim();
+  const to = String(row?.toDate || row?.fromDate || "").trim();
+  if (!from || !rangeFrom || !rangeTo) return true;
+  return from <= rangeTo && to >= rangeFrom;
 }
 
 function LeaveTypeLabel({ row }) {
@@ -351,6 +360,24 @@ export function StaffApprovedLeavesView({
   myLeave = [],
   onApply,
 }) {
+  const today = getLocalDateString();
+  const [filterFrom, setFilterFrom] = useState(today);
+  const [filterTo, setFilterTo] = useState(() => shiftDateStr(today, 30));
+
+  const filteredRoster = useMemo(
+    () => roster.filter((r) => leaveOverlapsRange(r, filterFrom, filterTo)),
+    [roster, filterFrom, filterTo]
+  );
+  const filteredPending = useMemo(
+    () =>
+      pendingRoster.filter((r) => leaveOverlapsRange(r, filterFrom, filterTo)),
+    [pendingRoster, filterFrom, filterTo]
+  );
+  const filteredMine = useMemo(
+    () => myLeave.filter((r) => leaveOverlapsRange(r, filterFrom, filterTo)),
+    [myLeave, filterFrom, filterTo]
+  );
+
   return (
     <div className="om-main">
       <header className="om-header om-leave-header">
@@ -359,6 +386,29 @@ export function StaffApprovedLeavesView({
           <p>See approved and pending leave before you apply</p>
         </div>
         <div className="om-header-actions">
+          <div className="om-date-filter">
+            <label>
+              From
+              <input
+                type="date"
+                value={filterFrom}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setFilterFrom(v);
+                  if (filterTo < v) setFilterTo(v);
+                }}
+              />
+            </label>
+            <label>
+              To
+              <input
+                type="date"
+                value={filterTo}
+                min={filterFrom}
+                onChange={(e) => setFilterTo(e.target.value)}
+              />
+            </label>
+          </div>
           <button
             type="button"
             className="om-btn om-btn-primary"
@@ -371,12 +421,14 @@ export function StaffApprovedLeavesView({
 
       <div className="om-leave-body om-staff-leave-body">
         <section className="om-leave-card om-leave-queue">
-          <h2>Upcoming approved leave</h2>
-          {roster.length === 0 ? (
-            <p className="om-placeholder">No upcoming approved leave.</p>
+          <h2>Upcoming approved leave ({filteredRoster.length})</h2>
+          {filteredRoster.length === 0 ? (
+            <p className="om-placeholder">
+              No approved leave in this date range.
+            </p>
           ) : (
             <div className="om-leave-list">
-              {roster.map((row) => (
+              {filteredRoster.map((row) => (
                 <StaffLeaveRow
                   key={row.id}
                   row={row}
@@ -389,12 +441,14 @@ export function StaffApprovedLeavesView({
         </section>
 
         <section className="om-leave-card om-leave-queue">
-          <h2>Pending leave</h2>
-          {pendingRoster.length === 0 ? (
-            <p className="om-placeholder">No pending leave requests.</p>
+          <h2>Pending leave ({filteredPending.length})</h2>
+          {filteredPending.length === 0 ? (
+            <p className="om-placeholder">
+              No pending leave in this date range.
+            </p>
           ) : (
             <div className="om-leave-list">
-              {pendingRoster.map((row) => (
+              {filteredPending.map((row) => (
                 <StaffLeaveRow
                   key={row.id}
                   row={row}
@@ -407,12 +461,14 @@ export function StaffApprovedLeavesView({
         </section>
 
         <section className="om-leave-card om-staff-leave-mine">
-          <h2>My leave requests</h2>
-          {myLeave.length === 0 ? (
-            <p className="om-placeholder">You have not applied for leave yet.</p>
+          <h2>My leave requests ({filteredMine.length})</h2>
+          {filteredMine.length === 0 ? (
+            <p className="om-placeholder">
+              No leave requests in this date range.
+            </p>
           ) : (
             <div className="om-leave-list">
-              {myLeave.map((row) => (
+              {filteredMine.map((row) => (
                 <div className="om-leave-request" key={row.id}>
                   <div className="om-leave-request-main">
                     <strong>{formatRange(row.fromDate, row.toDate)}</strong>

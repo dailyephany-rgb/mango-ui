@@ -46,6 +46,7 @@ import {
 import LeaveApprovalsView, {
   ApplyLeaveModal,
   StaffApprovedLeavesView,
+  leaveOverlapsRange,
 } from "./LeaveApprovalsView.jsx";
 import "./operation_map.css";
 
@@ -90,6 +91,9 @@ export default function OperationMapApp({ mode = "owner" }) {
   const actor = sessionStorage.getItem("loggedUser") || "Unknown";
   const [view, setView] = useState("map"); // map | leave
   const [date, setDate] = useState(getLocalDateString());
+  const [scheduleTo, setScheduleTo] = useState(() =>
+    shiftDateStr(getLocalDateString(), 30)
+  );
   const [dayPlan, setDayPlan] = useState(null);
   const [approvedLeave, setApprovedLeave] = useState([]);
   const [myLeave, setMyLeave] = useState([]);
@@ -196,19 +200,16 @@ export default function OperationMapApp({ mode = "owner" }) {
       return;
     }
     let cancelled = false;
-    const today = getLocalDateString();
-    const upcoming = (rows) =>
-      (rows || [])
-        .filter((r) => (r.toDate || r.fromDate) >= today)
-        .sort((a, b) => String(a.fromDate).localeCompare(String(b.fromDate)));
     Promise.all([
       listLeaveRequestsByStatus("approved"),
       listLeaveRequestsByStatus("pending"),
     ])
       .then(([approved, pending]) => {
         if (cancelled) return;
-        setApprovedRoster(upcoming(approved));
-        setPendingRoster(upcoming(pending));
+        const byFrom = (a, b) =>
+          String(a.fromDate).localeCompare(String(b.fromDate));
+        setApprovedRoster([...(approved || [])].sort(byFrom));
+        setPendingRoster([...(pending || [])].sort(byFrom));
       })
       .catch((err) => {
         console.error(err);
@@ -221,6 +222,11 @@ export default function OperationMapApp({ mode = "owner" }) {
       cancelled = true;
     };
   }, [isStaff, myLeaveTick]);
+
+  const myLeaveInRange = useMemo(
+    () => myLeave.filter((r) => leaveOverlapsRange(r, date, scheduleTo)),
+    [myLeave, date, scheduleTo]
+  );
 
   const markDirty = (nextPlan) => {
     if (isStaff) return;
@@ -584,19 +590,56 @@ export default function OperationMapApp({ mode = "owner" }) {
             <div className="om-date-nav">
               <button
                 type="button"
-                onClick={() => setDate((d) => shiftDateStr(d, -1))}
+                onClick={() => {
+                  setDate((d) => {
+                    const next = shiftDateStr(d, -1);
+                    if (scheduleTo < next) setScheduleTo(next);
+                    return next;
+                  });
+                }}
                 aria-label="Previous day"
               >
                 ‹
               </button>
-              <div className="om-date-label">{formatDateHeading(date)}</div>
+              <div className="om-date-filter om-date-filter-inline">
+                <label>
+                  From
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setDate(v);
+                      if (scheduleTo < v) setScheduleTo(v);
+                    }}
+                  />
+                </label>
+                <label>
+                  To
+                  <input
+                    type="date"
+                    value={scheduleTo}
+                    min={date}
+                    onChange={(e) => setScheduleTo(e.target.value)}
+                  />
+                </label>
+              </div>
               <button
                 type="button"
-                onClick={() => setDate((d) => shiftDateStr(d, 1))}
+                onClick={() => {
+                  setDate((d) => {
+                    const next = shiftDateStr(d, 1);
+                    if (scheduleTo < next) setScheduleTo(next);
+                    return next;
+                  });
+                }}
                 aria-label="Next day"
               >
                 ›
               </button>
+            </div>
+            <div className="om-date-label om-date-label-sub">
+              Schedule day: {formatDateHeading(date)}
             </div>
             {isStaff ? (
               <button
@@ -945,11 +988,13 @@ export default function OperationMapApp({ mode = "owner" }) {
 
                   {isStaff ? (
                     <>
-                      <h3>My Leave</h3>
-                      {myLeave.length === 0 ? (
-                        <div className="om-placeholder">No leave requests yet</div>
+                      <h3>My Leave ({myLeaveInRange.length})</h3>
+                      {myLeaveInRange.length === 0 ? (
+                        <div className="om-placeholder">
+                          No leave in this date range
+                        </div>
                       ) : (
-                        myLeave.slice(0, 8).map((row) => (
+                        myLeaveInRange.slice(0, 8).map((row) => (
                           <div className="om-leave-item" key={row.id}>
                             <strong>
                               {formatLeaveRange(row.fromDate, row.toDate)}
