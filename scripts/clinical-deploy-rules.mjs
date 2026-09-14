@@ -1,10 +1,7 @@
 #!/usr/bin/env node
 /**
- * Deploy clinical Firestore rules to vasundhara-4c6e5 (rules only).
- *
- * ROE-MANGO-UI-2026-0913: currently expects deny-all lockdown.
- *
- * Usage: npm run clinical:deploy-rules
+ * Deploy clinical Firestore rules (rules only).
+ * Accepts deny-all OR auth != null reopen.
  */
 
 import { spawnSync } from "node:child_process";
@@ -31,17 +28,23 @@ if (!fs.existsSync(CONFIG)) fail(`Missing ${CONFIG}`);
 if (!fs.existsSync(RULES)) fail(`Missing ${RULES}`);
 
 const rulesText = fs.readFileSync(RULES, "utf8");
-const isDenyAll =
-  /allow\s+read\s*,\s*write\s*:\s*if\s+false\s*;/.test(rulesText) &&
-  !/allow\s+read\s*,\s*write\s*:\s*if\s+!col\.matches/.test(rulesText);
+const isDenyAll = /allow\s+read\s*,\s*write\s*:\s*if\s+false\s*;/.test(
+  rulesText
+);
+const isAuthOnly =
+  /request\.auth\s*!=\s*null/.test(rulesText) &&
+  !/allow\s+read\s*,\s*write\s*:\s*if\s+true\s*;/.test(rulesText);
 
-if (!isDenyAll) {
-  fail(
-    "firestore.rules is not deny-all lockdown (ROE-MANGO-UI-2026-0913) — abort"
-  );
+if (!isDenyAll && !isAuthOnly) {
+  fail("firestore.rules must be deny-all OR request.auth != null — abort");
 }
 
-console.log(`\nClinical rules deploy → ${PROJECT} (DENY ALL / rules only)\n`);
+if (/allow\s+read\s*,\s*write\s*:\s*if\s+true\s*;/.test(rulesText)) {
+  fail("Refusing to deploy wide-open rules (if true)");
+}
+
+const mode = isAuthOnly ? "AUTH REQUIRED" : "DENY ALL";
+console.log(`\nClinical rules deploy → ${PROJECT} (${mode})\n`);
 
 const dep = spawnSync(
   "npx",
@@ -60,8 +63,4 @@ const dep = spawnSync(
 );
 
 if (dep.status !== 0) fail("Clinical rules deploy failed");
-ok(`DENY ALL deployed on ${PROJECT}`);
-console.log(`
-Lab app Firestore client access is blocked until Auth + scoped rules.
-Confirm in Firebase Console → Firestore → Rules.
-`);
+ok(`${mode} deployed on ${PROJECT}`);

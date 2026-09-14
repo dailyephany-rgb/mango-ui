@@ -91,7 +91,7 @@ try {
   }
 }
 
-export { db };
+export { app, db };
 
 // Passive Performance & Diagnostics → local + Firestore collection perf_daily
 // Disable: localStorage.setItem("mango.perf.monitor","0")

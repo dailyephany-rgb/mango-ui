@@ -28,3 +28,9 @@ src/engineering/.ops-backups/
 # Local sales Excel fixtures (large; keep out of git)
 src/owner/sales/fixtures/
 .pdfvenv/
+
+# Auth / ROE secrets — never commit
+secrets/**
+!secrets/*.example.json
+!secrets/staff-bootstrap.example.json
+
