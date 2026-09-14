@@ -9,12 +9,12 @@ import {
 import { isIosSafariDevice } from "./shared/device/detectDeviceKind.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBS-JGY1X6GLM7YVXVSJuYvti_utJXMS5I",
+  apiKey: "AIzaSyB5-JGYiXG6LM7YXvVSJuYvti_utJXMS5I",
   authDomain: "vasundhara-4c6e5.firebaseapp.com",
   projectId: "vasundhara-4c6e5",
-  storageBucket: "vasundhara-4c6e5.appspot.com",
-  messagingSenderId: "544519199327",
-  appId: "1:544519199327:web:7e3f4cf69bef3954f2bea9",
+  storageBucket: "vasundhara-4c6e5.firebasestorage.app",
+  messagingSenderId: "544159199327",
+  appId: "1:544159199327:web:7e3f4c3f69bef3954f2bea",
   measurementId: "G-H8J28B9B44",
 };
 
