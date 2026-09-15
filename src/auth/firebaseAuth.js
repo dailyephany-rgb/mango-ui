@@ -52,6 +52,16 @@ function writeSession(user, displayName) {
   if (user.email) sessionStorage.setItem("authEmail", user.email);
 }
 
+/**
+ * Firebase Auth requires passwords ≥ 6 chars. Staff still type short PINs from
+ * users.js; we only expand the secret used with Firebase.
+ */
+function firebaseAuthPassword(pin) {
+  const raw = String(pin || "");
+  if (raw.length >= 6) return raw;
+  return `mango_${raw}`;
+}
+
 export async function signInWithStaffUsername(username, password) {
   const staff = findStaffUser(username, password);
   if (!staff) {
@@ -62,9 +72,10 @@ export async function signInWithStaffUsername(username, password) {
 
   const email = usernameToEmail(staff.username);
   const displayName = staff.username;
+  const authPassword = firebaseAuthPassword(password);
 
   try {
-    const cred = await signInWithEmailAndPassword(auth, email, password);
+    const cred = await signInWithEmailAndPassword(auth, email, authPassword);
     writeSession(cred.user, displayName);
     return cred.user;
   } catch (err) {
@@ -80,7 +91,7 @@ export async function signInWithStaffUsername(username, password) {
       const created = await createUserWithEmailAndPassword(
         auth,
         email,
-        password
+        authPassword
       );
       try {
         await updateProfile(created.user, { displayName });
@@ -91,8 +102,7 @@ export async function signInWithStaffUsername(username, password) {
       return created.user;
     } catch (createErr) {
       if (String(createErr?.code || "").includes("email-already-in-use")) {
-        // Account exists but password in Auth may differ from users.js
-        const cred = await signInWithEmailAndPassword(auth, email, password);
+        const cred = await signInWithEmailAndPassword(auth, email, authPassword);
         writeSession(cred.user, displayName);
         return cred.user;
       }

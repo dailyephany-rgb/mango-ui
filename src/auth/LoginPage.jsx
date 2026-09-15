@@ -52,6 +52,8 @@ export default function LoginPage() {
         code.includes("invalid-email")
       ) {
         setError("Invalid username or password");
+      } else if (code.includes("weak-password")) {
+        setError("Password setup failed — refresh and try again");
       } else if (code.includes("too-many-requests")) {
         setError("Too many attempts — try again later");
       } else {
