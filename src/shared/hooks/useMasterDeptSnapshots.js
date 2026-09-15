@@ -25,6 +25,7 @@ import {
   dispatchRecovery,
   CLINICAL_FIRST_SNAPSHOT_HUNG_MS,
 } from "../firestore/listenerRecovery.js";
+import { useAuthReady } from "../../auth/useAuthReady.js";
 
 /** @typedef {'IDLE'|'CONNECTING'|'READY'|'RECOVERING'|'TIMEOUT'|'ERROR'|'OFFLINE'|'CLOSED'} ClinicalListenStatus */
 
@@ -77,6 +78,8 @@ export function useMasterDeptSnapshots({
   const listenStatusRef = useRef(listenStatus);
   listenStatusRef.current = listenStatus;
   const recoveringRef = useRef(false);
+  const { ready: authReady, user: authUser } = useAuthReady();
+  const canListen = enabled && authReady && !!authUser;
 
   const retryListen = useCallback(() => {
     const s = listenStatusRef.current;
@@ -138,8 +141,12 @@ export function useMasterDeptSnapshots({
       setListenStatus("CLOSED");
     };
 
-    if (!enabled) {
+    if (!canListen) {
       clearState();
+      if (authReady && !authUser) {
+        setListenStatus("ERROR");
+        setMasterError("Not signed in — open login.html and sign in again.");
+      }
       return undefined;
     }
 
@@ -264,11 +271,16 @@ export function useMasterDeptSnapshots({
         masterSettled = true;
         clearTimeout(hungTimer);
         console.error(
-          "[useMasterDeptSnapshots] master_register query failed — check composite index (departments + timePrinted):",
+          "[useMasterDeptSnapshots] master_register query failed — check Auth login + composite index (departments + timePrinted):",
           err
         );
         setLoading(false);
-        setMasterError(err?.message || String(err));
+        const msg = String(err?.code || err?.message || err);
+        setMasterError(
+          msg.includes("permission")
+            ? "Permission denied — sign in again at login.html"
+            : err?.message || String(err)
+        );
         if (isListenerTimeoutError(err)) {
           const offline =
             typeof navigator !== "undefined" && navigator.onLine === false;
@@ -451,7 +463,9 @@ export function useMasterDeptSnapshots({
     masterDeptKey,
     dateFrom,
     dateTo,
-    enabled,
+    canListen,
+    authReady,
+    authUser,
     recoverGen,
   ]);
 
